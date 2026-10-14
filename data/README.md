@@ -96,8 +96,9 @@ kev/.venv/bin/python data/issp2018/build_dataset.py
 9. **Training records are drawn, not stored** (`issp_sampler.py`, 2026-10-13): a random (year, country, question),
    one question per record; a random number of attributes (uniform from 0 to all, no cap) chosen at random; a value
    combination uniformly among those that occur among the respondents to the question (every persona counts the same,
-   however many people it matches); as target the answer shares of the matching respondents, with no minimum (one
-   respondent gives a one-hot target). Persona = Country, the drawn attributes, and the `ASKED_OF` lines of the
+   however many people it matches); as target the answer shares of the matching respondents. Minimum group size
+   (`--min_n`, default 10, 2026-10-13): only value combinations shared by at least that many respondents are drawn
+   (`data/issp2020/DECISIONS.md`, decision 28). Persona = Country, the drawn attributes, and the `ASKED_OF` lines of the
    question's block. No survey weights. A block is the question number from the data label (`Q12` for Q12a–Q12h).
    One question per record rather than one block (2026-10-13): Kev's questions cannot read each other, so a block's
    questions in one record get the same predictions as apart; apart, every target gets its own drawn persona instead

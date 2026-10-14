@@ -3,7 +3,7 @@
 ISSP (default): each call draws fresh samples for one question with the training sampler (issp_sampler.IsspSampler,
 from the year's respondent data): a random country where the question was asked; without --group a random number of
 random attributes (uniform from 0 to all), with --group the variables given; a random value combination among those
-that occur; as target the answer shares of the respondents who match (1 respondent gives a one-hot target).
+that occur among at least --min_n respondents; as target the answer shares of the respondents who match.
 
 SubPOP (--dataset subpop_eval or subpop100): one question of that set (--question, or a random one), for every
 subpopulation that has it, as stored, side by side per attribute (Male then Female, Democrat then Republican, ...),
@@ -55,7 +55,7 @@ SUBPOP_ORDER = {"SEX": ["Male", "Female"], "POLPARTY": ["Democrat", "Republican"
 
 def issp_samples(args, rng):
     """(title, record) per ISSP sample, drawn by issp_sampler.IsspSampler as in training, for one question."""
-    sampler = IsspSampler([f"issp{args.year}"], single_respondent=args.single_respondent)
+    sampler = IsspSampler([f"issp{args.year}"], single_respondent=args.single_respondent, min_n=args.min_n)
     question = args.question or rng.choice(sorted({v for u in sampler.units for v in u.questions}))
     keys = [PERSONA_KEY[name] for name in args.group] if args.group else None
     slots = []
@@ -64,10 +64,13 @@ def issp_samples(args, rng):
             continue
         pool = sampler.pool(unit, [question])
         columns = [unit.attribute_names.index(k) for k in keys] if keys else []
-        if not keys or (unit.attrs[np.ix_(pool, columns)] >= 0).all(axis=1).any():
+        values = unit.attrs[np.ix_(pool, columns)]
+        values = values[(values >= 0).all(axis=1)]
+        if not keys and len(pool) >= args.min_n or keys and len(values) and \
+                np.unique(values, axis=0, return_counts=True)[1].max() >= args.min_n:
             slots.append((i, question))
     if not slots:
-        sys.exit(f"no country has answers to {question} in ISSP {args.year}"
+        sys.exit(f"no country has {args.min_n} respondents answering {question} in ISSP {args.year}"
                  + (f" together with {', '.join(args.group)}" if args.group else ""))
     qtype = sampler.units[slots[0][0]].questions[question]["type"]
     print(f"ISSP {args.year} {question} ({qtype}), grouped by "
@@ -152,6 +155,8 @@ def main():
                              f"training): {', '.join(PERSONA_KEY)}")
     parser.add_argument("--single_respondent", action="store_true",
                         help="ISSP only: draw single respondents with their full persona (one-hot target)")
+    parser.add_argument("--min_n", type=int, default=10,
+                        help="ISSP only: fewest respondents a drawn persona may match, as train_issp.py --min_n")
     parser.add_argument("--canonical", action="store_true",
                         help="show the fixed view calibration and test use, not the training view")
     parser.add_argument("--base", default="jaredpalmer/kev-0.8b", help="the model whose tokenizer encodes x")

@@ -12,8 +12,9 @@ record is made when it is drawn.
      - Which attributes: k of them, at random.
      - Their values: uniformly among the value combinations that occur among the slot's respondents (those who answered
        the question). Every persona counts the same, however many people it matches.
-     - Target: the answer shares of the matching respondents (no minimum: a persona matching one person gives a one-hot
-       target).
+     - Target: the answer shares of the matching respondents. With min_n (default 1: no minimum), only value
+       combinations shared by at least min_n of the slot's respondents are drawn; if the drawn attributes have none,
+       k and the attributes are drawn again. Slots with fewer than min_n respondents are not trained on.
   3. Single-respondent mode (single_respondent=True):
      - Pick one respondent uniformly among those who answered the slot's question.
      - Show that respondent's full persona (all non-missing attributes) and use their single response (one-hot) as the
@@ -87,11 +88,12 @@ class IsspSampler:
     held_out: the share of each dataset's slots kept out of training for calibration (`self.held_out`); training draws
     only from `self.slots`.
     single_respondent: if True, each training draw picks a single respondent and uses their full non-missing persona
-    and one-hot answer instead of sampling an attribute subset and averaging over matching respondents."""
+    and one-hot answer instead of sampling an attribute subset and averaging over matching respondents.
+    min_n: the fewest respondents a drawn persona may match (not used with single_respondent)."""
 
-    def __init__(self, names, held_out=0.0, single_respondent=False):
+    def __init__(self, names, held_out=0.0, single_respondent=False, min_n=1):
         self.units, self.slots, self.held_out = [], [], []
-        self.single_respondent = single_respondent
+        self.single_respondent, self.min_n = single_respondent, min_n
         for name in names:
             slots = []
             respondents, question_file, attribute_file = dataset_files(name)
@@ -110,6 +112,8 @@ class IsspSampler:
             held = by_hash[:round(held_out * len(slots))]
             self.held_out += held
             self.slots += [slot for slot in slots if slot not in held]
+        if not single_respondent:   # slots that cannot give min_n respondents
+            self.slots = [(u, v) for u, v in self.slots if len(self.pool(self.units[u], [v])) >= min_n]
         self.respondents = sum(len(u.attrs) for u in self.units)
 
     def record(self, rng, slot=None, keys=None):
@@ -139,13 +143,14 @@ class IsspSampler:
                 chosen = [unit.attribute_names.index(key) for key in keys]
             values = unit.attrs[np.ix_(pool, chosen)]
             complete = (values >= 0).all(axis=1)         # respondents who have every chosen attribute
-            if complete.any():
+            combos, counts = np.unique(values[complete], axis=0, return_counts=True)
+            combos = combos[counts >= self.min_n]        # value combinations shared by at least min_n respondents
+            if len(combos):
                 break
             if keys is not None and slot is not None:
-                raise ValueError(f"no respondent in {unit.name} {unit.code} {v} has all of {keys}")
-            # nobody has the drawn attributes together: draw again
-        combos = np.unique(values[complete], axis=0)
-        combo = combos[rng.randrange(len(combos))]       # uniform among the value combinations that occur
+                raise ValueError(f"no {self.min_n} respondents in {unit.name} {unit.code} {v} share values of {keys}")
+            # no value combination of the drawn attributes has min_n respondents: draw again
+        combo = combos[rng.randrange(len(combos))]       # uniform among the value combinations that qualify
         match = pool[complete & (values == combo).all(axis=1)]
         record = self.make(unit, questions, chosen, combo, match)
         info = {"dataset": unit.name, "country": unit.code, "question": v, "attributes": len(chosen),

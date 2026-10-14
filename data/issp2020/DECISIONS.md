@@ -121,3 +121,12 @@ Data: ISSP 2020 Environment IV (GESIS ZA7650 v2.0.0), 44,100 respondents, 28 cou
     single attribute, with the answer shares of all matching respondents (47,324 records for all ten years). Reason:
     SubPOP's calibration error flattened by step 100 and cannot show whether the model uses the persona (run
     issp-all-0.8b-v8 predicted the same distribution for men and women). The test set stays SubPOP's evaluation split.
+
+28. **Minimum group size for training personas (2026-10-13).** `IsspSampler(min_n=...)`, `train_issp.py --min_n`
+    (default 10): a drawn persona's value combination must be shared by at least min_n of the slot's respondents; if
+    the drawn attributes have no such combination, k and the attributes are drawn again, and slots with fewer than
+    min_n respondents (93 of 19,991 at 10) are not trained on. `min_n=1` gives exactly the former draws. Reason: with
+    no minimum, 72% of targets were one respondent's one-hot answer, so a group difference such as men vs women
+    (run issp-all-0.8b-v11: the same prediction for both, on a training question and a calibration question) is buried
+    in noise. Cost: long personas mostly disappear; at 10, 0-3 attributes are 65% of records and 9+ under 1%
+    (formerly uniform from 0 to all). Calibration records are unchanged.

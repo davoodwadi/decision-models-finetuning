@@ -29,6 +29,39 @@ kev/.venv/bin/python train_issp.py \
 --lr 5e-4 \
 --batch 128 
 
+# Add min_n 10
+
+kev/.venv/bin/python train_issp.py \
+--base jaredpalmer/kev-0.8b \
+--epochs 10 \
+--out runs/issp-all-0.8b \
+--checkpointing \
+--lr 5e-4 \
+--batch 128 \
+--min_n 10
+
+# lora_rank 64
+
+kev/.venv/bin/python train_issp.py \
+--base jaredpalmer/kev-0.8b \
+--epochs 10 \
+--out runs/issp-all-0.8b-r64 \
+--checkpointing \
+--lr 5e-4 \
+--batch 128 \
+--min_n 10 \
+--lora_rank 64
+
+# lr_schedule: constant 
+kev/.venv/bin/python train_issp.py \
+--base jaredpalmer/kev-0.8b \
+--epochs 10 \
+--out runs/issp-all-0.8b-constlr \
+--checkpointing \
+--lr 5e-4 \
+--batch 128 \
+--min_n 10 \
+--lr_schedule constant
 
 
 # MLflow

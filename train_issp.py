@@ -4,18 +4,20 @@ Steps (see data/README.md and data/issp2020/DECISIONS.md):
   1. Training data: the ISSP years named with --train (default: all), as respondent-level data (one row per respondent
      with every attribute and answer, data/issp<year>/issp<year>_respondents.parquet and _questions.json). Records are
      drawn on the fly by issp_sampler.IsspSampler: a random country and question (one question per record), a random
-     subset of attributes (any number, from none to all), a random value combination, and as target the answer shares
-     of the respondents who match (PLAN-respondent-sampling.md). Calibration set: --calibration_frac of each training
+     subset of attributes (any number, from none to all), a random value combination shared by at least --min_n
+     respondents, and as target the answer shares of the respondents who match (PLAN-respondent-sampling.md). Calibration set: --calibration_frac of each training
      year's (country, question) slots, never trained on (the same slots in every run); per held-out slot, the whole
      country and every one-attribute group (e.g. Sex: Female), with the answer shares of all matching respondents
      (IsspSampler.calibration_records). Test set: SubPOP's evaluation split (TEST_DATASET), fixed whatever the training
      data, without questions that the ISSP data also asks (data/subpop/README.md).
   2. Load the released Kev model (backbone + LoRA adapter + pointer head); only the adapter and head are trained.
+     With --lora_rank R, a new untrained rank-R adapter replaces the released one (the released head is kept).
   3. Train: an epoch is one pass through every (year, country, question) slot in random order, each drawn as a record
      with a fresh persona and shown as an augmented view (issp_augment.augment:
      persona presentation, reversed scales, shuffled options); the loss is soft cross-entropy between the model's
      answer distribution and the observed answer shares.
-  4. Step 0 (the released model before any training) is the baseline: score the calibration and test sets. Then
+  4. Step 0 (the model before any training: the released Kev, or with --lora_rank the base with the released head) is
+     the baseline: score the calibration and test sets. Then
      validate on the calibration set every --validate_every steps; keep the weights with the lowest KL divergence.
   5. Evaluate the kept weights on the test set, next to the step-0 baseline.
   6. Saving: --out is a base path (runs/issp-0.8b); each run gets the next free version, <out>-v1, <out>-v2, ...
@@ -142,16 +144,22 @@ def run_info(run, args, sets, sampler, drawn):
 
 # ---------------------------------------------------------------- model
 
-def load_model(base, device):
-    """The released Kev model ready to train: base backbone with its LoRA adapter and pointer head loaded."""
+def load_model(base, device, lora_rank=None):
+    """The released Kev model ready to train: base backbone with its LoRA adapter and pointer head loaded. With
+    lora_rank, a new rank-lora_rank adapter (untrained: the backbone starts as the plain base) and the released head."""
     checkpoint = Checkpoint(base)
     meta = checkpoint.meta
+    if lora_rank:
+        meta = dataclasses.replace(meta, lora=lora_rank)   # the rank our checkpoints record
     tok = load_tokenizer(meta.base, revision=meta.base_revision)
     model = DecisionModel(meta.base, tok, device, lora=meta.lora, revision=meta.base_revision, head_dim=meta.head_dim,
                           option_isolation=meta.option_isolation, special_embeddings=meta.special_embeddings,
                           lora_targets=meta.extra.get("args", {}).get("lora_targets", "all"))
     model.lm.config.use_cache = False                    # no generation: the cache only costs memory
-    checkpoint.warm_start(model, meta)                   # loads adapter + head; refuses a mismatched architecture
+    if lora_rank:
+        model.head.load_state_dict(meta.head)            # released head only; the adapter keeps its fresh init
+    else:
+        checkpoint.warm_start(model, meta)               # loads adapter + head; refuses a mismatched architecture
     return tok, model, meta
 
 
@@ -338,11 +346,17 @@ def print_table(results):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--base", default="jaredpalmer/kev-0.8b", help="released Kev model to start from")
+    parser.add_argument("--lora_rank", type=int, default=None,
+                        help="train a new LoRA adapter of this rank (same layers, alpha = 2 x rank) instead of the "
+                             "released adapter; the released pointer head is kept. Default: continue the released adapter")
     parser.add_argument("--train", nargs="+", choices=ISSP_DATASETS, default=ISSP_DATASETS,
                         help="ISSP years to draw training records from (default: all); the calibration set is held "
                              "out of these years (--calibration_frac); the test set is always the fixed SubPOP set")
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--lr", type=float, default=2e-4, help="peak learning rate")
+    parser.add_argument("--lr_schedule", choices=["onecycle", "constant"], default="onecycle",
+                        help="onecycle: warm up over the first 5%% of steps from lr/25 to lr, then anneal to 0 by the "
+                             "last step; constant: the same warm-up, then lr until the end")
     parser.add_argument("--batch", type=int, default=64, help="records per optimizer step")
     parser.add_argument("--calibration_frac", type=float, default=0.01,
                         help="share of each training year's (country, question) slots held out as the calibration set "
@@ -351,6 +365,9 @@ def main():
                         help="train on single respondents with their full non-missing persona (one-hot target per "
                              "record) instead of sampling an attribute subset and averaging matching respondents; "
                              "calibration stays unchanged")
+    parser.add_argument("--min_n", type=int, default=10,
+                        help="fewest respondents a drawn persona may match (its target averages at least this many "
+                             "answers); 1 = no minimum. Not used with --single_respondent")
     parser.add_argument("--eval_batch", type=int, default=256,
                         help="records per forward pass when scoring the calibration and test sets (no gradients, so it "
                              "can be much larger; Kev splits each pass into chunks of at most 16,384 tokens)")
@@ -372,7 +389,8 @@ def main():
     torch.backends.cuda.matmul.allow_tf32 = True
     autocast = torch.autocast("cuda", dtype=torch.bfloat16)   # bf16 compute, fp32 weights
 
-    sampler = IsspSampler(args.train, held_out=args.calibration_frac, single_respondent=args.single_respondent)
+    sampler = IsspSampler(args.train, held_out=args.calibration_frac, single_respondent=args.single_respondent,
+                          min_n=args.min_n)
     sets = load_sets(sampler)
     drawn = sampler.statistics(random.Random(args.seed + 1))   # its own generator: training draws are unaffected
     by_n = " ".join(f"{k}:{v:.2f}" for k, v in drawn["targets_by_respondents"].items() if v)
@@ -384,7 +402,7 @@ def main():
     info = run_info(out, args, sets, sampler, drawn)
     (out / "run_info.json").write_text(json.dumps(info, indent=1))
 
-    tok, model, released_meta = load_model(args.base, device)
+    tok, model, released_meta = load_model(args.base, device, args.lora_rank)
     if args.checkpointing:
         # the same setting as Kev's own trainer (kev/kev/train.py --checkpointing)
         model.lm.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
@@ -393,7 +411,12 @@ def main():
 
     optimizer = torch.optim.AdamW(model.trainable_parameters(), lr=args.lr, weight_decay=0.01)
     total_steps = args.epochs * math.ceil(len(sampler.slots) / args.batch)
-    scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=args.lr, total_steps=total_steps, pct_start=0.05)
+    if args.lr_schedule == "onecycle":
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=args.lr, total_steps=total_steps, pct_start=0.05)
+    else:   # OneCycleLR's warm-up (cosine from lr/25 to lr over 5% of the steps), then constant
+        warmup = 0.05 * total_steps
+        scheduler = torch.optim.lr_scheduler.LambdaLR(
+            optimizer, lambda step: 1 / 25 + (1 - 1 / 25) * (1 - math.cos(math.pi * min(step / warmup, 1))) / 2)
 
     step_log, validation_log = [], []
     best = {"kl": math.inf, "step": None, "state": None}
@@ -405,7 +428,7 @@ def main():
 
     def validate(step):
         """Score the calibration set; when the KL divergence is the lowest so far, keep these weights in memory and
-        save them to <out>/best/. Step 0 is the released model before training: the baseline."""
+        save them to <out>/best/. Step 0 is the model before training: the baseline."""
         started = time.time()
         calibration = metrics(with_probs(predict(model, tok, sets["calibration"], args.eval_batch, autocast)))
         is_best = calibration["all"]["kl_divergence"] < best["kl"]
@@ -421,7 +444,7 @@ def main():
         if step > 0:
             print(RULE, flush=True)              # step 0 adds its test-set lines before closing the frame
 
-    # step 0, the baseline: the released model before any training, on the calibration and test sets
+    # step 0, the baseline: the model before any training, on the calibration and test sets
     validate(0)
     test_sets = [name for name in sets if name.startswith("test")]
     released = {name: metrics(with_probs(predict(model, tok, sets[name], args.eval_batch, autocast))) for name in test_sets}
@@ -440,7 +463,7 @@ def main():
     results = {}
     for name in test_sets:
         after = predict(model, tok, sets[name], args.eval_batch, autocast)
-        results[name] = {"released (step 0)": released[name],
+        results[name] = {"step 0": released[name],
                          f"best (step {best['step']})": metrics(with_probs(after))}
     print_table(results)
 
