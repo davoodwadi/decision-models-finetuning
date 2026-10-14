@@ -1,0 +1,46 @@
+# Python & environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+.env
+.DS_Store
+
+# Model weights & checkpoints
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.onnx
+*.gguf
+**/tokenizer.json
+
+# Large data & archive files
+*.csv
+*.json
+*.jsonl
+*.parquet
+*.dta
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.gz
+*.pdf
+data/**/raw/
+
+
+# Databases & logs
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+*.log
+mlruns/
+kev/runs/
+

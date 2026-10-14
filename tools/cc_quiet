@@ -1,0 +1,4 @@
+#!/bin/sh
+# C compiler for Triton kernel launchers (set as CC by train_issp.py): gcc with warnings off.
+# The only warning seen is a harmless _POSIX_C_SOURCE redefinition between Python and glibc headers.
+exec gcc -w "$@"
