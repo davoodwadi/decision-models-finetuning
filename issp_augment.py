@@ -3,12 +3,20 @@
 A stored record (data/issp<year>/issp<year>.jsonl) holds the persona as fields and each question in a fixed order:
 persona fields such as Country, Sex, Age, Education; `score` levels low -> high; `choice` options in questionnaire order.
 
-- `augment(record, rng)` gives a fresh training view: the persona written in a random presentation (`persona_text`:
-  layout, attribute names, value wording, line order; see below), each `score` scale reversed with probability
-  `p_reverse`, `choice` options in random order. `noul` is left as is (Kev always shows no, yes).
-- `canonical(record)` gives the fixed view used for calibration and evaluation: 'Key: value' lines in stored order, so
-  every evaluation sees exactly the same input. Scales must be low -> high at inference, because Kev's `score` output
-  is the expected level index.
+`view(record, augmentation, rng)` gives the request. An `Augmentation` lists which variations are switched on; each is
+off by default, so the default view is 'Key: value' lines in stored order, scales low -> high, options in
+questionnaire order (`canonical(record)`, the same view every time; calibration and test always use it, only
+training is ever augmented):
+- layouts: the persona layouts drawn from (`lines`, `bullets`, `one line`, `json`, `prose`; default `lines` only)
+- key_names: other names for an attribute (Sex / Gender)
+- value_wording: other wordings of a value that mean exactly the same (Female / woman, 45-59 / 45 to 59)
+- punctuation: the layout's separators drawn at random (': ' / ' - ' / ' = ', bullet signs, JSON indent, the person
+  prose speaks as); off: the first of each
+- shuffle_order: persona lines in random order
+- p_reverse: chance each `score` scale is shown high -> low (target and label renumbered with it)
+- shuffle_options: `choice` options in random order (`noul` is left as is: Kev always shows no, yes)
+`parse_augmentation` reads one from command-line words; `full` switches everything on (the training view of runs
+before 2026-10-14). With every variation off, Kev's `score` output is the expected level index on a low -> high scale.
 
 Every view keeps each answer's probability attached to its answer text: when options move, `target` and `label`
 move with them. Every persona presentation describes exactly the same people: only the wording changes (wording
@@ -17,6 +25,7 @@ where an alternative means exactly the same (sex, age, yes / no).
 """
 
 
+import dataclasses
 import json
 import re
 
@@ -120,32 +129,34 @@ def sex_phrase(value):
     return f"a {value.lower()}" if value.lower() in ("man", "woman") else value.lower()
 
 
-def persona_text(persona, rng):
-    """The persona in a random presentation: layout, attribute names, value wording and order drawn with `rng`."""
+def pick(options, rng, vary):
+    """A random one of `options` when `vary`, otherwise the first."""
+    return rng.choice(options) if vary else options[0]
+
+
+def persona_text(persona, augmentation, rng):
+    """The persona in the presentation `augmentation` allows: layout, attribute names, value wording, punctuation and
+    line order, each drawn with `rng` only when its variation is switched on."""
+    a = augmentation
     items = list(persona.items())
-    rng.shuffle(items)
-    pairs = [(key, key_name(key, value, rng), value_text(key, value, rng), value) for key, value in items]
-    layout = rng.choice(LAYOUTS)
+    if a.shuffle_order:
+        rng.shuffle(items)
+    pairs = [(key, key_name(key, value, rng) if a.key_names else key,
+              value_text(key, value, rng) if a.value_wording else value, value) for key, value in items]
+    layout = pick(a.layouts, rng, len(a.layouts) > 1)
     if layout == "prose":
-        person = rng.choice(PERSONS)
+        person = pick(PERSONS, rng, a.punctuation)
         body = " ".join(sentence(key, name, value, raw, person) for key, name, value, raw in pairs)
     elif layout == "json":
-        body = json.dumps({name: value for _, name, value, _ in pairs}, ensure_ascii=False, indent=rng.choice([None, 2]))
+        body = json.dumps({name: value for _, name, value, _ in pairs}, ensure_ascii=False,
+                          indent=pick([None, 2], rng, a.punctuation))
     elif layout == "one line":
-        body = rng.choice(["; ", ", ", " | "]).join(f"{name}: {value}" for _, name, value, _ in pairs)
+        body = pick(["; ", ", ", " | "], rng, a.punctuation).join(f"{name}: {value}" for _, name, value, _ in pairs)
     else:
-        bullet = rng.choice(["- ", "* ", "\u2022 "]) if layout == "bullets" else ""
-        separator = rng.choice([": ", ": ", " - ", " = "])
+        bullet = pick(["- ", "* ", "\u2022 "], rng, a.punctuation) if layout == "bullets" else ""
+        separator = pick([": ", ": ", " - ", " = "], rng, a.punctuation)
         body = "\n".join(f"{bullet}{name}{separator}{value}" for _, name, value, _ in pairs)
     return body
-
-
-def render_state(persona, rng=None):
-    """Persona fields as 'Key: value' lines in stored order (canonical view), or a random presentation when an rng is
-    given (training view)."""
-    if rng is not None:
-        return persona_text(persona, rng)
-    return "\n".join(f"{key}: {value}" for key, value in persona.items())
 
 
 def reverse_score(question):
@@ -167,21 +178,70 @@ def shuffle_choice(question, rng):
     return {**question, "criteria": {name: question["criteria"][name] for name in names}}
 
 
-def augment_question(question, rng, p_reverse):
-    """A fresh view of one question."""
-    if question["type"] == "score" and rng.random() < p_reverse:
+@dataclasses.dataclass(frozen=True)
+class Augmentation:
+    """Which variations a view draws (see the module docstring); every one off by default."""
+    layouts: tuple = ("lines",)
+    key_names: bool = False
+    value_wording: bool = False
+    punctuation: bool = False
+    shuffle_order: bool = False
+    p_reverse: float = 0.0
+    shuffle_options: bool = False
+
+    def __post_init__(self):
+        if not self.layouts or set(self.layouts) - set(LAYOUTS):
+            raise ValueError(f"layouts must be some of {LAYOUTS}, got {self.layouts}")
+
+    def varies(self):
+        """Whether any variation is switched on (then a view needs an rng)."""
+        return self != Augmentation()
+
+
+FULL = Augmentation(layouts=tuple(LAYOUTS), key_names=True, value_wording=True, punctuation=True, shuffle_order=True,
+                    p_reverse=0.5, shuffle_options=True)
+
+
+def parse_augmentation(words):
+    """An Augmentation from command-line words: none (or no words) for the default, full for everything on, or
+    switches such as `layouts=lines,json key_names shuffle_order p_reverse=0.5`, each starting from the default."""
+    if list(words) in ([], ["none"]):
+        return Augmentation()
+    if list(words) == ["full"]:
+        return FULL
+    settings = {}
+    for word in words:
+        name, _, value = word.partition("=")
+        if name == "layouts":
+            settings[name] = tuple(value.split(","))
+        elif name == "p_reverse":
+            settings[name] = float(value)
+        elif name in ("key_names", "value_wording", "punctuation", "shuffle_order", "shuffle_options") and not value:
+            settings[name] = True
+        else:
+            raise ValueError(f"unknown augmentation switch {word!r}: none, full, layouts=..., p_reverse=..., "
+                             "key_names, value_wording, punctuation, shuffle_order, shuffle_options")
+    return Augmentation(**settings)
+
+
+def view_question(question, augmentation, rng):
+    """One question as `augmentation` allows."""
+    if question["type"] == "score" and augmentation.p_reverse and rng.random() < augmentation.p_reverse:
         return reverse_score(question)
-    if question["type"] == "choice":
+    if question["type"] == "choice" and augmentation.shuffle_options:
         return shuffle_choice(question, rng)
     return question
 
 
-def augment(record, rng, p_reverse=0.5):
-    """A fresh training view of one stored record: {"state": text, "questions": {...}}."""
-    return {"state": render_state(record["persona"], rng),
-            "questions": {v: augment_question(q, rng, p_reverse) for v, q in record["questions"].items()}}
+def view(record, augmentation=Augmentation(), rng=None):
+    """The request for one stored record, {"state": text, "questions": {...}}, as `augmentation` allows; `rng` draws
+    the variations switched on (needed only when some are)."""
+    if augmentation.varies() and rng is None:
+        raise ValueError("an augmented view needs an rng")
+    return {"state": persona_text(record["persona"], augmentation, rng),
+            "questions": {v: view_question(q, augmentation, rng) for v, q in record["questions"].items()}}
 
 
 def canonical(record):
-    """The fixed view of one stored record, used for calibration and evaluation."""
-    return {"state": render_state(record["persona"]), "questions": record["questions"]}
+    """The default view: every variation off, the same text every time."""
+    return view(record)

@@ -1,33 +1,40 @@
-"""Print random training samples as the model gets them: x (the exact text Kev reads) and y (the target).
+"""Print random training samples as the model gets them: x (the exact text the model reads) and y (the target).
 
-ISSP (default): each call draws fresh samples for one question with the training sampler (issp_sampler.IsspSampler,
-from the year's respondent data): a random country where the question was asked; without --group a random number of
+ISSP (default): each call draws fresh samples for one question as training does (the year's respondent data,
+issp_sampler.IsspSource, and a construction from constructions.py: group_shares, or single_respondent): a random country where the question was asked; without --group a random number of
 random attributes (uniform from 0 to all), with --group the variables given; a random value combination among those
 that occur among at least --min_n respondents; as target the answer shares of the respondents who match.
+
+--data configs/data/<recipe>.json: samples drawn as the training of that recipe draws them (its source and
+construction, training_data.TrainingData): a random training slot (any year, question and country the recipe has),
+then the construction's record; --year, --question, --group, --min_n and --single_respondent do not apply.
 
 SubPOP (--dataset subpop_eval or subpop100): one question of that set (--question, or a random one), for every
 subpopulation that has it, as stored, side by side per attribute (Male then Female, Democrat then Republican, ...),
 each attribute closed by a table comparing the answer shares of its values. --attribute shows only the attributes
 named (e.g. SEX RACE); --samples does not apply.
 
-Every sample then goes through the training view (issp_augment.augment, exactly as train_issp.train_epoch: persona
-presentation, reversed scales, shuffled options), or, with --canonical, the fixed view calibration and test use; then
-Kev's input format (train_issp.to_model_input) and encoder (kev.model.encode, with the model's tokenizer).
-  x = the encoded token ids decoded back to text: special tokens included, the state cut at Kev's MAX_STATE tokens
-      as in training. For reading, each special token except <|box_end|> starts a new line (display only: Kev reads
-      no such line breaks).
+Every sample then goes through the view --augment gives (issp_augment.view, exactly as train.py's flag of the same
+name: by default every variation off, the view calibration and test use too; `--augment full` or switches such as
+`layouts=json,prose key_names` for the variations to see); then the model's own input format (models.encoder: the same model flags as train.py).
+  x = what the model reads. With --kev: Kev's encoded token ids decoded back to text, special tokens included, the
+      state cut at Kev's MAX_STATE tokens as in training; for reading, each special token except <|box_end|> starts a
+      new line (display only: Kev reads no such line breaks). <|fim_prefix|> starts the state, <|fim_middle|> a
+      question, <|box_start|> / <|box_end|> enclose each option, <|fim_suffix|> is where the model decides.
+      Without --kev: the LLM's prompt (chat template applied: system prompt, persona, question, lettered options),
+      up to where it answers with a letter.
   y = the target the training loss fits (soft cross-entropy): the answer shares, in the order the options are
-      shown. Kev's own `label` field is not used in training (it is always 0 here) and is not shown.
-Special tokens: <|fim_prefix|> starts the state, <|fim_middle|> a question, <|box_start|> / <|box_end|> enclose each
-option, <|fim_suffix|> is where the model decides.
+      shown (for the LLM: A, B, C, ...).
 
 Needs the tokenizer in the Hugging Face cache (no model weights are loaded). Run from the project root:
-  kev/.venv/bin/python show_train_samples.py --year 2022 --question v45                   (random attributes)
-  kev/.venv/bin/python show_train_samples.py --year 2022 --question v45 --group SEX
-  kev/.venv/bin/python show_train_samples.py --year 2023 --question v31 --group RELIGGRP PRTY
-  kev/.venv/bin/python show_train_samples.py --dataset subpop_eval --question natrace
-  kev/.venv/bin/python show_train_samples.py --dataset subpop_eval --canonical             (the view the test uses)
-  kev/.venv/bin/python show_train_samples.py --dataset subpop_eval --canonical --attribute SEX POLPARTY
+  kev/.venv/bin/python show_train_samples.py --kev --year 2022 --question v45             (random attributes)
+  kev/.venv/bin/python show_train_samples.py --year 2022 --question v45                   (the LLM's prompt)
+  kev/.venv/bin/python show_train_samples.py --kev --year 2022 --question v45 --group SEX
+  kev/.venv/bin/python show_train_samples.py --kev --year 2023 --question v31 --group RELIGGRP PRTY
+  kev/.venv/bin/python show_train_samples.py --kev --data configs/data/issp-us-group-min100-attr2.json
+  kev/.venv/bin/python show_train_samples.py --kev --dataset subpop_eval --question natrace
+  kev/.venv/bin/python show_train_samples.py --kev --dataset subpop_eval --attribute SEX POLPARTY
+  kev/.venv/bin/python show_train_samples.py --kev --year 2022 --question v45 --augment layouts=json,prose key_names
 """
 import argparse
 import random
@@ -39,11 +46,12 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "data"))
 from issp_common import PERSONA_KEY                    # noqa: E402  ISSP variable -> persona line
-from issp_sampler import IsspSampler                   # noqa: E402  the training sampler
-import train_issp                                      # noqa: E402  Kev's input format and the datasets, as in training
-from issp_augment import augment, canonical            # noqa: E402  the training view / the calibration-and-test view
-from kev.checkpoint import Checkpoint                  # noqa: E402
-from kev.model import MAX_STATE, encode, load_tokenizer  # noqa: E402
+from issp_sampler import IsspSource                    # noqa: E402  the ISSP respondent data
+from constructions import GroupShares, SingleRespondent  # noqa: E402  how training builds a record
+import models                                          # noqa: E402  the model layer: each model's input format
+from models.base import options_and_targets            # noqa: E402  options as text + targets, as every model reads
+from training_data import TrainingData, load_recipe, read_records   # noqa: E402  recipes; the SubPOP sets
+from issp_augment import canonical, parse_augmentation, view   # noqa: E402  how a record is shown
 
 RULE = "-" * 100                                       # separates samples
 # SubPOP attributes in the order shown, each with its values in comparison order (values not listed follow, sorted)
@@ -54,8 +62,8 @@ SUBPOP_ORDER = {"SEX": ["Male", "Female"], "POLPARTY": ["Democrat", "Republican"
                 "INCOME": ["Less than $30,000", "$100,000 or more"], "CREGION": ["Northeast", "South"]}
 
 def issp_samples(args, rng):
-    """(title, record) per ISSP sample, drawn by issp_sampler.IsspSampler as in training, for one question."""
-    sampler = IsspSampler([f"issp{args.year}"], single_respondent=args.single_respondent, min_n=args.min_n)
+    """(title, record) per ISSP sample, drawn by a construction as in training, for one question."""
+    sampler = IsspSource([f"issp{args.year}"])
     question = args.question or rng.choice(sorted({v for u in sampler.units for v in u.questions}))
     keys = [PERSONA_KEY[name] for name in args.group] if args.group else None
     slots = []
@@ -76,16 +84,34 @@ def issp_samples(args, rng):
     print(f"ISSP {args.year} {question} ({qtype}), grouped by "
           f"{', '.join(args.group) if args.group else 'a random subset of attributes per sample'}: {len(slots)} countries\n")
     for _ in range(args.samples):
-        record, info = sampler.record(rng, rng.choice(slots), keys)
+        slot = rng.choice(slots)
+        if args.single_respondent and not keys:
+            record, info = SingleRespondent().draw(sampler, rng, slot)
+        else:
+            record, info = GroupShares(args.min_n).draw(sampler, rng, slot, keys)
         shown = list(record["persona"].values())[1:1 + info["attributes"]]   # after Country, before filter lines
         yield (f"{info['country']}, {info['attributes']} attributes: {', '.join(shown) or '(country only)'}  "
                f"(n = {info['n'][question]} respondents; {info['combinations']} value combinations)", record)
 
 
+def recipe_samples(args, rng):
+    """(title, record) per sample of a recipe, drawn as train.train_epoch draws them: a random training slot, then the
+    construction's record for it."""
+    data = TrainingData(load_recipe(args.data))
+    print(f"recipe {args.data}: {len(data.slots)} training slots\n")
+    for _ in range(args.samples):
+        slot = rng.choice(data.slots)
+        record, info = data.construction.draw(data.source, rng, slot)
+        unit, question = data.source.units[slot[0]], slot[1]
+        shown = list(record["persona"].values())[1:1 + info["attributes"]]   # after Country, before filter lines
+        yield (f"{unit.name} {question}, {info['country']}, {info['attributes']} attributes: "
+               f"{', '.join(shown) or '(country only)'}  (n = {info['n'][question]} respondents)", record)
+
+
 def subpop_samples(args, rng):
     """[(attribute, [(title, record)])]: per attribute (SUBPOP_ORDER), its subpopulations that have the question in
     comparison order, records as stored with only that question."""
-    records = train_issp.read_records(args.dataset)
+    records = read_records(args.dataset)
     questions = sorted({v for r in records for v in r["questions"]})
     question = args.question or rng.choice(questions)
     having = [r for r in records if question in r["questions"]]
@@ -112,8 +138,8 @@ def compare(attribute, samples):
     """A table of the answer shares of each value of one attribute, options in canonical order."""
     rows = []
     for title, record in samples:
-        kev_record, questions = train_issp.to_model_input(canonical(record))
-        rows.append((title.split(" = ", 1)[1], kev_record["questions"][0]["options"], questions[0]["target"].tolist()))
+        shown, questions = options_and_targets(canonical(record))
+        rows.append((title.split(" = ", 1)[1], shown["questions"][0]["options"], questions[0]["target"].tolist()))
     options = rows[0][1]
     width = max(len(value) for value, _, _ in rows)
     print(f"=== comparison by {attribute}")
@@ -123,20 +149,15 @@ def compare(attribute, samples):
     print()
 
 
-def show(i, total, title, record, rng, tok, option_isolation):
+def show(i, total, title, record, augmentation, rng, encoder):
     """Print x and y for one record."""
-    view = canonical(record) if rng is None else augment(record, rng)   # the same call as train_issp.train_epoch
-    kev_record, questions = train_issp.to_model_input(view)
-    enc = encode(tok, kev_record, option_isolation=option_isolation)
-    question = kev_record["questions"][0]
+    request = view(record, augmentation, rng)            # the same call as train.train_epoch
+    shown, questions = options_and_targets(request)
+    question = shown["questions"][0]
     print(f"{RULE}\n=== sample {i}/{total}: {title}")
-    cut = f", CUT to {MAX_STATE}" if enc["state_truncated"] else ""
-    print(f"x ({len(enc['ids'])} tokens; state {enc['state_tokens']} of at most {MAX_STATE}{cut}):")
-    text = tok.decode(enc["ids"])
-    for token in ("<|fim_prefix|>", "<|fim_middle|>", "<|fim_suffix|>"):   # state, question, decide: own lines
-        text = text.replace(token, f"\n{token}\n")
-    text = text.replace("<|box_start|>", "\n<|box_start|>")                 # one option per line
-    print("  " + text.strip("\n").replace("\n\n", "\n").replace("\n", "\n  "))
+    header, text = encoder.preview(request)
+    print(f"x ({header}):")
+    print("  " + text.replace("\n", "\n  "))
     shares = questions[0]["target"].tolist()
     print(f"y ({questions[0]['type']}; answer shares, * = most common):")
     for option, share in zip(question["options"], shares):
@@ -148,6 +169,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--dataset", default="issp", choices=["issp", "subpop_eval", "subpop100"],
                         help="issp: sampled from respondents (--year); subpop_eval / subpop100: the SubPOP sets")
+    parser.add_argument("--data", default=None,
+                        help="a recipe (configs/data/*.json): samples drawn as that recipe's training draws them")
     parser.add_argument("--year", type=int, default=2022)
     parser.add_argument("--question", default=None, help="item id (default: v45 for ISSP 2022, otherwise random)")
     parser.add_argument("--group", nargs="+", default=None,
@@ -156,33 +179,37 @@ def main():
     parser.add_argument("--single_respondent", action="store_true",
                         help="ISSP only: draw single respondents with their full persona (one-hot target)")
     parser.add_argument("--min_n", type=int, default=10,
-                        help="ISSP only: fewest respondents a drawn persona may match, as train_issp.py --min_n")
-    parser.add_argument("--canonical", action="store_true",
-                        help="show the fixed view calibration and test use, not the training view")
-    parser.add_argument("--base", default="jaredpalmer/kev-0.8b", help="the model whose tokenizer encodes x")
+                        help="ISSP only: fewest respondents a drawn persona may match, as min_n in a group_shares recipe")
+    parser.add_argument("--augment", nargs="*", default=[],
+                        help="how records are shown, as train.py's --augment: none (default: every variation off), "
+                             "full, or switches such as layouts=lines,json key_names p_reverse=0.5")
     parser.add_argument("--samples", type=int, default=10, help="ISSP only: number of samples")
     parser.add_argument("--attribute", nargs="+", default=None,
                         help=f"SubPOP only: attributes to compare (default: all): {', '.join(SUBPOP_ORDER)}")
     parser.add_argument("--seed", type=int, default=None, help="fix to repeat the same draw")
+    models.add_arguments(parser)                         # --kev, --base, --prompt: the model whose input is shown
     args = parser.parse_args()
+    models.check_arguments(parser, args)
     if args.dataset == "issp" and args.question is None and args.year == 2022:
         args.question = "v45"
     rng = random.Random(args.seed)
 
-    meta = Checkpoint(args.base).meta                    # the tokenizer training uses (train_issp.load_model)
-    tok = load_tokenizer(meta.base, revision=meta.base_revision)
-    view_rng = None if args.canonical else rng
-    if args.dataset == "issp":
-        samples = list(issp_samples(args, rng))
+    encoder = models.encoder(args)                       # the model's input format, tokenizer only
+    try:
+        augmentation = parse_augmentation(args.augment)
+    except ValueError as error:
+        parser.error(str(error))
+    if args.data or args.dataset == "issp":
+        samples = list(recipe_samples(args, rng) if args.data else issp_samples(args, rng))
         for i, (title, record) in enumerate(samples, start=1):
-            show(i, len(samples), title, record, view_rng, tok, meta.option_isolation)
+            show(i, len(samples), title, record, augmentation, rng, encoder)
         return
     groups = subpop_samples(args, rng)
     total, i = sum(len(samples) for _, samples in groups), 0
     for attribute, samples in groups:
         for title, record in samples:
             i += 1
-            show(i, total, title, record, view_rng, tok, meta.option_isolation)
+            show(i, total, title, record, augmentation, rng, encoder)
         compare(attribute, samples)
 
 

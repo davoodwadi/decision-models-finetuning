@@ -2,7 +2,7 @@
 
 - data/subpop/subpop100.jsonl  from SubPOP's training split (Pew American Trends Panel): the calibration set.
 - data/subpop/subpop_eval.jsonl from SubPOP's evaluation split (US General Social Survey): the test set.
-(train_issp.py: CALIBRATION_DATASET, TEST_DATASET; the two can be swapped there.)
+(training_data.py: TEST_DATASET; the two can be swapped there.)
 
 Steps:
   1. Drop non-answers: keep the options that have a response share, remove "Refused" (and, in the evaluation split,
@@ -16,8 +16,7 @@ Steps:
      values -> `score`, levels sorted by that value; an answer valued -1 lies outside the scale ("Depends", "Other")
      -> `choice`; two answers -> `choice`. NOMINAL lists the questions whose values only number unordered answers
      (marital status, ...) and FIXED_ORDER the one with miscoded values.
-  3. Questions that are also asked in the ISSP training data (ISSP_OVERLAP) are left out of both sets, so calibration
-     and test only contain questions the model has not been trained on. See data/subpop/README.md.
+  3. Every question is kept, including those the ISSP training data also asks (data/subpop/README.md, decision 4).
   4. One record per subpopulation and up to QUESTIONS_PER_RECORD of its questions.
      Persona = "Country: United States" + the subpopulation's one attribute.
 """
@@ -36,43 +35,6 @@ ATTRIBUTE = {"CREGION": "Region", "EDUCATION": "Education", "INCOME": "Income", 
              "POLPARTY": "Political party", "RACE": "Race", "RELIG": "Religion", "SEX": "Sex"}
 
 NOT_ANSWERS = [{"Not asked", "Did not refuse"}]          # survey administration, not an opinion
-
-# SubPOP questions that ask the same thing as a question in the ISSP training data (same question, even if worded
-# or scaled differently): left out of calibration and test. Found by comparing every SubPOP question's words with
-# every ISSP item, then reviewing the closest matches by hand; README.md also lists related questions that were kept.
-ISSP_OVERLAP = {
-    # evaluation split (GSS)
-    "fechld": "ISSP 2022 v1 (a working mother can establish just as warm a relationship)",
-    "fepresch": "ISSP 2022 v2 (a pre-school child is likely to suffer if the mother works)",
-    "letin1a": "ISSP 2023 v31 (number of immigrants should be increased/reduced)",
-    "xmarsex": "ISSP 2018 v3 (sexual relations with someone other than the spouse)",
-    "homosex": "ISSP 2018 v4 (sexual relations between two adults of the same sex)",
-    "fair": "ISSP 2017 v34 (people would try to take advantage of you or be fair)",
-    "trust": "ISSP 2017 v35, 2018 v78, 2019 v56, 2020 v10 (most people can be trusted)",
-    "pray": "ISSP 2018 v43 (how often do you pray)",
-    "postlife": "ISSP 2018 v22 (belief in life after death)",
-    "bible": "ISSP 2018 v65 (feelings about the Bible)",
-    "reborn": "ISSP 2018 v64 (born-again experience)",
-    "relpersn": "ISSP 2018 v48 (describe yourself as religious)",
-    "health": "ISSP 2015 v97, 2017 v54, 2018 v63, 2021 v51 (self-rated health)",
-    "happy": "ISSP 2018 v1, 2021 v1, 2022 v56 (how happy are you)",
-    "class": "ISSP 2019 v61 (which social class you belong to)",
-    "satjob": "ISSP 2015 v44 (how satisfied are you in your job)",
-    "finalter": "ISSP 2015 v93 (financial situation better or worse than some years ago)",
-    "conlegis": "ISSP 2018 v7 (confidence in parliament)",
-    "conbus": "ISSP 2018 v8 (confidence in business and industry)",
-    "conclerg": "ISSP 2018 v9 (confidence in churches and religious organizations)",
-    "conjudge": "ISSP 2018 v10 (confidence in courts and the legal system)",
-    "coneduc": "ISSP 2018 v11 (confidence in schools and the educational system)",
-    "natenvir": "ISSP 2016 v13 (government spending on the environment)",
-    "natheal": "ISSP 2016 v14 (government spending on health)",
-    "nateduc": "ISSP 2016 v16 (government spending on education)",
-    "natarms": "ISSP 2016 v17 (government spending on the military and defence)",
-    "natsoc": "ISSP 2016 v18 (government spending on old age pensions / Social Security)",
-    # training split (Pew)
-    "NATIONALITY_BORN_W124": "ISSP 2023 v1 (being born in the country is important for being truly American)",
-    "NATIONALITY_RELIG_W124": "ISSP 2023 v3 (being of the dominant religion is important for being truly American)",
-}
 
 # evaluation split: answers that are not answers to the question
 EVAL_NOT_ANSWERS = {"Refused", "Don't know/can't remember"}
@@ -259,11 +221,8 @@ def build_train(rows):
     unclassified_top = [list(a) for a in answer_lists.value_counts().index[:100] if frozenset(a) not in classified]
     assert not unclassified_top, f"top-100 answer sets missing from the classification: {unclassified_top}"
 
-    questions_by_group, kept, left_out, overlap = {}, set(), set(), set()
+    questions_by_group, kept, left_out = {}, set(), set()
     for row in rows.itertuples():
-        if row.qkey in ISSP_OVERLAP:
-            overlap.add(row.qkey)
-            continue
         shares = answers(row)
         if frozenset(shares) in LIKERT_ORDER:
             question = score_question(row, shares, LIKERT_ORDER[frozenset(shares)])
@@ -275,25 +234,22 @@ def build_train(rows):
         kept.add(row.qkey)
         questions_by_group.setdefault((row.attribute, row.group), {})[row.qkey] = question
     print(f"training split: {len(kept)} questions kept, {len(left_out)} left out (answer set not hand-classified, "
-          f"not an opinion, or fewer than 2 answers), {len(overlap)} left out as ISSP overlap")
+          f"not an opinion, or fewer than 2 answers)")
     write_records(questions_by_group, OUT_TRAIN)
 
 
 def build_eval(rows):
     """subpop_eval.jsonl from the evaluation split (answer order from its `ordinal` values)."""
-    unknown = (set(NOMINAL) | set(FIXED_ORDER) | {k for k in ISSP_OVERLAP if k.islower()}) - set(rows.qkey)
+    unknown = (set(NOMINAL) | set(FIXED_ORDER)) - set(rows.qkey)
     assert not unknown, f"question keys not in the evaluation split (typo?): {sorted(unknown)}"
-    questions_by_group, kept, overlap = {}, set(), set()
+    questions_by_group, kept = {}, set()
     for row in rows.itertuples():
-        if row.qkey in ISSP_OVERLAP:
-            overlap.add(row.qkey)
-            continue
         shares = answers(row, EVAL_NOT_ANSWERS)
         if len(shares) < 2:
             continue
         kept.add(row.qkey)
         questions_by_group.setdefault((row.attribute, row.group), {})[row.qkey] = eval_question(row, shares)
-    print(f"evaluation split: {len(kept)} questions kept, {len(overlap)} left out as ISSP overlap")
+    print(f"evaluation split: {len(kept)} questions kept")
     write_records(questions_by_group, OUT_EVAL)
 
 

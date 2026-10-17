@@ -54,7 +54,7 @@ Data: ISSP 2020 Environment IV (GESIS ZA7650 v2.0.0), 44,100 respondents, 28 cou
 18. **Calibration and test sets from SubPOP; all ISSP data for training (2026-10-12).** Training: every ISSP year,
     used whole (ISSP 2020 included; `split.json` is no longer used). Calibration: SubPOP's training split
     (`subpop100`); test: SubPOP's evaluation split (`subpop_eval`); the roles can be swapped in `train_issp.py`. Both
-    leave out the questions that the ISSP data also asks (29 questions, listed in `data/subpop/README.md`). The
+    leave out the questions that the ISSP data also asks (29 questions, listed in `data/subpop/README.md`). (Reversed by 34: every question kept.) The
     average-over-personas baseline is empty for these test questions, since none of them is in the training data.
 19. **ISSP 2020 on the shared builder; unused files removed (2026-10-13).** `build_question_bank.py` and
     `build_dataset.py` now call `data/issp_common.py` like every other year (the rebuilt `issp2020.jsonl` is
@@ -130,3 +130,59 @@ Data: ISSP 2020 Environment IV (GESIS ZA7650 v2.0.0), 44,100 respondents, 28 cou
     (run issp-all-0.8b-v11: the same prediction for both, on a training question and a calibration question) is buried
     in noise. Cost: long personas mostly disappear; at 10, 0-3 attributes are 65% of records and 9+ under 1%
     (formerly uniform from 0 to all). Calibration records are unchanged.
+
+29. **Training data chosen by a recipe; record construction separate from the trainer (2026-10-14).** A run names its
+    training data with `train_issp.py --data configs/data/<recipe>.json`: a source (the ISSP years and
+    `calibration_frac`, `issp_sampler.IsspSource`) and a construction (how a record is built from a (year, country,
+    question) slot: `group_shares` with `min_n`, `single_respondent`, `fixed_subset`; `constructions.py`). The flags
+    `--train`, `--min_n`, `--single_respondent`, `--train_slots` and `--calibration_frac` are gone; the full recipe is
+    saved in each run's `run_info.json` (`settings.recipe`), and earlier runs' flags translate to their recipe
+    (`training_data.recipe_from_settings`). The calibration records belong to the source, so they are the same whatever
+    the construction and runs built different ways are compared on the same records. SubPOP is never training data: no
+    source reads it. Reason: trying other training data or other ways of building records should be a new recipe (and
+    at most a new construction class), never an edit of the trainer. Every construction draws exactly as before:
+    replaying runs issp-all-0.8b-r64-v3 and issp-all-0.8b-test-r64-v7 gives every logged step's targets.
+30. **Country subset of the ISSP source (2026-10-14).** A recipe's source can name `"countries"`, e.g.
+    `configs/data/issp-us-group-min10.json`: `{"issp": {"datasets": "all", "calibration_frac": 0.01, "countries": ["US"]}}`.
+    Only those countries are loaded; training and calibration both come from them, and `calibration_frac` is a share of
+    their slots per year (US, min_n 10: 0.01 -> 9 slots / 2,055 calibration records, 609 training slots; 0.05 -> 31 /
+    7,002, 587; 0.1 -> 63 / 14,133, 555; 0.2 -> 123 / 27,746, 495). Slots are held out in the same fixed hash order, so
+    a larger share keeps every slot a smaller one held out. Without `countries` nothing changes (calibration records
+    byte-identical; run issp-all-0.8b-full-v1's training batches replay identically). Calibration numbers of a
+    country-subset run are on that subset's records, so they are not comparable with all-country runs; the SubPOP test
+    set is the same for every run. Reason: train on the US respondents alone (SubPOP's test set is the US General
+    Social Survey; the US ISSP data has Democrat / Republican party and US Census divisions).
+31. **At most max_attributes in a group_shares persona (2026-10-14).** `group_shares` takes `max_attributes` (default
+    none: up to all, as before): k is drawn uniform from `min_attributes` to `max_attributes`. With it unset the draw
+    makes the same random calls as before, so earlier recipes give the same records. First recipe:
+    `configs/data/issp-us-group-min100-attr2.json` (US, `min_n` 100, exactly 2 attributes besides the country): 594
+    training slots (15 of the 609 US slots have no pair of attributes shared by 100 respondents), 134,832
+    possible (question, persona) targets, every target from 100+ respondents (sampling noise about 0.007 bits instead of
+    about 0.18 for 10-99). Reason: within the US, min_n 10 with up to all 16 attributes gives about 1.44 million targets
+    with 1 or 2 attributes alone, nearly all from 10-99 respondents, so each target is mostly noise and seen about once
+    a run; the persona effects are small next to that noise. A user-chosen cap: it is not set from SubPOP's format.
+32. **Every view variation off by default (2026-10-14).** `issp_augment.view` takes an `Augmentation` that switches
+    each variation on separately (persona layouts, attribute names, value wording, punctuation, line order, reversed
+    `score` scales, shuffled `choice` options); with none given, the view is 'Key: value' lines in stored order, as
+    calibration and test always used. `train.py --augment` sets the training view; calibration and test are never augmented (always
+    the canonical view). `run_info.json` records the training view under `train_view`. Until 2026-10-14 training always used every variation, with
+    `p_reverse` 0.5 (`--augment full` reproduces it draw for draw); runs from then on train on the plain view unless
+    asked. Reason: augmentation is a choice per run, so a run shows what it changed.
+33. **Calibration groups of at least 100 respondents in the US min-100 recipes (2026-10-14).** A recipe's source can
+    set `calibration_min_n` (default 1 = every group, as before): calibration keeps only the whole-country and
+    one-attribute records whose group has at least that many respondents. `issp-us-group-min100-attr2` and
+    `issp-us-group-min100-attr1-2` set 100: 388 calibration targets instead of 2,055 (the same 9 held-out US slots),
+    so their calibration noise matches training's min_n 100. Calibration KL of runs with these recipes before
+    2026-10-14 is on the 2,055-target set and not comparable; the test set is unchanged.
+34. **No SubPOP question left out for resembling the ISSP data (2026-10-15).** Reverses the overlap rule of 18: the
+    29 SubPOP questions that ISSP also asks are back in calibration and test (`build_subpop.py` has no `ISSP_OVERLAP`).
+    Test: 133 questions, 2,926 targets (was 106 and 2,332); `subpop100`: 1,875 questions, 41,244 targets (was 1,873
+    and 41,200). Every earlier target is unchanged; test numbers from before are on the smaller set and not comparable.
+    Reason: a test set is not filtered by similarity to the training data. `data/subpop/README.md` still lists which
+    questions ISSP also asks (now incl. `fefam`, `jobfind`), for reading results.
+35. **ISSP 2022 v29 asks only the least desirable option (2026-10-15).** `build_question_bank.py` had appended Q10b
+    to the whole of Q10a, so v29 asked for the best and the least desirable family-work arrangement at once ("…what is
+    the best way…? Which of these options would be the least desirable?"). Now Q10a's context sentence plus Q10b's own
+    wording (raw/ZA10000_bq.pdf): "Consider a family with a child under school age. And, in your opinion, which of
+    these options would be the least desirable?" Only v29's text changed (all 32 countries); answers and respondents
+    are the same. Runs before 2026-10-15 trained (or were calibrated) on the contradictory text.

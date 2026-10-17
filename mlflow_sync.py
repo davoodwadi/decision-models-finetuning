@@ -1,6 +1,6 @@
 """Sync runs/issp-* folders (run_info.json, training_log.json, metrics.json) to a local MLflow SQLite store.
 
-Called automatically by train_issp.py after each validation and at run completion, and runnable standalone to sync
+Called automatically by train.py after each validation and at run completion, and runnable standalone to sync
 runs using the held-out ISSP calibration set (v9+):
   kev/.venv/bin/python mlflow_sync.py
 Then view all runs in the browser:
@@ -61,16 +61,23 @@ def sync_run(folder, client=None, exp_id=None):
     last_step = int(current_run.data.tags.get("last_synced_step", -1))
     if not current_run.data.params:
         args = info.get("settings") or tlog.get("args") or {}
-        trains = args.get("train", [])
+        recipe = args.get("recipe")   # runs with a data recipe (--data); earlier runs have the dataset flags instead
+        source = next(iter(recipe["source"].values())) if recipe else {}
+        trains = info.get("train_datasets") or args.get("train", [])
         train_str = f"{len(trains)} yrs" if len(trains) > 3 else ",".join(trains)
         params = {
             "base": args.get("base", ""),
+            "data": args.get("data", ""),
+            "construction": next(iter(recipe["construction"])) if recipe else "",
             "train": train_str,
             "epochs": args.get("epochs", ""),
             "lr": args.get("lr", ""),
             "batch": args.get("batch", ""),
-            "single_respondent": args.get("single_respondent", False),
-            "calibration_frac": args.get("calibration_frac", ""),
+            "single_respondent": ("single_respondent" in json.dumps(recipe["construction"]) if recipe
+                                  else args.get("single_respondent", False)),
+            "calibration_frac": source.get("calibration_frac", "") if recipe else args.get("calibration_frac", ""),
+            # runs before 2026-10-14 had no --augment: they trained on every variation (full), p_reverse 0.5
+            "augment": (" ".join(args["augment"]) or "none") if "augment" in args else "full",
             "p_reverse": args.get("p_reverse", ""),
             "seed": args.get("seed", ""),
         }
@@ -98,7 +105,7 @@ def sync_run(folder, client=None, exp_id=None):
 
     for v in tlog.get("validations", []):
         step = int(v["step"])
-        if step <= last_step and step != 0:
+        if step <= last_step:
             continue
         max_step = max(max_step, step)
         cal = v.get("calibration", {})

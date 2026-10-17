@@ -2,13 +2,13 @@
 
 US subpopulations' answer distributions, used **only for calibration and testing** (never trained on):
 
-| Dataset | From | Role in `train_issp.py` | Questions | Targets |
+| Dataset | From | Role in `train.py` | Questions | Targets |
 |---|---|---|---|---|
-| `subpop100` | SubPOP training split (Pew American Trends Panel, waves W68–W131) | calibration (`CALIBRATION_DATASET`): picks the best checkpoint | 1,873 | 41,200 |
-| `subpop_eval` | SubPOP evaluation split (US General Social Survey) | test (`TEST_DATASET`) | 106 | 2,332 |
+| `subpop100` | SubPOP training split (Pew American Trends Panel, waves W68–W131) | calibration (`CALIBRATION_DATASET`): picks the best checkpoint | 1,875 | 41,244 |
+| `subpop_eval` | SubPOP evaluation split (US General Social Survey) | test (`TEST_DATASET`) | 133 | 2,926 |
 
-Swapping the two roles means swapping the two names in `train_issp.py`. Training uses the ISSP data only, so both
-sets test the model on a different survey, different questions and different persona attributes (political party,
+Swapping the two roles means swapping the two names in `training_data.py`. Training uses the ISSP data only, so both
+sets test the model on a different survey, mostly different questions and different persona attributes (political party,
 race, religion, income, region) than it was trained on.
 
 ## Source
@@ -49,14 +49,16 @@ Same as the ISSP data, without `n`: one record per subpopulation and up to 7 of 
    the scale ("Depends", "Other", "Lived in institution") → `choice`; two answers → `choice`. Hand corrections:
    `NOMINAL` (values that only number unordered answers: marital status, home ownership, union membership, hunting,
    getting ahead, the Bible, voting in 2016 → `choice`) and `FIXED_ORDER` (`nataid`, whose values are miscoded).
-   Result: 44 `score`, 62 `choice` questions.
-4. **Questions also asked in the ISSP training data are left out** of both sets (`ISSP_OVERLAP` in
-   `build_subpop.py`), so calibration and test contain only questions the model was not trained on. "The same
-   question" means the same thing is asked, even if the wording or answer scale differs. How they were found: every
-   SubPOP question's words were compared with every ISSP item (2015–2024), and the closest matches were reviewed by
-   hand. This is a judgement call; the lists below make it checkable.
+   Result: 64 `score`, 69 `choice` questions.
+4. **No question is left out for resembling the ISSP training data (2026-10-15).** Both sets keep every question,
+   including those the ISSP data also asks. Reason: a test set is chosen for what it measures, not filtered by what
+   the training data happens to contain; removing questions by similarity is a judgement call that reshapes the test
+   set around training. Until 2026-10-15, 29 such questions were left out (`ISSP_OVERLAP` in `build_subpop.py`):
+   106 test questions (2,332 targets) and 1,873 calibration questions (41,200 targets); test numbers from before are
+   on that smaller set and not comparable. The lists below show which questions ISSP also asks (same question, even
+   if worded or scaled differently; found by comparing words, then by hand), for reading results, not for filtering.
 
-   **Left out: evaluation split (27 of 133 questions)**
+   **Also asked in ISSP: evaluation split (29 of 133 questions)**
 
    | SubPOP question | Same question in ISSP |
    |---|---|
@@ -79,8 +81,10 @@ Same as the ISSP data, without `n`: one record per subpopulation and up to 7 of 
    | `finalter` | 2015 v93: financial situation better or worse than some years ago |
    | `conlegis`, `conbus`, `conclerg`, `conjudge`, `coneduc` | 2018 v7–v11: confidence in parliament, business and industry, churches, courts, schools |
    | `natenvir`, `natheal`, `nateduc`, `natarms`, `natsoc` | 2016 v13, v14, v16, v17, v18: government spending on the environment, health, education, the military, pensions |
+   | `fefam` | 2018 v6, 2022 v6: a man's job is to earn money, a woman's to look after the home and family (found 2026-10-15) |
+   | `jobfind` | 2015 v50: how easy it would be to find a job at least as good as the current one (found 2026-10-15) |
 
-   **Left out: training split (2 of 1,875 questions)**
+   **Also asked in ISSP: training split (2 of 1,875 questions)**
 
    | SubPOP question | Same question in ISSP |
    |---|---|

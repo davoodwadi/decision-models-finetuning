@@ -1,8 +1,9 @@
 # Data
 
 One folder per source. An ISSP year's training data is respondent-level (`issp<year>_respondents.parquet` +
-`issp<year>_questions.json`); `train_issp.py` takes the years as `--train issp<year>` (default: all) and draws
-training records from them on the fly (`issp_sampler.py`, below). The SubPOP calibration and test sets are fixed
+`issp<year>_questions.json`); `train.py` trains on the data a recipe names (`--data configs/data/*.json`: which
+years, and how a record is built from them) and draws training records on the fly (`issp_sampler.py`,
+`constructions.py`, below; `PLAN-record-construction.md`). The SubPOP calibration and test sets are fixed
 records (`subpop/<name>.jsonl`). Raw downloads sit in `data/<source>/raw/`; build scripts and intermediate files sit
 next to the data. Each folder has a README with its source, how to rebuild it, and its own decisions.
 
@@ -20,14 +21,15 @@ next to the data. Each folder has a README with its source, how to rebuild it, a
 | `issp2022/` | `issp2022` | Family and Changing Gender Roles V | 45,762 respondents, 64 questions | training |
 | `issp2023/` | `issp2023` | National Identity and Citizenship | 43,517 respondents, 68 questions | training |
 | `issp2024/` | `issp2024` | Digital Societies I | 44,703 respondents, 78 questions | training |
-| `subpop/` | `subpop100` | Pew American Trends Panel (SubPOP training split) | 41,200 targets | not used |
-| `subpop/` | `subpop_eval` | US General Social Survey (SubPOP evaluation split) | 2,332 targets | test |
+| `subpop/` | `subpop100` | Pew American Trends Panel (SubPOP training split) | 41,244 targets | not used |
+| `subpop/` | `subpop_eval` | US General Social Survey (SubPOP evaluation split) | 2,926 targets | test |
 
 Training on all ISSP years: 458,753 respondents in 310 country-years. The calibration set is held out of the ISSP years
-trained on: 1% of each year's (country, question) slots (`train_issp.py --calibration_frac`; 204 slots of all ten
+trained on: 1% of each year's (country, question) slots (the recipe's `calibration_frac`; 204 slots of all ten
 years), never trained on; per held-out slot, the whole country and every one-attribute group, with the answer shares of
-all matching respondents (`issp_sampler.IsspSampler.calibration_records`). The SubPOP sets leave out every question the
-ISSP data also asks (`subpop/README.md`); the test set is set in `train_issp.py` (`TEST_DATASET`).
+all matching respondents (`issp_sampler.IsspSource.calibration_records`), the same whatever way the training records
+are built. The SubPOP sets leave out every question the
+ISSP data also asks (`subpop/README.md`); the test set is set in `training_data.py` (`TEST_DATASET`).
 
 ## ISSP training years
 
@@ -104,14 +106,16 @@ kev/.venv/bin/python data/issp2018/build_dataset.py
    questions in one record get the same predictions as apart; apart, every target gets its own drawn persona instead
    of the block sharing one, at the cost of encoding the persona once per question. An epoch is one pass through every
    (year, country, question) slot in random order, each with a freshly drawn persona.
+   Since 2026-10-14 this is one of several ways of building records (`constructions.py`: `group_shares`, as above;
+   `single_respondent`; `fixed_subset`), chosen by the run's recipe (`configs/data/*.json`); `min_n` is set there.
    Until 2026-10-13 the records were fixed groups (country × sex × age band × education, at least 10 answers),
    stored as `issp<year>.jsonl`; re-aggregating the respondent data that way reproduces those files exactly.
-10. **Training view** (`issp_augment.augment`): each drawn record's persona is written in a random presentation
-    (layout, attribute names, value wording, line order), `score` scales are reversed half the time and `choice`
-    options shuffled. Calibration and test use the fixed canonical view.
-11. **All of it is training data** (decided 2026-10-12): every suitable question and every respondent. Overlap with
-    the calibration and test sets is handled on the SubPOP side: SubPOP questions that any ISSP year also asks are left
-    out of them (`subpop/README.md`).
+10. **View** (`issp_augment.view`): how a record is shown. Calibration and test always use the canonical view, every
+    variation off: 'Key: value' persona lines in stored order, `score` scales low -> high, `choice` options in
+    questionnaire order. Training uses it too by default; `train.py --augment` switches variations on: persona layouts (lines, bullets, one line, JSON, prose), attribute names, value wording,
+    punctuation, line order, reversed scales (`p_reverse=`), shuffled options; `full` switches on all of them.
+11. **All of it is training data** (decided 2026-10-12): every suitable question and every respondent. Questions that the
+    calibration and test sets also ask are kept on both sides (`subpop/README.md`, decision 4).
 
 ### Cut-off value labels
 The .dta files limit the length of value labels (60 characters in 2015 and 2017, about 120 from 2020 on), so some

@@ -1,32 +1,23 @@
-"""Draw ISSP training records from respondent-level data (PLAN-respondent-sampling.md, step 3).
+"""The ISSP source of training data: respondent-level data loaded as it is, never aggregated in advance
+(PLAN-respondent-sampling.md, PLAN-record-construction.md).
 
 The data of a year (data/issp<year>/, written by its build_dataset.py) is one row per respondent with every attribute
 and answer as data codes (issp<year>_respondents.parquet), the questions per country (issp<year>_questions.json) and
-each attribute code's text per country (issp<year>_attributes.json). Nothing is aggregated in advance: each training
-record is made when it is drawn.
+each attribute code's text per country (issp<year>_attributes.json).
 
-  1. Slot: a (year, country, question) drawn uniformly among those with answers. A record holds this one question.
-  2. Default mode (single_respondent=False):
-     - k, the number of attributes shown besides the country: uniform from 0 to all attributes the slot's respondents
-       have (no cap).
-     - Which attributes: k of them, at random.
-     - Their values: uniformly among the value combinations that occur among the slot's respondents (those who answered
-       the question). Every persona counts the same, however many people it matches.
-     - Target: the answer shares of the matching respondents. With min_n (default 1: no minimum), only value
-       combinations shared by at least min_n of the slot's respondents are drawn; if the drawn attributes have none,
-       k and the attributes are drawn again. Slots with fewer than min_n respondents are not trained on.
-  3. Single-respondent mode (single_respondent=True):
-     - Pick one respondent uniformly among those who answered the slot's question.
-     - Show that respondent's full persona (all non-missing attributes) and use their single response (one-hot) as the
-       target, without any group averaging.
+IsspSource loads them and offers what every way of building records needs: the (year, country, question) slots, the
+respondents who answered a slot (`pool`), and the stored record of any set of respondents (`make`). How a training
+record is drawn from a slot (group shares, single respondent, ...) is the job of a construction (constructions.py).
 
 Calibration: a share of each year's slots (`held_out`, chosen by a hash of year, country and question, so the same in
-every run) is never drawn for training. Each held-out slot gives fixed records instead: the whole country, and one
-record per value of each single attribute (e.g. Sex: Female), with the answer shares of all matching respondents.
-(Note: calibration currently always uses these group-level records regardless of `single_respondent`; a future option
-is to also calibrate on single-respondent full-persona records using cross-entropy / log-loss.)
+every run) is never drawn for training. With `countries`, only those countries are loaded (e.g. ["US"]): training and
+calibration both come from them, the share is taken of their slots, and since slots are held out in a fixed hash order,
+a larger share keeps every slot a smaller one held out and adds more. Each held-out slot gives fixed records instead: the whole country, and one
+record per value of each single attribute (e.g. Sex: Female), with the answer shares of all matching respondents (with
+calibration_min_n, only groups of at least that many respondents). They
+are the same whatever construction a run trains with, so runs stay comparable.
 
-A record has the stored format issp_augment expects: persona = Country, the k attributes, and the asked_of lines of
+A record has the stored format issp_augment expects: persona = Country, the attributes shown, and the asked_of lines of
 the question's block (who was asked); its question with type, criteria, instructions, label, target, src.
 """
 import hashlib
@@ -82,19 +73,19 @@ class Unit:
         self.asked_of = {block: lines.get(code, {}) for block, lines in asked_of.items()}
 
 
-class IsspSampler:
-    """Training records drawn from the respondent data of the given datasets (e.g. ['issp2015', ..., 'issp2024']).
+class IsspSource:
+    """The respondent data of the given datasets (e.g. ['issp2015', ..., 'issp2024']).
 
-    held_out: the share of each dataset's slots kept out of training for calibration (`self.held_out`); training draws
-    only from `self.slots`.
-    single_respondent: if True, each training draw picks a single respondent and uses their full non-missing persona
-    and one-hot answer instead of sampling an attribute subset and averaging over matching respondents.
-    min_n: the fewest respondents a drawn persona may match (not used with single_respondent)."""
+    calibration_frac: the share of each dataset's slots kept out of training for calibration (`self.held_out`);
+    constructions draw training records only from `self.slots`. countries: country codes to load (e.g. ["US"]); None =
+    every country. calibration_min_n: fewest respondents a calibration record's group may have (1 = every group)."""
 
-    def __init__(self, names, held_out=0.0, single_respondent=False, min_n=1):
+    def __init__(self, names, calibration_frac=0.0, countries=None, calibration_min_n=1):
+        self.names = list(names)
+        self.calibration_min_n = calibration_min_n
+        self.countries = None if countries is None else list(countries)
         self.units, self.slots, self.held_out = [], [], []
-        self.single_respondent, self.min_n = single_respondent, min_n
-        for name in names:
+        for name in self.names:
             slots = []
             respondents, question_file, attribute_file = dataset_files(name)
             table = pd.read_parquet(respondents)
@@ -102,60 +93,27 @@ class IsspSampler:
             attribute_values = json.loads(attribute_file.read_text(encoding="utf-8"))
             attribute_names = [c for c in table.columns if c not in ("respondent", "country") and c not in meta["questions"]]
             for code, rows in table.groupby("country", sort=True):
+                if self.countries is not None and code not in self.countries:
+                    continue
                 unit = Unit(name, meta["src"], code, meta["countries"][code], rows.reset_index(drop=True),
                             attribute_names, attribute_values, meta["questions"], meta["asked_of"])
                 self.units.append(unit)
                 slots += [(len(self.units) - 1, v) for v in unit.questions]
-            # held out: the round(held_out * slots) slots of this dataset with the lowest hash of year, country, question
+            # held out: the round(calibration_frac * slots) slots of this dataset with the lowest hash of year, country, question
             by_hash = sorted(slots, key=lambda slot: hashlib.sha256(
                 f"{name}/{self.units[slot[0]].code}/{slot[1]}".encode()).hexdigest())
-            held = by_hash[:round(held_out * len(slots))]
+            held = by_hash[:round(calibration_frac * len(slots))]
             self.held_out += held
             self.slots += [slot for slot in slots if slot not in held]
-        if not single_respondent:   # slots that cannot give min_n respondents
-            self.slots = [(u, v) for u, v in self.slots if len(self.pool(self.units[u], [v])) >= min_n]
         self.respondents = sum(len(u.attrs) for u in self.units)
 
-    def record(self, rng, slot=None, keys=None):
-        """(record, info): one training record drawn as described above.
+    def files(self):
+        """The files the data was loaded from, to fingerprint in run_info.json."""
+        return [path for name in self.names for path in dataset_files(name)]
 
-        slot: (unit index, question id) instead of a random slot. keys: persona lines to group by instead of a random
-        subset (all must be present). info: n per question, the attributes shown, how many value combinations there
-        were."""
-        while True:
-            unit_index, v = slot if slot is not None else rng.choice(self.slots)
-            unit = self.units[unit_index]
-            questions = [v]
-            pool = self.pool(unit, questions)
-            if self.single_respondent and keys is None:
-                r = int(pool[rng.randrange(len(pool))])
-                chosen = [j for j, code in enumerate(unit.attrs[r]) if code >= 0]
-                combo = unit.attrs[r, chosen]
-                match = np.array([r])
-                record = self.make(unit, questions, chosen, combo, match)
-                info = {"dataset": unit.name, "country": unit.code, "question": v, "attributes": len(chosen),
-                        "combinations": len(pool), "n": record["n"]}
-                return record, info
-            if keys is None:
-                present = [j for j in range(len(unit.attribute_names)) if (unit.attrs[pool, j] >= 0).any()]
-                chosen = rng.sample(present, rng.randint(0, len(present)))        # k uniform from 0 to all
-            else:
-                chosen = [unit.attribute_names.index(key) for key in keys]
-            values = unit.attrs[np.ix_(pool, chosen)]
-            complete = (values >= 0).all(axis=1)         # respondents who have every chosen attribute
-            combos, counts = np.unique(values[complete], axis=0, return_counts=True)
-            combos = combos[counts >= self.min_n]        # value combinations shared by at least min_n respondents
-            if len(combos):
-                break
-            if keys is not None and slot is not None:
-                raise ValueError(f"no {self.min_n} respondents in {unit.name} {unit.code} {v} share values of {keys}")
-            # no value combination of the drawn attributes has min_n respondents: draw again
-        combo = combos[rng.randrange(len(combos))]       # uniform among the value combinations that qualify
-        match = pool[complete & (values == combo).all(axis=1)]
-        record = self.make(unit, questions, chosen, combo, match)
-        info = {"dataset": unit.name, "country": unit.code, "question": v, "attributes": len(chosen),
-                "combinations": len(combos), "n": record["n"]}
-        return record, info
+    def summary(self):
+        """What was loaded, for run_info.json and the run's first printout."""
+        return {"respondents": self.respondents, "country_years": len(self.units), "calibration_slots": len(self.held_out)}
 
     @staticmethod
     def pool(unit, questions):
@@ -186,34 +144,21 @@ class IsspSampler:
         return {"group": group, "country_code": unit.code, "block": block, "persona": persona, "n": n,
                 "questions": stored}
 
-    def statistics(self, rng, records=10_000):
-        """What the drawn records look like: share of targets by number of matching respondents, and how many
-        attributes personas show (from `records` draws)."""
-        sizes, lengths = Counter(), Counter()
-        for _ in range(records):
-            _, info = self.record(rng)
-            lengths[info["attributes"]] += 1
-            for n in info["n"].values():
-                sizes["1" if n == 1 else "2-9" if n < 10 else "10-99" if n < 100 else "100+"] += 1
-        total = sum(sizes.values())
-        return {"records_drawn": records,
-                "targets_by_respondents": {k: round(sizes[k] / total, 3) for k in ("1", "2-9", "10-99", "100+")},
-                "attributes_shown": {k: round(lengths[k] / records, 3) for k in sorted(lengths)}}
-
     def calibration_records(self):
         """The fixed records of the held-out slots: per slot, the whole country, then one record per value of each
-        attribute that occurs among the slot's respondents.
-        Note: kept as group-level distributions even when `single_respondent=True`; a future option is to calibrate on
-        single-respondent full-persona records (one-hot targets scored by cross-entropy / log-loss)."""
+        attribute that occurs among the slot's respondents, each from at least calibration_min_n respondents.
+        Group-level whatever the construction."""
         records = []
         for unit_index, v in self.held_out:
             unit = self.units[unit_index]
             pool = self.pool(unit, [v])
-            records.append(self.make(unit, [v], [], [], pool))
+            if len(pool) >= self.calibration_min_n:
+                records.append(self.make(unit, [v], [], [], pool))
             for j in range(len(unit.attribute_names)):
                 codes = unit.attrs[pool, j]
                 for code in np.unique(codes[codes >= 0]):
-                    records.append(self.make(unit, [v], [j], [code], pool[codes == code]))
+                    if (codes == code).sum() >= self.calibration_min_n:
+                        records.append(self.make(unit, [v], [j], [code], pool[codes == code]))
         return records
 
     def group(self, name, code, persona_values, questions):
