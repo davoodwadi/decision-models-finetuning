@@ -1,0 +1,1101 @@
+% Options for packages loaded elsewhere
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\PassOptionsToPackage{dvipsnames,svgnames,x11names}{xcolor}
+%
+\documentclass[
+  letterpaper,
+]{article}
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{5}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  % \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+% Make \paragraph and \subparagraph free-standing
+\makeatletter
+\ifx\paragraph\undefined\else
+  \let\oldparagraph\paragraph
+  \renewcommand{\paragraph}{
+    \@ifstar
+      \xxxParagraphStar
+      \xxxParagraphNoStar
+  }
+  \newcommand{\xxxParagraphStar}[1]{\oldparagraph*{#1}\mbox{}}
+  \newcommand{\xxxParagraphNoStar}[1]{\oldparagraph{#1}\mbox{}}
+\fi
+\ifx\subparagraph\undefined\else
+  \let\oldsubparagraph\subparagraph
+  \renewcommand{\subparagraph}{
+    \@ifstar
+      \xxxSubParagraphStar
+      \xxxSubParagraphNoStar
+  }
+  \newcommand{\xxxSubParagraphStar}[1]{\oldsubparagraph*{#1}\mbox{}}
+  \newcommand{\xxxSubParagraphNoStar}[1]{\oldsubparagraph{#1}\mbox{}}
+\fi
+\makeatother
+
+
+\usepackage{longtable,booktabs,array}
+\newcounter{none} % for unnumbered tables
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\usepackage{graphicx}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi%
+}
+% Set default figure placement to htbp
+\def\fps@figure{htbp}
+\makeatother
+
+
+
+
+
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+
+
+ 
+\usepackage[]{natbib}
+\bibliographystyle{plainnat}
+
+
+\DeclareUnicodeCharacter{2212}{\ensuremath{-}}
+\DeclareUnicodeCharacter{2013}{--}
+\DeclareUnicodeCharacter{2014}{---}
+\DeclareUnicodeCharacter{2009}{\,}
+\DeclareUnicodeCharacter{00A0}{~}
+\DeclareUnicodeCharacter{00D7}{\ensuremath{\times}}
+\DeclareUnicodeCharacter{2264}{\ensuremath{\leq}}
+\DeclareUnicodeCharacter{2265}{\ensuremath{\geq}}
+\DeclareUnicodeCharacter{2260}{\ensuremath{\neq}}
+\DeclareUnicodeCharacter{2248}{\ensuremath{\approx}}
+\DeclareUnicodeCharacter{03B1}{\ensuremath{\alpha}}
+\DeclareUnicodeCharacter{03B2}{\ensuremath{\beta}}
+\DeclareUnicodeCharacter{03C3}{\ensuremath{\sigma}}
+\DeclareUnicodeCharacter{03C7}{\ensuremath{\chi}}
+\DeclareUnicodeCharacter{2032}{\ensuremath{'}}
+
+\usepackage{caption}
+\captionsetup{labelsep=period}
+
+\setcitestyle{round}
+
+% \AtBeginEnvironment{table}{\footnotesize}
+\AtBeginEnvironment{apptbl}{\footnotesize}
+% Table font size: \footnotesize by default; table-size.lua emits \nexttablesize{\scriptsize}
+% before a table whose div has size="scriptsize", which applies to that table only
+\makeatletter
+\newcommand\table@defaultsize{\footnotesize}
+\let\table@size\table@defaultsize
+\newcommand\nexttablesize[1]{\gdef\table@size{#1}}
+\AtBeginEnvironment{longtable}{\table@size\global\let\table@size\table@defaultsize}
+\makeatother
+
+% Figure notes: note-in-float.lua wraps a figure's Note in \floatnote{...}, which
+% prints it after the caption (the float package always sets the caption last)
+\makeatletter
+\let\floatnote@text\@empty
+\newcommand\floatnote[1]{\gdef\floatnote@text{#1}}
+\newcommand\fs@plainnote{\fs@plain
+  \def\@fs@post{\ifx\floatnote@text\@empty\else
+    \vspace\abovecaptionskip\noindent\floatnote@text\par
+    \global\let\floatnote@text\@empty\fi}}
+\makeatother
+
+% Pin appendix floats in place so they stay next to their Note paragraphs
+% (deferred inside \AtBeginDocument because Quarto's \newfloat comes after this file)
+\AtBeginDocument{%
+  \floatstyle{plainnote}\restylefloat{appfig}%
+  \floatplacement{appfig}{H}\floatplacement{apptbl}{H}}
+
+% Caption label for appendix tables typeset as breakable longtables (breakable-apptbl.lua);
+% position=top restores the skip between the caption and the table's top rule
+\AtBeginDocument{\providecommand*\apptblname{Table W}}
+\captionsetup[apptbl]{position=top}
+
+% ACL-style title block: bold title; one column per author (bold name, regular
+% affiliation, small monospace email)
+\makeatletter
+\renewcommand\@maketitle{%
+  \newpage\null\vskip 0.5em
+  \begin{center}
+    {\Large\bfseries \@title\par}
+    \vskip 1.5em
+    {\normalsize \@author\par}
+  \end{center}
+  \par\vskip 1em}
+\newcommand\aclauthor[3]{% name, affiliation lines, email
+  \begin{tabular}[t]{@{}c@{}}
+    \textbf{#1}\\[1pt]
+    #2\\[1pt]
+    {\small\texttt{#3}}
+  \end{tabular}}
+\makeatother
+
+% Hardcoded PDF authors. Runs at \begin{document}, so it overrides the plain
+% \author{} Quarto generates from the YAML (the YAML authors still set PDF metadata).
+\AtBeginDocument{%
+  \author{%
+    \aclauthor{Davood Wadi}
+      {Desautels Faculty of Management\\ McGill University\\ Montreal, Quebec, Canada}
+      {davood.wadi@hec.ca}%
+    \hspace{3em}%
+    \aclauthor{Yu Ma}
+      {Desautels Faculty of Management\\ McGill University\\ Montreal, Quebec, Canada}
+      {yu.ma@mcgill.ca}%
+  }%
+}
+\makeatletter
+\@ifpackageloaded{float}{}{\usepackage{float}}
+\floatstyle{plain}
+\@ifundefined{c@chapter}{\newfloat{apptbl}{h}{loapptbl}}{\newfloat{apptbl}{h}{loapptbl}[chapter]}
+\floatname{apptbl}{Table W}
+\floatstyle{plaintop}
+\restylefloat{apptbl}
+\newcommand*\quartoapptblref[1]{Table \hyperref[#1]{W\ref{#1}}}
+\@ifpackageloaded{caption}{}{\usepackage{caption}}
+\DeclareCaptionLabelFormat{quartoapptblreflabelformat}{#1#2}
+\captionsetup[apptbl]{labelformat=quartoapptblreflabelformat}
+\newcommand*\listofapptbls{\listof{apptbl}{List of Table Ws}}
+\makeatother
+\makeatletter
+\@ifpackageloaded{float}{}{\usepackage{float}}
+\floatstyle{plain}
+\@ifundefined{c@chapter}{\newfloat{appfig}{h}{loappfig}}{\newfloat{appfig}{h}{loappfig}[chapter]}
+\floatname{appfig}{Figure W}
+\newcommand*\quartoappfigref[1]{Figure \hyperref[#1]{W\ref{#1}}}
+\@ifpackageloaded{caption}{}{\usepackage{caption}}
+\DeclareCaptionLabelFormat{quartoappfigreflabelformat}{#1#2}
+\captionsetup[appfig]{labelformat=quartoappfigreflabelformat}
+\newcommand*\listofappfigs{\listof{appfig}{List of Figure Ws}}
+\makeatother
+\makeatletter
+\@ifpackageloaded{float}{}{\usepackage{float}}
+\floatstyle{plain}
+\@ifundefined{c@chapter}{\newfloat{appenv}{h}{loapp}}{\newfloat{appenv}{h}{loapp}[chapter]}
+\floatname{appenv}{Web Appendix}
+\floatstyle{plaintop}
+\restylefloat{appenv}
+\newcommand*\quartoappref[1]{Web \hyperref[#1]{Appendix\ref{#1}}}
+\@ifpackageloaded{caption}{}{\usepackage{caption}}
+\DeclareCaptionLabelFormat{quartoappreflabelformat}{#1#2}
+\captionsetup[appenv]{labelformat=quartoappreflabelformat}
+\newcommand*\listofappenvs{\listof{appenv}{List of Web Appendixs}}
+\makeatother
+\makeatletter
+\@ifpackageloaded{caption}{}{\usepackage{caption}}
+\AtBeginDocument{%
+\ifdefined\contentsname
+  \renewcommand*\contentsname{Table of contents}
+\else
+  \newcommand\contentsname{Table of contents}
+\fi
+\ifdefined\listfigurename
+  \renewcommand*\listfigurename{List of Figures}
+\else
+  \newcommand\listfigurename{List of Figures}
+\fi
+\ifdefined\listtablename
+  \renewcommand*\listtablename{List of Tables}
+\else
+  \newcommand\listtablename{List of Tables}
+\fi
+\ifdefined\figurename
+  \renewcommand*\figurename{Figure}
+\else
+  \newcommand\figurename{Figure}
+\fi
+\ifdefined\tablename
+  \renewcommand*\tablename{Table}
+\else
+  \newcommand\tablename{Table}
+\fi
+}
+\@ifpackageloaded{float}{}{\usepackage{float}}
+\floatstyle{ruled}
+\@ifundefined{c@chapter}{\newfloat{codelisting}{h}{lop}}{\newfloat{codelisting}{h}{lop}[chapter]}
+\floatname{codelisting}{Listing}
+\newcommand*\listoflistings{\listof{codelisting}{List of Listings}}
+\makeatother
+\makeatletter
+\makeatother
+\makeatletter
+\@ifpackageloaded{caption}{}{\usepackage{caption}}
+\@ifpackageloaded{subcaption}{}{\usepackage{subcaption}}
+\makeatother
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+% fallback for those not using the hyperref driver hyperxmp:
+\makeatletter
+\@ifundefined{xmpquote}{\newcommand{\xmpquote}[1]{#1}}{}
+\makeatother
+\hypersetup{
+  pdftitle={Can Decision Models Sample Human Behavior? Evaluating Distributional Alignment on Human Survey Populations},
+  pdfauthor={Davood Wadi; Yu Ma},
+  pdfkeywords={\xmpquote{Decision Models}, \xmpquote{Human Behavior
+Simulation}, \xmpquote{Silicon Sampling}, \xmpquote{Ordinal
+Psychometrics}, \xmpquote{Distributional ANOVA}},
+  colorlinks=true,
+  linkcolor={blue},
+  filecolor={Maroon},
+  citecolor={Blue},
+  urlcolor={Blue},
+  pdfcreator={LaTeX via pandoc}}
+
+
+\title{Can Decision Models Sample Human Behavior? Evaluating
+Distributional Alignment on Human Survey Populations}
+\author{Davood Wadi \and Yu Ma}
+\date{2026-10-18}
+\begin{document}
+\maketitle
+\begin{abstract}
+Using Large Language Models (LLMs) to simulate human survey responses
+(``silicon sampling'') typically relies on generative text sampling or
+poorly calibrated token logits, often resulting in mode collapse, prompt
+brittleness, and distorted population variance. Recently, \emph{decision
+models} (``System One'' architectures) have emerged to map a context
+state and typed questions directly to calibrated probability
+distributions over answer options in a single prefill forward pass. In
+this paper, we investigate whether decision models---and LLMs adapted
+via constrained option-letter readouts---can accurately approximate
+empirical human response distributions across diverse demographic
+subpopulations. Training on respondent-level cross-national survey data
+from the International Social Survey Programme (ISSP 2015--2024;
+\(N = 458,753\) respondents across 310 country-years) and evaluating
+out-of-distribution on US subpopulations from the General Social Survey
+(SubPOP; 2,926 subpopulation--question targets), we benchmark
+off-the-shelf and fine-tuned decision models against standard causal
+LMs. To rigorously evaluate ordinal (Likert) probability mass functions
+(PMFs) beyond point estimates and order-invariant Shannon entropy, we
+apply an exact analytical framework combining Constraint adherence,
+ordinal Consensus/Dissension, 1-Wasserstein (Earth Mover's) distance,
+and Distributional ANOVA across demographic factors. We show where
+decision models succeed in capturing human marginal distributions and
+inter-group contrasts, and where both architectures systematically fail
+to reflect human behavioral heterogeneity.
+\end{abstract}
+
+
+\section{Introduction}\label{sec-intro}
+
+Simulating human attitudes, preferences, and survey responses with
+foundation models---often termed \emph{silicon sampling} or \emph{in
+silico} surveying---has attracted widespread interest across
+computational social science, economics, and behavioral research
+\citep{argyle2023out, horton2023large, brand2023using, sarstedt2024using, pmlr-v202-santurkar23a, durmus2024towards}.
+However, using standard autoregressive Large Language Models (LLMs) as
+proxies for human populations faces three fundamental methodological
+bottlenecks:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{The Generative Sampling Bottleneck:} Autoregressive text
+  generation requires repeated Monte Carlo draws to estimate a
+  subpopulation's response distribution \citep{wadi2025monte},
+  introducing sampling noise, sensitivity to decoding temperature, and
+  ``fence-sitting'' refusals
+  \citep{bhatia2025value, liu2025badworktimecrosscultural}.
+\item
+  \textbf{The Calibration and Homogenization Bottleneck:} Next-token
+  probabilities in instruction-tuned LLMs are often miscalibrated
+  (typically overconfident or collapsed onto a single mode) and
+  frequently fail to reflect true inter-group variance across
+  demographic attributes such as gender, political ideology, or religion
+  \citep{pmlr-v202-santurkar23a, deas-mckeown-2025-artificial}.
+\item
+  \textbf{The Ordinal Evaluation Bottleneck:} Standard NLP metrics
+  (e.g., accuracy of the argmax choice, Shannon entropy
+  \citep{farquhar2024detecting}, or KL divergence alone) treat survey
+  options as unordered categories. On Likert scales
+  \citep{batterton2017likert}, Shannon entropy cannot distinguish
+  between a population polarized at the extremes (\emph{Strongly
+  Disagree} vs.~\emph{Strongly Agree}) and one concentrated around
+  adjacent moderate options (\emph{Neutral} vs.~\emph{Agree})
+  \citep{wadi2026every}.
+\end{enumerate}
+
+Recently, a new class of architectures---\textbf{decision models} (or
+``System One'' models, drawing on dual-process theory
+\citep{kahneman2011thinking, evans2013dual}, such as TypeSafe's Jev,
+Intern-Decision, and Kev
+\citep{deusser2026evaluatingbenchmarkingmodeljev, li2026llmasjevllmsjevstyledecision, geuter2026releasinginnerjevsimple})---has
+been introduced to replace text generation with structured, single-pass
+probabilistic decision-making. Given a state (e.g., a respondent
+persona) and a set of typed questions (\emph{score}, \emph{choice},
+\emph{noul}), a decision model executes a single prefill-only forward
+pass and outputs a probability mass function (PMF) over the supplied
+answer options via a dedicated pointer head or restricted option-token
+readout.
+
+Because decision models are explicitly architected to output calibrated
+distributions over discrete options without text generation, a natural
+question arises: \textbf{Can decision models be used to sample human
+behavior?} Specifically, how well do off-the-shelf and domain-adapted
+decision models---compared to standard LLMs
+\citep{qwen3.5, suh-etal-2025-language}---approximate empirical human
+response distributions and demographic contrasts?
+
+\subsection{Contributions}\label{contributions}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Empirical Benchmark of Decision Models vs.~LLMs on Human
+  Populations:} We evaluate pointer-head decision models (Kev-0.8B,
+  Kev-4B, Kev-9B) and next-token letter-readout LLMs (Qwen3.5
+  \citep{qwen3.5}) across zero-shot, LoRA, and full fine-tuning regimes,
+  training on 10 waves of respondent-level ISSP data (\(458,753\)
+  individuals) and testing out-of-distribution on US subpopulations from
+  SubPOP \citep{suh-etal-2025-language}.
+\item
+  \textbf{Exact Ordinal Psychometric Evaluation Framework:} Building on
+  our analytical factorial framework for ordinal distributions
+  \citep{wadi2026every}, we evaluate model-predicted PMFs against
+  observed human subpopulation shares across four complementary
+  dimensions: (i) \emph{Constraint} (valid option mass
+  \citep{cronbach1950further}), (ii) \emph{Distributional Fidelity} (KL
+  divergence, Jensen--Shannon divergence, and normalized 1-Wasserstein
+  distance \citep{villani2008optimal}), (iii) \emph{Ordinal Dispersion}
+  (Consensus and Dissension \citep{tastle2007consensus}), and (iv)
+  \emph{Construct \& Contrast Decomposition} (Distributional ANOVA
+  isolating demographic main effects and inter-group gaps
+  \citep{wadi2026interplay, wadi2026every}).
+\item
+  \textbf{Diagnosis of Failure Modes in Human Simulation:} We
+  characterize when models suffer from ordinal scale compression
+  \citep{gao2026choicesfewerdecisionsordinalscale} or collapse to
+  marginal national averages (ignoring persona conditioning) versus when
+  fine-tuning on respondent-level attribute subsets recovers genuine
+  human demographic divergences.
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\section{Background and Related Work}\label{sec-related}
+
+\subsection{Simulating Human Populations with LLMs (``Silicon
+Sampling'')}\label{simulating-human-populations-with-llms-silicon-sampling}
+
+\begin{itemize}
+\tightlist
+\item
+  Early work conditioning LLMs on demographic backstories to approximate
+  human economic, consumer, and public opinion surveys
+  \citep{argyle2023out, horton2023large, brand2023using, sarstedt2024using, goli2024frontiers, pmlr-v202-santurkar23a, durmus2024towards}.
+\item
+  Fine-tuning and distributional alignment on human survey distributions
+  \citep{suh-etal-2025-language, huang-etal-2026-distribution, ku2026siliconsamplingcrosssurveytransfer}.
+\item
+  Cognitive and behavioral biases in LLMs compared to human
+  decision-makers
+  \citep{binz2023using, hagendorff2023human, macmillan2024ir, cheung2025large, echterhoff2024cognitive, mina2025cognitive}.
+\item
+  Known failure modes: demographic stereotyping, flattening of
+  within-group variance, sensitivity to prompt formatting and option
+  order
+  \citep{shu-etal-2024-dont, kabir-etal-2025-break, koo2024benchmarking},
+  low ecological validity of generative outputs
+  \citep{jung-etal-2026-psychometric, deas-mckeown-2025-artificial}, and
+  poor alignment with non-WEIRD populations
+  \citep{henrich2010weirdest, zhao-etal-2024-worldvaluesbench}.
+\end{itemize}
+
+\subsection{From Generative Sampling to Exact Token Probabilities and
+Decision
+Models}\label{from-generative-sampling-to-exact-token-probabilities-and-decision-models}
+
+\begin{itemize}
+\tightlist
+\item
+  Extracting exact next-token probabilities over answer options rather
+  than sampling free text
+  \citep{kuribayashi-etal-2024-psychometric, bentegeac2025token, kadavath2022language, wadi2026every}.
+\item
+  \textbf{Decision Models (``System One''):} Pretrained causal LM
+  backbones \citep{qwen3.5} adapted to ingest a context state and typed
+  questions (\emph{noul}, \emph{choice}, \emph{score}) and produce
+  probabilities in one prefill pass
+  \citep{deusser2026evaluatingbenchmarkingmodeljev, asseri2026calibratedwhompersonalanguage, li2026kitescalingjevpopulation}:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    \emph{Readout Style A (Restricted Next-Token Logits):} Mapping
+    options to single-token symbols (``A'', ``B'', \(\dots\)) and taking
+    a softmax over allowed option logits at the answer position (e.g.,
+    Intern-Decision, JevK5, and option-letter LLM readouts
+    \citep{li2026llmasjevllmsjevstyledecision, geuter2026releasinginnerjevsimple}).
+  \item
+    \emph{Readout Style B (Pointer Head):} Scoring the hidden state at
+    each option's closing token against the question's final token via
+    learned linear projections (e.g., Kev), decoupling option scoring
+    from vocabulary token priors.
+  \end{itemize}
+\item
+  \textbf{Ordinal Scale Compression in Decision Models:} Recent evidence
+  that direct-decision models systematically underuse ordinal rating
+  scales \citep{gao2026choicesfewerdecisionsordinalscale}, motivating
+  rigorous ordinal distributional evaluation.
+\end{itemize}
+
+\subsection{Evaluating Ordinal Probability
+Distributions}\label{evaluating-ordinal-probability-distributions}
+
+\begin{itemize}
+\tightlist
+\item
+  Why point estimates (expected values) and categorical metrics (Shannon
+  entropy \citep{farquhar2024detecting}, top-1 accuracy) fail on Likert
+  scales \citep{batterton2017likert, joshi2015likert, wadi2026every}.
+\item
+  Ordinal dispersion via Consensus and Dissension
+  \citep{tastle2007consensus} and optimal transport (1-Wasserstein
+  distance \citep{villani2008optimal}) on discrete ordered supports.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\section{Problem Formulation and Architectures}\label{sec-problem}
+
+\subsection{Task Definition: Subpopulation Distributional
+Prediction}\label{task-definition-subpopulation-distributional-prediction}
+
+Let a human survey dataset consist of respondents indexed by
+\(i \in \{1, \dots, N\}\). Each respondent has a vector of demographic
+and background attributes \(\mathbf{a}_i\) (e.g., country, sex, age,
+education, religion, political party) and answers to survey questions
+\(q \in \mathcal{Q}\). Each question \(q\) has \(K_q\) discrete response
+options \(\mathcal{Y}_q = \{y_1, \dots, y_{K_q}\}\). For ordinal Likert
+(\emph{score}) items, \((\mathcal{Y}_q, \preceq)\) is totally ordered
+from lowest to highest intensity.
+
+A \textbf{persona} (or experimental condition) \(\boldsymbol{\lambda}\)
+specifies a subset of attribute--value pairs (e.g., ``Country: United
+States; Political party: Republican''). Let
+\(\mathcal{I}(\boldsymbol{\lambda}, q)\) denote the set of human
+respondents matching persona \(\boldsymbol{\lambda}\) who provided a
+valid answer to question \(q\), with group size
+\(n_{\boldsymbol{\lambda}, q} = |\mathcal{I}(\boldsymbol{\lambda}, q)|\).
+The empirical human response distribution (target PMF) is:
+\begin{equation}\protect\phantomsection\label{eq-human-pmf}{
+P_{\mathrm{human}}(Y_{q, \boldsymbol{\lambda}} = y_k) = \frac{1}{n_{\boldsymbol{\lambda}, q}} \sum_{i \in \mathcal{I}(\boldsymbol{\lambda}, q)} \mathbb{I}(y_{i, q} = y_k), \quad k \in \{1, \dots, K_q\}.
+}\end{equation}
+
+Given the compiled state representation of \(\boldsymbol{\lambda}\) and
+the question specification \(q\), a model \(M\) outputs logits
+\(\mathbf{z}_{q, \boldsymbol{\lambda}} \in \mathbb{R}^{K_q}\) in a
+single forward pass, defining the predicted PMF without temperature
+rescaling (\(T = 1\)):
+\begin{equation}\protect\phantomsection\label{eq-model-pmf}{
+P_{\mathrm{model}}(Y_{q, \boldsymbol{\lambda}} = y_k) = \operatorname{softmax}(\mathbf{z}_{q, \boldsymbol{\lambda}})_k = \frac{\exp(z_{q, \boldsymbol{\lambda}, k})}{\sum_{j=1}^{K_q} \exp(z_{q, \boldsymbol{\lambda}, j})}.
+}\end{equation}
+
+\subsection{Model Architectures
+Compared}\label{model-architectures-compared}
+
+We compare two distinct mechanisms for turning a causal language model
+backbone into a distributional survey predictor:
+
+\subsubsection{Pointer-Head Decision Model
+(Kev)}\label{pointer-head-decision-model-kev}
+
+In the pointer-head architecture, the persona state and question options
+are compiled into a structured prompt. Rather than reading from the
+language modeling vocabulary head, a lightweight pointer head projects
+the final-layer hidden state at the question's closing token
+(\(\mathbf{h}_{\mathrm{q}}\)) and at each option \(k\)'s closing token
+(\(\mathbf{h}_{\mathrm{opt}, k}\)):
+\begin{equation}\protect\phantomsection\label{eq-pointer-head}{
+z_{q, \boldsymbol{\lambda}, k} = \frac{(\mathbf{W}_q \mathbf{h}_{\mathrm{q}})^\top (\mathbf{W}_k \mathbf{h}_{\mathrm{opt}, k})}{\sqrt{d_{\mathrm{head}}}}.
+}\end{equation} Because options are scored via their contextualized span
+representations rather than fixed option-letter tokens, the pointer head
+natively handles arbitrary option counts and avoids token-id frequency
+biases.
+
+\subsubsection{Constrained Next-Token Letter
+LLM}\label{constrained-next-token-letter-llm}
+
+In the standard LLM readout, the persona and question options (labelled
+``A.'', ``B.'', \(\dots\)) are formatted using the model's native chat
+template with reasoning disabled, positioning the next predicted token
+immediately at the assistant's response. Let \(\mathcal{V}\) be the full
+vocabulary and
+\(\mathcal{V}_{\mathrm{val}} = \{t_1, \dots, t_{K_q}\} \subset \mathcal{V}\)
+be the single-token identifiers corresponding to option letters ``A''
+through the \(K_q\)-th letter. The raw vocabulary logits at the final
+prompt position yield
+\(z_{q, \boldsymbol{\lambda}, k} = \ell_{\mathrm{LM}}(t_k)\).
+
+\subsection{Fine-Tuning on Respondent-Level Human
+Data}\label{fine-tuning-on-respondent-level-human-data}
+
+To test whether discrepancies between models and humans stem from
+architectural limitations or a lack of behavioral calibration during
+pretraining, we fine-tune both model families on respondent-level survey
+data using soft cross-entropy loss against observed subpopulation
+shares: \begin{equation}\protect\phantomsection\label{eq-soft-ce}{
+\mathcal{L}(\theta) = -\sum_{k=1}^{K_q} P_{\mathrm{human}}(Y_{q, \boldsymbol{\lambda}} = y_k) \log P_{\mathrm{model}}(Y_{q, \boldsymbol{\lambda}} = y_k; \theta),
+}\end{equation} which is equivalent to minimizing the Kullback--Leibler
+divergence
+\(D_{\mathrm{KL}}(P_{\mathrm{human}} \,\|\, P_{\mathrm{model}})\) up to
+the constant human target entropy \(H(P_{\mathrm{human}})\).
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\section{Methodology: Analytical Evaluation of Ordinal
+Distributions}\label{sec-methodology}
+
+To evaluate how well \(P_{\mathrm{model}}\) approximates
+\(P_{\mathrm{human}}\), standard metrics such as top-1 accuracy or
+expected value comparisons are insufficient: two distributions can share
+the exact same mean while representing opposite sociological realities
+(e.g., unimodal consensus vs.~bimodal polarization). Building on our
+analytical factorial framework for ordinal scales, we evaluate models
+across four layers.
+
+\subsection{Layer 1: Constraint Adherence (Valid Option
+Mass)}\label{layer-1-constraint-adherence-valid-option-mass}
+
+For standard LLMs projecting onto the full vocabulary \(\mathcal{V}\),
+the model may assign probability mass to invalid tokens (e.g.,
+conversational preambles, refusals, or out-of-range symbols). We define
+the \textbf{Constraint Failure Rate} for prompt
+\(x_{q, \boldsymbol{\lambda}}\) as:
+\begin{equation}\protect\phantomsection\label{eq-failure-rate}{
+\mathrm{FailureRate}(x_{q, \boldsymbol{\lambda}}) = 1 - \sum_{t \in \mathcal{V}_{\mathrm{val}}} P_{\mathrm{raw}}(t \mid x_{q, \boldsymbol{\lambda}}).
+}\end{equation} Pointer-head decision models satisfy
+\(\mathrm{FailureRate} \equiv 0\) by construction, whereas LLMs must
+learn or be prompted to concentrate mass on
+\(\mathcal{V}_{\mathrm{val}}\) before renormalization.
+
+\subsection{Layer 2: Distributional Fidelity (Categorical and Ordinal
+Distances)}\label{layer-2-distributional-fidelity-categorical-and-ordinal-distances}
+
+For all question types (\emph{choice}, \emph{score}, \emph{noul}), we
+measure information-theoretic divergence in bits:
+\begin{equation}\protect\phantomsection\label{eq-kl}{
+D_{\mathrm{KL}}(P_{\mathrm{human}} \,\|\, P_{\mathrm{model}}) = \sum_{k=1}^{K_q} P_{\mathrm{human}}(y_k) \log_2 \frac{P_{\mathrm{human}}(y_k)}{P_{\mathrm{model}}(y_k)},
+}\end{equation} along with the symmetric, bounded
+\textbf{Jensen--Shannon Divergence}
+\(D_{\mathrm{JS}}(P_{\mathrm{human}}, P_{\mathrm{model}}) \in [0, 1]\).
+
+However, \(D_{\mathrm{KL}}\) and \(D_{\mathrm{JS}}\) are
+permutation-invariant: they penalize a shift from \emph{Strongly Agree}
+to \emph{Agree} identically to a shift from \emph{Strongly Agree} to
+\emph{Strongly Disagree}. For ordinal Likert (\emph{score}) items with
+ordered levels \(y_1 \prec \dots \prec y_{K_q}\) mapped to
+\(\{0, 1, \dots, K_q - 1\}\), we compute the \textbf{1-Wasserstein
+Distance (Earth Mover's Distance)} via the \(L_1\) distance between
+cumulative distribution functions (CDFs) \(F_{\mathrm{human}}\) and
+\(F_{\mathrm{model}}\), normalized by the scale range \(K_q - 1\):
+\begin{equation}\protect\phantomsection\label{eq-wasserstein}{
+W_1(P_{\mathrm{human}}, P_{\mathrm{model}}) = \frac{1}{K_q - 1} \sum_{k=1}^{K_q - 1} \left| \sum_{j=1}^{k} P_{\mathrm{human}}(y_j) - \sum_{j=1}^{k} P_{\mathrm{model}}(y_j) \right| \in [0, 1].
+}\end{equation} \(W_1\) measures the minimum fraction of the scale range
+across which probability mass must be transported to transform the
+model's distribution into the empirical human distribution.
+
+\subsection{Layer 3: Ordinal Consensus and
+Dissension}\label{layer-3-ordinal-consensus-and-dissension}
+
+To test whether models replicate the internal agreement or polarization
+of a human subpopulation (rather than merely matching the mean or
+artificially flattening/peaking the distribution), we apply the ordinal
+\textbf{Consensus (\(\mathrm{Cns}\))} metric \citep{tastle2007consensus}
+and its multivariate generalization. For a single ordinal item with
+support \(\mathcal{Y} = \{1, \dots, K_q\}\), mean
+\(\mu = \sum_{k=1}^{K_q} k \, P(y_k)\), and scale width
+\(d_{\max} = K_q - 1\):
+\begin{equation}\protect\phantomsection\label{eq-consensus-univariate}{
+\mathrm{Cns}(Y) = 1 + \sum_{k=1}^{K_q} P(y_k) \log_2 \left( 1 - \frac{|k - \mu|}{d_{\max}} \right), \quad \mathrm{Dsn}(Y) = 1 - \mathrm{Cns}(Y).
+}\end{equation} Across a multi-item battery
+\(\mathbf{Y}_{\boldsymbol{\lambda}} = (Y_{1, \boldsymbol{\lambda}}, \dots, Y_{M, \boldsymbol{\lambda}}) \in \mathcal{Y}^M\)
+with mean vector \(\boldsymbol{\mu}\) and maximum diagonal distance
+\(d_{\max} = \sqrt{M}(y_{\max} - y_{\min})\), multivariate Consensus is:
+\begin{equation}\protect\phantomsection\label{eq-consensus-multivariate}{
+\mathrm{Cns}(\mathbf{Y}_{\boldsymbol{\lambda}}) = 1 + \sum_{\mathbf{y} \in \mathcal{Y}^M} P(\mathbf{y}) \log_2 \left( 1 - \frac{\|\mathbf{y} - \boldsymbol{\mu}\|_2}{d_{\max}} \right).
+}\end{equation} Comparing
+\(\Delta \mathrm{Cns} = \mathrm{Cns}(P_{\mathrm{model}}) - \mathrm{Cns}(P_{\mathrm{human}})\)
+directly reveals whether a model is \textbf{over-concentrated}
+(\(\Delta \mathrm{Cns} > 0\), mode collapse) or \textbf{over-dispersed /
+polarized} (\(\Delta \mathrm{Cns} < 0\)) relative to real human
+respondents.
+
+\subsection{Layer 4: Construct Convolution and Distributional Factorial
+Decomposition}\label{layer-4-construct-convolution-and-distributional-factorial-decomposition}
+
+When evaluating how demographic factors (e.g.,
+\(\text{Party} \in \{\text{Democrat}, \text{Republican}\}\),
+\(\text{Sex} \in \{\text{Male}, \text{Female}\}\)) shift attitudes
+across a single item or a convolved multi-item construct
+\(P_{S_{\boldsymbol{\lambda}}} = P_{Y_{1, \boldsymbol{\lambda}}} \circledast \cdots \circledast P_{Y_{M, \boldsymbol{\lambda}}}\),
+we apply \textbf{Distributional ANOVA} (distributional Hoeffding
+decomposition):
+\begin{equation}\protect\phantomsection\label{eq-anova-identity}{
+\mathbb{E}[S_{\boldsymbol{\lambda}}] = \underbrace{\mathbb{E}[S_0]}_{\text{Grand Mean}} + \sum_{c \in \mathcal{C}} \underbrace{\mathbb{E}[E_c(\lambda_c)]}_{\text{Main Effects}} + \sum_{\substack{U \subseteq \mathcal{C} \\ |U| \ge 2}} \underbrace{\mathbb{E}[E_U(\boldsymbol{\lambda}_U)]}_{\text{Interactions}}.
+}\end{equation} For any two subpopulations
+\(\boldsymbol{\lambda}_a, \boldsymbol{\lambda}_b\) differing on factor
+\(c\) (e.g., Democrat vs.~Republican), we compare the model's predicted
+behavioral contrast against the true human contrast using:
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Inter-Group Contrast Error (\(\Delta W_1\)):} How well the
+  model reproduces the Wasserstein gap
+  \(W_1(P_{\mathrm{human}}(\cdot \mid \boldsymbol{\lambda}_a), P_{\mathrm{human}}(\cdot \mid \boldsymbol{\lambda}_b))\)
+  between the two human groups.
+\item
+  \textbf{Effect Summary Metrics:} Mean Shift (\(\mathbb{E}[E]\)),
+  Predictive Dispersion (\(\mathrm{SD}(E)\)), Discrete Probability of
+  Direction
+  (\(\mathrm{dPD} = \max(\mathbb{P}(E > 0), \mathbb{P}(E < 0))\)), and
+  Signal-to-Noise Ratio
+  (\(\mathrm{SNR} = |\mathbb{E}[E]| / \mathrm{SD}(E)\)).
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\section{Experimental Setup}\label{sec-experiments}
+
+\subsection{Datasets}\label{datasets}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2000}}@{}}
+\caption{Summary of human survey datasets used for training,
+calibration, and out-of-distribution
+evaluation.}\label{tbl-datasets}\tabularnewline
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Split / Role
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Dataset
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Source \& Scope
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Scale
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Question Types
+\end{minipage} \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Split / Role
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Dataset
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Source \& Scope
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Scale
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Question Types
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{Training} & ISSP (2015--2024) & 10 thematic modules across 310
+country-years & 458,753 respondents & \emph{score}, \emph{choice},
+\emph{noul} \\
+\textbf{Calibration} & ISSP Held-Out Slots & 1\% of (country, question)
+slots per year; country-level \& 1-attribute marginal groups & 204 slots
+& \emph{score}, \emph{choice}, \emph{noul} \\
+\textbf{Out-of-Distribution Test} & SubPOP (GSS) & US General Social
+Survey (GSS), 22 US demographic subpopulations & 133 questions; 2,926
+targets & 64 \emph{score} (Likert), 69 \emph{choice} \\
+\end{longtable}
+
+\subsubsection{Dynamic Respondent-Level Sampling
+(ISSP)}\label{dynamic-respondent-level-sampling-issp}
+
+Rather than aggregating respondents into a fixed small set of
+demographic cells (which averages away attributes like religion, party,
+or income), our training sampler dynamically constructs
+persona--question records on the fly from respondent-level ISSP data:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Draw a (year, country, question) slot uniformly at random.
+\item
+  Draw attribute count \(k \sim \mathrm{Uniform}(0, A_{\text{avail}})\)
+  from up to 16 background attributes (sex, age, education, religion,
+  religious attendance, party vote, left--right party position, turnout,
+  household income, region, urban/rural, marital status, main activity,
+  union membership, subjective social status, ancestry).
+\item
+  Sample an observed attribute combination with at least \(n_{\min}\)
+  matching respondents and compute their exact empirical answer shares
+  as the training target.
+\end{enumerate}
+
+\subsubsection{Out-of-Distribution Test Set (SubPOP /
+GSS)}\label{out-of-distribution-test-set-subpop-gss}
+
+We evaluate all models on the SubPOP evaluation split
+\citep{suh-etal-2025-language}, comprising 133 US General Social Survey
+questions across 22 single-attribute US subpopulations (2,926 total
+target distributions; 64 ordinal Likert \emph{score} items and 69
+categorical \emph{choice} items). No temperature scaling (\(T=1\)) is
+applied at test time.
+
+\subsection{Models and Training
+Regimes}\label{models-and-training-regimes}
+
+We evaluate the following model configurations:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Off-the-Shelf Decision Models:} Kev-0.8B, Kev-4B, and Kev-9B
+  (pretrained Qwen3.5 backbones with released LoRA adapters and pointer
+  heads trained on general decision benchmarks).
+\item
+  \textbf{Fine-Tuned Decision Models (Kev):}
+
+  \begin{itemize}
+  \tightlist
+  \item
+    \emph{Adapter / LoRA Fine-Tuning:} Continuing the released adapter
+    or training a fresh rank-\(R\) LoRA adapter (\(R \in \{16, 64\}\))
+    plus the pointer head on ISSP.
+  \item
+    \emph{Layer Unfreezing / Full Fine-Tuning:} Unfreezing the top-\(L\)
+    transformer layers or all backbone weights alongside the pointer
+    head.
+  \item
+    \emph{Training Scope Ablations:} All 310 country-years vs.~US-only
+    respondents; persona complexity (\(k\) attributes) and minimum group
+    size (\(n_{\min} \in \{1, 10, 100\}\)).
+  \end{itemize}
+\item
+  \textbf{Constrained Next-Token LLMs:} Qwen3.5-0.8B (and larger
+  variants) evaluated zero-shot and fine-tuned end-to-end through its
+  vocabulary head over option letters ``A''--``L''.
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\section{Results}\label{sec-results}
+
+\subsection{Overall Distributional Fidelity on Human Subpopulations
+(RQ1)}\label{overall-distributional-fidelity-on-human-subpopulations-rq1}
+
+\emph{TODO: Populate Table~\ref{tbl-main-results} with test-set metrics
+from the evaluation runs.}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1000}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1333}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1333}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1333}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1333}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1333}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1333}}@{}}
+\caption{Out-of-distribution performance on SubPOP (2,926 subpopulation
+targets across 133 GSS questions). KL and JS divergences are in bits;
+\(W_1\) is normalized by scale range (\(\%\) of
+scale).}\label{tbl-main-results}\tabularnewline
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Model
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Regime
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+All: \(D_{\mathrm{KL}}\) (\(\downarrow\))
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+All: \(D_{\mathrm{JS}}\) (\(\downarrow\))
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Choice: \(D_{\mathrm{KL}}\) (\(\downarrow\))
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Score: \(D_{\mathrm{KL}}\) (\(\downarrow\))
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Score: \(W_1\) (\(\downarrow\))
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+\(\Delta \mathrm{Cns}\) (\(\to 0\))
+\end{minipage} \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Model
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Regime
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+All: \(D_{\mathrm{KL}}\) (\(\downarrow\))
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+All: \(D_{\mathrm{JS}}\) (\(\downarrow\))
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Choice: \(D_{\mathrm{KL}}\) (\(\downarrow\))
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Score: \(D_{\mathrm{KL}}\) (\(\downarrow\))
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Score: \(W_1\) (\(\downarrow\))
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+\(\Delta \mathrm{Cns}\) (\(\to 0\))
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Qwen3.5-0.8B (Letters) & Zero-shot & -- & -- & -- & -- & -- & -- \\
+Qwen3.5-0.8B (Letters) & Fine-tuned (ISSP) & -- & -- & -- & -- & -- &
+-- \\
+Kev-0.8B (Pointer) & Off-the-shelf & -- & -- & -- & -- & -- & -- \\
+Kev-0.8B (Pointer) & Fine-tuned (ISSP All) & -- & -- & -- & -- & -- &
+-- \\
+Kev-0.8B (Pointer) & Fine-tuned (ISSP US) & -- & -- & -- & -- & -- &
+-- \\
+Kev-4B (Pointer) & Off-the-shelf / FT & -- & -- & -- & -- & -- & -- \\
+Kev-9B (Pointer) & Off-the-shelf / FT & -- & -- & -- & -- & -- & -- \\
+\end{longtable}
+
+\subsubsection{Key Findings (RQ1)}\label{key-findings-rq1}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Off-the-shelf decision models vs.~human distributions:}
+  Off-the-shelf decision models are trained for deterministic
+  classification/routing and therefore produce overly sharp or
+  miscalibrated distributions when asked to represent a heterogeneous
+  human subpopulation.
+\item
+  \textbf{Effect of behavioral fine-tuning:} Fine-tuning with soft
+  cross-entropy on empirical human response shares substantially reduces
+  both \(D_{\mathrm{KL}}\) and ordinal \(W_1\) distance.
+\item
+  \textbf{Pointer head vs.~option-letter LM head:} Comparison between
+  the pointer-head model and the option-letter LLM on identical
+  backbones and training recipes.
+\end{itemize}
+
+\subsection{Ordinal Consensus vs.~Human Dispersion
+(RQ2)}\label{ordinal-consensus-vs.-human-dispersion-rq2}
+
+\begin{itemize}
+\tightlist
+\item
+  Analysis of \(\mathrm{Cns}(P_{\mathrm{model}})\) versus
+  \(\mathrm{Cns}(P_{\mathrm{human}})\) across the 64 Likert
+  (\emph{score}) questions in the SubPOP evaluation split.
+\item
+  Do models capture bimodal human polarization on contentious
+  sociopolitical issues, or do they regress toward unimodal
+  center-peaked distributions?
+\end{itemize}
+
+\subsection{Capturing Inter-Group Demographic Contrasts via
+Distributional ANOVA
+(RQ3)}\label{capturing-inter-group-demographic-contrasts-via-distributional-anova-rq3}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Persona sensitivity vs.~persona blindness:} Evaluating whether
+  models differentiate between contrasting subpopulations (e.g.,
+  \emph{Democrat} vs.~\emph{Republican}, \emph{Male} vs.~\emph{Female},
+  \emph{Atheist} vs.~\emph{Protestant}, \emph{High} vs.~\emph{Low
+  Income}) on questions with large human Wasserstein gaps.
+\item
+  \textbf{Distributional ANOVA decomposition:} Comparing main effect
+  magnitudes (\(\mathbb{E}[E_c]\)), directional consistency
+  (\(\mathrm{dPD}\)), and Signal-to-Noise Ratios (\(\mathrm{SNR}\))
+  between model predictions and empirical GSS subpopulations.
+\item
+  Why fixed coarse aggregation (e.g., grouping only by country
+  \(\times\) sex \(\times\) age \(\times\) education) causes persona
+  insensitivity, and how respondent-level random-subset sampling
+  restores demographic conditioning.
+\end{itemize}
+
+\subsection{Ablation Studies (RQ4)}\label{ablation-studies-rq4}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Model Scale and Adaptation Depth:} 0.8B vs.~4B vs.~9B; LoRA
+  rank vs.~top-layer unfreezing vs.~full fine-tuning.
+\item
+  \textbf{Persona Construction and Group Size (\(n_{\min}\)):}
+  Single-respondent one-hot targets (\(n=1\)) vs.~aggregated
+  subpopulation shares (\(n_{\min} \in \{10, 100\}\)); number of
+  conditioning attributes.
+\item
+  \textbf{Cross-National vs.~Single-Country Training:} Training on all
+  310 ISSP country-years vs.~US-only ISSP modules when testing on US GSS
+  subpopulations.
+\item
+  \textbf{Prompt Augmentation vs.~Canonical View:} Impact of shuffling
+  option orders and reversing Likert scales during training on test-time
+  calibration.
+\end{enumerate}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\section{Discussion}\label{sec-discussion}
+
+\subsection{When Do Decision Models Make Sense for Sampling Human
+Behavior?}\label{when-do-decision-models-make-sense-for-sampling-human-behavior}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Strengths:} Fast, deterministic single-pass inference
+  (\(O(1)\) prefill per question); zero syntactic constraint failure
+  (\(\mathrm{FailureRate} = 0\) for pointer heads); natural
+  representation of subpopulation marginals
+  \(P(Y_q \mid \boldsymbol{\lambda})\) when trained with distributional
+  cross-entropy.
+\item
+  \textbf{Fundamental Limitations:}
+
+  \begin{itemize}
+  \tightlist
+  \item
+    \emph{Marginal vs.~Joint Individual Simulation:} Because decision
+    models evaluate questions conditionally independently given the
+    state
+    (\(P(\mathbf{Y} \mid \boldsymbol{\lambda}) = \prod_q P(Y_q \mid \boldsymbol{\lambda})\)),
+    sampling from output PMFs reproduces \emph{subpopulation marginals}
+    (and convolved construct sums under context isolation) but does not
+    automatically capture \emph{within-person cross-question covariance}
+    unless conditioning attributes fully explain the correlation.
+  \item
+    \emph{Out-of-domain attitude generalization:} Limits of inferring
+    novel cultural or temporal shifts solely from demographic labels.
+  \end{itemize}
+\end{itemize}
+
+\subsection{Limitations and Ethical
+Considerations}\label{limitations-and-ethical-considerations}
+
+\begin{itemize}
+\tightlist
+\item
+  Risks of over-relying on ``silicon samples'' to replace
+  underrepresented human voices in policy or public health research.
+\item
+  Survey coverage biases in training corpora.
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\section{Conclusion}\label{sec-conclusion}
+
+We investigated whether decision models and constrained next-token LLMs
+can serve as calibrated samplers of human behavior. By pairing
+respondent-level cross-national survey training (ISSP) with an exact
+ordinal evaluation framework---spanning Constraint adherence,
+1-Wasserstein distance, ordinal Consensus, and Distributional ANOVA---we
+demonstrated both the promise of distributional fine-tuning and the
+structural limits of current models in replicating human behavioral
+diversity.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\section{Appendix}\label{sec-appendix}
+
+\subsection{Proofs and Mathematical Details of Distributional
+ANOVA}\label{sec-app-anova}
+
+Let \(\mathcal{D} = \prod_{c \in \mathcal{C}} \{1, \dots, \Lambda_c\}\)
+denote the fully crossed factorial design space over demographic and
+model factors \(\mathcal{C}\). For a multi-item ordinal instrument
+\(\mathbf{Y}_{\boldsymbol{\lambda}} = (Y_{1, \boldsymbol{\lambda}}, \dots, Y_{M, \boldsymbol{\lambda}}) \in \mathcal{Y}^M\),
+context isolation between items ensures conditional independence given
+condition \(\boldsymbol{\lambda}\) \citep{wadi2025monte, wadi2026every}:
+\begin{equation}\protect\phantomsection\label{eq-app-cond-ind}{
+P(\mathbf{Y}_{\boldsymbol{\lambda}} = \mathbf{y} \mid \boldsymbol{\lambda}) = \prod_{m=1}^{M} P(Y_{m, \boldsymbol{\lambda}} = y_m \mid \boldsymbol{\lambda}),
+}\end{equation} and the exact PMF of the composite construct score
+\(S_{\boldsymbol{\lambda}} = \sum_{m=1}^{M} Y_{m, \boldsymbol{\lambda}}\)
+is given by discrete convolution
+\(P_{S_{\boldsymbol{\lambda}}} = P_{Y_{1, \boldsymbol{\lambda}}} \circledast \cdots \circledast P_{Y_{M, \boldsymbol{\lambda}}}\).
+Under the distributional Hoeffding decomposition \citep{wadi2026every},
+the expectations of the isolated main-effect distributions
+\(E_c(\lambda_c)\) and interaction-effect distributions
+\(E_U(\boldsymbol{\lambda}_U)\) recover the classical fixed-effects
+ANOVA parameters.
+
+\subsection{Dataset Construction and ISSP Attribute
+Harmonization}\label{sec-app-data}
+
+\begin{itemize}
+\tightlist
+\item
+  Full list of 16 ISSP respondent attributes and country-specific
+  variable mappings across 2015--2024.
+\item
+  Overlap analysis between ISSP training items and SubPOP GSS items (29
+  overlapping vs.~104 unseen questions).
+\end{itemize}
+
+
+\bibliography{refs/myrefs.bib,refs/custom.bib,refs/custom_2.bib,refs/others.bib,refs/acl-refs.bib,refs/marketing.bib,refs/ai-marketing.bib,refs/silicon-sampling.bib}
+
+
+
+\end{document}

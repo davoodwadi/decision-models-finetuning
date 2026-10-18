@@ -1,0 +1,86 @@
+\DeclareUnicodeCharacter{2212}{\ensuremath{-}}
+\DeclareUnicodeCharacter{2013}{--}
+\DeclareUnicodeCharacter{2014}{---}
+\DeclareUnicodeCharacter{2009}{\,}
+\DeclareUnicodeCharacter{00A0}{~}
+\DeclareUnicodeCharacter{00D7}{\ensuremath{\times}}
+\DeclareUnicodeCharacter{2264}{\ensuremath{\leq}}
+\DeclareUnicodeCharacter{2265}{\ensuremath{\geq}}
+\DeclareUnicodeCharacter{2260}{\ensuremath{\neq}}
+\DeclareUnicodeCharacter{2248}{\ensuremath{\approx}}
+\DeclareUnicodeCharacter{03B1}{\ensuremath{\alpha}}
+\DeclareUnicodeCharacter{03B2}{\ensuremath{\beta}}
+\DeclareUnicodeCharacter{03C3}{\ensuremath{\sigma}}
+\DeclareUnicodeCharacter{03C7}{\ensuremath{\chi}}
+\DeclareUnicodeCharacter{2032}{\ensuremath{'}}
+
+\usepackage{caption}
+\captionsetup{labelsep=period}
+
+\setcitestyle{round}
+
+% \AtBeginEnvironment{table}{\footnotesize}
+\AtBeginEnvironment{apptbl}{\footnotesize}
+% Table font size: \footnotesize by default; table-size.lua emits \nexttablesize{\scriptsize}
+% before a table whose div has size="scriptsize", which applies to that table only
+\makeatletter
+\newcommand\table@defaultsize{\footnotesize}
+\let\table@size\table@defaultsize
+\newcommand\nexttablesize[1]{\gdef\table@size{#1}}
+\AtBeginEnvironment{longtable}{\table@size\global\let\table@size\table@defaultsize}
+\makeatother
+
+% Figure notes: note-in-float.lua wraps a figure's Note in \floatnote{...}, which
+% prints it after the caption (the float package always sets the caption last)
+\makeatletter
+\let\floatnote@text\@empty
+\newcommand\floatnote[1]{\gdef\floatnote@text{#1}}
+\newcommand\fs@plainnote{\fs@plain
+  \def\@fs@post{\ifx\floatnote@text\@empty\else
+    \vspace\abovecaptionskip\noindent\floatnote@text\par
+    \global\let\floatnote@text\@empty\fi}}
+\makeatother
+
+% Pin appendix floats in place so they stay next to their Note paragraphs
+% (deferred inside \AtBeginDocument because Quarto's \newfloat comes after this file)
+\AtBeginDocument{%
+  \floatstyle{plainnote}\restylefloat{appfig}%
+  \floatplacement{appfig}{H}\floatplacement{apptbl}{H}}
+
+% Caption label for appendix tables typeset as breakable longtables (breakable-apptbl.lua);
+% position=top restores the skip between the caption and the table's top rule
+\AtBeginDocument{\providecommand*\apptblname{Table W}}
+\captionsetup[apptbl]{position=top}
+
+% ACL-style title block: bold title; one column per author (bold name, regular
+% affiliation, small monospace email)
+\makeatletter
+\renewcommand\@maketitle{%
+  \newpage\null\vskip 0.5em
+  \begin{center}
+    {\Large\bfseries \@title\par}
+    \vskip 1.5em
+    {\normalsize \@author\par}
+  \end{center}
+  \par\vskip 1em}
+\newcommand\aclauthor[3]{% name, affiliation lines, email
+  \begin{tabular}[t]{@{}c@{}}
+    \textbf{#1}\\[1pt]
+    #2\\[1pt]
+    {\small\texttt{#3}}
+  \end{tabular}}
+\makeatother
+
+% Hardcoded PDF authors. Runs at \begin{document}, so it overrides the plain
+% \author{} Quarto generates from the YAML (the YAML authors still set PDF metadata).
+\AtBeginDocument{%
+  \author{%
+    \aclauthor{Davood Wadi}
+      {Desautels Faculty of Management\\ McGill University\\ Montreal, Quebec, Canada}
+      {davood.wadi@hec.ca}%
+    \hspace{3em}%
+    \aclauthor{Yu Ma}
+      {Desautels Faculty of Management\\ McGill University\\ Montreal, Quebec, Canada}
+      {yu.ma@mcgill.ca}%
+  }%
+}
