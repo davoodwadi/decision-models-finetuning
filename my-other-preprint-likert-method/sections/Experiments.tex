@@ -1,0 +1,214 @@
+\section{Experiment}
+
+\subsection{Design}
+
+We test our framework using the Consumer Ethnocentrism Tendencies Scale (CETSCALE; \citealp{shimp1987consumer}). 
+This is a widely validated $K{=}17$-item Likert instrument with a response space of $\mathcal{Y}=\{1,\dots,7\}$. While a 17-item survey is much smaller than typical NLP benchmark datasets, it constitutes a complete, rigorously tested measurement tool in the behavioral sciences. 
+Using this exact, unmodified scale ensures that we are reliably measuring the intended bias without diluting the test. 
+% We use the standard composite construct score $S=\sum_{k=1}^{17} Y_k$, 
+% yielding a support range of $\{17,\dots,119\}$.
+
+
+
+We employ a symmetrical, fully crossed $5\times 4$ fixed-effects design across factors $\{\textsc{Model}, \textsc{Target}\}$.
+The model levels include open-weights models representing four distinct countries-of-origin:
+$\mathcal{L}_{\textsc{Model}}=\{$Llama~3.3~70B and Gemma~3~27B (USA); Qwen3~Next~80B (China); Aya~Expanse~32B (Canada); and Ministral~14B (France)$\}$.
+The Target Country levels mirror these origins:
+$\mathcal{L}_{\textsc{Target}}=\{\text{USA},\text{China},\text{Canada},\text{France}\}$.
+This symmetrical $5 \times 4$ design is critical as it allows our framework to mathematically isolate (i) the global main effects of $\textsc{Model}$ and $\textsc{Target}$, and (ii) the precise $\textsc{Model}\times\textsc{Target}$ interaction effects (e.g., asking a Chinese-developed model to express its ethnocentrism towards USA), which represent the actual country-of-origin bias.
+
+All conditions share an identical stimulus structure. A fixed system message strictly enforces the response schema ("...Respond with ONLY the digit."). 
+Each of the 17 CETSCALE items acts as a user-message template ($T_k$) containing a target country placeholder (e.g., \{People\}, \{Adj\}). 
+The \textsc{Target} factor deterministically instantiates these placeholders via a strict lexicon (Figure \ref{fig:prompt-setup}). 
+Importantly, prompt wording is treated as a fixed experimental control rather than tuned per model, with the aim to mirror stimulus control in human behavioral experiments.
+
+For each $(\textsc{Model},\textsc{Target},k)\in \mathcal{L}_{\textsc{Model}}\times\mathcal{L}_{\textsc{Target}}\times\{1,\dots,17\}$, we perform a single forward pass and record the exact next-token PMF ($P_{\mathrm{raw}}(t\mid x_{k,\boldsymbol{\lambda}})$) over the full vocabulary.\footnote{Because we directly extract the analytical probability distribution over the logits, our measurement is strictly deterministic. It bypasses autoregressive decoding entirely, rendering generation hyperparameters such as temperature or top-
+p irrelevant.}
+We define $\mathcal{V}_{\mathrm{val}}$ as the specific valid digit tokens $\{1,\dots,7\}$ for each model's respective tokenizer. 
+In total, this yields $5\times 4\times 17 = 340$ exact item-level predictive distributions. These PMFs are directly passed through the Constraint Layer to measure formatting failures, the Consensus Layer to measure ordinal certainty, and the Construct Layer to isolate distributional Hoeffding effect sizes.
+
+
+
+
+
+
+
+\subsection{Results}
+
+\paragraph{Constraint.}
+As shown in Figure \ref{fig:failure-rate}, Gemma 3, Llama 3.3, and Qwen3 demonstrate near-perfect adherence to the task constraints, concentrating their probability mass almost entirely on valid ordinal tokens ($M<0.001$, $\mathrm{SD}<0.001$). 
+In contrast, Ministral exhibits a small but consistent failure to constrain its mass to the requested digits ($M=0.002, \mathrm{SD}=0.001$). More notably, Aya Expanse displays the highest aggregate failure rate ($M=0.006$) driven by large variance ($\mathrm{SD}=0.049$). This indicates that utilizing Aya or Ministral in automated agentic settings could lead to sporadic breakdowns due to their probabilistic inability to adhere strictly to psychometric constraints.
+
+
+\begin{figure}[htbp]
+  \centering
+    \centerline{\includegraphics[width=\columnwidth]{figures/failure_rate.pdf}}
+    \caption{Failure Rate across the evaluated LLMs.}
+    \label{fig:failure-rate}
+    \vspace{-3mm}
+\end{figure}
+
+\paragraph{Consensus.}
+\label{sec:exp-consensus}
+Across all target countries, four models show exceptionally high internal agreement regarding the instrument, maintaining $\mathrm{Cns}>0.88$ (Figure \ref{fig:cns}). 
+Ministral is a major outlier, exhibiting substantially lower consensus across all targets ($\mathrm{Cns}\approx 0.65$--$0.67$). This shows that, even after enforcing valid digits, Ministral's item-level PMFs frequently place large probability mass on conflicting ends of the Likert scales. 
+This stark contrast highlights the critical necessity of an ordinal-aware dispersion metric. Standard entropy would fail to capture this specific behavioral dissonance (Table \ref{tab:cns-entropy}).
+
+\begin{figure}[htbp]
+    \centering
+    \centerline{\includegraphics[width=\columnwidth]{figures/exp-cns.pdf}}
+    \caption{Multivariate Consensus ($\mathrm{Cns}$) for the CETSCALE instrument. Lower values indicate severe behavioral polarization.}
+    \label{fig:cns}
+    \vspace{-3mm}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    % ---------- Row 1 ----------
+    \begin{subfigure}{0.9\columnwidth}
+    \centering
+      \includegraphics[width=0.9\columnwidth]{figures/specific-pmf-1.pdf}
+      \caption{Aya Expanse 32B}
+    \end{subfigure}
+    \begin{subfigure}{0.9\columnwidth}
+    \centering
+      \includegraphics[width=0.9\columnwidth]{figures/specific-pmf-5.pdf}
+      \caption{Qwen3 Next 80B}
+    \end{subfigure}
+    \caption{Distribution of CETSCALE for Aya Expanse 32B (high) vs. Qwen3 Next 80B (low) ethnocentrism and Target Country.}
+    \label{fig:specific-pmf-2}
+    \vspace{-3mm}
+\end{figure}
+
+
+\paragraph{Construct.}
+To contextualize the LLMs' response to the CETSCALE, 
+we compare each model's predictive distribution for \textsc{Target}=USA against the human sample means and standard deviations reported in the original CETSCALE validation studies (\citealp{shimp1987consumer}; Table \ref{tab:cetscale-human-llm-comparison}; Figure~\ref{fig:human-llm})\footnote{The human data (collected prior to 1987) serves strictly as a historical magnitude anchor to calibrate the CETSCALE, not as a baseline for modern human attitudes. Note that this reference concerns expected-score magnitude only: a model's PMF dispersion reflects the internal uncertainty of a single entity and is not commensurable with the interpersonal variance of a human population sample."}. 
+Several LLMs exhibit expected composite scores comparable to, or explicitly exceeding, those observed in the most ethnocentric human populations. 
+See the full distributions in Figure~\ref{fig:specific-pmf}.
+
+\begin{table}[htbp]
+  \caption{Comparison of CETSCALE scores between historical human populations \citep{shimp1987consumer} and LLMs evaluated in this study (restricted to the \textsc{Target}=USA condition). Higher composite score indicates higher ethnocentrism.}
+  \label{tab:cetscale-human-llm-comparison}
+  \centering
+    \begin{small}
+      \begin{sc}
+        \begin{tabular}{llrr}
+          \toprule
+          Subject & Sample / Model & $\mathbb{E}[S]$ & SD[S] \\
+          \midrule
+          \multirow[t]{6}{*}{Human} 
+          & Detroit (USA) & 68.58 & 25.96 \\
+          & Carolinas (USA) & 61.28 & 24.41 \\
+          & Denver (USA) & 57.84 & 26.10 \\
+          & Los Angeles (USA) & 56.62 & 26.37 \\
+          & Students (Pre) & 51.92 & 16.37 \\
+          & Students (Post) & 53.39 & 16.52 \\
+          \midrule
+          \multirow[t]{5}{*}{LLM} 
+          & Aya Expanse 32B & 89.11 & 1.32 \\
+          & Llama 3.3 70B & 71.99 & 0.95 \\
+          & Ministral 14B & 70.20 & 5.25 \\
+          & Gemma 3 27B & 60.32 & 0.94 \\
+          & Qwen3 Next 80B & 53.85 & 1.17 \\
+          \bottomrule
+        \end{tabular}
+      \end{sc}
+    \end{small}
+    \vspace{-3mm}
+\end{table}
+
+
+
+\paragraph{Main Effects.}
+Extracting precise main effect distributions (Table \ref{tab:main-effects}), reveals large and systematic behavioral divides. 
+\textsc{Aya-32B} exhibits a severe positive deviation from the grand mean ($\mathbb{E}=21.19$, $\mathrm{SNR}=1.63$, $\mathrm{dPD}>0.99$), indicating a pervasive ethnocentrism that far exceeds human baselines. 
+Conversely, \textsc{Qwen3-80B} demonstrates a highly robust negative main effect ($\mathbb{E}=-14.63$, $\mathrm{SNR}=1.20$, $\mathrm{dPD}=0.93$), resulting in expected scores similar to liberal human populations.
+
+Analyzing the main effects for the Target Countries (Table \ref{tab:main-effects}; and the pairwise contrasts in Table \ref{tab:country-contrasts}; Figure~\ref{fig:country-main}) reveals that the most statistically robust biases involve China. 
+Across all models, there is a systemic decrease in ethnocentrism when the target is China ($\mathbb{E}=-6.46$, $\mathrm{SNR}=1.04$), contrasting sharply with the relative favoritism shown toward North American targets (e.g., USA-China contrast $\mathbb{E}=9.30$, $\mathrm{SNR}=1.34$).
+
+
+\begin{table}[htbp]
+  \caption{Summaries of main effects.}
+  \label{tab:main-effects}
+  \centering
+    \begin{small}
+      \begin{sc}
+\begin{tabular}{lrrll}
+\toprule
+Parameter & $\mathbb{E}$ & $\mathrm{SD}$ & $\mathrm{SNR}$ & $\mathrm{dPD}$ \\
+\midrule
+$\mu_{\emptyset}$ & 66.25 & 14.21 &  &  \\
+Aya Expanse 32B & 21.19 & 13.01 & 1.63 & 0.99 \\
+Gemma 3 27B & -11.99 & 13.15 & 0.91 & 0.77 \\
+Llama 3.3 70B & 0.31 & 12.79 & 0.02 & 0.55 \\
+Ministral 14B & 5.11 & 9.59 & 0.53 & 0.62 \\
+Qwen3 Next 80B & -14.63 & 12.17 & 1.20 & 0.93 \\
+USA & 2.84 & 5.43 & 0.52 & 0.55 \\
+Canada & 4.62 & 5.72 & 0.81 & 0.90 \\
+China & -6.46 & 6.19 & 1.04 & 0.95 \\
+France & -1.00 & 4.72 & 0.21 & 0.54 \\
+\bottomrule
+\end{tabular}
+      \end{sc}
+    \end{small}
+    \vspace{-3mm}
+\end{table}
+
+\paragraph{Interaction Effects and Country-of-Origin Bias.}
+We define country-of-origin bias as a positive interaction between a model and its own country of origin, measured as an isolated deviation from the grand-mean baseline. 
+The interaction distributions ($E_U$) show that several models exhibit structured, non-additive interaction patterns (Figure~\ref{fig:interactions}; Table~\ref{tab:coefficient-table-marginal}), though the strength and directionality of these effects vary considerably across models.
+The clearest regional pattern appears for \textsc{Gemma 3-27B} and \textsc{Llama 3.3-70B} (both U.S.-developed), which show positive interactions toward the North American bloc (USA and Canada) alongside a pronounced negative interaction with China. 
+Both models exhibit positive own-country (USA) interactions ($+3.21$ and $+2.59$), consistent with ingroup favoritism, although these particular ingroup cells are directionally moderate ($\mathrm{dPD}=0.63$ and $0.58$).
+We emphasize that clean own-country favoritism is not universal across all five models. 
+\textsc{Aya-32B} (Canada, $-3.77$) and \textsc{Qwen3 Next-80B} (China, $-0.20$) do not exhibit a positive own-country interaction, and \textsc{Ministral-14B} shows a positive but modest France interaction ($+2.45$) that is smaller than its interaction with China.
+This showcases how the PMF ANOVA framework isolates each interaction from the model's baseline behavior and main effects and allows researchers to empirically test whether a construct such as country-of-origin bias is present, absent, or reversed for a given model.
+
+
+\begin{figure}[htbp]
+  \centering
+  \centerline{\includegraphics[width=\columnwidth]{figures/interactions.pdf}}
+    \caption{Interactions of Model and Target Country.}
+    \label{fig:interactions}
+    \vspace{-3mm}
+\end{figure}
+
+\paragraph{Aggregate vs. Factorial Benchmarks.}
+To empirically demonstrate the danger of conflating causal mechanisms, we compared factorial interactions against an aggregate benchmark (App.~\ref{tab:aggregate-vs-factorial}). 
+If a researcher were to evaluate Target Country bias by taking an aggregate average, they would conclude there is a universal negative bias against France ($\mathbb{E}=-1.00$) and China ($\mathbb{E}=-6.46$). 
+However, factorial decomposition shows this aggregate view is directionally incorrect for specific models: Ministral-14B actually exhibits positive ingroup favoritism toward France ($+2.45$). 
+Similarly, while the aggregate benchmark suggests a universal penalization of China, both Aya-32B ($+5.35$) and Ministral-14B ($+4.54$) exhibit strong positive interactions. 
+% This indicates that unstructured, scale-first evaluations fundamentally mask heterogeneous model biases, which are only recovered through orthogonal experimental control.
+
+
+\subsection{The Cost of Generative Sampling}
+\label{sec:sampling-cost}
+
+To quantify the cost of the standard NLP Monte Carlo sampling paradigm, we benchmarked a simulated sampling approach against our exact distributions (acting as ground truth; App.~\ref{app:sampling-cost}). 
+Standard text sampling introduces severe, previously unquantified reliability issues in behavioral evaluation. 
+
+First, sampling noise degrades the detection of subtle biases. 
+Because the standard error decays only as $1/\sqrt{N}$, a standard sampling budget of $N=100$ still yields a standard error of up to 0.52 composite-score points for low-consensus models (App.~\ref{app:sampling-noise}). 
+To determine how often this noise leads to false conclusions, we calculated the flip probability ($P_{\text{flip}}$): the chance that finite sampling recovers an effect with the wrong sign (App.~\ref{app:flip-analysis}). 
+At $N=10$, standard sampling flips the sign of small effects ($|E| < 1$) 18\% of the time, and even at $N=100$, it flips them 6.3\% of the time. 
+The exact-PMF framework achieves the $N \to \infty$ limit in a single forward pass, ensuring no interaction effect is masked or reversed by sampling variance.
+Second, non-default decoding (e.g., temperature scaling) introduces systematic biases that no amount of sampling can fix. 
+Our analysis (App.~\ref{app:decoding-bias}) shows that for models with low internal consensus (e.g., Ministral), modifying temperature artificially shifts the latent construct score by up to 2.79 points. 
+
+\subsection{Prompt Sensitivity}
+\label{sec:prompt-sensitivity}
+
+A common critique in NLP behavioral evaluation is that model outputs are highly sensitive to prompt phrasing. 
+A key strength of casting evaluation as a fully crossed factorial design is its extensibility. 
+Any potential confounder can be introduced as an additional factor and isolated via the distributional ANOVA.
+
+To demonstrate this, we promoted the administration (system) prompt to a first-class experimental factor ($\lambda_{\text{Prompt}}$). 
+As detailed in App.~\ref{app:prompt-framing}, we tested five additional framing variants (ranging from a market-research persona to minimal formatting; Table~\ref{tab:prompt-variants}) across three models and four target countries, yielding 1,224 exact item-level PMFs.
+
+The full ANOVA decomposition (Tables~\ref{tab:prompt-effects} and \ref{tab:prompt-effects-p2}) show three key findings. 
+First, the core country-of-origin signals are robust. 
+The \textsc{Target} main effects reproduce the directional pattern of the main study under statistical control for framing. 
+Second, prompt framing acts as a causal main effect of its own, shifting the latent construct score by up to 13.5 points depending on the phrasing used. 
+Third, the framework formally quantifies model-specific prompt sensitivity via the $\textsc{Model} \times \textsc{Prompt}$ interaction. 
+We isolate that while Gemma~3 exhibits low sensitivity to wording changes, both Aya and Ministral interact strongly with specific framings. 

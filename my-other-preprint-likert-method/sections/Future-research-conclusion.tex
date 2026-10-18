@@ -1,0 +1,47 @@
+\section{Conclusion}
+
+In this work, we introduced a new paradigm for the behavioral evaluation of LLMs, shifting the focus from large-scale, unstructured benchmark datasets to controlled factorial experiments. 
+By bridging human psychometrics with LLM mechanics, we addressed critical gaps in experimental design, measurement, and analysis. 
+By operating directly on exact, token-level Probability Mass Functions (PMFs) without generative sampling noise, we formulated an analytical pipeline, featuring a multivariate ordinal consensus metric and a distributional ANOVA. This pipeline allows researchers to mathematically isolate causal behavioral shifts and factor interactions without artificially inflating variance.
+
+We validated this framework with a case study on consumer ethnocentrism. 
+We isolated systemic country-of-origin biases that would otherwise be obscured by confounding variables in standard observational datasets. 
+Ultimately, by prioritizing causal experimental control and exact probability distributions over text sampling, this general-purpose framework provides a statistically rigorous foundation for future research into LLM alignment, values, and latent behavioral traits.
+
+
+\section*{Limitations}
+
+While our mathematical framework is designed to be applied to any behavioral evaluation, our empirical experiments focus exclusively on consumer ethnocentrism. We deliberately chose to analyze a single construct in depth to clearly illustrate how the distributional ANOVA operates under the hood. Now that the methodology is established, applying this exact-PMF framework to a much wider array of psychological traits, moral values, and geopolitical biases is an exciting direction for future work. Therefore, the specific findings in this paper should not be interpreted as comprehensive claims about the general political ideology or cultural alignment of the tested models.
+
+Furthermore, all experiments were conducted in English. 
+Whether the observed systemic biases hold when models are queried in other languages or scripts remains an open empirical question. 
+Additionally, as these are snapshot evaluations, our findings reflect the models' latent states at the time of testing and may not generalize to future weight updates or subsequent model versions.
+
+A common critique in NLP evaluation concerns model sensitivity to prompt variations. 
+We adopt the strict position from behavioral psychometrics that the prompt template is a standardized measurement instrument, not a tunable hyperparameter. 
+In human surveying, rewording a validated item constitutes a fundamental change to the construct being measured, rather than a robustness failure of the experiment. 
+We stress, however, that our framework treats any experimental variable as a crossed factor, so prompt phrasing is itself a first-class factor $\lambda_{\text{Prompt}}$ that the design directly supports. 
+Introducing a set of semantically-equivalent paraphrases as levels of $\lambda_{\text{Prompt}}$ requires no change to the underlying theory. 
+The Prompt main effect and the Model $\times$ Prompt and Target $\times$ Prompt interactions are recovered by the identical distributional-ANOVA method. 
+In this view, prompt sensitivity becomes a measurable, isolable effect rather than an uncontrolled confound. 
+
+
+Methodologically, our framework relies on exact next-token probability distributions and is explicitly designed for constrained, single-token response paradigms (e.g., Likert scales). 
+While major proprietary providers (e.g., OpenAI, Anthropic, Google) currently expose log-probabilities via their APIs, providers that entirely obscure their next-token probabilities fall outside the scope of this approach. 
+Furthermore, as LLMs increasingly utilize multi-token reasoning protocols (e.g., Chain-of-Thought) prior to generating a final response, extending our Consensus and Construct statistics to integrate over latent multi-token trajectory spaces remains a complex, open challenge for future work.
+
+
+\section*{Ethical Considerations}
+
+This framework is intended as a diagnostic tool for model evaluation and behavioral research.
+Scores on any single psychometric construct should not be interpreted as a comprehensive safety certification, 
+nor should findings about specific models be generalized to the organizations or cultures associated with their development.
+We caution that comparison to human benchmarks is provided for calibration purposes only and should not be used to 
+normalize or excuse systematic bias in language models.
+Finally, as with any measurement framework, there is a risk that optimizing directly against these metrics 
+could produce models that score favorably without genuinely reducing the underlying biases the instruments are designed to detect.
+
+
+\section*{Acknowledgements}
+
+The authors acknowledge the use of AI writing assistants for proofreading and improving the overall clarity of the writing. 

@@ -1,0 +1,56 @@
+\section{Introduction}
+
+
+As Large Language Models (LLMs) are increasingly deployed as autonomous agents \citep{wang2024survey, xi2025rise}
+% wadi2026careful
+, evaluating their latent biases and subjective behaviors is critical. A pressing question in this new era is how to accurately quantify latent behavioral constructs, such as personality traits, moral values, or sociopolitical biases, to ensure AI fairness and safe global deployment.
+
+Historically, the NLP community has evaluated models using large, unstructured benchmark datasets \citep{hendrycks2020measuring, bommasani2023holistic}.\footnote{We use unstructured to denote evaluation sets that aggregate large numbers of heterogeneous prompts without a controlled factorial structure, such that the covariates of interest (e.g., demographic, context, task) are not orthogonally crossed and are therefore statistically confounded.}
+While this scale-first paradigm is highly effective for measuring general capabilities (e.g., trivia, coding), it is fundamentally ill-equipped for precise behavioral evaluation \citep{pmlr-v202-santurkar23a, durmus2024towards}. 
+Even when unstructured benchmarks successfully detect an aggregate bias in a model, they inherently lack the analytical power to disentangle \emph{which} underlying factors actually caused that behavior, obscuring whether a bias is a hardwired training defect or a context-dependent adaptation \citep{wadi2026shopping}.
+
+Consider an intuitive example: evaluating an LLM for prosocial behavior under financial incentives using a large, unstructured dataset of consumption scenarios. 
+A benchmark might successfully detect a statistically significant tendency for altruistic behavior.
+%  \citep{wadi2026interplay}
+ 
+ However, the unstructured dataset cannot disentangle \emph{why} this tendency exists. 
+Because the prompt contexts vary across the dataset, altruism might frequently be paired with reciprocal gains.
+%  \citep{wadi2026careful}
+
+Is the model fundamentally altruistic (a \emph{main effect} of altruism)? Is the model simply generating more prosocial text because of financial incentives, (a \emph{main effect} of financial incentives)? 
+Or is the model indifferent towards prosocial motives, but severely shows prosocial behavior only when financial incentives are provided (an \emph{interaction effect})? 
+A benchmark dataset conflates these distinct causal mechanisms.
+
+To disentangle what drives a model's behavior, we propose a shift from unstructured dataset scaling to controlled experimentation. 
+We formulate LLM evaluation as a fully crossed factorial design, where every distinct variable (e.g., demographic, context, LLM persona) is treated as an independent factor. 
+We systematically evaluate every possible combination using validated psychometric scales \citep{cronbach1950further, batterton2017likert}. 
+This experimental control grants us the analytical power to mathematically isolate causal main effects and higher-order interactions. This fills an important gap in behavioral attribution that aggregate benchmarks lack. 
+
+In standard NLP evaluation, scaling up a dataset with thousands of generated prompts is an excellent way to test general model capabilities. However, if we try to apply this "scale-first" approach to a psychological survey by adding thousands of synthetic, unvalidated questions, we risk altering the core trait we are trying to measure, a problem known as reducing construct validity \citep{flake2020measurement}.
+
+To keep our measurements reliable, we rely on carefully calibrated questions used by behavioral scientists (e.g., Likert scales). Moreover, translating behavioral methods from humans to LLMs has several major methodological gaps, which we formalize as experimental design, measurement, and analysis. 
+We formulate a statistical framework to execute controlled behavioral experiments on LLMs, while addressing these gaps.
+
+First, to address the design gap, our framework formulates LLM evaluation as a \emph{fully crossed factorial experiment}. By treating variables (e.g., the specific LLM being tested, the target demographic in the prompt) as distinct experimental factors, we systematically separate a model's baseline behavior from causal main effects and higher-order interactions. This experimental control grants us the analytical power to mathematically isolate biases free of confounding contexts.
+
+Second, to address the measurement gap, we bypass the issues of generative text sampling. Human behavioral science relies on sampling because the underlying probability distribution of a human mind is inaccessible. NLP has adopted this paradigm via Monte Carlo text sampling to simulate a "population" of responses \citep{wadi2025a}, often injecting additional noise via the temperature parameter. However, an LLM possesses a constant, fully observable internal state for a given prompt. Generating multiple text responses is effectively taking repeated, noisy draws from a static mathematical distribution. Our framework, instead, operates directly on exact, token-level Probability Mass Functions (PMFs) to eliminate sampling error.
+
+Third, to address the analytical gap, we formulate the statistical mechanics required to process these exact PMFs. When NLP researchers evaluate token probabilities, they typically rely on metrics like Shannon entropy over valid tokens \citep{farquhar2024detecting}. However, entropy fails on Likert scales because it ignores ordinality. For example, entropy cannot distinguish between an LLM heavily polarized between "Strongly Agree" (5) and "Strongly Disagree" (1) versus one smoothly concentrated around "Neutral" (3). We bridge this gap by introducing a \emph{multivariate consensus} metric that respects ordinal distance. We also formulate \emph{distributional ANOVA} to analytically compute the exact probability distributions of the isolated causal effects.
+
+To empirically validate our general-purpose framework, we present a case study on consumer ethnocentrism, the sociological phenomenon where an entity systematically favors its country of origin and rejects foreign entities \citep{shankarmahesh2006consumer}. Applying established ethnocentrism scales to five modern LLMs, our framework shows how models' countries of origin inherently interact with target countries, thereby allowing us to test for the magnitude of ethnocentrism for each LLM. We mathematically show that controlled experiments can isolate geographic biases without relying on large, unstructured datasets.
+
+
+We contribute a unified, deterministic framework for the causal behavioral
+evaluation of LLMs on ordinal psychometric instruments.
+The framework casts evaluation as a fully crossed factorial experiment operating
+directly on exact token-level Probability Mass Functions (PMFs), and its
+methodological core is a distributional ANOVA that isolates causal effects
+as full probability distributions. 
+The pipeline:
+\begin{itemize}
+    \item decomposes the composite construct distribution into baseline, main-effect, and interaction-effect distributions via a distributional
+    Hoeffding decomposition with Optimal-Transport-based paired contrasts and a formal ANOVA-consistency guarantee (Theorem~\ref{thm:anova-consistency-main});
+    \item propagates item-level PMFs into an exact composite-score distribution using discrete convolution; and
+    \item addresses a failure mode of Shannon entropy on Likert scales by quantifying ordinal response certainty using a multivariate extension of the Consensus metric \citep{tastle2007consensus}.
+\end{itemize}
+

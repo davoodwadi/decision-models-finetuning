@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.19">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Davood Wadi">
+<meta name="author" content="Yu Ma">
+<meta name="dcterms.date" content="2026-10-18">
+<meta name="keywords" content="Decision Models, Human Behavior Simulation, Silicon Sampling, Ordinal Psychometrics, Distributional ANOVA">
+
+<title>Can Decision Models Sample Human Behavior? Evaluating Distributional Alignment on Human Survey Populations</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+  margin-bottom: 0em;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="manuscript_files/libs/clipboard/clipboard.min.js"></script>
+<script src="manuscript_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="manuscript_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="manuscript_files/libs/quarto-html/popper.min.js"></script>
+<script src="manuscript_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="manuscript_files/libs/quarto-html/anchor.min.js"></script>
+<link href="manuscript_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="manuscript_files/libs/quarto-html/quarto-syntax-highlighting-bf27225e3a48a9273f3daa8f8e829971.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="manuscript_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="manuscript_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="manuscript_files/libs/bootstrap/bootstrap-215b371544c282197b31c8aa00ce3677.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="manuscript.pdf"><i class="bi bi-file-pdf"></i>PDF</a></li></ul></div></div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Can Decision Models Sample Human Behavior? Evaluating Distributional Alignment on Human Survey Populations</h1>
+</div>
+
+
+<div class="quarto-title-meta-author">
+  <div class="quarto-title-meta-heading">Authors</div>
+  <div class="quarto-title-meta-heading">Affiliation</div>
+  
+    <div class="quarto-title-meta-contents">
+    <p class="author">Davood Wadi <a href="mailto:davood.wadi@hec.ca" class="quarto-title-author-email"><i class="bi bi-envelope"></i></a> </p>
+  </div>
+  <div class="quarto-title-meta-contents">
+        <p class="affiliation">
+            McGill University
+          </p>
+      </div>
+    <div class="quarto-title-meta-contents">
+    <p class="author">Yu Ma <a href="mailto:yu.ma@mcgill.ca" class="quarto-title-author-email"><i class="bi bi-envelope"></i></a> </p>
+  </div>
+  <div class="quarto-title-meta-contents">
+        <p class="affiliation">
+            McGill University
+          </p>
+      </div>
+  </div>
+
+<div class="quarto-title-meta">
+
+      
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">October 18, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+<div>
+  <div class="abstract">
+    <div class="block-title">Abstract</div>
+    <p>Using Large Language Models (LLMs) to simulate human survey responses (“silicon sampling”) typically relies on generative text sampling or poorly calibrated token logits, often resulting in mode collapse, prompt brittleness, and distorted population variance. Recently, <em>decision models</em> (“System One” architectures) have emerged to map a context state and typed questions directly to calibrated probability distributions over answer options in a single prefill forward pass. In this paper, we investigate whether decision models—and LLMs adapted via constrained option-letter readouts—can accurately approximate empirical human response distributions across diverse demographic subpopulations. Training on respondent-level cross-national survey data from the International Social Survey Programme (ISSP 2015–2024; <span class="math inline">\(N = 458,753\)</span> respondents across 310 country-years) and evaluating out-of-distribution on US subpopulations from the General Social Survey (SubPOP; 2,926 subpopulation–question targets), we benchmark off-the-shelf and fine-tuned decision models against standard causal LMs. To rigorously evaluate ordinal (Likert) probability mass functions (PMFs) beyond point estimates and order-invariant Shannon entropy, we apply an exact analytical framework combining Constraint adherence, ordinal Consensus/Dissension, 1-Wasserstein (Earth Mover’s) distance, and Distributional ANOVA across demographic factors. We show where decision models succeed in capturing human marginal distributions and inter-group contrasts, and where both architectures systematically fail to reflect human behavioral heterogeneity.</p>
+  </div>
+</div>
+
+<div>
+  <div class="keywords">
+    <div class="block-title">Keywords</div>
+    <p>Decision Models, Human Behavior Simulation, Silicon Sampling, Ordinal Psychometrics, Distributional ANOVA</p>
+  </div>
+</div>
+
+</header>
+
+
+<section id="sec-intro" class="level1">
+<h1>Introduction</h1>
+<p>Simulating human attitudes, preferences, and survey responses with foundation models—often termed <em>silicon sampling</em> or <em>in silico</em> surveying—has attracted widespread interest across computational social science, economics, and behavioral research <span class="citation" data-cites="argyle2023out horton2023large brand2023using sarstedt2024using pmlr-v202-santurkar23a durmus2024towards">(<a href="#ref-argyle2023out" role="doc-biblioref">Argyle et al. 2023</a>; <a href="#ref-brand2023using" role="doc-biblioref">Brand et al. 2023</a>; <a href="#ref-durmus2024towards" role="doc-biblioref">Durmus et al. 2024</a>; <a href="#ref-horton2023large" role="doc-biblioref">Horton et al. 2023</a>; <a href="#ref-pmlr-v202-santurkar23a" role="doc-biblioref">Santurkar et al. 2023</a>; <a href="#ref-sarstedt2024using" role="doc-biblioref">Sarstedt et al. 2024</a>)</span>. However, using standard autoregressive Large Language Models (LLMs) as proxies for human populations faces three fundamental methodological bottlenecks:</p>
+<ol type="1">
+<li><strong>The Generative Sampling Bottleneck:</strong> Autoregressive text generation requires repeated Monte Carlo draws to estimate a subpopulation’s response distribution <span class="citation" data-cites="wadi2025monte">(<a href="#ref-wadi2025monte" role="doc-biblioref">Wadi and Fredette 2025</a>)</span>, introducing sampling noise, sensitivity to decoding temperature, and “fence-sitting” refusals <span class="citation" data-cites="bhatia2025value liu2025badworktimecrosscultural">(<a href="#ref-bhatia2025value" role="doc-biblioref"><span class="nocase">Bhatia et al.</span> 2025</a>; <a href="#ref-liu2025badworktimecrosscultural" role="doc-biblioref">Liu et al. 2025</a>)</span>.</li>
+<li><strong>The Calibration and Homogenization Bottleneck:</strong> Next-token probabilities in instruction-tuned LLMs are often miscalibrated (typically overconfident or collapsed onto a single mode) and frequently fail to reflect true inter-group variance across demographic attributes such as gender, political ideology, or religion <span class="citation" data-cites="pmlr-v202-santurkar23a deas-mckeown-2025-artificial">(<a href="#ref-deas-mckeown-2025-artificial" role="doc-biblioref">Deas and McKeown 2025</a>; <a href="#ref-pmlr-v202-santurkar23a" role="doc-biblioref">Santurkar et al. 2023</a>)</span>.</li>
+<li><strong>The Ordinal Evaluation Bottleneck:</strong> Standard NLP metrics (e.g., accuracy of the argmax choice, Shannon entropy <span class="citation" data-cites="farquhar2024detecting">(<a href="#ref-farquhar2024detecting" role="doc-biblioref">Farquhar et al. 2024</a>)</span>, or KL divergence alone) treat survey options as unordered categories. On Likert scales <span class="citation" data-cites="batterton2017likert">(<a href="#ref-batterton2017likert" role="doc-biblioref">Batterton and Hale 2017</a>)</span>, Shannon entropy cannot distinguish between a population polarized at the extremes (<em>Strongly Disagree</em> vs.&nbsp;<em>Strongly Agree</em>) and one concentrated around adjacent moderate options (<em>Neutral</em> vs.&nbsp;<em>Agree</em>) <span class="citation" data-cites="wadi2026every">(<a href="#ref-wadi2026every" role="doc-biblioref">Wadi, Ghodrat, et al. 2026</a>)</span>.</li>
+</ol>
+<p>Recently, a new class of architectures—<strong>decision models</strong> (or “System One” models, drawing on dual-process theory <span class="citation" data-cites="kahneman2011thinking evans2013dual">(<a href="#ref-evans2013dual" role="doc-biblioref">Evans and Stanovich 2013</a>; <a href="#ref-kahneman2011thinking" role="doc-biblioref">Kahneman 2011</a>)</span>, such as TypeSafe’s Jev, Intern-Decision, and Kev <span class="citation" data-cites="deusser2026evaluatingbenchmarkingmodeljev li2026llmasjevllmsjevstyledecision geuter2026releasinginnerjevsimple">(<a href="#ref-deusser2026evaluatingbenchmarkingmodeljev" role="doc-biblioref">Deußer et al. 2026</a>; <a href="#ref-geuter2026releasinginnerjevsimple" role="doc-biblioref">Geuter et al. 2026</a>; <a href="#ref-li2026llmasjevllmsjevstyledecision" role="doc-biblioref">Y. Li and Wagle 2026</a>)</span>)—has been introduced to replace text generation with structured, single-pass probabilistic decision-making. Given a state (e.g., a respondent persona) and a set of typed questions (<em>score</em>, <em>choice</em>, <em>noul</em>), a decision model executes a single prefill-only forward pass and outputs a probability mass function (PMF) over the supplied answer options via a dedicated pointer head or restricted option-token readout.</p>
+<p>Because decision models are explicitly architected to output calibrated distributions over discrete options without text generation, a natural question arises: <strong>Can decision models be used to sample human behavior?</strong> Specifically, how well do off-the-shelf and domain-adapted decision models—compared to standard LLMs <span class="citation" data-cites="qwen3.5 suh-etal-2025-language">(<a href="#ref-qwen3.5" role="doc-biblioref">Qwen Team 2026</a>; <a href="#ref-suh-etal-2025-language" role="doc-biblioref">Suh et al. 2025</a>)</span>—approximate empirical human response distributions and demographic contrasts?</p>
+<section id="contributions" class="level2">
+<h2 class="anchored" data-anchor-id="contributions">Contributions</h2>
+<ol type="1">
+<li><strong>Empirical Benchmark of Decision Models vs.&nbsp;LLMs on Human Populations:</strong> We evaluate pointer-head decision models (Kev-0.8B, Kev-4B, Kev-9B) and next-token letter-readout LLMs (Qwen3.5 <span class="citation" data-cites="qwen3.5">(<a href="#ref-qwen3.5" role="doc-biblioref">Qwen Team 2026</a>)</span>) across zero-shot, LoRA, and full fine-tuning regimes, training on 10 waves of respondent-level ISSP data (<span class="math inline">\(458,753\)</span> individuals) and testing out-of-distribution on US subpopulations from SubPOP <span class="citation" data-cites="suh-etal-2025-language">(<a href="#ref-suh-etal-2025-language" role="doc-biblioref">Suh et al. 2025</a>)</span>.</li>
+<li><strong>Exact Ordinal Psychometric Evaluation Framework:</strong> Building on our analytical factorial framework for ordinal distributions <span class="citation" data-cites="wadi2026every">(<a href="#ref-wadi2026every" role="doc-biblioref">Wadi, Ghodrat, et al. 2026</a>)</span>, we evaluate model-predicted PMFs against observed human subpopulation shares across four complementary dimensions: (i) <em>Constraint</em> (valid option mass <span class="citation" data-cites="cronbach1950further">(<a href="#ref-cronbach1950further" role="doc-biblioref">Cronbach 1950</a>)</span>), (ii) <em>Distributional Fidelity</em> (KL divergence, Jensen–Shannon divergence, and normalized 1-Wasserstein distance <span class="citation" data-cites="villani2008optimal">(<a href="#ref-villani2008optimal" role="doc-biblioref"><span class="nocase">Villani et al.</span> 2008</a>)</span>), (iii) <em>Ordinal Dispersion</em> (Consensus and Dissension <span class="citation" data-cites="tastle2007consensus">(<a href="#ref-tastle2007consensus" role="doc-biblioref">Tastle and Wierman 2007</a>)</span>), and (iv) <em>Construct &amp; Contrast Decomposition</em> (Distributional ANOVA isolating demographic main effects and inter-group gaps <span class="citation" data-cites="wadi2026interplay wadi2026every">(<a href="#ref-wadi2026interplay" role="doc-biblioref">Wadi, Legoux, et al. 2026</a>; <a href="#ref-wadi2026every" role="doc-biblioref">Wadi, Ghodrat, et al. 2026</a>)</span>).</li>
+<li><strong>Diagnosis of Failure Modes in Human Simulation:</strong> We characterize when models suffer from ordinal scale compression <span class="citation" data-cites="gao2026choicesfewerdecisionsordinalscale">(<a href="#ref-gao2026choicesfewerdecisionsordinalscale" role="doc-biblioref">Gao et al. 2026</a>)</span> or collapse to marginal national averages (ignoring persona conditioning) versus when fine-tuning on respondent-level attribute subsets recovers genuine human demographic divergences.</li>
+</ol>
+<hr>
+</section>
+</section>
+<section id="sec-related" class="level1">
+<h1>Background and Related Work</h1>
+<section id="simulating-human-populations-with-llms-silicon-sampling" class="level2">
+<h2 class="anchored" data-anchor-id="simulating-human-populations-with-llms-silicon-sampling">Simulating Human Populations with LLMs (“Silicon Sampling”)</h2>
+<ul>
+<li>Early work conditioning LLMs on demographic backstories to approximate human economic, consumer, and public opinion surveys <span class="citation" data-cites="argyle2023out horton2023large brand2023using sarstedt2024using goli2024frontiers pmlr-v202-santurkar23a durmus2024towards">(<a href="#ref-argyle2023out" role="doc-biblioref">Argyle et al. 2023</a>; <a href="#ref-brand2023using" role="doc-biblioref">Brand et al. 2023</a>; <a href="#ref-durmus2024towards" role="doc-biblioref">Durmus et al. 2024</a>; <a href="#ref-goli2024frontiers" role="doc-biblioref">Goli and Singh 2024</a>; <a href="#ref-horton2023large" role="doc-biblioref">Horton et al. 2023</a>; <a href="#ref-pmlr-v202-santurkar23a" role="doc-biblioref">Santurkar et al. 2023</a>; <a href="#ref-sarstedt2024using" role="doc-biblioref">Sarstedt et al. 2024</a>)</span>.</li>
+<li>Fine-tuning and distributional alignment on human survey distributions <span class="citation" data-cites="suh-etal-2025-language huang-etal-2026-distribution ku2026siliconsamplingcrosssurveytransfer">(<a href="#ref-huang-etal-2026-distribution" role="doc-biblioref">Huang et al. 2026</a>; <a href="#ref-ku2026siliconsamplingcrosssurveytransfer" role="doc-biblioref">Ku et al. 2026</a>; <a href="#ref-suh-etal-2025-language" role="doc-biblioref">Suh et al. 2025</a>)</span>.</li>
+<li>Cognitive and behavioral biases in LLMs compared to human decision-makers <span class="citation" data-cites="binz2023using hagendorff2023human macmillan2024ir cheung2025large echterhoff2024cognitive mina2025cognitive">(<a href="#ref-binz2023using" role="doc-biblioref">Binz and Schulz 2023</a>; <a href="#ref-cheung2025large" role="doc-biblioref">Cheung et al. 2025</a>; <a href="#ref-echterhoff2024cognitive" role="doc-biblioref">Echterhoff et al. 2024</a>; <a href="#ref-hagendorff2023human" role="doc-biblioref">Hagendorff et al. 2023</a>; <a href="#ref-macmillan2024ir" role="doc-biblioref">Macmillan-Scott and Musolesi 2024</a>; <a href="#ref-mina2025cognitive" role="doc-biblioref">Mina et al. 2025</a>)</span>.</li>
+<li>Known failure modes: demographic stereotyping, flattening of within-group variance, sensitivity to prompt formatting and option order <span class="citation" data-cites="shu-etal-2024-dont kabir-etal-2025-break koo2024benchmarking">(<a href="#ref-kabir-etal-2025-break" role="doc-biblioref">Kabir et al. 2025</a>; <a href="#ref-koo2024benchmarking" role="doc-biblioref">Koo et al. 2024</a>; <a href="#ref-shu-etal-2024-dont" role="doc-biblioref">Shu et al. 2024</a>)</span>, low ecological validity of generative outputs <span class="citation" data-cites="jung-etal-2026-psychometric deas-mckeown-2025-artificial">(<a href="#ref-deas-mckeown-2025-artificial" role="doc-biblioref">Deas and McKeown 2025</a>; <a href="#ref-jung-etal-2026-psychometric" role="doc-biblioref">Jung et al. 2026</a>)</span>, and poor alignment with non-WEIRD populations <span class="citation" data-cites="henrich2010weirdest zhao-etal-2024-worldvaluesbench">(<a href="#ref-henrich2010weirdest" role="doc-biblioref">Henrich et al. 2010</a>; <a href="#ref-zhao-etal-2024-worldvaluesbench" role="doc-biblioref">Zhao et al. 2024</a>)</span>.</li>
+</ul>
+</section>
+<section id="from-generative-sampling-to-exact-token-probabilities-and-decision-models" class="level2">
+<h2 class="anchored" data-anchor-id="from-generative-sampling-to-exact-token-probabilities-and-decision-models">From Generative Sampling to Exact Token Probabilities and Decision Models</h2>
+<ul>
+<li>Extracting exact next-token probabilities over answer options rather than sampling free text <span class="citation" data-cites="kuribayashi-etal-2024-psychometric bentegeac2025token kadavath2022language wadi2026every">(<a href="#ref-bentegeac2025token" role="doc-biblioref">Bentegeac et al. 2025</a>; <a href="#ref-kadavath2022language" role="doc-biblioref"><span class="nocase">Kadavath et al.</span> 2022</a>; <a href="#ref-kuribayashi-etal-2024-psychometric" role="doc-biblioref">Kuribayashi et al. 2024</a>; <a href="#ref-wadi2026every" role="doc-biblioref">Wadi, Ghodrat, et al. 2026</a>)</span>.</li>
+<li><strong>Decision Models (“System One”):</strong> Pretrained causal LM backbones <span class="citation" data-cites="qwen3.5">(<a href="#ref-qwen3.5" role="doc-biblioref">Qwen Team 2026</a>)</span> adapted to ingest a context state and typed questions (<em>noul</em>, <em>choice</em>, <em>score</em>) and produce probabilities in one prefill pass <span class="citation" data-cites="deusser2026evaluatingbenchmarkingmodeljev asseri2026calibratedwhompersonalanguage li2026kitescalingjevpopulation">(<a href="#ref-asseri2026calibratedwhompersonalanguage" role="doc-biblioref">Asseri and Asseri 2026</a>; <a href="#ref-deusser2026evaluatingbenchmarkingmodeljev" role="doc-biblioref">Deußer et al. 2026</a>; <a href="#ref-li2026kitescalingjevpopulation" role="doc-biblioref">H. Li 2026</a>)</span>:
+<ul>
+<li><em>Readout Style A (Restricted Next-Token Logits):</em> Mapping options to single-token symbols (“A”, “B”, <span class="math inline">\(\dots\)</span>) and taking a softmax over allowed option logits at the answer position (e.g., Intern-Decision, JevK5, and option-letter LLM readouts <span class="citation" data-cites="li2026llmasjevllmsjevstyledecision geuter2026releasinginnerjevsimple">(<a href="#ref-geuter2026releasinginnerjevsimple" role="doc-biblioref">Geuter et al. 2026</a>; <a href="#ref-li2026llmasjevllmsjevstyledecision" role="doc-biblioref">Y. Li and Wagle 2026</a>)</span>).</li>
+<li><em>Readout Style B (Pointer Head):</em> Scoring the hidden state at each option’s closing token against the question’s final token via learned linear projections (e.g., Kev), decoupling option scoring from vocabulary token priors.</li>
+</ul></li>
+<li><strong>Ordinal Scale Compression in Decision Models:</strong> Recent evidence that direct-decision models systematically underuse ordinal rating scales <span class="citation" data-cites="gao2026choicesfewerdecisionsordinalscale">(<a href="#ref-gao2026choicesfewerdecisionsordinalscale" role="doc-biblioref">Gao et al. 2026</a>)</span>, motivating rigorous ordinal distributional evaluation.</li>
+</ul>
+</section>
+<section id="evaluating-ordinal-probability-distributions" class="level2">
+<h2 class="anchored" data-anchor-id="evaluating-ordinal-probability-distributions">Evaluating Ordinal Probability Distributions</h2>
+<ul>
+<li>Why point estimates (expected values) and categorical metrics (Shannon entropy <span class="citation" data-cites="farquhar2024detecting">(<a href="#ref-farquhar2024detecting" role="doc-biblioref">Farquhar et al. 2024</a>)</span>, top-1 accuracy) fail on Likert scales <span class="citation" data-cites="batterton2017likert joshi2015likert wadi2026every">(<a href="#ref-batterton2017likert" role="doc-biblioref">Batterton and Hale 2017</a>; <a href="#ref-joshi2015likert" role="doc-biblioref">Joshi et al. 2015</a>; <a href="#ref-wadi2026every" role="doc-biblioref">Wadi, Ghodrat, et al. 2026</a>)</span>.</li>
+<li>Ordinal dispersion via Consensus and Dissension <span class="citation" data-cites="tastle2007consensus">(<a href="#ref-tastle2007consensus" role="doc-biblioref">Tastle and Wierman 2007</a>)</span> and optimal transport (1-Wasserstein distance <span class="citation" data-cites="villani2008optimal">(<a href="#ref-villani2008optimal" role="doc-biblioref"><span class="nocase">Villani et al.</span> 2008</a>)</span>) on discrete ordered supports.</li>
+</ul>
+<hr>
+</section>
+</section>
+<section id="sec-problem" class="level1">
+<h1>Problem Formulation and Architectures</h1>
+<section id="task-definition-subpopulation-distributional-prediction" class="level2">
+<h2 class="anchored" data-anchor-id="task-definition-subpopulation-distributional-prediction">Task Definition: Subpopulation Distributional Prediction</h2>
+<p>Let a human survey dataset consist of respondents indexed by <span class="math inline">\(i \in \{1, \dots, N\}\)</span>. Each respondent has a vector of demographic and background attributes <span class="math inline">\(\mathbf{a}_i\)</span> (e.g., country, sex, age, education, religion, political party) and answers to survey questions <span class="math inline">\(q \in \mathcal{Q}\)</span>. Each question <span class="math inline">\(q\)</span> has <span class="math inline">\(K_q\)</span> discrete response options <span class="math inline">\(\mathcal{Y}_q = \{y_1, \dots, y_{K_q}\}\)</span>. For ordinal Likert (<em>score</em>) items, <span class="math inline">\((\mathcal{Y}_q, \preceq)\)</span> is totally ordered from lowest to highest intensity.</p>
+<p>A <strong>persona</strong> (or experimental condition) <span class="math inline">\(\boldsymbol{\lambda}\)</span> specifies a subset of attribute–value pairs (e.g., “Country: United States; Political party: Republican”). Let <span class="math inline">\(\mathcal{I}(\boldsymbol{\lambda}, q)\)</span> denote the set of human respondents matching persona <span class="math inline">\(\boldsymbol{\lambda}\)</span> who provided a valid answer to question <span class="math inline">\(q\)</span>, with group size <span class="math inline">\(n_{\boldsymbol{\lambda}, q} = |\mathcal{I}(\boldsymbol{\lambda}, q)|\)</span>. The empirical human response distribution (target PMF) is: <span id="eq-human-pmf"><span class="math display">\[
+P_{\mathrm{human}}(Y_{q, \boldsymbol{\lambda}} = y_k) = \frac{1}{n_{\boldsymbol{\lambda}, q}} \sum_{i \in \mathcal{I}(\boldsymbol{\lambda}, q)} \mathbb{I}(y_{i, q} = y_k), \quad k \in \{1, \dots, K_q\}.
+\tag{1}\]</span></span></p>
+<p>Given the compiled state representation of <span class="math inline">\(\boldsymbol{\lambda}\)</span> and the question specification <span class="math inline">\(q\)</span>, a model <span class="math inline">\(M\)</span> outputs logits <span class="math inline">\(\mathbf{z}_{q, \boldsymbol{\lambda}} \in \mathbb{R}^{K_q}\)</span> in a single forward pass, defining the predicted PMF without temperature rescaling (<span class="math inline">\(T = 1\)</span>): <span id="eq-model-pmf"><span class="math display">\[
+P_{\mathrm{model}}(Y_{q, \boldsymbol{\lambda}} = y_k) = \operatorname{softmax}(\mathbf{z}_{q, \boldsymbol{\lambda}})_k = \frac{\exp(z_{q, \boldsymbol{\lambda}, k})}{\sum_{j=1}^{K_q} \exp(z_{q, \boldsymbol{\lambda}, j})}.
+\tag{2}\]</span></span></p>
+</section>
+<section id="model-architectures-compared" class="level2">
+<h2 class="anchored" data-anchor-id="model-architectures-compared">Model Architectures Compared</h2>
+<p>We compare two distinct mechanisms for turning a causal language model backbone into a distributional survey predictor:</p>
+<section id="pointer-head-decision-model-kev" class="level3">
+<h3 class="anchored" data-anchor-id="pointer-head-decision-model-kev">Pointer-Head Decision Model (Kev)</h3>
+<p>In the pointer-head architecture, the persona state and question options are compiled into a structured prompt. Rather than reading from the language modeling vocabulary head, a lightweight pointer head projects the final-layer hidden state at the question’s closing token (<span class="math inline">\(\mathbf{h}_{\mathrm{q}}\)</span>) and at each option <span class="math inline">\(k\)</span>’s closing token (<span class="math inline">\(\mathbf{h}_{\mathrm{opt}, k}\)</span>): <span id="eq-pointer-head"><span class="math display">\[
+z_{q, \boldsymbol{\lambda}, k} = \frac{(\mathbf{W}_q \mathbf{h}_{\mathrm{q}})^\top (\mathbf{W}_k \mathbf{h}_{\mathrm{opt}, k})}{\sqrt{d_{\mathrm{head}}}}.
+\tag{3}\]</span></span> Because options are scored via their contextualized span representations rather than fixed option-letter tokens, the pointer head natively handles arbitrary option counts and avoids token-id frequency biases.</p>
+</section>
+<section id="constrained-next-token-letter-llm" class="level3">
+<h3 class="anchored" data-anchor-id="constrained-next-token-letter-llm">Constrained Next-Token Letter LLM</h3>
+<p>In the standard LLM readout, the persona and question options (labelled “A.”, “B.”, <span class="math inline">\(\dots\)</span>) are formatted using the model’s native chat template with reasoning disabled, positioning the next predicted token immediately at the assistant’s response. Let <span class="math inline">\(\mathcal{V}\)</span> be the full vocabulary and <span class="math inline">\(\mathcal{V}_{\mathrm{val}} = \{t_1, \dots, t_{K_q}\} \subset \mathcal{V}\)</span> be the single-token identifiers corresponding to option letters “A” through the <span class="math inline">\(K_q\)</span>-th letter. The raw vocabulary logits at the final prompt position yield <span class="math inline">\(z_{q, \boldsymbol{\lambda}, k} = \ell_{\mathrm{LM}}(t_k)\)</span>.</p>
+</section>
+</section>
+<section id="fine-tuning-on-respondent-level-human-data" class="level2">
+<h2 class="anchored" data-anchor-id="fine-tuning-on-respondent-level-human-data">Fine-Tuning on Respondent-Level Human Data</h2>
+<p>To test whether discrepancies between models and humans stem from architectural limitations or a lack of behavioral calibration during pretraining, we fine-tune both model families on respondent-level survey data using soft cross-entropy loss against observed subpopulation shares: <span id="eq-soft-ce"><span class="math display">\[
+\mathcal{L}(\theta) = -\sum_{k=1}^{K_q} P_{\mathrm{human}}(Y_{q, \boldsymbol{\lambda}} = y_k) \log P_{\mathrm{model}}(Y_{q, \boldsymbol{\lambda}} = y_k; \theta),
+\tag{4}\]</span></span> which is equivalent to minimizing the Kullback–Leibler divergence <span class="math inline">\(D_{\mathrm{KL}}(P_{\mathrm{human}} \,\|\, P_{\mathrm{model}})\)</span> up to the constant human target entropy <span class="math inline">\(H(P_{\mathrm{human}})\)</span>.</p>
+<hr>
+</section>
+</section>
+<section id="sec-methodology" class="level1">
+<h1>Methodology: Analytical Evaluation of Ordinal Distributions</h1>
+<p>To evaluate how well <span class="math inline">\(P_{\mathrm{model}}\)</span> approximates <span class="math inline">\(P_{\mathrm{human}}\)</span>, standard metrics such as top-1 accuracy or expected value comparisons are insufficient: two distributions can share the exact same mean while representing opposite sociological realities (e.g., unimodal consensus vs.&nbsp;bimodal polarization). Building on our analytical factorial framework for ordinal scales, we evaluate models across four layers.</p>
+<section id="layer-1-constraint-adherence-valid-option-mass" class="level2">
+<h2 class="anchored" data-anchor-id="layer-1-constraint-adherence-valid-option-mass">Layer 1: Constraint Adherence (Valid Option Mass)</h2>
+<p>For standard LLMs projecting onto the full vocabulary <span class="math inline">\(\mathcal{V}\)</span>, the model may assign probability mass to invalid tokens (e.g., conversational preambles, refusals, or out-of-range symbols). We define the <strong>Constraint Failure Rate</strong> for prompt <span class="math inline">\(x_{q, \boldsymbol{\lambda}}\)</span> as: <span id="eq-failure-rate"><span class="math display">\[
+\mathrm{FailureRate}(x_{q, \boldsymbol{\lambda}}) = 1 - \sum_{t \in \mathcal{V}_{\mathrm{val}}} P_{\mathrm{raw}}(t \mid x_{q, \boldsymbol{\lambda}}).
+\tag{5}\]</span></span> Pointer-head decision models satisfy <span class="math inline">\(\mathrm{FailureRate} \equiv 0\)</span> by construction, whereas LLMs must learn or be prompted to concentrate mass on <span class="math inline">\(\mathcal{V}_{\mathrm{val}}\)</span> before renormalization.</p>
+</section>
+<section id="layer-2-distributional-fidelity-categorical-and-ordinal-distances" class="level2">
+<h2 class="anchored" data-anchor-id="layer-2-distributional-fidelity-categorical-and-ordinal-distances">Layer 2: Distributional Fidelity (Categorical and Ordinal Distances)</h2>
+<p>For all question types (<em>choice</em>, <em>score</em>, <em>noul</em>), we measure information-theoretic divergence in bits: <span id="eq-kl"><span class="math display">\[
+D_{\mathrm{KL}}(P_{\mathrm{human}} \,\|\, P_{\mathrm{model}}) = \sum_{k=1}^{K_q} P_{\mathrm{human}}(y_k) \log_2 \frac{P_{\mathrm{human}}(y_k)}{P_{\mathrm{model}}(y_k)},
+\tag{6}\]</span></span> along with the symmetric, bounded <strong>Jensen–Shannon Divergence</strong> <span class="math inline">\(D_{\mathrm{JS}}(P_{\mathrm{human}}, P_{\mathrm{model}}) \in [0, 1]\)</span>.</p>
+<p>However, <span class="math inline">\(D_{\mathrm{KL}}\)</span> and <span class="math inline">\(D_{\mathrm{JS}}\)</span> are permutation-invariant: they penalize a shift from <em>Strongly Agree</em> to <em>Agree</em> identically to a shift from <em>Strongly Agree</em> to <em>Strongly Disagree</em>. For ordinal Likert (<em>score</em>) items with ordered levels <span class="math inline">\(y_1 \prec \dots \prec y_{K_q}\)</span> mapped to <span class="math inline">\(\{0, 1, \dots, K_q - 1\}\)</span>, we compute the <strong>1-Wasserstein Distance (Earth Mover’s Distance)</strong> via the <span class="math inline">\(L_1\)</span> distance between cumulative distribution functions (CDFs) <span class="math inline">\(F_{\mathrm{human}}\)</span> and <span class="math inline">\(F_{\mathrm{model}}\)</span>, normalized by the scale range <span class="math inline">\(K_q - 1\)</span>: <span id="eq-wasserstein"><span class="math display">\[
+W_1(P_{\mathrm{human}}, P_{\mathrm{model}}) = \frac{1}{K_q - 1} \sum_{k=1}^{K_q - 1} \left| \sum_{j=1}^{k} P_{\mathrm{human}}(y_j) - \sum_{j=1}^{k} P_{\mathrm{model}}(y_j) \right| \in [0, 1].
+\tag{7}\]</span></span> <span class="math inline">\(W_1\)</span> measures the minimum fraction of the scale range across which probability mass must be transported to transform the model’s distribution into the empirical human distribution.</p>
+</section>
+<section id="layer-3-ordinal-consensus-and-dissension" class="level2">
+<h2 class="anchored" data-anchor-id="layer-3-ordinal-consensus-and-dissension">Layer 3: Ordinal Consensus and Dissension</h2>
+<p>To test whether models replicate the internal agreement or polarization of a human subpopulation (rather than merely matching the mean or artificially flattening/peaking the distribution), we apply the ordinal <strong>Consensus (<span class="math inline">\(\mathrm{Cns}\)</span>)</strong> metric <span class="citation" data-cites="tastle2007consensus">(<a href="#ref-tastle2007consensus" role="doc-biblioref">Tastle and Wierman 2007</a>)</span> and its multivariate generalization. For a single ordinal item with support <span class="math inline">\(\mathcal{Y} = \{1, \dots, K_q\}\)</span>, mean <span class="math inline">\(\mu = \sum_{k=1}^{K_q} k \, P(y_k)\)</span>, and scale width <span class="math inline">\(d_{\max} = K_q - 1\)</span>: <span id="eq-consensus-univariate"><span class="math display">\[
+\mathrm{Cns}(Y) = 1 + \sum_{k=1}^{K_q} P(y_k) \log_2 \left( 1 - \frac{|k - \mu|}{d_{\max}} \right), \quad \mathrm{Dsn}(Y) = 1 - \mathrm{Cns}(Y).
+\tag{8}\]</span></span> Across a multi-item battery <span class="math inline">\(\mathbf{Y}_{\boldsymbol{\lambda}} = (Y_{1, \boldsymbol{\lambda}}, \dots, Y_{M, \boldsymbol{\lambda}}) \in \mathcal{Y}^M\)</span> with mean vector <span class="math inline">\(\boldsymbol{\mu}\)</span> and maximum diagonal distance <span class="math inline">\(d_{\max} = \sqrt{M}(y_{\max} - y_{\min})\)</span>, multivariate Consensus is: <span id="eq-consensus-multivariate"><span class="math display">\[
+\mathrm{Cns}(\mathbf{Y}_{\boldsymbol{\lambda}}) = 1 + \sum_{\mathbf{y} \in \mathcal{Y}^M} P(\mathbf{y}) \log_2 \left( 1 - \frac{\|\mathbf{y} - \boldsymbol{\mu}\|_2}{d_{\max}} \right).
+\tag{9}\]</span></span> Comparing <span class="math inline">\(\Delta \mathrm{Cns} = \mathrm{Cns}(P_{\mathrm{model}}) - \mathrm{Cns}(P_{\mathrm{human}})\)</span> directly reveals whether a model is <strong>over-concentrated</strong> (<span class="math inline">\(\Delta \mathrm{Cns} &gt; 0\)</span>, mode collapse) or <strong>over-dispersed / polarized</strong> (<span class="math inline">\(\Delta \mathrm{Cns} &lt; 0\)</span>) relative to real human respondents.</p>
+</section>
+<section id="layer-4-construct-convolution-and-distributional-factorial-decomposition" class="level2">
+<h2 class="anchored" data-anchor-id="layer-4-construct-convolution-and-distributional-factorial-decomposition">Layer 4: Construct Convolution and Distributional Factorial Decomposition</h2>
+<p>When evaluating how demographic factors (e.g., <span class="math inline">\(\text{Party} \in \{\text{Democrat}, \text{Republican}\}\)</span>, <span class="math inline">\(\text{Sex} \in \{\text{Male}, \text{Female}\}\)</span>) shift attitudes across a single item or a convolved multi-item construct <span class="math inline">\(P_{S_{\boldsymbol{\lambda}}} = P_{Y_{1, \boldsymbol{\lambda}}} \circledast \cdots \circledast P_{Y_{M, \boldsymbol{\lambda}}}\)</span>, we apply <strong>Distributional ANOVA</strong> (distributional Hoeffding decomposition): <span id="eq-anova-identity"><span class="math display">\[
+\mathbb{E}[S_{\boldsymbol{\lambda}}] = \underbrace{\mathbb{E}[S_0]}_{\text{Grand Mean}} + \sum_{c \in \mathcal{C}} \underbrace{\mathbb{E}[E_c(\lambda_c)]}_{\text{Main Effects}} + \sum_{\substack{U \subseteq \mathcal{C} \\ |U| \ge 2}} \underbrace{\mathbb{E}[E_U(\boldsymbol{\lambda}_U)]}_{\text{Interactions}}.
+\tag{10}\]</span></span> For any two subpopulations <span class="math inline">\(\boldsymbol{\lambda}_a, \boldsymbol{\lambda}_b\)</span> differing on factor <span class="math inline">\(c\)</span> (e.g., Democrat vs.&nbsp;Republican), we compare the model’s predicted behavioral contrast against the true human contrast using:</p>
+<ul>
+<li><strong>Inter-Group Contrast Error (<span class="math inline">\(\Delta W_1\)</span>):</strong> How well the model reproduces the Wasserstein gap <span class="math inline">\(W_1(P_{\mathrm{human}}(\cdot \mid \boldsymbol{\lambda}_a), P_{\mathrm{human}}(\cdot \mid \boldsymbol{\lambda}_b))\)</span> between the two human groups.</li>
+<li><strong>Effect Summary Metrics:</strong> Mean Shift (<span class="math inline">\(\mathbb{E}[E]\)</span>), Predictive Dispersion (<span class="math inline">\(\mathrm{SD}(E)\)</span>), Discrete Probability of Direction (<span class="math inline">\(\mathrm{dPD} = \max(\mathbb{P}(E &gt; 0), \mathbb{P}(E &lt; 0))\)</span>), and Signal-to-Noise Ratio (<span class="math inline">\(\mathrm{SNR} = |\mathbb{E}[E]| / \mathrm{SD}(E)\)</span>).</li>
+</ul>
+<hr>
+</section>
+</section>
+<section id="sec-experiments" class="level1">
+<h1>Experimental Setup</h1>
+<section id="datasets" class="level2">
+<h2 class="anchored" data-anchor-id="datasets">Datasets</h2>
+<div id="tbl-datasets" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-datasets-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;1: Summary of human survey datasets used for training, calibration, and out-of-distribution evaluation.
+</figcaption>
+<div aria-describedby="tbl-datasets-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Split / Role</th>
+<th>Dataset</th>
+<th>Source &amp; Scope</th>
+<th>Scale</th>
+<th>Question Types</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Training</strong></td>
+<td>ISSP (2015–2024)</td>
+<td>10 thematic modules across 310 country-years</td>
+<td>458,753 respondents</td>
+<td><em>score</em>, <em>choice</em>, <em>noul</em></td>
+</tr>
+<tr class="even">
+<td><strong>Calibration</strong></td>
+<td>ISSP Held-Out Slots</td>
+<td>1% of (country, question) slots per year; country-level &amp; 1-attribute marginal groups</td>
+<td>204 slots</td>
+<td><em>score</em>, <em>choice</em>, <em>noul</em></td>
+</tr>
+<tr class="odd">
+<td><strong>Out-of-Distribution Test</strong></td>
+<td>SubPOP (GSS)</td>
+<td>US General Social Survey (GSS), 22 US demographic subpopulations</td>
+<td>133 questions; 2,926 targets</td>
+<td>64 <em>score</em> (Likert), 69 <em>choice</em></td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<section id="dynamic-respondent-level-sampling-issp" class="level3">
+<h3 class="anchored" data-anchor-id="dynamic-respondent-level-sampling-issp">Dynamic Respondent-Level Sampling (ISSP)</h3>
+<p>Rather than aggregating respondents into a fixed small set of demographic cells (which averages away attributes like religion, party, or income), our training sampler dynamically constructs persona–question records on the fly from respondent-level ISSP data:</p>
+<ol type="1">
+<li>Draw a (year, country, question) slot uniformly at random.</li>
+<li>Draw attribute count <span class="math inline">\(k \sim \mathrm{Uniform}(0, A_{\text{avail}})\)</span> from up to 16 background attributes (sex, age, education, religion, religious attendance, party vote, left–right party position, turnout, household income, region, urban/rural, marital status, main activity, union membership, subjective social status, ancestry).</li>
+<li>Sample an observed attribute combination with at least <span class="math inline">\(n_{\min}\)</span> matching respondents and compute their exact empirical answer shares as the training target.</li>
+</ol>
+</section>
+<section id="out-of-distribution-test-set-subpop-gss" class="level3">
+<h3 class="anchored" data-anchor-id="out-of-distribution-test-set-subpop-gss">Out-of-Distribution Test Set (SubPOP / GSS)</h3>
+<p>We evaluate all models on the SubPOP evaluation split <span class="citation" data-cites="suh-etal-2025-language">(<a href="#ref-suh-etal-2025-language" role="doc-biblioref">Suh et al. 2025</a>)</span>, comprising 133 US General Social Survey questions across 22 single-attribute US subpopulations (2,926 total target distributions; 64 ordinal Likert <em>score</em> items and 69 categorical <em>choice</em> items). No temperature scaling (<span class="math inline">\(T=1\)</span>) is applied at test time.</p>
+</section>
+</section>
+<section id="models-and-training-regimes" class="level2">
+<h2 class="anchored" data-anchor-id="models-and-training-regimes">Models and Training Regimes</h2>
+<p>We evaluate the following model configurations:</p>
+<ol type="1">
+<li><strong>Off-the-Shelf Decision Models:</strong> Kev-0.8B, Kev-4B, and Kev-9B (pretrained Qwen3.5 backbones with released LoRA adapters and pointer heads trained on general decision benchmarks).</li>
+<li><strong>Fine-Tuned Decision Models (Kev):</strong>
+<ul>
+<li><em>Adapter / LoRA Fine-Tuning:</em> Continuing the released adapter or training a fresh rank-<span class="math inline">\(R\)</span> LoRA adapter (<span class="math inline">\(R \in \{16, 64\}\)</span>) plus the pointer head on ISSP.</li>
+<li><em>Layer Unfreezing / Full Fine-Tuning:</em> Unfreezing the top-<span class="math inline">\(L\)</span> transformer layers or all backbone weights alongside the pointer head.</li>
+<li><em>Training Scope Ablations:</em> All 310 country-years vs.&nbsp;US-only respondents; persona complexity (<span class="math inline">\(k\)</span> attributes) and minimum group size (<span class="math inline">\(n_{\min} \in \{1, 10, 100\}\)</span>).</li>
+</ul></li>
+<li><strong>Constrained Next-Token LLMs:</strong> Qwen3.5-0.8B (and larger variants) evaluated zero-shot and fine-tuned end-to-end through its vocabulary head over option letters “A”–“L”.</li>
+</ol>
+<hr>
+</section>
+</section>
+<section id="sec-results" class="level1">
+<h1>Results</h1>
+<section id="overall-distributional-fidelity-on-human-subpopulations-rq1" class="level2">
+<h2 class="anchored" data-anchor-id="overall-distributional-fidelity-on-human-subpopulations-rq1">Overall Distributional Fidelity on Human Subpopulations (RQ1)</h2>
+<p><em>TODO: Populate <a href="#tbl-main-results" class="quarto-xref">Table&nbsp;2</a> with test-set metrics from the evaluation runs.</em></p>
+<div id="tbl-main-results" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-main-results-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;2: Out-of-distribution performance on SubPOP (2,926 subpopulation targets across 133 GSS questions). KL and JS divergences are in bits; <span class="math inline">\(W_1\)</span> is normalized by scale range (<span class="math inline">\(\%\)</span> of scale).
+</figcaption>
+<div aria-describedby="tbl-main-results-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table">
+<colgroup>
+<col style="width: 10%">
+<col style="width: 10%">
+<col style="width: 13%">
+<col style="width: 13%">
+<col style="width: 13%">
+<col style="width: 13%">
+<col style="width: 13%">
+<col style="width: 13%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Model</th>
+<th>Regime</th>
+<th style="text-align: right;">All: <span class="math inline">\(D_{\mathrm{KL}}\)</span> (<span class="math inline">\(\downarrow\)</span>)</th>
+<th style="text-align: right;">All: <span class="math inline">\(D_{\mathrm{JS}}\)</span> (<span class="math inline">\(\downarrow\)</span>)</th>
+<th style="text-align: right;">Choice: <span class="math inline">\(D_{\mathrm{KL}}\)</span> (<span class="math inline">\(\downarrow\)</span>)</th>
+<th style="text-align: right;">Score: <span class="math inline">\(D_{\mathrm{KL}}\)</span> (<span class="math inline">\(\downarrow\)</span>)</th>
+<th style="text-align: right;">Score: <span class="math inline">\(W_1\)</span> (<span class="math inline">\(\downarrow\)</span>)</th>
+<th style="text-align: right;"><span class="math inline">\(\Delta \mathrm{Cns}\)</span> (<span class="math inline">\(\to 0\)</span>)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Qwen3.5-0.8B (Letters)</td>
+<td>Zero-shot</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+</tr>
+<tr class="even">
+<td>Qwen3.5-0.8B (Letters)</td>
+<td>Fine-tuned (ISSP)</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+</tr>
+<tr class="odd">
+<td>Kev-0.8B (Pointer)</td>
+<td>Off-the-shelf</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+</tr>
+<tr class="even">
+<td>Kev-0.8B (Pointer)</td>
+<td>Fine-tuned (ISSP All)</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+</tr>
+<tr class="odd">
+<td>Kev-0.8B (Pointer)</td>
+<td>Fine-tuned (ISSP US)</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+</tr>
+<tr class="even">
+<td>Kev-4B (Pointer)</td>
+<td>Off-the-shelf / FT</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+</tr>
+<tr class="odd">
+<td>Kev-9B (Pointer)</td>
+<td>Off-the-shelf / FT</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+<td style="text-align: right;">–</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<section id="key-findings-rq1" class="level3">
+<h3 class="anchored" data-anchor-id="key-findings-rq1">Key Findings (RQ1)</h3>
+<ul>
+<li><strong>Off-the-shelf decision models vs.&nbsp;human distributions:</strong> Off-the-shelf decision models are trained for deterministic classification/routing and therefore produce overly sharp or miscalibrated distributions when asked to represent a heterogeneous human subpopulation.</li>
+<li><strong>Effect of behavioral fine-tuning:</strong> Fine-tuning with soft cross-entropy on empirical human response shares substantially reduces both <span class="math inline">\(D_{\mathrm{KL}}\)</span> and ordinal <span class="math inline">\(W_1\)</span> distance.</li>
+<li><strong>Pointer head vs.&nbsp;option-letter LM head:</strong> Comparison between the pointer-head model and the option-letter LLM on identical backbones and training recipes.</li>
+</ul>
+</section>
+</section>
+<section id="ordinal-consensus-vs.-human-dispersion-rq2" class="level2">
+<h2 class="anchored" data-anchor-id="ordinal-consensus-vs.-human-dispersion-rq2">Ordinal Consensus vs.&nbsp;Human Dispersion (RQ2)</h2>
+<ul>
+<li>Analysis of <span class="math inline">\(\mathrm{Cns}(P_{\mathrm{model}})\)</span> versus <span class="math inline">\(\mathrm{Cns}(P_{\mathrm{human}})\)</span> across the 64 Likert (<em>score</em>) questions in the SubPOP evaluation split.</li>
+<li>Do models capture bimodal human polarization on contentious sociopolitical issues, or do they regress toward unimodal center-peaked distributions?</li>
+</ul>
+</section>
+<section id="capturing-inter-group-demographic-contrasts-via-distributional-anova-rq3" class="level2">
+<h2 class="anchored" data-anchor-id="capturing-inter-group-demographic-contrasts-via-distributional-anova-rq3">Capturing Inter-Group Demographic Contrasts via Distributional ANOVA (RQ3)</h2>
+<ul>
+<li><strong>Persona sensitivity vs.&nbsp;persona blindness:</strong> Evaluating whether models differentiate between contrasting subpopulations (e.g., <em>Democrat</em> vs.&nbsp;<em>Republican</em>, <em>Male</em> vs.&nbsp;<em>Female</em>, <em>Atheist</em> vs.&nbsp;<em>Protestant</em>, <em>High</em> vs.&nbsp;<em>Low Income</em>) on questions with large human Wasserstein gaps.</li>
+<li><strong>Distributional ANOVA decomposition:</strong> Comparing main effect magnitudes (<span class="math inline">\(\mathbb{E}[E_c]\)</span>), directional consistency (<span class="math inline">\(\mathrm{dPD}\)</span>), and Signal-to-Noise Ratios (<span class="math inline">\(\mathrm{SNR}\)</span>) between model predictions and empirical GSS subpopulations.</li>
+<li>Why fixed coarse aggregation (e.g., grouping only by country <span class="math inline">\(\times\)</span> sex <span class="math inline">\(\times\)</span> age <span class="math inline">\(\times\)</span> education) causes persona insensitivity, and how respondent-level random-subset sampling restores demographic conditioning.</li>
+</ul>
+</section>
+<section id="ablation-studies-rq4" class="level2">
+<h2 class="anchored" data-anchor-id="ablation-studies-rq4">Ablation Studies (RQ4)</h2>
+<ol type="1">
+<li><strong>Model Scale and Adaptation Depth:</strong> 0.8B vs.&nbsp;4B vs.&nbsp;9B; LoRA rank vs.&nbsp;top-layer unfreezing vs.&nbsp;full fine-tuning.</li>
+<li><strong>Persona Construction and Group Size (<span class="math inline">\(n_{\min}\)</span>):</strong> Single-respondent one-hot targets (<span class="math inline">\(n=1\)</span>) vs.&nbsp;aggregated subpopulation shares (<span class="math inline">\(n_{\min} \in \{10, 100\}\)</span>); number of conditioning attributes.</li>
+<li><strong>Cross-National vs.&nbsp;Single-Country Training:</strong> Training on all 310 ISSP country-years vs.&nbsp;US-only ISSP modules when testing on US GSS subpopulations.</li>
+<li><strong>Prompt Augmentation vs.&nbsp;Canonical View:</strong> Impact of shuffling option orders and reversing Likert scales during training on test-time calibration.</li>
+</ol>
+<hr>
+</section>
+</section>
+<section id="sec-discussion" class="level1">
+<h1>Discussion</h1>
+<section id="when-do-decision-models-make-sense-for-sampling-human-behavior" class="level2">
+<h2 class="anchored" data-anchor-id="when-do-decision-models-make-sense-for-sampling-human-behavior">When Do Decision Models Make Sense for Sampling Human Behavior?</h2>
+<ul>
+<li><strong>Strengths:</strong> Fast, deterministic single-pass inference (<span class="math inline">\(O(1)\)</span> prefill per question); zero syntactic constraint failure (<span class="math inline">\(\mathrm{FailureRate} = 0\)</span> for pointer heads); natural representation of subpopulation marginals <span class="math inline">\(P(Y_q \mid \boldsymbol{\lambda})\)</span> when trained with distributional cross-entropy.</li>
+<li><strong>Fundamental Limitations:</strong>
+<ul>
+<li><em>Marginal vs.&nbsp;Joint Individual Simulation:</em> Because decision models evaluate questions conditionally independently given the state (<span class="math inline">\(P(\mathbf{Y} \mid \boldsymbol{\lambda}) = \prod_q P(Y_q \mid \boldsymbol{\lambda})\)</span>), sampling from output PMFs reproduces <em>subpopulation marginals</em> (and convolved construct sums under context isolation) but does not automatically capture <em>within-person cross-question covariance</em> unless conditioning attributes fully explain the correlation.</li>
+<li><em>Out-of-domain attitude generalization:</em> Limits of inferring novel cultural or temporal shifts solely from demographic labels.</li>
+</ul></li>
+</ul>
+</section>
+<section id="limitations-and-ethical-considerations" class="level2">
+<h2 class="anchored" data-anchor-id="limitations-and-ethical-considerations">Limitations and Ethical Considerations</h2>
+<ul>
+<li>Risks of over-relying on “silicon samples” to replace underrepresented human voices in policy or public health research.</li>
+<li>Survey coverage biases in training corpora.</li>
+</ul>
+<hr>
+</section>
+</section>
+<section id="sec-conclusion" class="level1">
+<h1>Conclusion</h1>
+<p>We investigated whether decision models and constrained next-token LLMs can serve as calibrated samplers of human behavior. By pairing respondent-level cross-national survey training (ISSP) with an exact ordinal evaluation framework—spanning Constraint adherence, 1-Wasserstein distance, ordinal Consensus, and Distributional ANOVA—we demonstrated both the promise of distributional fine-tuning and the structural limits of current models in replicating human behavioral diversity.</p>
+<hr>
+</section>
+
+
+<div id="quarto-appendix" class="default"><section id="sec-appendix" class="level1 appendix"><h2 class="anchored quarto-appendix-heading">Appendix</h2><div class="quarto-appendix-contents">
+
+<section id="sec-app-anova" class="level2">
+<h2 class="anchored" data-anchor-id="sec-app-anova">Proofs and Mathematical Details of Distributional ANOVA</h2>
+<p>Let <span class="math inline">\(\mathcal{D} = \prod_{c \in \mathcal{C}} \{1, \dots, \Lambda_c\}\)</span> denote the fully crossed factorial design space over demographic and model factors <span class="math inline">\(\mathcal{C}\)</span>. For a multi-item ordinal instrument <span class="math inline">\(\mathbf{Y}_{\boldsymbol{\lambda}} = (Y_{1, \boldsymbol{\lambda}}, \dots, Y_{M, \boldsymbol{\lambda}}) \in \mathcal{Y}^M\)</span>, context isolation between items ensures conditional independence given condition <span class="math inline">\(\boldsymbol{\lambda}\)</span> <span class="citation" data-cites="wadi2025monte wadi2026every">(<a href="#ref-wadi2026every" role="doc-biblioref">Wadi, Ghodrat, et al. 2026</a>; <a href="#ref-wadi2025monte" role="doc-biblioref">Wadi and Fredette 2025</a>)</span>: <span id="eq-app-cond-ind"><span class="math display">\[
+P(\mathbf{Y}_{\boldsymbol{\lambda}} = \mathbf{y} \mid \boldsymbol{\lambda}) = \prod_{m=1}^{M} P(Y_{m, \boldsymbol{\lambda}} = y_m \mid \boldsymbol{\lambda}),
+\tag{11}\]</span></span> and the exact PMF of the composite construct score <span class="math inline">\(S_{\boldsymbol{\lambda}} = \sum_{m=1}^{M} Y_{m, \boldsymbol{\lambda}}\)</span> is given by discrete convolution <span class="math inline">\(P_{S_{\boldsymbol{\lambda}}} = P_{Y_{1, \boldsymbol{\lambda}}} \circledast \cdots \circledast P_{Y_{M, \boldsymbol{\lambda}}}\)</span>. Under the distributional Hoeffding decomposition <span class="citation" data-cites="wadi2026every">(<a href="#ref-wadi2026every" role="doc-biblioref">Wadi, Ghodrat, et al. 2026</a>)</span>, the expectations of the isolated main-effect distributions <span class="math inline">\(E_c(\lambda_c)\)</span> and interaction-effect distributions <span class="math inline">\(E_U(\boldsymbol{\lambda}_U)\)</span> recover the classical fixed-effects ANOVA parameters.</p>
+</section>
+<section id="sec-app-data" class="level2">
+<h2 class="anchored" data-anchor-id="sec-app-data">Dataset Construction and ISSP Attribute Harmonization</h2>
+<ul>
+<li>Full list of 16 ISSP respondent attributes and country-specific variable mappings across 2015–2024.</li>
+<li>Overlap analysis between ISSP training items and SubPOP GSS items (29 overlapping vs.&nbsp;104 unseen questions).</li>
+</ul>
+
+</section>
+</div></section><section class="quarto-appendix-contents" role="doc-bibliography" id="quarto-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" data-line-spacing="2" role="list">
+<div id="ref-argyle2023out" class="csl-entry" role="listitem">
+Argyle, L. P., Busby, E. C., Fulda, N., Gubler, J. R., Rytting, C., &amp; Wingate, D. (2023). Out of one, many: Using language models to simulate human samples. <em>Political Analysis</em>, <em>31</em>(3), 337–351.
+</div>
+<div id="ref-asseri2026calibratedwhompersonalanguage" class="csl-entry" role="listitem">
+Asseri, B., &amp; Asseri, A. (2026). Calibrated to whom? Persona and language effects on cultural values in <span>JEV</span>. <a href="https://arxiv.org/abs/2609.36399">https://arxiv.org/abs/2609.36399</a>
+</div>
+<div id="ref-batterton2017likert" class="csl-entry" role="listitem">
+Batterton, K. A., &amp; Hale, K. N. (2017). The likert scale what it is and how to use it. <em>Phalanx</em>, <em>50</em>(2), 32–39.
+</div>
+<div id="ref-bentegeac2025token" class="csl-entry" role="listitem">
+Bentegeac, R., Le Guellec, B., Kuchcinski, G., Amouyel, P., &amp; Hamroun, A. (2025). Token probabilities to mitigate large language models overconfidence in answering medical questions: Quantitative study. <em>Journal of medical Internet research</em>, <em>27</em>, e64348.
+</div>
+<div id="ref-bhatia2025value" class="csl-entry" role="listitem">
+<span class="nocase">Bhatia, M., Nayak, S., Kamath, G., Mosbach, M., Shwartz, V., Reddy, S., et al.</span> (2025). Value drifts: Tracing value alignment during LLM post-training. <em>arXiv preprint arXiv:2510.26707</em>.
+</div>
+<div id="ref-binz2023using" class="csl-entry" role="listitem">
+Binz, M., &amp; Schulz, E. (2023). Using cognitive psychology to understand GPT-3. <em>Proceedings of the National Academy of Sciences</em>, <em>120</em>(6), e2218523120.
+</div>
+<div id="ref-brand2023using" class="csl-entry" role="listitem">
+Brand, J., Israeli, A., &amp; Ngwe, D. (2023). Using LLMs for market research. <em>Harvard business school marketing unit working paper</em>, (23-062).
+</div>
+<div id="ref-cheung2025large" class="csl-entry" role="listitem">
+Cheung, V., Maier, M., &amp; Lieder, F. (2025). Large language models show amplified cognitive biases in moral decision-making. <em>Proceedings of the National Academy of Sciences</em>, <em>122</em>(25), e2412015122.
+</div>
+<div id="ref-cronbach1950further" class="csl-entry" role="listitem">
+Cronbach, L. J. (1950). Further evidence on response sets and test design. <em>Educational and psychological measurement</em>, <em>10</em>(1), 3–31.
+</div>
+<div id="ref-deas-mckeown-2025-artificial" class="csl-entry" role="listitem">
+Deas, N., &amp; McKeown, K. (2025). Artificial impressions: Evaluating large language model behavior through the lens of trait impressions. In C. Christodoulopoulos, T. Chakraborty, C. Rose, &amp; V. Peng (Eds.), <em>Proceedings of the 2025 conference on empirical methods in natural language processing</em> (pp. 19418–19444). Suzhou, China: Association for Computational Linguistics. <a href="https://doi.org/10.18653/v1/2025.emnlp-main.981">https://doi.org/10.18653/v1/2025.emnlp-main.981</a>
+</div>
+<div id="ref-deusser2026evaluatingbenchmarkingmodeljev" class="csl-entry" role="listitem">
+Deußer, T., Sparrenberg, L., &amp; Sifa, R. (2026). Evaluating and benchmarking the system one model <span>Jev</span>. <a href="https://arxiv.org/abs/2609.37647">https://arxiv.org/abs/2609.37647</a>
+</div>
+<div id="ref-durmus2024towards" class="csl-entry" role="listitem">
+Durmus, E., Nguyen, K., Liao, T., Schiefer, N., Askell, A., Bakhtin, A., et al. (2024). Towards measuring the representation of subjective global opinions in language models. In <em>First conference on language modeling</em>. <a href="https://openreview.net/forum?id=zl16jLb91v">https://openreview.net/forum?id=zl16jLb91v</a>
+</div>
+<div id="ref-echterhoff2024cognitive" class="csl-entry" role="listitem">
+Echterhoff, J. M., Liu, Y., Alessa, A., McAuley, J., &amp; He, Z. (2024). Cognitive bias in decision-making with LLMs. In <em>Findings of the association for computational linguistics: EMNLP 2024</em> (pp. 12640–12653).
+</div>
+<div id="ref-evans2013dual" class="csl-entry" role="listitem">
+Evans, J. St. B. T., &amp; Stanovich, K. E. (2013). Dual-process theories of higher cognition: Advancing the debate. <em>Perspectives on Psychological Science</em>, <em>8</em>(3), 223–241. <a href="https://doi.org/10.1177/1745691612460685">https://doi.org/10.1177/1745691612460685</a>
+</div>
+<div id="ref-farquhar2024detecting" class="csl-entry" role="listitem">
+Farquhar, S., Kossen, J., Kuhn, L., &amp; Gal, Y. (2024). Detecting hallucinations in large language models using semantic entropy. <em>Nature</em>, <em>630</em>(8017), 625–630.
+</div>
+<div id="ref-gao2026choicesfewerdecisionsordinalscale" class="csl-entry" role="listitem">
+Gao, T., Li, J., Li, Z., Chang, Y., &amp; Wu, Y. (2026). More choices, fewer decisions: Ordinal-scale bias in <span>JEV</span>-like direct-decision models. <a href="https://arxiv.org/abs/2609.38827">https://arxiv.org/abs/2609.38827</a>
+</div>
+<div id="ref-geuter2026releasinginnerjevsimple" class="csl-entry" role="listitem">
+Geuter, J., Cheng, A., &amp; Alvarez-Melis, D. (2026). Releasing the inner <span>Jev</span>: A simple recipe for open decision models. <a href="https://arxiv.org/abs/2610.17205">https://arxiv.org/abs/2610.17205</a>
+</div>
+<div id="ref-goli2024frontiers" class="csl-entry" role="listitem">
+Goli, A., &amp; Singh, A. (2024). Frontiers: Can large language models capture human preferences? <em>Marketing Science</em>, <em>43</em>(4), 709–722.
+</div>
+<div id="ref-hagendorff2023human" class="csl-entry" role="listitem">
+Hagendorff, T., Fabi, S., &amp; Kosinski, M. (2023). Human-like intuitive behavior and reasoning biases emerged in large language models but disappeared in ChatGPT. <em>Nature Computational Science</em>, <em>3</em>(10), 833–838.
+</div>
+<div id="ref-henrich2010weirdest" class="csl-entry" role="listitem">
+Henrich, J., Heine, S. J., &amp; Norenzayan, A. (2010). The weirdest people in the world? <em>Behavioral and Brain Sciences</em>, <em>33</em>(2-3), 61–83.
+</div>
+<div id="ref-horton2023large" class="csl-entry" role="listitem">
+Horton, J. J., Filippas, A., &amp; Manning, B. S. (2023). <em>Large language models as simulated economic agents: What can we learn from homo silicus?</em> National Bureau of Economic Research.
+</div>
+<div id="ref-huang-etal-2026-distribution" class="csl-entry" role="listitem">
+Huang, J., Li, M., &amp; Shao, S. (2026). Distribution shift alignment helps <span>LLM</span>s simulate survey response distributions. In M. Liakata, V. P. Moreira, J. Zhang, &amp; D. Jurgens (Eds.), <em>Findings of the <span>A</span>ssociation for <span>C</span>omputational <span>L</span>inguistics: <span>ACL</span> 2026</em> (pp. 9395–9409). San Diego, California, United States: Association for Computational Linguistics. <a href="https://doi.org/10.18653/v1/2026.findings-acl.457">https://doi.org/10.18653/v1/2026.findings-acl.457</a>
+</div>
+<div id="ref-joshi2015likert" class="csl-entry" role="listitem">
+Joshi, A., Kale, S., Chandel, S., &amp; Pal, D. K. (2015). Likert scale: Explored and explained. <em>British journal of applied science &amp; technology</em>, <em>7</em>(4), 396.
+</div>
+<div id="ref-jung-etal-2026-psychometric" class="csl-entry" role="listitem">
+Jung, J., Lutz, M., Sen, I., &amp; Strohmaier, M. (2026). Do psychometric tests work for large language models? Evaluation of tests on sexism, racism, and morality. In V. Demberg, K. Inui, &amp; L. Marquez (Eds.), <em>Proceedings of the 19th conference of the <span>E</span>uropean chapter of the <span>A</span>ssociation for <span>C</span>omputational <span>L</span>inguistics (volume 1: Long papers)</em> (pp. 8143–8173). Rabat, Morocco: Association for Computational Linguistics. <a href="https://doi.org/10.18653/v1/2026.eacl-long.380">https://doi.org/10.18653/v1/2026.eacl-long.380</a>
+</div>
+<div id="ref-kabir-etal-2025-break" class="csl-entry" role="listitem">
+Kabir, M., Abrar, A., &amp; Ananiadou, S. (2025). Break the checkbox: Challenging closed-style evaluations of cultural alignment in <span>LLM</span>s. In C. Christodoulopoulos, T. Chakraborty, C. Rose, &amp; V. Peng (Eds.), <em>Proceedings of the 2025 conference on empirical methods in natural language processing</em> (pp. 24–51). Suzhou, China: Association for Computational Linguistics. <a href="https://doi.org/10.18653/v1/2025.emnlp-main.2">https://doi.org/10.18653/v1/2025.emnlp-main.2</a>
+</div>
+<div id="ref-kadavath2022language" class="csl-entry" role="listitem">
+<span class="nocase">Kadavath, S., Conerly, T., Askell, A., Henighan, T., Drain, D., Perez, E., et al.</span> (2022). Language models (mostly) know what they know. <em>arXiv preprint arXiv:2207.05221</em>.
+</div>
+<div id="ref-kahneman2011thinking" class="csl-entry" role="listitem">
+Kahneman, D. (2011). <em>Thinking, fast and slow</em>. macmillan.
+</div>
+<div id="ref-koo2024benchmarking" class="csl-entry" role="listitem">
+Koo, R., Lee, M., Raheja, V., Park, J. I., Kim, Z. M., &amp; Kang, D. (2024). Benchmarking cognitive biases in large language models as evaluators. In <em>Findings of the association for computational linguistics: ACL 2024</em> (pp. 517–545).
+</div>
+<div id="ref-ku2026siliconsamplingcrosssurveytransfer" class="csl-entry" role="listitem">
+Ku, C.-T., Hsu, C., Huang, P.-C., Liu, F. C., Cheng, I.-L., &amp; Kang, Y. (2026). Silicon sampling via cross-survey transfer. <a href="https://arxiv.org/abs/2607.03091">https://arxiv.org/abs/2607.03091</a>
+</div>
+<div id="ref-kuribayashi-etal-2024-psychometric" class="csl-entry" role="listitem">
+Kuribayashi, T., Oseki, Y., &amp; Baldwin, T. (2024). Psychometric predictive power of large language models. In K. Duh, H. Gomez, &amp; S. Bethard (Eds.), <em>Findings of the association for computational linguistics: NAACL 2024</em> (pp. 1983–2005). Mexico City, Mexico: Association for Computational Linguistics. <a href="https://doi.org/10.18653/v1/2024.findings-naacl.129">https://doi.org/10.18653/v1/2024.findings-naacl.129</a>
+</div>
+<div id="ref-li2026kitescalingjevpopulation" class="csl-entry" role="listitem">
+Li, H. (2026). <span>KITE</span>: Scaling <span>Jev</span> population experiments with sparse flagship calibration. <a href="https://arxiv.org/abs/2609.27535">https://arxiv.org/abs/2609.27535</a>
+</div>
+<div id="ref-li2026llmasjevllmsjevstyledecision" class="csl-entry" role="listitem">
+Li, Y., &amp; Wagle, J. (2026). <span class="nocase">LLM-as-Jev</span>: <span>LLMs</span> are already <span>Jev</span>-style decision models – when and how to fine-tune them. <a href="https://arxiv.org/abs/2610.02076">https://arxiv.org/abs/2610.02076</a>
+</div>
+<div id="ref-liu2025badworktimecrosscultural" class="csl-entry" role="listitem">
+Liu, Z. J., Samir, F., Bhatia, M., Nelson, L. K., &amp; Shwartz, V. (2025). Is it bad to work all the time? Cross-cultural evaluation of social norm biases in GPT-4. <a href="https://arxiv.org/abs/2505.18322">https://arxiv.org/abs/2505.18322</a>
+</div>
+<div id="ref-macmillan2024ir" class="csl-entry" role="listitem">
+Macmillan-Scott, O., &amp; Musolesi, M. (2024). (Ir) rationality and cognitive biases in large language models. <em>Royal Society open science</em>, <em>11</em>(6).
+</div>
+<div id="ref-mina2025cognitive" class="csl-entry" role="listitem">
+Mina, M., Ruiz-Fernández, V., Falcão, J., Vasquez-Reina, L., &amp; Gonzalez-Agirre, A. (2025). Cognitive biases, task complexity, and result interpretability in large language models. In <em>Proceedings of the 31st international conference on computational linguistics</em> (pp. 1767–1784).
+</div>
+<div id="ref-qwen3.5" class="csl-entry" role="listitem">
+Qwen Team. (2026). <span>Qwen3.5</span>: Towards native multimodal agents. <a href="https://qwen.ai/blog?id=qwen3.5">https://qwen.ai/blog?id=qwen3.5</a>
+</div>
+<div id="ref-pmlr-v202-santurkar23a" class="csl-entry" role="listitem">
+Santurkar, S., Durmus, E., Ladhak, F., Lee, C., Liang, P., &amp; Hashimoto, T. (2023). Whose opinions do language models reflect? In A. Krause, E. Brunskill, K. Cho, B. Engelhardt, S. Sabato, &amp; J. Scarlett (Eds.), <em>Proceedings of the 40th international conference on machine learning</em> (Vol. 202, pp. 29971–30004). PMLR. <a href="https://proceedings.mlr.press/v202/santurkar23a.html">https://proceedings.mlr.press/v202/santurkar23a.html</a>
+</div>
+<div id="ref-sarstedt2024using" class="csl-entry" role="listitem">
+Sarstedt, M., Adler, S. J., Rau, L., &amp; Schmitt, B. (2024). Using large language models to generate silicon samples in consumer and marketing research: Challenges, opportunities, and guidelines. <em>Psychology &amp; Marketing</em>, <em>41</em>(6), 1254–1270.
+</div>
+<div id="ref-shu-etal-2024-dont" class="csl-entry" role="listitem">
+Shu, B., Zhang, L., Choi, M., Dunagan, L., Logeswaran, L., Lee, M., et al. (2024). You don<span>’</span>t need a personality test to know these models are unreliable: Assessing the reliability of large language models on psychometric instruments. In K. Duh, H. Gomez, &amp; S. Bethard (Eds.), <em>Proceedings of the 2024 conference of the north american chapter of the association for computational linguistics: Human language technologies (volume 1: Long papers)</em> (pp. 5263–5281). Mexico City, Mexico: Association for Computational Linguistics. <a href="https://doi.org/10.18653/v1/2024.naacl-long.295">https://doi.org/10.18653/v1/2024.naacl-long.295</a>
+</div>
+<div id="ref-suh-etal-2025-language" class="csl-entry" role="listitem">
+Suh, J., Jahanparast, E., Moon, S., Kang, M., &amp; Chang, S. (2025). Language model fine-tuning on scaled survey data for predicting distributions of public opinions. In W. Che, J. Nabende, E. Shutova, &amp; M. T. Pilehvar (Eds.), <em>Proceedings of the 63rd annual meeting of the <span>A</span>ssociation for <span>C</span>omputational <span>L</span>inguistics (volume 1: Long papers)</em> (pp. 21147–21170). Vienna, Austria: Association for Computational Linguistics. <a href="https://doi.org/10.18653/v1/2025.acl-long.1028">https://doi.org/10.18653/v1/2025.acl-long.1028</a>
+</div>
+<div id="ref-tastle2007consensus" class="csl-entry" role="listitem">
+Tastle, W. J., &amp; Wierman, M. J. (2007). Consensus and dissention: A measure of ordinal dispersion. <em>International Journal of Approximate Reasoning</em>, <em>45</em>(3), 531–545.
+</div>
+<div id="ref-villani2008optimal" class="csl-entry" role="listitem">
+<span class="nocase">Villani, C. et al.</span> (2008). <em>Optimal transport: Old and new</em> (Vol. 338). Springer.
+</div>
+<div id="ref-wadi2025monte" class="csl-entry" role="listitem">
+Wadi, D., &amp; Fredette, M. (2025). A monte-carlo sampling framework for reliable evaluation of large language models using behavioral analysis. <em>Findings of the Association for Computational Linguistics: EMNLP 2025</em>, 9414–9432.
+</div>
+<div id="ref-wadi2026every" class="csl-entry" role="listitem">
+Wadi, D., Ghodrat, M., &amp; Philp, M. (2026). Every token counts: Exact likert-scale distributions for measuring LLM attitudes and biases. <em>arXiv preprint arXiv:2608.10503</em>.
+</div>
+<div id="ref-wadi2026interplay" class="csl-entry" role="listitem">
+Wadi, D., Legoux, R., Fredette, M., &amp; Sénécal, S. (2026). The interplay of altruism and financial incentives: Maximizing online reviews through effective messaging. <em>Journal of Electronic Commerce Research</em>, <em>27</em>(2).
+</div>
+<div id="ref-zhao-etal-2024-worldvaluesbench" class="csl-entry" role="listitem">
+Zhao, W., Mondal, D., Tandon, N., Dillion, D., Gray, K., &amp; Gu, Y. (2024). <span>W</span>orld<span>V</span>alues<span>B</span>ench: A large-scale benchmark dataset for multi-cultural value awareness of language models. In N. Calzolari, M.-Y. Kan, V. Hoste, A. Lenci, S. Sakti, &amp; N. Xue (Eds.), <em>Proceedings of the 2024 joint international conference on computational linguistics, language resources and evaluation (LREC-COLING 2024)</em> (pp. 17696–17706). Torino, Italia: ELRA; ICCL. <a href="https://aclanthology.org/2024.lrec-main.1539/">https://aclanthology.org/2024.lrec-main.1539/</a>
+</div>
+</div></section></div></main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

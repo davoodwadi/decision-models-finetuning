@@ -9,6 +9,7 @@ venv/
 .ipynb_checkpoints/
 .env
 .DS_Store
+*_files
 
 # Model weights & checkpoints
 *.pt

@@ -1,0 +1,201 @@
+\section{Methodology}
+\label{sec:methods}
+
+% Method Graph
+\begin{figure*}[t]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  font=\scriptsize,
+  box/.style={rounded corners, draw, thick, align=left, inner sep=6pt, text width=7.45cm},
+  layer/.style={rounded corners, draw, thick, align=left, inner sep=6pt, text width=4.5cm},
+  arrow/.style={-Latex, thick}
+]
+
+% --- Design ---
+\node[box] (design) {%
+\textbf{Experiment Design}\\
+Fully crossed factorial design\\
+Factors: \textit{Model} $\times$ \textit{Target Country}\\
+Instrument: $K$ ordinal items (Likert 1--7)\\
+Fixed system prompt + item templates
+};
+
+% --- Data collection ---
+\node[box, below=0.45cm of design] (data) {%
+\textbf{Data Collection}\\
+Query each item under each condition\\
+Record next-token PMF $P_{\mathrm{raw}}(t\mid x)$\\
+Define valid token set $\mathcal{V}_{\mathrm{val}}$\\
+};
+
+% --- Analysis layers (separated) ---
+
+\node[layer, below=0.65cm of data] (consensus) {%
+\textbf{Consensus}\\
+Map valid tokens to ordinal scale $\mathcal{Y}$\\
+Compute multivariate Consensus/Dissension\\
+% $\mathrm{Cns}(\mathbf{Y}_{\boldsymbol{\lambda}})=1+\sum_{\mathbf{y}\in\mathcal{Y}^K}P(\mathbf{y})\log_2\!\left(1-\frac{\|\mathbf{y}-\boldsymbol{\mu}\|_2}{d_{\max}}\right)$
+};
+
+\node[layer, left=0.35cm of consensus] (constraint) {%
+\textbf{Constraint}\\
+FailureRate $=1-\sum_{t\in\mathcal{V}_{\mathrm{val}}}P_{\mathrm{raw}}(t\mid x)$\\
+Renormalize $P(t\mid x,\,t\in\mathcal{V}_{\mathrm{val}})$
+};
+
+
+\node[layer, right=0.35cm of consensus] (construct) {%
+\textbf{Construct}\\
+Convolve item PMFs $\Rightarrow$ composite score $S$\\
+Compute main/interaction effect distributions\\
+Summaries: $\mathbb{E}$, dPD, SNR
+};
+
+\node[draw, dashed, rounded corners, inner sep=2pt,
+      fit=(constraint)(consensus)(construct)] (analysisbox) {};
+
+
+% --- Arrows ---
+\draw[arrow] (design) -- (data);
+\draw[arrow] (data) -- (analysisbox);
+\draw[arrow] (constraint) -- (consensus);
+\draw[arrow] (consensus) -- (construct);
+
+
+
+\end{tikzpicture}%
+}
+\caption{High-level exact-PMF framework: Fully crossed experiment design $\rightarrow$ token probability data collection $\rightarrow$ three-layer analysis (Constraint, Consensus, Construct).}
+\label{fig:framework-overview}
+\end{figure*}
+
+Figure \ref{fig:framework-overview} illustrates our framework. 
+We formulate LLM evaluation as a fully crossed factorial experiment to resolve the design gap. 
+Within this design, we treat the LLM as a generator of exact Probability Mass Functions (PMFs) to resolve the measurement gap and bypass generative sampling noise. 
+Finally, we process exact PMFs through an analytical pipeline, which provides the foundation necessary for evaluating ordinal psychometric data and isolating causal behavioral shifts.
+
+
+
+\subsection{Experiment design}
+
+Rather than probing models with large datasets of ad-hoc prompt variations, we formalize LLM behavioral evaluation as a fully crossed fixed-effects experiment. 
+We define our experiment through a set of independent factors (e.g., the \textsc{Model} being tested, and the \textsc{Target Country} in the prompt; see Fig. \ref{fig:prompt-setup}).  
+Each factor contains distinct levels (e.g., four specific countries). 
+A single experimental condition, denoted as $\boldsymbol{\lambda}$, represents one specific combination of these factors (e.g., \textsc{Model} = Llama-3.3, \textsc{Target} = Canada). 
+Testing every possible combination of $\boldsymbol{\lambda}$ forms our complete experimental design space $\mathcal{D}$. 
+By evaluating across the entirety of $\mathcal{D}$, we can mathematically isolate the effect of one variable while controlling for the others.
+Under each condition $\boldsymbol{\lambda}$, the model evaluates a psychometric instrument consisting of $K$ individual questions (items). 
+For each item, the model's response is bounded to an ordinal Likert scale $\mathcal{Y}$ ranging from $y_{\min}$ to $y_{\max}$ (e.g., digits 1 through 7). 
+
+A central property of this design is context isolation. 
+The model's internal state is effectively reset between items. 
+This is an advantage that LLM behavioral analysis has over human behavioral analysis. 
+With humans, there is a within-subjects carry-over effect that contaminates subsequent responses of human participants, whereas statelessness of LLMs does not suffer from this limitation.
+For a fixed experimental condition $\boldsymbol{\lambda}$, the predicted response $Y_{k,\boldsymbol{\lambda}}$ for item $k$ depends solely on the specific isolated prompt $x_{k,\boldsymbol{\lambda}}$. 
+Following \citet{wadi2025a}, we treat the items as conditionally independent given $\boldsymbol{\lambda}$, meaning the joint probability mass function over the scale factorizes exactly: $P(\mathbf{Y}_{\boldsymbol{\lambda}} = \mathbf{y} \mid \boldsymbol{\lambda}) = \prod_{k=1}^{K} P(Y_{k,\boldsymbol{\lambda}} = y_k \mid \boldsymbol{\lambda})$.
+
+
+\subsection{Constraint}
+
+Before analyzing behavior, we must ensure the model adheres to the psychometric instrument. LLMs generate predictions over a large vocabulary ($\mathcal{V}$), but a Likert scale only permits specific ordinal tokens (e.g., digits 1 through 7). 
+
+For a given prompt $x$, let $P_{\mathrm{raw}}(t \mid x)$ denote the model's next-token probability mass function over the full vocabulary $\mathcal{V}$, where $t \in \mathcal{V}$ is a candidate token. 
+Let $\mathcal{V}_{\mathrm{val}}\subset\mathcal{V}$ be the valid token set with a surjective mapping $\phi:\mathcal{V}_{\mathrm{val}}\to\mathcal{Y}$ associating valid tokens to ordinal values. 
+To account for tokenizer idiosyncrasies (e.g., BPE leading spaces like \texttt{" 7"} versus \texttt{"7"}), $\mathcal{V}_{\mathrm{val}}$ includes all valid digit surface forms, but strictly excludes semantic equivalents (e.g., \texttt{"seven"}) to penalize syntactic constraint failures.
+We define the model's failure rate as $1-\sum_{t\in\mathcal{V}_{\mathrm{val}}}P_{\mathrm{raw}}(t\mid x_{k,\boldsymbol{\lambda}})$, 
+which quantifies how often the model fence-sits (i.e., refuses to answer) or hallucinates out of the constraint. 
+For all subsequent behavioral analyses, we utilize the renormalized conditional distribution on $\mathcal{V}_{\mathrm{val}}$. Because multiple tokens can map to the same digit, we sum over the pre-image to yield an exact ordinal item PMF: 
+$P(Y_{k,\boldsymbol{\lambda}}=y \mid \boldsymbol{\lambda})=\sum_{t \in \phi^{-1}(y)} P\!\left(t \mid x_{k,\boldsymbol{\lambda}},\,t\in\mathcal{V}_{\mathrm{val}}\right)$.
+This follows the convention in human behavioral experiments,
+which excludes human responses that do not adhere to instructions \citep{cronbach1950further}.
+
+
+ 
+\subsection{Consensus}
+
+Quantifying the expected value (mean) of a Likert response is necessary but insufficient, as identical means can mask fundamentally different behavioral regimes (e.g., polarizing mass on \{1, 7\} vs. stable mass on \{4, 4\}). 
+
+Standard uncertainty metrics like Shannon entropy over valid tokens fail here because they are invariant to ordinal distance. 
+To address this, we compute a \emph{multivariate} generalization of Consensus \citep{tastle2007consensus} directly on the model's PMF. This metric explicitly scales probabilities by their distance from the mean. Let $\boldsymbol{\mu}$ be the itemwise mean vector and $d_{\max}=\sqrt{K}\,(y_{\max}-y_{\min})$ be the maximum diagonal distance on the Likert scale. The multivariate Consensus ($\mathrm{Cns}$) is defined as\footnote{Dissension ($\mathrm{Dsn}$) is defined as $1 - \mathrm{Cns}$}:
+
+{\small
+\begin{equation}
+\label{eq:consensus-multivariate}
+\begin{aligned}
+&\mathrm{Cns}(\mathbf{Y}_{\boldsymbol{\lambda}})
+=
+1+\sum_{\mathbf{y}\in\mathcal{Y}^K}
+P(\mathbf{y})
+\log_2\!\left(1-\frac{\|\mathbf{y}-\boldsymbol{\mu}\|_2}{d_{\max}}\right).
+\end{aligned}
+\end{equation}
+}
+Unlike entropy, this metric correctly quantifies the model's internal consistency. 
+It severely penalizes polarization at the extremes and rewards concentrated probability mass, allowing us to accurately measure the model's opinion certainty (Table~\ref{tab:consensus-dissension-visual}).
+It also resolves the issue of collapsing PMFs from the convolution operator (Fig.~\ref{fig:consensus-original-issue}).
+
+
+\subsection{Construct}
+
+A common approach to analyzing LLM behavior involves comparing descriptive statistics, such as average response scores across different prompt manipulations. 
+While this practice is highly informative for observing general trends, analyzing raw point estimates inherently obscures information about the underlying variance. 
+Consequently, it becomes difficult to ascertain whether the observed difference between groups is statistically significant, or whether the magnitude of the difference (effect size) is meaningful in practice.
+Moreover, a key component of controlled experiments is understanding interactions between factors. 
+Two factors can interact to amplify or decrease their individual effects. 
+% \citep{wadi2026interplay}.
+
+To overcome these limitations, we adapt the Analysis of Variance (ANOVA) framework for LLMs. 
+A statistically grounded factorial framework allows us to systematically answer three critical questions: (1) whether the behavioral shift between conditions is statistically significant, (2) isolated from confounding variables, what the exact effect size and magnitude of that shift is, and (3) how experimental factors interact to jointly shape the model's behavior.
+
+
+% \paragraph{Convolving the Latent Construct.}
+In standard psychometrics, a latent trait, such as ethnocentrism, cannot be reliably measured by a single question. 
+Rather, it is quantified using an instrument containing a total of $K$ individual Likert items. 
+Let $Y_{k,\boldsymbol{\lambda}}$ represent the model's ordinal response to item $k$ under a specific experimental condition $\boldsymbol{\lambda}$ (e.g., a specific target country and LLM). 
+The composite construct score $S_{\boldsymbol{\lambda}}$ is defined as the sum of these individual item responses ($S_{\boldsymbol{\lambda}} = \sum_{k=1}^K Y_{k,\boldsymbol{\lambda}}$). 
+Because our framework operates on exact probability distributions rather than single scalar outputs, we evaluate the full probability mass function (PMF) of this composite score.
+ 
+Given the conditional independence of items (Sec. \ref{sec:independence-assumption}), according to standard probability theory, the distribution of a sum of independent variables is computed via discrete convolution (denoted by the operator $\circledast$). Therefore, the exact probability distribution of the total construct score $P_{S_{\boldsymbol{\lambda}}}$ is derived by convolving the individual item PMFs: $P_{S_{\boldsymbol{\lambda}}}=P_{Y_{1,\boldsymbol{\lambda}}}\circledast\cdots\circledast P_{Y_{K,\boldsymbol{\lambda}}}$.
+Unlike standard evaluation methods that compute descriptive statistics over a handful of noisy, sampled text generations, 
+the convolution approach analytically derives the exact probability distribution of the final construct score ($P_{S_{\boldsymbol{\lambda}}}$). 
+This propagates all aleatoric uncertainty from the token level up to the final construct level.
+ 
+
+% \paragraph{Distributional Factorial Decomposition.}
+Next, we need to systematically decompose LLM responses ($P_{S_{\boldsymbol{\lambda}}}$) into distinct, interpretable components. 
+Rather than evaluating each experimental condition ($\boldsymbol{\lambda}$) as a whole, 
+we decompose the model's overall construct distribution into three parts: 
+the model's baseline behavior, 
+the isolated Main Effects (e.g., how much changing the Target Country specifically shifts the behavior), 
+and the Interaction Effects (e.g., how the Target Country interacts with a specific LLM). 
+We formalize this using a distributional Hoeffding decomposition. 
+Let $S_0$ represent the grand-mixture baseline across all conditions, $E_c(\lambda_c)$ represent the Main Effect distribution for factor $c$ at level $\lambda_c$, and $E_U(\boldsymbol{\lambda}_U)$ represent the higher-order Interaction Effect distribution for a subset of factors $U$. 
+This decomposition satisfies the following identity in expectation:
+
+\begin{equation}
+\label{eq:anova-identity-main}
+\small
+\mathbb{E}[S_{\boldsymbol{\lambda}}] = \underbrace{\mathbb{E}[S_0]}_{\text{Grand Mean}} + \sum_{c \in \mathcal{C}} \underbrace{\mathbb{E}[E_c(\lambda_c)]}_{\text{Main Effects}} + \sum_{\substack{U \subseteq \mathcal{C} \\ |U| \ge 2}} \underbrace{\mathbb{E}[E_U(\boldsymbol{\lambda}_U)]}_{\text{Interactions}},
+\end{equation}
+
+This exact-PMF provides the guarantee that the expected values of the derived probability distributions ($\mathbb{E}[E_c(\lambda_c)]$ and $\mathbb{E}[E_U(\boldsymbol{\lambda}_U)]$) match the proven fixed-effects parameters calculated in traditional human ANOVA experiments. 
+We formalize this alignment with the following theorem (Proof in App. \ref{cor:main-effect-anova}):
+\begin{theorem}
+\label{thm:anova-consistency-main}
+For any fully crossed experimental design, the expectations of the isolated effect distributions ($E_c$, $E_U$) recover the classical unique Hoeffding decomposition.
+\end{theorem}
+In practical terms, Theorem \ref{thm:anova-consistency-main} guarantees that when we measure a higher-order behavior, such as a "country-of-origin bias" (an interaction effect), we have mathematically stripped away the model's baseline ethnocentrism (main effect). 
+This ensures researchers do not double-count biases, achieving the exact same control over confounding variables used by human behavioral scientists.
+
+Finally, to translate these effect distributions into interpretable behavioral insights, we extract the following summary metrics for our case study, reported for any given effect distribution $E$:
+\begin{itemize}
+    \item \textbf{Mean Shift ($\mathbb{E}[E]$):} The expected value of the distribution, representing the actual magnitude (effect size) of the isolated behavioral effect.
+    \item \textbf{Predictive Dispersion ($\mathrm{SD}(E)$):} The standard deviation of the effect, capturing the model's aleatoric uncertainty regarding the shift.
+    \item \textbf{Discrete Probability of Direction ($\mathrm{dPD}$):} Defined as $\max(\mathbb{P}(E > 0), \mathbb{P}(E < 0))$, this metric quantifies the extent to which the behavioral shift exhibits a consistent directionality (i.e., strictly positive or strictly negative), independent of the effect's magnitude (App. \ref{app:dpd}).
+    \item \textbf{Signal-to-Noise Ratio ($\mathrm{SNR}$):} Calculated as $|\mathbb{E}[E]|/\mathrm{SD}(E)$, SNR quantifies the statistical reliability of the effect, indicating whether the observed behavioral shift is a robust, distinct phenomenon or merely an artifact of the model's internal uncertainty.
+\end{itemize}
+With these metrics, we now apply this methodology to our main sociotechnical concern. 
+We test whether LLMs exhibit systematically biased ethnocentric behaviors based on their country of origin.
+See App. \ref{app:metric-interpretation} for details of each metric.
+

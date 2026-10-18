@@ -1,0 +1,43 @@
+\section{Related work}
+\label{related-work}
+
+% \subsection{Behavioral and psychometric evaluation of LLMs}
+The NLP community has adopted frameworks from the behavioral sciences to study LLMs' latent traits \citep{ward-etal-2024-evaluating, perez-etal-2023-discovering,wadi2026does}. 
+Recent works have utilized psychometric tests to measure a wide array of constructs \citep{jiang-etal-2024-personallm, li-etal-2024-evaluating-psychological, helwe-etal-2025-navigating}. 
+However, recent studies demonstrate that eliciting psychometric responses via text generation is highly unstable. 
+Simple prompt perturbations can significantly downgrade the consistency of LLM responses on persona axes \citep{shu-etal-2024-dont}. 
+Moreover, traditional psychometric testing on LLMs suffers from low ecological validity when relying on standard generative outputs \citep{jung-etal-2026-psychometric}. 
+Part of this instability stems from generative sampling, which is a methodological artifact borrowed from human surveying,
+and obscures their actual underlying distribution \citep{deas-mckeown-2025-artificial}. 
+
+\paragraph{Uncertainty and probability in LLMs}
+Recognizing the limitations of text-based sampling, a growing body of literature has turned to analyzing exact token probabilities to better understand LLMs' internal states. 
+\citet{kuribayashi-etal-2024-psychometric} demonstrated that utilizing exact next-word probabilities is far superior to instruction-tuned prompting when simulating human cognitive behaviors. 
+Similarly, recent work cautions that prompting LLMs for open-ended responses yields poorly calibrated text \citep{liu2025badworktimecrosscultural}, 
+whereas their exact internal token probabilities remain highly predictive 
+\citep{bentegeac2025token, kadavath2022language}.
+To quantify the variance within these predictive probability distributions, 
+the NLP community relies almost exclusively on Shannon entropy or its semantic derivatives \citep{farquhar2024detecting}. 
+Entropy is highly effective for tasks where the output space consists of distinct, categorical facts (e.g., detecting hallucinations across mutually exclusive answers). 
+However, standard metrics like entropy fail when applied to behavioral evaluation using psychometric rating scales. 
+This is because entropy treats all tokens as unordered, categorical variables, ignoring the ordinality of a Likert scale. 
+Because standard uncertainty metrics are indifferent to this ordinality, we lack the mathematical foundation to utilize exact token probability mass functions (PMFs) for behavioral evaluation. 
+As demonstrated in \ref{sec:methods}, our framework resolved this impasse by formulating a measure of consensus specifically designed for ordinal variables.
+
+\paragraph{Geopolitical bias and ethnocentrism in LLMs}
+
+% A critical application for our robust behavioral framework is the measurement of latent geopolitical and cultural biases. 
+As LLMs are deployed globally, there is growing concern regarding their cultural neutrality. 
+A robust body of literature documents that LLMs exhibit systemic 
+geopolitical and geographical biases \citep{shwartz-2022-good, bhatia-shwartz-2023-gd, bhatia-etal-2024-local, naous-xu-2025-origin, kruspe-2024-musical}.
+Furthermore, models frequently struggle to bridge culture gaps \citep{tanwar-etal-2025-know, liu-etal-2024-multilingual, saha-etal-2025-reading, liu-etal-2026-tailored}.
+To systematically quantify these cultural alignments, researchers frequently turn to global sociological instruments, such as the World Values Survey \citep{zhao-etal-2024-worldvaluesbench}. Yet, these evaluations suffer from the exact generative brittleness highlighted above. 
+\citet{kabir-etal-2025-break} noted that evaluating cultural alignment in LLMs using standard multiple-choice surveys leads to wildly inconsistent outputs under minor perturbations, such as choice reordering. 
+
+To bypass this brittleness, research has advocated moving toward unconstrained, open-ended generative evaluations. 
+However, relying on open-ended generation introduces a new set of methodological bottlenecks. 
+Specifically, it is notoriously difficult to reliably parse distinct categorical or ordinal scores from free-text outputs. 
+Open-ended generation is highly susceptible to "fence-sitting", where models generate evasive disclaimers (e.g., "As an AI, I do not have a country...") rather than revealing their latent behavioral stance \citep{bhatia2025value, liu2025badworktimecrosscultural}. 
+Dealing with these nuances typically requires utilizing another LLM as a judge to evaluate the text, which merely injects a secondary layer of bias into the evaluation pipeline.
+
+

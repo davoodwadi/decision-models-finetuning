@@ -1,0 +1,223 @@
+\begin{thebibliography}{44}
+\providecommand{\natexlab}[1]{#1}
+
+\bibitem[{Batterton and Hale(2017)}]{batterton2017likert}
+Katherine~A Batterton and Kimberly~N Hale. 2017.
+\newblock The likert scale what it is and how to use it.
+\newblock \emph{Phalanx}, 50(2):32--39.
+
+\bibitem[{Bentegeac et~al.(2025)Bentegeac, Le~Guellec, Kuchcinski, Amouyel, and Hamroun}]{bentegeac2025token}
+Rapha{\"e}l Bentegeac, Bastien Le~Guellec, Gr{\'e}gory Kuchcinski, Philippe Amouyel, and Aghiles Hamroun. 2025.
+\newblock Token probabilities to mitigate large language models overconfidence in answering medical questions: quantitative study.
+\newblock \emph{Journal of medical Internet research}, 27:e64348.
+
+\bibitem[{Bhatia et~al.(2025)Bhatia, Nayak, Kamath, Mosbach, Shwartz, Reddy et~al.}]{bhatia2025value}
+Mehar Bhatia, Shravan Nayak, Gaurav Kamath, Marius Mosbach, Vered Shwartz, Siva Reddy, and 1 others. 2025.
+\newblock Value drifts: Tracing value alignment during llm post-training.
+\newblock \emph{arXiv preprint arXiv:2510.26707}.
+
+\bibitem[{Bhatia et~al.(2024)Bhatia, Ravi, Chinchure, Hwang, and Shwartz}]{bhatia-etal-2024-local}
+Mehar Bhatia, Sahithya Ravi, Aditya Chinchure, EunJeong Hwang, and Vered Shwartz. 2024.
+\newblock \href {https://doi.org/10.18653/v1/2024.emnlp-main.385} {From local concepts to universals: Evaluating the multicultural understanding of vision-language models}.
+\newblock In \emph{Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing}, pages 6763--6782, Miami, Florida, USA. Association for Computational Linguistics.
+
+\bibitem[{Bhatia and Shwartz(2023)}]{bhatia-shwartz-2023-gd}
+Mehar Bhatia and Vered Shwartz. 2023.
+\newblock \href {https://doi.org/10.18653/v1/2023.emnlp-main.496} {{GD}-{COMET}: A geo-diverse commonsense inference model}.
+\newblock In \emph{Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing}, pages 7993--8001, Singapore. Association for Computational Linguistics.
+
+\bibitem[{Bommasani et~al.(2023)Bommasani, Liang, and Lee}]{bommasani2023holistic}
+Rishi Bommasani, Percy Liang, and Tony Lee. 2023.
+\newblock Holistic evaluation of language models.
+\newblock \emph{Annals of the New York Academy of Sciences}, 1525(1):140--146.
+
+\bibitem[{Cecilia~Liu et~al.(2024)Cecilia~Liu, Koto, Baldwin, and Gurevych}]{liu-etal-2024-multilingual}
+Chen Cecilia~Liu, Fajri Koto, Timothy Baldwin, and Iryna Gurevych. 2024.
+\newblock \href {https://doi.org/10.18653/v1/2024.naacl-long.112} {Are multilingual {LLM}s culturally-diverse reasoners? an investigation into multicultural proverbs and sayings}.
+\newblock In \emph{Proceedings of the 2024 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers)}, pages 2016--2039, Mexico City, Mexico. Association for Computational Linguistics.
+
+\bibitem[{Cohen(2013)}]{cohen2013statistical}
+Jacob Cohen. 2013.
+\newblock \emph{Statistical power analysis for the behavioral sciences}.
+\newblock routledge.
+
+\bibitem[{Cronbach(1950)}]{cronbach1950further}
+Lee~J Cronbach. 1950.
+\newblock Further evidence on response sets and test design.
+\newblock \emph{Educational and psychological measurement}, 10(1):3--31.
+
+\bibitem[{Deas and McKeown(2025)}]{deas-mckeown-2025-artificial}
+Nicholas Deas and Kathleen McKeown. 2025.
+\newblock \href {https://doi.org/10.18653/v1/2025.emnlp-main.981} {Artificial impressions: Evaluating large language model behavior through the lens of trait impressions}.
+\newblock In \emph{Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing}, pages 19418--19444, Suzhou, China. Association for Computational Linguistics.
+
+\bibitem[{Durmus et~al.(2024)Durmus, Nguyen, Liao, Schiefer, Askell, Bakhtin, Chen, Hatfield-Dodds, Hernandez, Joseph, Lovitt, McCandlish, Sikder, Tamkin, Thamkul, Kaplan, Clark, and Ganguli}]{durmus2024towards}
+Esin Durmus, Karina Nguyen, Thomas Liao, Nicholas Schiefer, Amanda Askell, Anton Bakhtin, Carol Chen, Zac Hatfield-Dodds, Danny Hernandez, Nicholas Joseph, Liane Lovitt, Sam McCandlish, Orowa Sikder, Alex Tamkin, Janel Thamkul, Jared Kaplan, Jack Clark, and Deep Ganguli. 2024.
+\newblock \href {https://openreview.net/forum?id=zl16jLb91v} {Towards measuring the representation of subjective global opinions in language models}.
+\newblock In \emph{First Conference on Language Modeling}.
+
+\bibitem[{Farquhar et~al.(2024)Farquhar, Kossen, Kuhn, and Gal}]{farquhar2024detecting}
+Sebastian Farquhar, Jannik Kossen, Lorenz Kuhn, and Yarin Gal. 2024.
+\newblock Detecting hallucinations in large language models using semantic entropy.
+\newblock \emph{Nature}, 630(8017):625--630.
+
+\bibitem[{Flake and Fried(2020)}]{flake2020measurement}
+Jessica~Kay Flake and Eiko~I Fried. 2020.
+\newblock Measurement schmeasurement: Questionable measurement practices and how to avoid them.
+\newblock \emph{Advances in methods and practices in psychological science}, 3(4):456--465.
+
+\bibitem[{Helwe et~al.(2025)Helwe, Balalau, and Ceolin}]{helwe-etal-2025-navigating}
+Chadi Helwe, Oana Balalau, and Davide Ceolin. 2025.
+\newblock \href {https://doi.org/10.18653/v1/2025.findings-acl.883} {Navigating the political compass: Evaluating multilingual {LLM}s across languages and nationalities}.
+\newblock In \emph{Findings of the Association for Computational Linguistics: ACL 2025}, pages 17179--17204, Vienna, Austria. Association for Computational Linguistics.
+
+\bibitem[{Hendrycks et~al.(2020)Hendrycks, Burns, Basart, Zou, Mazeika, Song, and Steinhardt}]{hendrycks2020measuring}
+Dan Hendrycks, Collin Burns, Steven Basart, Andy Zou, Mantas Mazeika, Dawn Song, and Jacob Steinhardt. 2020.
+\newblock Measuring massive multitask language understanding.
+\newblock \emph{arXiv preprint arXiv:2009.03300}.
+
+\bibitem[{Jiang et~al.(2024)Jiang, Zhang, Cao, Breazeal, Roy, and Kabbara}]{jiang-etal-2024-personallm}
+Hang Jiang, Xiajie Zhang, Xubo Cao, Cynthia Breazeal, Deb Roy, and Jad Kabbara. 2024.
+\newblock \href {https://doi.org/10.18653/v1/2024.findings-naacl.229} {{P}ersona{LLM}: Investigating the ability of large language models to express personality traits}.
+\newblock In \emph{Findings of the Association for Computational Linguistics: NAACL 2024}, pages 3605--3627, Mexico City, Mexico. Association for Computational Linguistics.
+
+\bibitem[{Jung et~al.(2026)Jung, Lutz, Sen, and Strohmaier}]{jung-etal-2026-psychometric}
+Jana Jung, Marlene Lutz, Indira Sen, and Markus Strohmaier. 2026.
+\newblock \href {https://doi.org/10.18653/v1/2026.eacl-long.380} {Do psychometric tests work for large language models? evaluation of tests on sexism, racism, and morality}.
+\newblock In \emph{Proceedings of the 19th Conference of the {E}uropean Chapter of the {A}ssociation for {C}omputational {L}inguistics (Volume 1: Long Papers)}, pages 8143--8173, Rabat, Morocco. Association for Computational Linguistics.
+
+\bibitem[{Kabir et~al.(2025)Kabir, Abrar, and Ananiadou}]{kabir-etal-2025-break}
+Mohsinul Kabir, Ajwad Abrar, and Sophia Ananiadou. 2025.
+\newblock \href {https://doi.org/10.18653/v1/2025.emnlp-main.2} {Break the checkbox: Challenging closed-style evaluations of cultural alignment in {LLM}s}.
+\newblock In \emph{Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing}, pages 24--51, Suzhou, China. Association for Computational Linguistics.
+
+\bibitem[{Kadavath et~al.(2022)Kadavath, Conerly, Askell, Henighan, Drain, Perez, Schiefer, Hatfield-Dodds, DasSarma, Tran-Johnson et~al.}]{kadavath2022language}
+Saurav Kadavath, Tom Conerly, Amanda Askell, Tom Henighan, Dawn Drain, Ethan Perez, Nicholas Schiefer, Zac Hatfield-Dodds, Nova DasSarma, Eli Tran-Johnson, and 1 others. 2022.
+\newblock Language models (mostly) know what they know.
+\newblock \emph{arXiv preprint arXiv:2207.05221}.
+
+\bibitem[{Kruspe(2024)}]{kruspe-2024-musical}
+Anna Kruspe. 2024.
+\newblock \href {https://aclanthology.org/2024.nlp4musa-1.11/} {Musical ethnocentrism in large language models}.
+\newblock In \emph{Proceedings of the 3rd Workshop on NLP for Music and Audio (NLP4MusA)}, pages 62--68, Oakland, USA. Association for Computational Lingustics.
+
+\bibitem[{Kuribayashi et~al.(2024)Kuribayashi, Oseki, and Baldwin}]{kuribayashi-etal-2024-psychometric}
+Tatsuki Kuribayashi, Yohei Oseki, and Timothy Baldwin. 2024.
+\newblock \href {https://doi.org/10.18653/v1/2024.findings-naacl.129} {Psychometric predictive power of large language models}.
+\newblock In \emph{Findings of the Association for Computational Linguistics: NAACL 2024}, pages 1983--2005, Mexico City, Mexico. Association for Computational Linguistics.
+
+\bibitem[{Li et~al.(2024)Li, Li, Qiu, Joty, and Bing}]{li-etal-2024-evaluating-psychological}
+Xingxuan Li, Yutong Li, Lin Qiu, Shafiq Joty, and Lidong Bing. 2024.
+\newblock \href {https://doi.org/10.18653/v1/2024.emnlp-main.108} {Evaluating psychological safety of large language models}.
+\newblock In \emph{Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing}, pages 1826--1843, Miami, Florida, USA. Association for Computational Linguistics.
+
+\bibitem[{Liu et~al.(2026)Liu, Arnaout, Kova{\v{c}}i{\'c}, Atzil-Slonim, and Gurevych}]{liu-etal-2026-tailored}
+Chen~Cecilia Liu, Hiba Arnaout, Nils Kova{\v{c}}i{\'c}, Dana Atzil-Slonim, and Iryna Gurevych. 2026.
+\newblock \href {https://doi.org/10.18653/v1/2026.eacl-long.25} {Tailored emotional {LLM}-supporter: Enhancing cultural sensitivity}.
+\newblock In \emph{Proceedings of the 19th Conference of the {E}uropean Chapter of the {A}ssociation for {C}omputational {L}inguistics (Volume 1: Long Papers)}, pages 535--574, Rabat, Morocco. Association for Computational Linguistics.
+
+\bibitem[{Liu et~al.(2025)Liu, Samir, Bhatia, Nelson, and Shwartz}]{liu2025badworktimecrosscultural}
+Zhuozhuo~Joy Liu, Farhan Samir, Mehar Bhatia, Laura~K. Nelson, and Vered Shwartz. 2025.
+\newblock \href {https://arxiv.org/abs/2505.18322} {Is it bad to work all the time? cross-cultural evaluation of social norm biases in gpt-4}.
+\newblock \emph{Preprint}, arXiv:2505.18322.
+
+\bibitem[{Makowski et~al.(2019)Makowski, Ben-Shachar, and Lüdecke}]{Makowski2019}
+Dominique Makowski, Mattan~S. Ben-Shachar, and Daniel Lüdecke. 2019.
+\newblock \href {https://doi.org/10.21105/joss.01541} {bayestestr: Describing effects and their uncertainty, existence and significance within the bayesian framework}.
+\newblock \emph{Journal of Open Source Software}, 4(40):1541.
+
+\bibitem[{Naous and Xu(2025)}]{naous-xu-2025-origin}
+Tarek Naous and Wei Xu. 2025.
+\newblock \href {https://doi.org/10.18653/v1/2025.naacl-long.326} {On the origin of cultural biases in language models: From pre-training data to linguistic phenomena}.
+\newblock In \emph{Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers)}, pages 6423--6443, Albuquerque, New Mexico. Association for Computational Linguistics.
+
+\bibitem[{Perez et~al.(2023)Perez, Ringer, Lukosiute, Nguyen, Chen, Heiner, Pettit, Olsson, Kundu, Kadavath, Jones, Chen, Mann, Israel, Seethor, McKinnon, Olah, Yan, Amodei, Amodei, Drain, Li, Tran-Johnson, Khundadze, Kernion, Landis, Kerr, Mueller, Hyun, Landau, Ndousse, Goldberg, Lovitt, Lucas, Sellitto, Zhang, Kingsland, Elhage, Joseph, Mercado, DasSarma, Rausch, Larson, McCandlish, Johnston, Kravec, El~Showk, Lanham, Telleen-Lawton, Brown, Henighan, Hume, Bai, Hatfield-Dodds, Clark, Bowman, Askell, Grosse, Hernandez, Ganguli, Hubinger, Schiefer, and Kaplan}]{perez-etal-2023-discovering}
+Ethan Perez, Sam Ringer, Kamile Lukosiute, Karina Nguyen, Edwin Chen, Scott Heiner, Craig Pettit, Catherine Olsson, Sandipan Kundu, Saurav Kadavath, Andy Jones, Anna Chen, Benjamin Mann, Brian Israel, Bryan Seethor, Cameron McKinnon, Christopher Olah, Da~Yan, Daniela Amodei, and 44 others. 2023.
+\newblock \href {https://doi.org/10.18653/v1/2023.findings-acl.847} {Discovering language model behaviors with model-written evaluations}.
+\newblock In \emph{Findings of the Association for Computational Linguistics: ACL 2023}, pages 13387--13434, Toronto, Canada. Association for Computational Linguistics.
+
+\bibitem[{Rota(1964)}]{rota1964foundations}
+Gian-Carlo Rota. 1964.
+\newblock On the foundations of combinatorial theory: I. theory of m{\"o}bius functions.
+\newblock In \emph{Classic Papers in Combinatorics}, pages 332--360. Springer.
+
+\bibitem[{Saha et~al.(2025)Saha, Pandey, Gupta, and Choudhury}]{saha-etal-2025-reading}
+Sougata Saha, Saurabh~Kumar Pandey, Harshit Gupta, and Monojit Choudhury. 2025.
+\newblock \href {https://doi.org/10.18653/v1/2025.naacl-long.409} {Reading between the lines: Can {LLM}s identify cross-cultural communication gaps?}
+\newblock In \emph{Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers)}, pages 8043--8067, Albuquerque, New Mexico. Association for Computational Linguistics.
+
+\bibitem[{Santurkar et~al.(2023)Santurkar, Durmus, Ladhak, Lee, Liang, and Hashimoto}]{pmlr-v202-santurkar23a}
+Shibani Santurkar, Esin Durmus, Faisal Ladhak, Cinoo Lee, Percy Liang, and Tatsunori Hashimoto. 2023.
+\newblock \href {https://proceedings.mlr.press/v202/santurkar23a.html} {Whose opinions do language models reflect?}
+\newblock In \emph{Proceedings of the 40th International Conference on Machine Learning}, volume 202 of \emph{Proceedings of Machine Learning Research}, pages 29971--30004. PMLR.
+
+\bibitem[{Shankarmahesh(2006)}]{shankarmahesh2006consumer}
+Mahesh~N Shankarmahesh. 2006.
+\newblock Consumer ethnocentrism: an integrative review of its antecedents and consequences.
+\newblock \emph{International marketing review}, 23(2):146--172.
+
+\bibitem[{Shimp and Sharma(1987)}]{shimp1987consumer}
+Terence~A Shimp and Subhash Sharma. 1987.
+\newblock Consumer ethnocentrism: Construction and validation of the cetscale.
+\newblock \emph{Journal of marketing research}, 24(3):280--289.
+
+\bibitem[{Shu et~al.(2024)Shu, Zhang, Choi, Dunagan, Logeswaran, Lee, Card, and Jurgens}]{shu-etal-2024-dont}
+Bangzhao Shu, Lechen Zhang, Minje Choi, Lavinia Dunagan, Lajanugen Logeswaran, Moontae Lee, Dallas Card, and David Jurgens. 2024.
+\newblock \href {https://doi.org/10.18653/v1/2024.naacl-long.295} {You don{'}t need a personality test to know these models are unreliable: Assessing the reliability of large language models on psychometric instruments}.
+\newblock In \emph{Proceedings of the 2024 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers)}, pages 5263--5281, Mexico City, Mexico. Association for Computational Linguistics.
+
+\bibitem[{Shwartz(2022)}]{shwartz-2022-good}
+Vered Shwartz. 2022.
+\newblock \href {https://doi.org/10.18653/v1/2022.findings-acl.224} {Good night at 4 pm?! time expressions in different cultures}.
+\newblock In \emph{Findings of the Association for Computational Linguistics: ACL 2022}, pages 2842--2853, Dublin, Ireland. Association for Computational Linguistics.
+
+\bibitem[{Tanwar et~al.(2025)Tanwar, Chatterjee, Saxon, Albalak, Wang, and Chakraborty}]{tanwar-etal-2025-know}
+Eshaan Tanwar, Anwoy Chatterjee, Michael Saxon, Alon Albalak, William~Yang Wang, and Tanmoy Chakraborty. 2025.
+\newblock \href {https://doi.org/10.18653/v1/2025.emnlp-main.756} {Do you know about my nation? investigating multilingual language models' cultural literacy through factual knowledge}.
+\newblock In \emph{Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing}, pages 14956--14979, Suzhou, China. Association for Computational Linguistics.
+
+\bibitem[{Tastle and Wierman(2007)}]{tastle2007consensus}
+William~J Tastle and Mark~J Wierman. 2007.
+\newblock Consensus and dissention: A measure of ordinal dispersion.
+\newblock \emph{International Journal of Approximate Reasoning}, 45(3):531--545.
+
+\bibitem[{Villani et~al.(2008)}]{villani2008optimal}
+C{\'e}dric Villani and 1 others. 2008.
+\newblock \emph{Optimal transport: old and new}, volume 338.
+\newblock Springer.
+
+\bibitem[{Wadi and Fredette(2025)}]{wadi2025a}
+Davood Wadi and Marc Fredette. 2025.
+\newblock \href {https://openreview.net/forum?id=lpm6tSIoE6} {A monte-carlo sampling framework for reliable evaluation of large language models using behavioral analysis}.
+\newblock In \emph{The 2025 Conference on Empirical Methods in Natural Language Processing}.
+
+\bibitem[{Wadi and Ma(2026{\natexlab{a}})}]{wadi2026does}
+Davood Wadi and Yu~Ma. 2026{\natexlab{a}}.
+\newblock Does rank still matter? position bias when ai agents shop on our behalf.
+\newblock \emph{arXiv preprint arXiv:2608.22697}.
+
+\bibitem[{Wadi and Ma(2026{\natexlab{b}})}]{wadi2026shopping}
+Davood Wadi and Yu~Ma. 2026{\natexlab{b}}.
+\newblock Shopping by algorithm: How agentic ai deploys human heuristics as a surrogate consumer.
+
+\bibitem[{Wang et~al.(2024)Wang, Ma, Feng, Zhang, Yang, Zhang, Chen, Tang, Chen, Lin et~al.}]{wang2024survey}
+Lei Wang, Chen Ma, Xueyang Feng, Zeyu Zhang, Hao Yang, Jingsen Zhang, Zhiyuan Chen, Jiakai Tang, Xu~Chen, Yankai Lin, and 1 others. 2024.
+\newblock A survey on large language model based autonomous agents.
+\newblock \emph{Frontiers of Computer Science}, 18(6):186345.
+
+\bibitem[{Ward et~al.(2024)Ward, Yang, Jackson, Brown, Smith, Colverd, Thomson, Douglas, Bartak, and Rowan}]{ward-etal-2024-evaluating}
+Francis~Rhys Ward, Zejia Yang, Alex Jackson, Randy Brown, Chandler Smith, Grace~Beaney Colverd, Louis~Alexander Thomson, Raymond Douglas, Patrik Bartak, and Andrew Rowan. 2024.
+\newblock \href {https://doi.org/10.18653/v1/2024.findings-emnlp.77} {Evaluating language model character traits}.
+\newblock In \emph{Findings of the Association for Computational Linguistics: EMNLP 2024}, pages 1423--1443, Miami, Florida, USA. Association for Computational Linguistics.
+
+\bibitem[{Xi et~al.(2025)Xi, Chen, Guo, He, Ding, Hong, Zhang, Wang, Jin, Zhou et~al.}]{xi2025rise}
+Zhiheng Xi, Wenxiang Chen, Xin Guo, Wei He, Yiwen Ding, Boyang Hong, Ming Zhang, Junzhe Wang, Senjie Jin, Enyu Zhou, and 1 others. 2025.
+\newblock The rise and potential of large language model based agents: A survey.
+\newblock \emph{Science China Information Sciences}, 68(2):121101.
+
+\bibitem[{Zhao et~al.(2024)Zhao, Mondal, Tandon, Dillion, Gray, and Gu}]{zhao-etal-2024-worldvaluesbench}
+Wenlong Zhao, Debanjan Mondal, Niket Tandon, Danica Dillion, Kurt Gray, and Yuling Gu. 2024.
+\newblock \href {https://aclanthology.org/2024.lrec-main.1539/} {{W}orld{V}alues{B}ench: A large-scale benchmark dataset for multi-cultural value awareness of language models}.
+\newblock In \emph{Proceedings of the 2024 Joint International Conference on Computational Linguistics, Language Resources and Evaluation (LREC-COLING 2024)}, pages 17696--17706, Torino, Italia. ELRA and ICCL.
+
+\end{thebibliography}
