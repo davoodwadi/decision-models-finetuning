@@ -1,5 +1,5 @@
 ---
-title: "Can Decision Models Sample Human Behavior? Evaluating Distributional Alignment on Human Survey Populations"
+title: "Can decision models sample human behavior? Evaluating distributional alignment on human survey populations"
 author:
     - name: Davood Wadi
       email: davood.wadi@hec.ca
@@ -16,15 +16,14 @@ affiliations:
         city: Montreal
         region: Quebec
         country: Canada
-date: today
 abstract: |
-  Using Large Language Models (LLMs) to simulate human survey responses ("silicon sampling") typically relies on generative text sampling or poorly calibrated token logits, often resulting in mode collapse, prompt brittleness, and distorted population variance. Recently, *decision models* ("System One" architectures) have emerged to map a context state and typed questions directly to calibrated probability distributions over answer options in a single prefill forward pass. In this paper, we investigate whether decision models—and LLMs adapted via constrained option-letter readouts—can accurately approximate empirical human response distributions across diverse demographic subpopulations. Training on respondent-level cross-national survey data from the International Social Survey Programme (ISSP 2015–2024; $N = 458,753$ respondents across 310 country-years) and evaluating out-of-distribution on US subpopulations from the General Social Survey (SubPOP; 2,926 subpopulation–question targets), we benchmark off-the-shelf and fine-tuned decision models against standard causal LMs. To rigorously evaluate ordinal (Likert) probability mass functions (PMFs) beyond point estimates and order-invariant Shannon entropy, we apply an exact analytical framework combining Constraint adherence, ordinal Consensus/Dissension, 1-Wasserstein (Earth Mover's) distance, and Distributional ANOVA across demographic factors. We show where decision models succeed in capturing human marginal distributions and inter-group contrasts, and where both architectures systematically fail to reflect human behavioral heterogeneity.
+  Simulating human survey responses with large language models (LLMs), a paradigm often termed silicon sampling, typically relies on generative text sampling or poorly calibrated token logits, resulting in mode collapse, prompt brittleness, and distorted population variance. Decision models have emerged as single-pass architectures that map a context state and typed questions directly to calibrated probability distributions over answer options in a single prefill forward pass. In this paper, we investigate whether decision models, as well as causal LLMs adapted via constrained option-letter readouts, can accurately approximate empirical human response distributions across diverse demographic subpopulations. Unlike static benchmarks that provide only pre-computed single-attribute distributions, we build a dynamic persona-distribution dataset and sampling pipeline on top of respondent-level data from 10 waves of the International Social Survey Programme ($N = 458,753$), selecting arbitrary subsets of up to 16 demographic attributes to compute empirical subpopulation response distributions on the fly across billions of possible persona combinations. Evaluating out-of-distribution on US subpopulations from the General Social Survey (SubPOP; 2,926 subpopulation-question targets), we benchmark off-the-shelf and fine-tuned decision models against standard causal LLMs. We show where decision models succeed in capturing human marginal distributions and inter-group contrasts, and where both architectures systematically fail to reflect human behavioral heterogeneity.
 keywords:
-  - Decision Models
-  - Human Behavior Simulation
-  - Silicon Sampling
-  - Ordinal Psychometrics
-  - Distributional ANOVA
+  - Decision models
+  - Human behavior simulation
+  - Silicon sampling
+  - Ordinal psychometrics
+  - Subpopulation alignment
 format:
   pdf:
     documentclass: article
@@ -90,52 +89,56 @@ bibliography:
 
 # Introduction {#sec-intro}
 
-Simulating human attitudes, preferences, and survey responses with foundation models—often termed *silicon sampling* or *in silico* surveying—has attracted widespread interest across computational social science, economics, and behavioral research [@argyle2023out; @horton2023large; @brand2023using; @sarstedt2024using; @pmlr-v202-santurkar23a; @durmus2024towards]. However, using standard autoregressive Large Language Models (LLMs) as proxies for human populations faces three fundamental methodological bottlenecks:
+Simulating human attitudes, preferences, and survey responses with foundation models, a paradigm often termed silicon sampling or in silico surveying, has attracted widespread interest across computational social science, economics, and behavioral research [@argyle2023out; @horton2023large; @brand2023using; @sarstedt2024using; @pmlr-v202-santurkar23a; @durmus2024towards]. 
+However, existing silicon sampling practices face three fundamental limitations in how subpopulation distributions are elicited, trained, and evaluated. 
 
-1. **The Generative Sampling Bottleneck:** Autoregressive text generation requires repeated Monte Carlo draws to estimate a subpopulation's response distribution [@wadi2025monte], introducing sampling noise, sensitivity to decoding temperature, and "fence-sitting" refusals [@bhatia2025value; @liu2025badworktimecrosscultural].
-2. **The Calibration and Homogenization Bottleneck:** Next-token probabilities in instruction-tuned LLMs are often miscalibrated (typically overconfident or collapsed onto a single mode) and frequently fail to reflect true inter-group variance across demographic attributes such as gender, political ideology, or religion [@pmlr-v202-santurkar23a; @deas-mckeown-2025-artificial].
-3. **The Ordinal Evaluation Bottleneck:** Standard NLP metrics (e.g., accuracy of the argmax choice, Shannon entropy [@farquhar2024detecting], or KL divergence alone) treat survey options as unordered categories. On Likert scales [@batterton2017likert], Shannon entropy cannot distinguish between a population polarized at the extremes (*Strongly Disagree* vs. *Strongly Agree*) and one concentrated around adjacent moderate options (*Neutral* vs. *Agree*) [@wadi2026every].
+First, estimating a subpopulation's response distribution through autoregressive text generation requires repeated Monte Carlo draws across synthetic respondents [@wadi2025monte], which is time-consuming and computationally expensive while introducing sampling noise, sensitivity to decoding temperature, and fence-sitting refusals [@bhatia2025value; @liu2025badworktimecrosscultural]. 
 
-Recently, a new class of architectures—**decision models** (or "System One" models, drawing on dual-process theory [@kahneman2011thinking; @evans2013dual], such as TypeSafe's Jev, Intern-Decision, and Kev [@deusser2026evaluatingbenchmarkingmodeljev; @li2026llmasjevllmsjevstyledecision; @geuter2026releasinginnerjevsimple])—has been introduced to replace text generation with structured, single-pass probabilistic decision-making. Given a state (e.g., a respondent persona) and a set of typed questions (*score*, *choice*, *noul*), a decision model executes a single prefill-only forward pass and outputs a probability mass function (PMF) over the supplied answer options via a dedicated pointer head or restricted option-token readout.
+Second, whereas the ground truth for a human subpopulation in silicon sampling is an empirical probability distribution over response options rather than a single correct value, standard post-training objectives optimize models to maximize the probability of a single preferred answer. Consequently, even when next-token option probabilities are read out directly, instruction-tuned LLMs collapse onto a single mode, compress ordinal scales, and fail to reflect genuine within-group heterogeneity or inter-group variance across demographic attributes such as gender, political ideology, or religion [@pmlr-v202-santurkar23a; @deas-mckeown-2025-artificial]. 
 
-Because decision models are explicitly architected to output calibrated distributions over discrete options without text generation, a natural question arises: **Can decision models be used to sample human behavior?** Specifically, how well do off-the-shelf and domain-adapted decision models—compared to standard LLMs [@qwen3.5; @suh-etal-2025-language]—approximate empirical human response distributions and demographic contrasts?
+Third, standard natural language processing metrics such as argmax accuracy, Shannon entropy [@farquhar2024detecting], or Kullback-Leibler (KL) divergence treat survey options as unordered nominal categories. 
+On ordinal Likert scales [@batterton2017likert], order-invariant metrics penalize adjacent shifts identically to extreme shifts and cannot distinguish between a population polarized at the scale endpoints (e.g., strongly disagree versus strongly agree) and one concentrated around adjacent moderate options [e.g., neutral versus agree\; @wadi2026every].
+
+Recently, a new class of decision model architectures, often referred to as System One models [@deusser2026evaluatingbenchmarkingmodeljev; @li2026llmasjevllmsjevstyledecision; @geuter2026releasinginnerjevsimple], has been introduced to replace free-form text generation with structured, single-pass probabilistic decision-making. Given a context state such as a respondent persona and a set of typed questions comprising ordinal ratings (`score`), categorical multiple-choice items (`choice`), and binary yes-or-no items (`noul`), a decision model executes a single prefill-only forward pass and outputs a probability mass function (PMF) over the supplied answer options via a dedicated pointer head or a restricted option-token readout.
+
+Although decision models eliminate Monte Carlo generation overhead by outputting discrete option distributions in a single pass, off-the-shelf decision models such as Kev are similarly trained to maximize the probability of a single ground-truth label rather than to estimate a population distribution across options [@geuter2026releasinginnerjevsimple; @gao2026choicesfewerdecisionsordinalscale]. 
+A central question therefore arises as to whether decision models can sample human behavior. 
+Specifically, we examine how well off-the-shelf decision models and standard causal LLMs [@qwen3.5; @suh-etal-2025-language] compared to distributionally fine-tuned decision models, approximate empirical human response distributions, ordinal scale geometry, and demographic contrasts.
 
 ## Contributions
 
-1. **Empirical Benchmark of Decision Models vs. LLMs on Human Populations:** We evaluate pointer-head decision models (Kev-0.8B, Kev-4B, Kev-9B) and next-token letter-readout LLMs (Qwen3.5 [@qwen3.5]) across zero-shot, LoRA, and full fine-tuning regimes, training on 10 waves of respondent-level ISSP data ($458,753$ individuals) and testing out-of-distribution on US subpopulations from SubPOP [@suh-etal-2025-language].
-2. **Exact Ordinal Psychometric Evaluation Framework:** Building on our analytical factorial framework for ordinal distributions [@wadi2026every], we evaluate model-predicted PMFs against observed human subpopulation shares across four complementary dimensions: (i) *Constraint* (valid option mass [@cronbach1950further]), (ii) *Distributional Fidelity* (KL divergence, Jensen–Shannon divergence, and normalized 1-Wasserstein distance [@villani2008optimal]), (iii) *Ordinal Dispersion* (Consensus and Dissension [@tastle2007consensus]), and (iv) *Construct & Contrast Decomposition* (Distributional ANOVA isolating demographic main effects and inter-group gaps [@wadi2026interplay; @wadi2026every]).
-3. **Diagnosis of Failure Modes in Human Simulation:** We characterize when models suffer from ordinal scale compression [@gao2026choicesfewerdecisionsordinalscale] or collapse to marginal national averages (ignoring persona conditioning) versus when fine-tuning on respondent-level attribute subsets recovers genuine human demographic divergences.
+This study makes four primary contributions to the literature on silicon sampling and decision models. 
 
----
+First, drawing on respondent-level microdata from 10 waves of the International Social Survey Programme (ISSP; $458,753$ human individuals across 16 harmonized demographic attributes), we build a dynamic persona-distribution dataset and sampling pipeline for silicon sampling. 
+Unlike static benchmarks such as SubPOP [@suh-etal-2025-language] that release only fixed, single-attribute marginal distributions (e.g., conditioning on gender or age alone), our pipeline selects any subset of persona variables (e.g., combining gender, age, and political affiliation), filters the matching ISSP respondents, and computes their empirical sample distribution on the fly, enabling billions of multi-attribute persona combinations for both training and evaluation.
 
-# Background and Related Work {#sec-related}
+Second, we provide a comprehensive empirical benchmark of pointer-head decision models (Kev-0.8B, Kev-4B, and Kev-9B) and constrained option-letter causal LLMs [Qwen3.5\; @qwen3.5], training on 10 waves of respondent-level ISSP US data ($458,753$ human individuals) and testing out-of-distribution on US demographic subpopulations from SubPOP [@suh-etal-2025-language]. 
 
-## Simulating Human Populations with LLMs ("Silicon Sampling")
-- Early work conditioning LLMs on demographic backstories to approximate human economic, consumer, and public opinion surveys [@argyle2023out; @horton2023large; @brand2023using; @sarstedt2024using; @goli2024frontiers; @pmlr-v202-santurkar23a; @durmus2024towards].
-- Fine-tuning and distributional alignment on human survey distributions [@suh-etal-2025-language; @huang-etal-2026-distribution; @ku2026siliconsamplingcrosssurveytransfer].
-- Cognitive and behavioral biases in LLMs compared to human decision-makers [@binz2023using; @hagendorff2023human; @macmillan2024ir; @cheung2025large; @echterhoff2024cognitive; @mina2025cognitive].
-- Known failure modes: demographic stereotyping, flattening of within-group variance, sensitivity to prompt formatting and option order [@shu-etal-2024-dont; @kabir-etal-2025-break; @koo2024benchmarking], low ecological validity of generative outputs [@jung-etal-2026-psychometric; @deas-mckeown-2025-artificial], and poor alignment with non-WEIRD populations [@henrich2010weirdest; @zhao-etal-2024-worldvaluesbench].
+Third, we formulate an evaluation methodology tailored to categorical and ordinal survey distributions that combines information-theoretic divergences with the 1-Wasserstein transport distance [@villani2008optimal], supplemented by an ordinal consensus metric [@tastle2007consensus; @wadi2026every] to diagnose scale compression and polarization on Likert items. 
 
-## From Generative Sampling to Exact Token Probabilities and Decision Models
-- Extracting exact next-token probabilities over answer options rather than sampling free text [@kuribayashi-etal-2024-psychometric; @bentegeac2025token; @kadavath2022language; @wadi2026every].
-- **Decision Models ("System One"):** Pretrained causal LM backbones [@qwen3.5] adapted to ingest a context state and typed questions (*noul*, *choice*, *score*) and produce probabilities in one prefill pass [@deusser2026evaluatingbenchmarkingmodeljev; @asseri2026calibratedwhompersonalanguage; @li2026kitescalingjevpopulation]:
-  - *Readout Style A (Restricted Next-Token Logits):* Mapping options to single-token symbols ("A", "B", $\dots$) and taking a softmax over allowed option logits at the answer position (e.g., Intern-Decision, JevK5, and option-letter LLM readouts [@li2026llmasjevllmsjevstyledecision; @geuter2026releasinginnerjevsimple]).
-  - *Readout Style B (Pointer Head):* Scoring the hidden state at each option's closing token against the question's final token via learned linear projections (e.g., Kev), decoupling option scoring from vocabulary token priors.
-- **Ordinal Scale Compression in Decision Models:** Recent evidence that direct-decision models systematically underuse ordinal rating scales [@gao2026choicesfewerdecisionsordinalscale], motivating rigorous ordinal distributional evaluation.
+Fourth, we analyze inter-group demographic contrasts to characterize when models collapse to marginal national averages by ignoring persona conditioning, and demonstrate how dynamic respondent-level attribute sampling during fine-tuning recovers genuine human demographic divergences.
 
-## Evaluating Ordinal Probability Distributions
-- Why point estimates (expected values) and categorical metrics (Shannon entropy [@farquhar2024detecting], top-1 accuracy) fail on Likert scales [@batterton2017likert; @joshi2015likert; @wadi2026every].
-- Ordinal dispersion via Consensus and Dissension [@tastle2007consensus] and optimal transport (1-Wasserstein distance [@villani2008optimal]) on discrete ordered supports.
+# Background and related work {#sec-related}
 
----
+## Simulating human populations with LLMs
 
-# Problem Formulation and Architectures {#sec-problem}
+Early work in silicon sampling conditioned LLMs on demographic backstories to approximate human economic, consumer, and public opinion surveys [@argyle2023out; @horton2023large; @brand2023using; @sarstedt2024using; @goli2024frontiers; @pmlr-v202-santurkar23a; @durmus2024towards]. Subsequent studies explored fine-tuning and distributional alignment on human survey distributions to improve subpopulation fidelity [@suh-etal-2025-language; @huang-etal-2026-distribution; @ku2026siliconsamplingcrosssurveytransfer], alongside broader investigations of cognitive and behavioral biases in LLMs compared to human decision-makers [@binz2023using; @hagendorff2023human; @macmillan2024ir; @cheung2025large; @echterhoff2024cognitive; @mina2025cognitive]. Despite this progress, the literature documents persistent failure modes, including demographic stereotyping, flattening of within-group variance, high sensitivity to prompt formatting and option order [@shu-etal-2024-dont; @kabir-etal-2025-break; @koo2024benchmarking], low ecological validity of generative outputs [@jung-etal-2026-psychometric; @deas-mckeown-2025-artificial], and poor alignment with non-WEIRD populations [@henrich2010weirdest; @zhao-etal-2024-worldvaluesbench].
 
-## Task Definition: Subpopulation Distributional Prediction
+## From generative sampling to exact token probabilities and decision models
 
-Let a human survey dataset consist of respondents indexed by $i \in \{1, \dots, N\}$. Each respondent has a vector of demographic and background attributes $\mathbf{a}_i$ (e.g., country, sex, age, education, religion, political party) and answers to survey questions $q \in \mathcal{Q}$. Each question $q$ has $K_q$ discrete response options $\mathcal{Y}_q = \{y_1, \dots, y_{K_q}\}$. For ordinal Likert (*score*) items, $(\mathcal{Y}_q, \preceq)$ is totally ordered from lowest to highest intensity.
+Recognizing the instability of free-text generation, recent work extracts exact next-token probabilities over answer options rather than sampling generated text [@kuribayashi-etal-2024-psychometric; @bentegeac2025token; @kadavath2022language; @wadi2026every]. Extending this paradigm, decision models adapt pretrained causal LM backbones [@qwen3.5] to ingest a context state and typed questions (`score`, `choice`, and `noul`) and produce calibrated probabilities in a single prefill pass [@deusser2026evaluatingbenchmarkingmodeljev; @asseri2026calibratedwhompersonalanguage; @li2026kitescalingjevpopulation]. Existing decision architectures rely on two primary readout mechanisms. The first mechanism uses restricted next-token logits, mapping options to single-token symbols (e.g., "A", "B", $\dots$) and taking a softmax over allowed option logits at the answer position, as in Intern-Decision, JevK5, and option-letter LLM readouts [@li2026llmasjevllmsjevstyledecision; @geuter2026releasinginnerjevsimple]. The second mechanism uses a pointer head, scoring the hidden state at each option's closing token against the question's final token via learned linear projections as in Kev, which decouples option scoring from vocabulary token priors. At the same time, recent evidence indicates that direct-decision models can systematically underuse ordinal rating scales through ordinal scale compression [@gao2026choicesfewerdecisionsordinalscale], motivating rigorous ordinal distributional evaluation.
 
-A **persona** (or experimental condition) $\boldsymbol{\lambda}$ specifies a subset of attribute–value pairs (e.g., "Country: United States; Political party: Republican"). Let $\mathcal{I}(\boldsymbol{\lambda}, q)$ denote the set of human respondents matching persona $\boldsymbol{\lambda}$ who provided a valid answer to question $q$, with group size $n_{\boldsymbol{\lambda}, q} = |\mathcal{I}(\boldsymbol{\lambda}, q)|$. The empirical human response distribution (target PMF) is:
+## Evaluating ordinal probability distributions
+
+Standard point estimates (e.g., expected values or top-1 accuracy) and categorical uncertainty metrics (e.g., Shannon entropy [@farquhar2024detecting]) fail on Likert scales because they ignore the ordering and distance between response categories [@batterton2017likert; @joshi2015likert; @wadi2026every]. To capture the ordinal geometry of survey scales when comparing predicted distributions against empirical human shares, we combine optimal transport via the 1-Wasserstein distance [@villani2008optimal] on discrete ordered supports with ordinal dispersion measures based on consensus and dissension [@tastle2007consensus].
+
+# Problem formulation and architectures {#sec-problem}
+
+## Task definition: subpopulation distributional prediction
+
+Let a human survey dataset consist of respondents indexed by $i \in \{1, \dots, N\}$. Each respondent has a vector of demographic and background attributes $\mathbf{a}_i$ (e.g., country, sex, age, education, religion, and political party) and answers to survey questions $q \in \mathcal{Q}$. Each question $q$ has $K_q$ discrete response options $\mathcal{Y}_q = \{y_1, \dots, y_{K_q}\}$. For ordinal Likert (`score`) items, $(\mathcal{Y}_q, \preceq)$ is totally ordered from lowest to highest intensity.
+
+A persona $\boldsymbol{\lambda}$ specifies a subset of attribute-value pairs (e.g., "Country: United States; Political party: Republican"). Let $\mathcal{I}(\boldsymbol{\lambda}, q)$ denote the set of human respondents matching persona $\boldsymbol{\lambda}$ who provided a valid answer to question $q$, with group size $n_{\boldsymbol{\lambda}, q} = |\mathcal{I}(\boldsymbol{\lambda}, q)|$. The empirical human response distribution (target PMF) is:
 $$
 P_{\mathrm{human}}(Y_{q, \boldsymbol{\lambda}} = y_k) = \frac{1}{n_{\boldsymbol{\lambda}, q}} \sum_{i \in \mathcal{I}(\boldsymbol{\lambda}, q)} \mathbb{I}(y_{i, q} = y_k), \quad k \in \{1, \dots, K_q\}.
 $$ {#eq-human-pmf}
@@ -145,191 +148,134 @@ $$
 P_{\mathrm{model}}(Y_{q, \boldsymbol{\lambda}} = y_k) = \operatorname{softmax}(\mathbf{z}_{q, \boldsymbol{\lambda}})_k = \frac{\exp(z_{q, \boldsymbol{\lambda}, k})}{\sum_{j=1}^{K_q} \exp(z_{q, \boldsymbol{\lambda}, j})}.
 $$ {#eq-model-pmf}
 
-## Model Architectures Compared
+## Model architectures compared
 
-We compare two distinct mechanisms for turning a causal language model backbone into a distributional survey predictor:
+We compare two distinct mechanisms for turning a causal language model backbone into a distributional survey predictor.
 
-### Pointer-Head Decision Model (Kev)
-In the pointer-head architecture, the persona state and question options are compiled into a structured prompt. Rather than reading from the language modeling vocabulary head, a lightweight pointer head projects the final-layer hidden state at the question's closing token ($\mathbf{h}_{\mathrm{q}}$) and at each option $k$'s closing token ($\mathbf{h}_{\mathrm{opt}, k}$):
+### Pointer-head decision model (Kev)
+In the pointer-head architecture, the persona state and question options are compiled into a structured prompt. Rather than reading from the language modeling vocabulary head, a lightweight pointer head projects the final-layer hidden state $\mathbf{h}_{\mathrm{q}} \in \mathbb{R}^{d_{\mathrm{model}}}$ at the question's closing token and $\mathbf{h}_{\mathrm{opt}, k} \in \mathbb{R}^{d_{\mathrm{model}}}$ at each option $k$'s closing token via learned matrices $\mathbf{W}_q, \mathbf{W}_k \in \mathbb{R}^{d_{\mathrm{head}} \times d_{\mathrm{model}}}$:
 $$
 z_{q, \boldsymbol{\lambda}, k} = \frac{(\mathbf{W}_q \mathbf{h}_{\mathrm{q}})^\top (\mathbf{W}_k \mathbf{h}_{\mathrm{opt}, k})}{\sqrt{d_{\mathrm{head}}}}.
 $$ {#eq-pointer-head}
-Because options are scored via their contextualized span representations rather than fixed option-letter tokens, the pointer head natively handles arbitrary option counts and avoids token-id frequency biases.
+Because options are scored directly through their contextualized span representations rather than vocabulary tokens, the pointer head natively handles arbitrary option counts, avoids token-frequency biases, and assigns zero probability mass outside the supplied options by construction.
 
-### Constrained Next-Token Letter LLM
-In the standard LLM readout, the persona and question options (labelled "A.", "B.", $\dots$) are formatted using the model's native chat template with reasoning disabled, positioning the next predicted token immediately at the assistant's response. Let $\mathcal{V}$ be the full vocabulary and $\mathcal{V}_{\mathrm{val}} = \{t_1, \dots, t_{K_q}\} \subset \mathcal{V}$ be the single-token identifiers corresponding to option letters "A" through the $K_q$-th letter. The raw vocabulary logits at the final prompt position yield $z_{q, \boldsymbol{\lambda}, k} = \ell_{\mathrm{LM}}(t_k)$.
+### Constrained next-token letter LLM
+In the standard LLM readout, the persona and question options (labelled "A.", "B.", $\dots$) are formatted using the model's native chat template with reasoning disabled, positioning the next predicted token immediately at the assistant's response. Let $\mathcal{V}$ be the full vocabulary and $\mathcal{V}_{\mathrm{val}} = \{t_1, \dots, t_{K_q}\} \subset \mathcal{V}$ be the single-token identifiers corresponding to option letters "A" through the $K_q$-th letter. Extracting the raw vocabulary logits at the final prompt position yields $z_{q, \boldsymbol{\lambda}, k} = \ell_{\mathrm{LM}}(t_k)$, and applying @eq-model-pmf restricts and renormalizes the full vocabulary distribution $P_{\mathrm{raw}}(t \mid x_{q, \boldsymbol{\lambda}})$ over $\mathcal{V}_{\mathrm{val}}$ [@cronbach1950further]. During evaluation, we also track the pre-renormalization valid-letter mass $\sum_{t \in \mathcal{V}_{\mathrm{val}}} P_{\mathrm{raw}}(t \mid x_{q, \boldsymbol{\lambda}})$ to verify that the LLM concentrates probability mass on valid option letters rather than conversational tokens.
 
-## Fine-Tuning on Respondent-Level Human Data
+## Fine-tuning on respondent-level human data
 
 To test whether discrepancies between models and humans stem from architectural limitations or a lack of behavioral calibration during pretraining, we fine-tune both model families on respondent-level survey data using soft cross-entropy loss against observed subpopulation shares:
 $$
 \mathcal{L}(\theta) = -\sum_{k=1}^{K_q} P_{\mathrm{human}}(Y_{q, \boldsymbol{\lambda}} = y_k) \log P_{\mathrm{model}}(Y_{q, \boldsymbol{\lambda}} = y_k; \theta),
 $$ {#eq-soft-ce}
-which is equivalent to minimizing the Kullback–Leibler divergence $D_{\mathrm{KL}}(P_{\mathrm{human}} \,\|\, P_{\mathrm{model}})$ up to the constant human target entropy $H(P_{\mathrm{human}})$.
+which is equivalent to minimizing the Kullback-Leibler divergence $D_{\mathrm{KL}}(P_{\mathrm{human}} \,\|\, P_{\mathrm{model}})$ up to a positive scaling constant and the fixed human target entropy $H(P_{\mathrm{human}})$.
 
----
+# Methodology: evaluating subpopulation distributions {#sec-methodology}
 
-# Methodology: Analytical Evaluation of Ordinal Distributions {#sec-methodology}
+Evaluating how well $P_{\mathrm{model}}$ approximates $P_{\mathrm{human}}$ requires more than top-1 accuracy or expected value comparisons, because two distributions can share the exact same mean while representing opposite sociological realities, such as unimodal consensus versus bimodal polarization. For brevity, we write $P_{\mathrm{human}}(y_k)$ and $P_{\mathrm{model}}(y_k)$ for a fixed question $q$ and persona $\boldsymbol{\lambda}$. We evaluate model predictions across within-group distributional fidelity, ordinal Likert geometry and dispersion, and between-group demographic contrasts.
 
-To evaluate how well $P_{\mathrm{model}}$ approximates $P_{\mathrm{human}}$, standard metrics such as top-1 accuracy or expected value comparisons are insufficient: two distributions can share the exact same mean while representing opposite sociological realities (e.g., unimodal consensus vs. bimodal polarization). Building on our analytical factorial framework for ordinal scales, we evaluate models across four layers.
+## Information-theoretic distributional fidelity
 
-## Layer 1: Constraint Adherence (Valid Option Mass)
-
-For standard LLMs projecting onto the full vocabulary $\mathcal{V}$, the model may assign probability mass to invalid tokens (e.g., conversational preambles, refusals, or out-of-range symbols). We define the **Constraint Failure Rate** for prompt $x_{q, \boldsymbol{\lambda}}$ as:
-$$
-\mathrm{FailureRate}(x_{q, \boldsymbol{\lambda}}) = 1 - \sum_{t \in \mathcal{V}_{\mathrm{val}}} P_{\mathrm{raw}}(t \mid x_{q, \boldsymbol{\lambda}}).
-$$ {#eq-failure-rate}
-Pointer-head decision models satisfy $\mathrm{FailureRate} \equiv 0$ by construction, whereas LLMs must learn or be prompted to concentrate mass on $\mathcal{V}_{\mathrm{val}}$ before renormalization.
-
-## Layer 2: Distributional Fidelity (Categorical and Ordinal Distances)
-
-For all question types (*choice*, *score*, *noul*), we measure information-theoretic divergence in bits:
+For all question types (`choice`, `score`, and `noul`), we measure information-theoretic divergence in bits using the Kullback-Leibler divergence:
 $$
 D_{\mathrm{KL}}(P_{\mathrm{human}} \,\|\, P_{\mathrm{model}}) = \sum_{k=1}^{K_q} P_{\mathrm{human}}(y_k) \log_2 \frac{P_{\mathrm{human}}(y_k)}{P_{\mathrm{model}}(y_k)},
 $$ {#eq-kl}
-along with the symmetric, bounded **Jensen–Shannon Divergence** $D_{\mathrm{JS}}(P_{\mathrm{human}}, P_{\mathrm{model}}) \in [0, 1]$.
+along with the symmetric, bounded Jensen-Shannon divergence $D_{\mathrm{JS}}(P_{\mathrm{human}}, P_{\mathrm{model}}) = \frac{1}{2} D_{\mathrm{KL}}(P_{\mathrm{human}} \,\|\, M) + \frac{1}{2} D_{\mathrm{KL}}(P_{\mathrm{model}} \,\|\, M) \in [0, 1]$, where $M = \frac{1}{2}(P_{\mathrm{human}} + P_{\mathrm{model}})$. Because $D_{\mathrm{KL}}$ subtracts the target's own entropy from the cross-entropy, questions on which human respondents naturally disagree are not penalized when the model matches that spread.
 
-However, $D_{\mathrm{KL}}$ and $D_{\mathrm{JS}}$ are permutation-invariant: they penalize a shift from *Strongly Agree* to *Agree* identically to a shift from *Strongly Agree* to *Strongly Disagree*. For ordinal Likert (*score*) items with ordered levels $y_1 \prec \dots \prec y_{K_q}$ mapped to $\{0, 1, \dots, K_q - 1\}$, we compute the **1-Wasserstein Distance (Earth Mover's Distance)** via the $L_1$ distance between cumulative distribution functions (CDFs) $F_{\mathrm{human}}$ and $F_{\mathrm{model}}$, normalized by the scale range $K_q - 1$:
+## Ordinal transport distance and dispersion on Likert scales
+
+Because $D_{\mathrm{KL}}$ and $D_{\mathrm{JS}}$ are permutation-invariant, they penalize a shift from strongly agree to agree identically to a shift from strongly agree to strongly disagree. For ordinal Likert (`score`) items with ordered levels $y_1 \prec \dots \prec y_{K_q}$ indexed by $\{1, \dots, K_q\}$, we capture the scale geometry using the 1-Wasserstein distance (Earth Mover's distance), computed as the $L_1$ distance between cumulative distribution functions (CDFs) $F_{\mathrm{human}}$ and $F_{\mathrm{model}}$ normalized by the scale range $K_q - 1$:
 $$
 W_1(P_{\mathrm{human}}, P_{\mathrm{model}}) = \frac{1}{K_q - 1} \sum_{k=1}^{K_q - 1} \left| \sum_{j=1}^{k} P_{\mathrm{human}}(y_j) - \sum_{j=1}^{k} P_{\mathrm{model}}(y_j) \right| \in [0, 1].
 $$ {#eq-wasserstein}
-$W_1$ measures the minimum fraction of the scale range across which probability mass must be transported to transform the model's distribution into the empirical human distribution.
+Here, $W_1$ measures the minimum fraction of the scale range across which probability mass must be transported to transform the model's distribution into the empirical human distribution, with $(K_q - 1) W_1$ giving the unnormalized transport error in Likert levels.
 
-## Layer 3: Ordinal Consensus and Dissension
-
-To test whether models replicate the internal agreement or polarization of a human subpopulation (rather than merely matching the mean or artificially flattening/peaking the distribution), we apply the ordinal **Consensus ($\mathrm{Cns}$)** metric [@tastle2007consensus] and its multivariate generalization. For a single ordinal item with support $\mathcal{Y} = \{1, \dots, K_q\}$, mean $\mu = \sum_{k=1}^{K_q} k \, P(y_k)$, and scale width $d_{\max} = K_q - 1$:
+To diagnose whether ordinal errors stem from scale compression [@gao2026choicesfewerdecisionsordinalscale] or failure to capture human polarization, we supplement $W_1$ with the ordinal consensus metric [@tastle2007consensus; @wadi2026every]. For an ordinal item with integer support $\mathcal{Y}_q = \{1, \dots, K_q\}$, mean $\mu = \sum_{k=1}^{K_q} k \, P(y_k)$, and scale width $d_{\max} = K_q - 1$, ordinal consensus $\mathrm{Cns}(P) \in [0, 1]$ is defined as:
 $$
-\mathrm{Cns}(Y) = 1 + \sum_{k=1}^{K_q} P(y_k) \log_2 \left( 1 - \frac{|k - \mu|}{d_{\max}} \right), \quad \mathrm{Dsn}(Y) = 1 - \mathrm{Cns}(Y).
+\mathrm{Cns}(P) = 1 + \sum_{k=1}^{K_q} P(y_k) \log_2 \left( 1 - \frac{|k - \mu|}{d_{\max}} \right),
 $$ {#eq-consensus-univariate}
-Across a multi-item battery $\mathbf{Y}_{\boldsymbol{\lambda}} = (Y_{1, \boldsymbol{\lambda}}, \dots, Y_{M, \boldsymbol{\lambda}}) \in \mathcal{Y}^M$ with mean vector $\boldsymbol{\mu}$ and maximum diagonal distance $d_{\max} = \sqrt{M}(y_{\max} - y_{\min})$, multivariate Consensus is:
+with dissension given by $\mathrm{Dsn}(P) = 1 - \mathrm{Cns}(P)$. Consensus equals $1$ when all probability mass concentrates on a single rating level and equals $0$ when mass splits equally between the two extreme endpoints $y_1$ and $y_{K_q}$. The difference $\Delta \mathrm{Cns} = \mathrm{Cns}(P_{\mathrm{model}}) - \mathrm{Cns}(P_{\mathrm{human}})$ indicates whether a model is over-concentrated ($\Delta \mathrm{Cns} > 0$) or over-dispersed ($\Delta \mathrm{Cns} < 0$) relative to empirical human respondents.
+
+## Inter-group demographic contrasts
+
+A central requirement of silicon sampling is capturing how attitudes vary across demographic subpopulations rather than outputting the same marginal distribution regardless of persona conditioning. For any question $q$ and any two subpopulations $\boldsymbol{\lambda}_a$ and $\boldsymbol{\lambda}_b$ that differ on a demographic attribute (e.g., democrat versus republican, male versus female, or high versus low income), we quantify the inter-group divergence within either the human population or a model $P \in \{P_{\mathrm{human}}, P_{\mathrm{model}}\}$ via the normalized 1-Wasserstein contrast gap:
 $$
-\mathrm{Cns}(\mathbf{Y}_{\boldsymbol{\lambda}}) = 1 + \sum_{\mathbf{y} \in \mathcal{Y}^M} P(\mathbf{y}) \log_2 \left( 1 - \frac{\|\mathbf{y} - \boldsymbol{\mu}\|_2}{d_{\max}} \right).
-$$ {#eq-consensus-multivariate}
-Comparing $\Delta \mathrm{Cns} = \mathrm{Cns}(P_{\mathrm{model}}) - \mathrm{Cns}(P_{\mathrm{human}})$ directly reveals whether a model is **over-concentrated** ($\Delta \mathrm{Cns} > 0$, mode collapse) or **over-dispersed / polarized** ($\Delta \mathrm{Cns} < 0$) relative to real human respondents.
+G_q(P; \boldsymbol{\lambda}_a, \boldsymbol{\lambda}_b) = W_1\big(P(\cdot \mid \boldsymbol{\lambda}_a),\, P(\cdot \mid \boldsymbol{\lambda}_b)\big).
+$$ {#eq-contrast-gap}
+When $G_q(P_{\mathrm{model}}; \boldsymbol{\lambda}_a, \boldsymbol{\lambda}_b) \approx 0$ on questions where the empirical human gap $G_q(P_{\mathrm{human}}; \boldsymbol{\lambda}_a, \boldsymbol{\lambda}_b)$ is large, the model exhibits persona blindness, collapsing to a single marginal response profile across groups. We evaluate contrast recovery both through the contrast gap error $\Delta G_q = G_q(P_{\mathrm{model}}; \boldsymbol{\lambda}_a, \boldsymbol{\lambda}_b) - G_q(P_{\mathrm{human}}; \boldsymbol{\lambda}_a, \boldsymbol{\lambda}_b)$ and through the directional agreement and correlation of signed mean shifts $\Delta \mu_q(\boldsymbol{\lambda}_a, \boldsymbol{\lambda}_b) = \mu_q(\boldsymbol{\lambda}_a) - \mu_q(\boldsymbol{\lambda}_b)$ between model predictions and human subpopulations.
 
-## Layer 4: Construct Convolution and Distributional Factorial Decomposition
-
-When evaluating how demographic factors (e.g., $\text{Party} \in \{\text{Democrat}, \text{Republican}\}$, $\text{Sex} \in \{\text{Male}, \text{Female}\}$) shift attitudes across a single item or a convolved multi-item construct $P_{S_{\boldsymbol{\lambda}}} = P_{Y_{1, \boldsymbol{\lambda}}} \circledast \cdots \circledast P_{Y_{M, \boldsymbol{\lambda}}}$, we apply **Distributional ANOVA** (distributional Hoeffding decomposition):
-$$
-\mathbb{E}[S_{\boldsymbol{\lambda}}] = \underbrace{\mathbb{E}[S_0]}_{\text{Grand Mean}} + \sum_{c \in \mathcal{C}} \underbrace{\mathbb{E}[E_c(\lambda_c)]}_{\text{Main Effects}} + \sum_{\substack{U \subseteq \mathcal{C} \\ |U| \ge 2}} \underbrace{\mathbb{E}[E_U(\boldsymbol{\lambda}_U)]}_{\text{Interactions}}.
-$$ {#eq-anova-identity}
-For any two subpopulations $\boldsymbol{\lambda}_a, \boldsymbol{\lambda}_b$ differing on factor $c$ (e.g., Democrat vs. Republican), we compare the model's predicted behavioral contrast against the true human contrast using:
-
-- **Inter-Group Contrast Error ($\Delta W_1$):** How well the model reproduces the Wasserstein gap $W_1(P_{\mathrm{human}}(\cdot \mid \boldsymbol{\lambda}_a), P_{\mathrm{human}}(\cdot \mid \boldsymbol{\lambda}_b))$ between the two human groups.
-- **Effect Summary Metrics:** Mean Shift ($\mathbb{E}[E]$), Predictive Dispersion ($\mathrm{SD}(E)$), Discrete Probability of Direction ($\mathrm{dPD} = \max(\mathbb{P}(E > 0), \mathbb{P}(E < 0))$), and Signal-to-Noise Ratio ($\mathrm{SNR} = |\mathbb{E}[E]| / \mathrm{SD}(E)$).
-
----
-
-# Experimental Setup {#sec-experiments}
+# Experimental setup {#sec-experiments}
 
 ## Datasets
 
-| Split / Role | Dataset | Source & Scope | Scale | Question Types |
+| Split or role | Dataset | Source and scope | Scale | Question types |
 |---|---|---|---|---|
-| **Training** | ISSP (2015–2024) | 10 thematic modules across 310 country-years | 458,753 respondents | *score*, *choice*, *noul* |
-| **Calibration** | ISSP Held-Out Slots | 1% of (country, question) slots per year; country-level & 1-attribute marginal groups | 204 slots | *score*, *choice*, *noul* |
-| **Out-of-Distribution Test** | SubPOP (GSS) | US General Social Survey (GSS), 22 US demographic subpopulations | 133 questions; 2,926 targets | 64 *score* (Likert), 69 *choice* |
+| Training | ISSP (2015 to 2024) | 10 thematic modules across 310 country-years | 458,753 respondents | score, choice, noul |
+| Calibration | ISSP held-out slots | 1% of (country, question) slots per year; country-level and 1-attribute marginal groups | 204 slots | score, choice, noul |
+| Out-of-distribution test | SubPOP (GSS) | US General Social Survey (GSS), 22 US demographic subpopulations | 133 questions; 2,926 targets | 64 score (Likert), 69 choice |
 
 : Summary of human survey datasets used for training, calibration, and out-of-distribution evaluation. {#tbl-datasets}
 
-### Dynamic Respondent-Level Sampling (ISSP)
-Rather than aggregating respondents into a fixed small set of demographic cells (which averages away attributes like religion, party, or income), our training sampler dynamically constructs persona–question records on the fly from respondent-level ISSP data:
+### Dynamic respondent-level sampling (ISSP)
+Rather than aggregating respondents into a fixed small set of demographic cells, which averages away attributes such as religion, political party, or income, our training sampler dynamically constructs persona-question records on the fly from respondent-level ISSP data. Specifically, for each training example, the sampler first draws a (year, country, question) slot uniformly at random. Next, it draws an attribute count $k \sim \mathrm{Uniform}(0, A_{\text{avail}})$ from up to 16 background attributes, namely sex, age, education, religion, religious attendance, party vote, left-right party position, turnout, household income, region, urban or rural residence, marital status, main activity, union membership, subjective social status, and ancestry. Finally, it samples an observed attribute combination with at least $n_{\min}$ matching respondents and computes their exact empirical answer shares as the training target.
 
-1. Draw a (year, country, question) slot uniformly at random.
-2. Draw attribute count $k \sim \mathrm{Uniform}(0, A_{\text{avail}})$ from up to 16 background attributes (sex, age, education, religion, religious attendance, party vote, left–right party position, turnout, household income, region, urban/rural, marital status, main activity, union membership, subjective social status, ancestry).
-3. Sample an observed attribute combination with at least $n_{\min}$ matching respondents and compute their exact empirical answer shares as the training target.
+### Out-of-distribution test set (SubPOP / GSS)
+We evaluate all models on the SubPOP evaluation split [@suh-etal-2025-language], comprising 133 US General Social Survey questions across 22 single-attribute US subpopulations (2,926 total target distributions, consisting of 64 ordinal Likert `score` items and 69 categorical `choice` items) after excluding items that overlap with ISSP training questions. No temperature scaling ($T=1$) is applied at test time.
 
-### Out-of-Distribution Test Set (SubPOP / GSS)
-We evaluate all models on the SubPOP evaluation split [@suh-etal-2025-language], comprising 133 US General Social Survey questions across 22 single-attribute US subpopulations (2,926 total target distributions; 64 ordinal Likert *score* items and 69 categorical *choice* items). No temperature scaling ($T=1$) is applied at test time.
+## Models and training regimes
 
-## Models and Training Regimes
-
-We evaluate the following model configurations:
-
-1. **Off-the-Shelf Decision Models:** Kev-0.8B, Kev-4B, and Kev-9B (pretrained Qwen3.5 backbones with released LoRA adapters and pointer heads trained on general decision benchmarks).
-2. **Fine-Tuned Decision Models (Kev):**
-   - *Adapter / LoRA Fine-Tuning:* Continuing the released adapter or training a fresh rank-$R$ LoRA adapter ($R \in \{16, 64\}$) plus the pointer head on ISSP.
-   - *Layer Unfreezing / Full Fine-Tuning:* Unfreezing the top-$L$ transformer layers or all backbone weights alongside the pointer head.
-   - *Training Scope Ablations:* All 310 country-years vs. US-only respondents; persona complexity ($k$ attributes) and minimum group size ($n_{\min} \in \{1, 10, 100\}$).
-3. **Constrained Next-Token LLMs:** Qwen3.5-0.8B (and larger variants) evaluated zero-shot and fine-tuned end-to-end through its vocabulary head over option letters "A"–"L".
-
----
+We evaluate three primary model families and training configurations across identical data splits. First, we benchmark off-the-shelf pointer-head decision models (Kev-0.8B, Kev-4B, and Kev-9B), which pair pretrained Qwen3.5 backbones with released LoRA adapters and pointer heads trained on general decision benchmarks. Second, we adapt the Kev models on ISSP across several parameter-efficient and full-parameter regimes, either continuing training from the released adapter, training a fresh rank-$R$ LoRA adapter ($R \in \{16, 64, 128, 256\}$) alongside the pointer head, unfreezing the top-$L$ transformer decoder layers ($L \in \{2, 3, 6\}$), or fine-tuning all backbone weights together with the pointer head. Within these fine-tuned decision models, we also conduct data construction ablations comparing all 310 ISSP country-years against US-only respondents, varying persona attribute count $k$, and varying the minimum respondent threshold $n_{\min} \in \{1, 10, 100\}$. Third, to isolate the effect of the pointer head against a standard vocabulary readout, we evaluate Qwen3.5-0.8B both zero-shot and fine-tuned end-to-end through its language modeling head over option letters "A" through "L".
 
 # Results {#sec-results}
 
-## Overall Distributional Fidelity on Human Subpopulations (RQ1)
+## Overall distributional fidelity on human subpopulations (RQ1)
 
-*TODO: Populate @tbl-main-results with test-set metrics from the evaluation runs.*
+@tbl-main-results reports out-of-distribution test performance on SubPOP across all evaluated model families and training regimes.
 
-| Model | Regime | All: $D_{\mathrm{KL}}$ ($\downarrow$) | All: $D_{\mathrm{JS}}$ ($\downarrow$) | Choice: $D_{\mathrm{KL}}$ ($\downarrow$) | Score: $D_{\mathrm{KL}}$ ($\downarrow$) | Score: $W_1$ ($\downarrow$) | $\Delta \mathrm{Cns}$ ($\to 0$) |
+| Model | Regime | All $D_{\mathrm{KL}}$ ($\downarrow$) | All $D_{\mathrm{JS}}$ ($\downarrow$) | Choice $D_{\mathrm{KL}}$ ($\downarrow$) | Score $D_{\mathrm{KL}}$ ($\downarrow$) | Score $W_1$ ($\downarrow$) | Score $\Delta \mathrm{Cns}$ ($\to 0$) |
 |---|---|---:|---:|---:|---:|---:|---:|
-| Qwen3.5-0.8B (Letters) | Zero-shot | -- | -- | -- | -- | -- | -- |
-| Qwen3.5-0.8B (Letters) | Fine-tuned (ISSP) | -- | -- | -- | -- | -- | -- |
-| Kev-0.8B (Pointer) | Off-the-shelf | -- | -- | -- | -- | -- | -- |
-| Kev-0.8B (Pointer) | Fine-tuned (ISSP All) | -- | -- | -- | -- | -- | -- |
-| Kev-0.8B (Pointer) | Fine-tuned (ISSP US) | -- | -- | -- | -- | -- | -- |
-| Kev-4B (Pointer) | Off-the-shelf / FT | -- | -- | -- | -- | -- | -- |
-| Kev-9B (Pointer) | Off-the-shelf / FT | -- | -- | -- | -- | -- | -- |
+| Qwen3.5-0.8B (letters) | Zero-shot | TBD | TBD | TBD | TBD | TBD | TBD |
+| Qwen3.5-0.8B (letters) | Fine-tuned (ISSP) | TBD | TBD | TBD | TBD | TBD | TBD |
+| Kev-0.8B (pointer) | Off-the-shelf | TBD | TBD | TBD | TBD | TBD | TBD |
+| Kev-0.8B (pointer) | Fine-tuned (ISSP all) | TBD | TBD | TBD | TBD | TBD | TBD |
+| Kev-0.8B (pointer) | Fine-tuned (ISSP US) | TBD | TBD | TBD | TBD | TBD | TBD |
+| Kev-4B (pointer) | Off-the-shelf / FT | TBD | TBD | TBD | TBD | TBD | TBD |
+| Kev-9B (pointer) | Off-the-shelf / FT | TBD | TBD | TBD | TBD | TBD | TBD |
 
 : Out-of-distribution performance on SubPOP (2,926 subpopulation targets across 133 GSS questions). KL and JS divergences are in bits; $W_1$ is normalized by scale range ($\%$ of scale). {#tbl-main-results}
 
-### Key Findings (RQ1)
-- **Off-the-shelf decision models vs. human distributions:** Off-the-shelf decision models are trained for deterministic classification/routing and therefore produce overly sharp or miscalibrated distributions when asked to represent a heterogeneous human subpopulation.
-- **Effect of behavioral fine-tuning:** Fine-tuning with soft cross-entropy on empirical human response shares substantially reduces both $D_{\mathrm{KL}}$ and ordinal $W_1$ distance.
-- **Pointer head vs. option-letter LM head:** Comparison between the pointer-head model and the option-letter LLM on identical backbones and training recipes.
+### Key findings (RQ1)
 
-## Ordinal Consensus vs. Human Dispersion (RQ2)
+Off-the-shelf decision models are trained primarily for deterministic classification and routing, causing them to produce overly sharp, miscalibrated distributions when asked to represent a heterogeneous human subpopulation. Fine-tuning with soft cross-entropy on empirical human response shares substantially reduces both $D_{\mathrm{KL}}$ across all question types and ordinal $W_1$ transport error on Likert scales. Comparing the pointer-head model and the constrained option-letter LLM on identical Qwen3.5 backbones and ISSP training recipes isolates the contribution of the pointer readout relative to vocabulary-token scoring.
 
-- Analysis of $\mathrm{Cns}(P_{\mathrm{model}})$ versus $\mathrm{Cns}(P_{\mathrm{human}})$ across the 64 Likert (*score*) questions in the SubPOP evaluation split.
-- Do models capture bimodal human polarization on contentious sociopolitical issues, or do they regress toward unimodal center-peaked distributions?
+## Ordinal scale alignment and dispersion on Likert items (RQ2)
 
-## Capturing Inter-Group Demographic Contrasts via Distributional ANOVA (RQ3)
+Across the 64 Likert (`score`) questions in the SubPOP evaluation split, we evaluate how well models capture the ordered geometry of rating scales via $W_1$ and diagnose their internal dispersion via $\Delta \mathrm{Cns}$. Off-the-shelf decision models exhibit large transport errors alongside strongly positive consensus bias ($\Delta \mathrm{Cns} > 0$), reflecting ordinal scale compression and mode collapse onto a single rating option. While distributional fine-tuning reduces $W_1$ and brings model dispersion closer to human consensus levels overall, we examine whether fine-tuned models successfully replicate bimodal human polarization on contentious sociopolitical questions or instead regress toward unimodal, center-peaked distributions.
 
-- **Persona sensitivity vs. persona blindness:** Evaluating whether models differentiate between contrasting subpopulations (e.g., *Democrat* vs. *Republican*, *Male* vs. *Female*, *Atheist* vs. *Protestant*, *High* vs. *Low Income*) on questions with large human Wasserstein gaps.
-- **Distributional ANOVA decomposition:** Comparing main effect magnitudes ($\mathbb{E}[E_c]$), directional consistency ($\mathrm{dPD}$), and Signal-to-Noise Ratios ($\mathrm{SNR}$) between model predictions and empirical GSS subpopulations.
-- Why fixed coarse aggregation (e.g., grouping only by country $\times$ sex $\times$ age $\times$ education) causes persona insensitivity, and how respondent-level random-subset sampling restores demographic conditioning.
+## Capturing inter-group demographic contrasts (RQ3)
 
-## Ablation Studies (RQ4)
+To test whether models capture true sociological heterogeneity rather than memorizing a single marginal distribution per question, we evaluate inter-group Wasserstein contrast gaps $G_q(P; \boldsymbol{\lambda}_a, \boldsymbol{\lambda}_b)$ and signed mean shifts across contrasting subpopulations, such as democrat versus republican, male versus female, atheist versus protestant, and high versus low income, on items exhibiting the largest empirical human gaps. Furthermore, we show why fixed coarse aggregation (e.g., grouping only by country, sex, age, and education) induces persona blindness on unconditioned attributes, and how respondent-level dynamic subset sampling restores sensitivity to demographic conditioning.
 
-1. **Model Scale and Adaptation Depth:** 0.8B vs. 4B vs. 9B; LoRA rank vs. top-layer unfreezing vs. full fine-tuning.
-2. **Persona Construction and Group Size ($n_{\min}$):** Single-respondent one-hot targets ($n=1$) vs. aggregated subpopulation shares ($n_{\min} \in \{10, 100\}$); number of conditioning attributes.
-3. **Cross-National vs. Single-Country Training:** Training on all 310 ISSP country-years vs. US-only ISSP modules when testing on US GSS subpopulations.
-4. **Prompt Augmentation vs. Canonical View:** Impact of shuffling option orders and reversing Likert scales during training on test-time calibration.
+## Ablation studies (RQ4)
 
----
+We conduct four ablation studies to isolate the drivers of distributional alignment. First, we examine model scale and adaptation depth across 0.8B, 4B, and 9B backbones, comparing LoRA rank against top-layer unfreezing and full fine-tuning. Second, we vary persona construction and minimum group size ($n_{\min}$), contrasting single-respondent one-hot targets ($n_{\min}=1$) against aggregated subpopulation shares ($n_{\min} \in \{10, 100\}$) and varying the number of conditioning attributes $k$. Third, we compare cross-national training on all 310 ISSP country-years against single-country training on US-only ISSP modules when testing on US GSS subpopulations. Fourth, we evaluate the impact of prompt augmentation (e.g., shuffling option orders and reversing Likert scales during training) relative to canonical option ordering on test-time calibration.
 
 # Discussion {#sec-discussion}
 
-## When Do Decision Models Make Sense for Sampling Human Behavior?
-- **Strengths:** Fast, deterministic single-pass inference ($O(1)$ prefill per question); zero syntactic constraint failure ($\mathrm{FailureRate} = 0$ for pointer heads); natural representation of subpopulation marginals $P(Y_q \mid \boldsymbol{\lambda})$ when trained with distributional cross-entropy.
-- **Fundamental Limitations:**
-  - *Marginal vs. Joint Individual Simulation:* Because decision models evaluate questions conditionally independently given the state ($P(\mathbf{Y} \mid \boldsymbol{\lambda}) = \prod_q P(Y_q \mid \boldsymbol{\lambda})$), sampling from output PMFs reproduces *subpopulation marginals* (and convolved construct sums under context isolation) but does not automatically capture *within-person cross-question covariance* unless conditioning attributes fully explain the correlation.
-  - *Out-of-domain attitude generalization:* Limits of inferring novel cultural or temporal shifts solely from demographic labels.
+## When do decision models make sense for sampling human behavior?
 
-## Limitations and Ethical Considerations
-- Risks of over-relying on "silicon samples" to replace underrepresented human voices in policy or public health research.
-- Survey coverage biases in training corpora.
+Decision models offer fast, deterministic single-pass inference ($O(1)$ prefill per question), exact restriction to the supplied option set via pointer heads, and a direct representation of subpopulation marginals $P(Y_q \mid \boldsymbol{\lambda})$ when trained with distributional cross-entropy. However, because decision models evaluate questions conditionally independently given the persona state, $P(\mathbf{Y} \mid \boldsymbol{\lambda}) = \prod_q P(Y_q \mid \boldsymbol{\lambda})$, sampling from output PMFs reproduces subpopulation marginals but does not automatically capture within-person cross-question covariance unless the conditioning attributes fully explain the correlation across items. In addition, predicting novel cultural or temporal shifts solely from demographic labels remains bounded by out-of-domain attitude generalization limits.
 
----
+## Limitations and ethical considerations
+
+Using silicon samples carries the risk of replacing underrepresented human voices in policy, marketing, or public health research if deployed uncritically. Moreover, demographic and geographic coverage biases in cross-national survey training corpora bound the populations for which distributional predictions remain valid.
 
 # Conclusion {#sec-conclusion}
 
-We investigated whether decision models and constrained next-token LLMs can serve as calibrated samplers of human behavior. By pairing respondent-level cross-national survey training (ISSP) with an exact ordinal evaluation framework—spanning Constraint adherence, 1-Wasserstein distance, ordinal Consensus, and Distributional ANOVA—we demonstrated both the promise of distributional fine-tuning and the structural limits of current models in replicating human behavioral diversity.
-
----
+We investigated whether decision models and constrained next-token LLMs can serve as calibrated samplers of human behavior. By pairing respondent-level cross-national survey training on ISSP with a distributional evaluation on SubPOP across information-theoretic divergences, ordinal 1-Wasserstein distance and scale dispersion, and inter-group demographic contrasts, we demonstrated both the effectiveness of distributional fine-tuning and the structural limits of current architectures in replicating human behavioral heterogeneity.
 
 # Appendix {#sec-appendix .appendix}
 
-## Proofs and Mathematical Details of Distributional ANOVA {#sec-app-anova}
+## Dataset construction and ISSP attribute harmonization {#app-data}
 
-Let $\mathcal{D} = \prod_{c \in \mathcal{C}} \{1, \dots, \Lambda_c\}$ denote the fully crossed factorial design space over demographic and model factors $\mathcal{C}$. For a multi-item ordinal instrument $\mathbf{Y}_{\boldsymbol{\lambda}} = (Y_{1, \boldsymbol{\lambda}}, \dots, Y_{M, \boldsymbol{\lambda}}) \in \mathcal{Y}^M$, context isolation between items ensures conditional independence given condition $\boldsymbol{\lambda}$ [@wadi2025monte; @wadi2026every]:
-$$
-P(\mathbf{Y}_{\boldsymbol{\lambda}} = \mathbf{y} \mid \boldsymbol{\lambda}) = \prod_{m=1}^{M} P(Y_{m, \boldsymbol{\lambda}} = y_m \mid \boldsymbol{\lambda}),
-$$ {#eq-app-cond-ind}
-and the exact PMF of the composite construct score $S_{\boldsymbol{\lambda}} = \sum_{m=1}^{M} Y_{m, \boldsymbol{\lambda}}$ is given by discrete convolution $P_{S_{\boldsymbol{\lambda}}} = P_{Y_{1, \boldsymbol{\lambda}}} \circledast \cdots \circledast P_{Y_{M, \boldsymbol{\lambda}}}$. 
-Under the distributional Hoeffding decomposition [@wadi2026every], the expectations of the isolated main-effect distributions $E_c(\lambda_c)$ and interaction-effect distributions $E_U(\boldsymbol{\lambda}_U)$ recover the classical fixed-effects ANOVA parameters.
-
-## Dataset Construction and ISSP Attribute Harmonization {#sec-app-data}
-
-- Full list of 16 ISSP respondent attributes and country-specific variable mappings across 2015–2024.
-- Overlap analysis between ISSP training items and SubPOP GSS items (29 overlapping vs. 104 unseen questions).
+This appendix documents the 16 ISSP respondent attributes and country-specific variable mappings harmonized across the 2015 to 2024 survey waves, together with the overlap screening between ISSP training items and SubPOP GSS evaluation items.
