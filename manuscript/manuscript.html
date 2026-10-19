@@ -141,7 +141,7 @@ window.Quarto = {
 <div>
   <div class="abstract">
     <div class="block-title">Abstract</div>
-    <p>Simulating human survey responses with large language models (LLMs), a paradigm often termed silicon sampling, typically relies on generative text sampling or poorly calibrated token logits, resulting in mode collapse, prompt brittleness, and distorted population variance. Decision models have emerged as single-pass architectures that map a context state and typed questions directly to calibrated probability distributions over answer options in a single prefill forward pass. In this paper, we investigate whether decision models, as well as causal LLMs adapted via constrained option-letter readouts, can accurately approximate empirical human response distributions across diverse demographic subpopulations. Unlike static benchmarks that provide only pre-computed single-attribute distributions, we build a dynamic persona-distribution dataset and sampling pipeline on top of respondent-level data from 10 waves of the International Social Survey Programme (<span class="math inline">\(N = 458,753\)</span>), selecting arbitrary subsets of up to 16 demographic attributes to compute empirical subpopulation response distributions on the fly across billions of possible persona combinations. Evaluating out-of-distribution on US subpopulations from the General Social Survey (SubPOP; 2,926 subpopulation-question targets), we benchmark off-the-shelf and fine-tuned decision models against standard causal LLMs. We show where decision models succeed in capturing human marginal distributions and inter-group contrasts, and where both architectures systematically fail to reflect human behavioral heterogeneity.</p>
+    <p>Simulating human survey responses with large language models (LLMs), a paradigm often termed silicon sampling, typically relies on generative text sampling or poorly calibrated token logits, resulting in mode collapse, prompt brittleness, and distorted population variance. Decision models have emerged as single-pass architectures that map a context state and typed questions directly to calibrated probability distributions over answer options in a single prefill forward pass. In this paper, we investigate whether decision models, as well as causal LLMs adapted via constrained option-letter readouts, can accurately approximate empirical human response distributions across diverse demographic subpopulations. Unlike static benchmarks that provide only pre-computed single-attribute distributions, we build a dynamic persona-distribution dataset and sampling pipeline on top of US respondent-level data from 10 waves of the International Social Survey Programme (2015 to 2024; <span class="math inline">\(N = 14,356\)</span> respondents and <span class="math inline">\(767,484\)</span> respondent-question observations across 16 demographic attributes), selecting arbitrary subsets of persona variables to compute empirical subpopulation response distributions on the fly across billions of possible persona combinations. Evaluating both on held-out multi-attribute ISSP test questions and out-of-distribution on single-attribute subpopulations from the General Social Survey (SubPOP; 2,926 subpopulation-question targets), we benchmark off-the-shelf and fine-tuned decision models against standard causal LLMs. We show where decision models succeed in capturing human marginal distributions and inter-group contrasts, and where both architectures systematically fail to reflect human behavioral heterogeneity.</p>
   </div>
 </div>
 
@@ -166,8 +166,8 @@ window.Quarto = {
 <section id="contributions" class="level2">
 <h2 class="anchored" data-anchor-id="contributions">Contributions</h2>
 <p>This study makes four primary contributions to the literature on silicon sampling and decision models.</p>
-<p>First, drawing on respondent-level microdata from 10 waves of the International Social Survey Programme (ISSP; <span class="math inline">\(458,753\)</span> human individuals across 16 harmonized demographic attributes), we build a dynamic persona-distribution dataset and sampling pipeline for silicon sampling. Unlike static benchmarks such as SubPOP <span class="citation" data-cites="suh-etal-2025-language">(<a href="#ref-suh-etal-2025-language" role="doc-biblioref">Suh et al. 2025</a>)</span> that release only fixed, single-attribute marginal distributions (e.g., conditioning on gender or age alone), our pipeline selects any subset of persona variables (e.g., combining gender, age, and political affiliation), filters the matching ISSP respondents, and computes their empirical sample distribution on the fly, enabling billions of multi-attribute persona combinations for both training and evaluation.</p>
-<p>Second, we provide a comprehensive empirical benchmark of pointer-head decision models (Kev-0.8B, Kev-4B, and Kev-9B) and constrained option-letter causal LLMs <span class="citation" data-cites="qwen3.5">(Qwen3.5; <a href="#ref-qwen3.5" role="doc-biblioref">Qwen Team 2026</a>)</span>, training on 10 waves of respondent-level ISSP US data (<span class="math inline">\(458,753\)</span> human individuals) and testing out-of-distribution on US demographic subpopulations from SubPOP <span class="citation" data-cites="suh-etal-2025-language">(<a href="#ref-suh-etal-2025-language" role="doc-biblioref">Suh et al. 2025</a>)</span>.</p>
+<p>First, drawing on US respondent-level microdata across 10 waves of the International Social Survey Programme (ISSP 2015 to 2024; <span class="math inline">\(14,356\)</span> respondents and <span class="math inline">\(767,484\)</span> respondent-question observations across 16 harmonized demographic attributes), we build a dynamic persona-distribution dataset and sampling pipeline for silicon sampling. Unlike static benchmarks such as SubPOP <span class="citation" data-cites="suh-etal-2025-language">(<a href="#ref-suh-etal-2025-language" role="doc-biblioref">Suh et al. 2025</a>)</span> that release only fixed, single-attribute marginal distributions (e.g., conditioning on gender or age alone), our pipeline selects any subset of persona variables (e.g., combining gender, age, and political affiliation), filters the matching respondents, and computes their empirical sample distribution on the fly, enabling billions of multi-attribute persona combinations for both training and evaluation.</p>
+<p>Second, we provide a comprehensive empirical benchmark of pointer-head decision models (Kev-0.8B, Kev-4B, and Kev-9B) and constrained option-letter causal LLMs <span class="citation" data-cites="qwen3.5">(Qwen3.5; <a href="#ref-qwen3.5" role="doc-biblioref">Qwen Team 2026</a>)</span>, evaluating both off-the-shelf and fine-tuned models on held-out multi-attribute ISSP test items as well as out-of-distribution on single-attribute US demographic subpopulations from SubPOP <span class="citation" data-cites="suh-etal-2025-language">(<a href="#ref-suh-etal-2025-language" role="doc-biblioref">Suh et al. 2025</a>)</span>.</p>
 <p>Third, we formulate an evaluation methodology tailored to categorical and ordinal survey distributions that combines information-theoretic divergences with the 1-Wasserstein transport distance <span class="citation" data-cites="villani2008optimal">(<a href="#ref-villani2008optimal" role="doc-biblioref"><span class="nocase">Villani et al.</span> 2008</a>)</span>, supplemented by an ordinal consensus metric <span class="citation" data-cites="tastle2007consensus wadi2026every">(<a href="#ref-tastle2007consensus" role="doc-biblioref">Tastle and Wierman 2007</a>; <a href="#ref-wadi2026every" role="doc-biblioref">Wadi et al. 2026</a>)</span> to diagnose scale compression and polarization on Likert items.</p>
 <p>Fourth, we analyze inter-group demographic contrasts to characterize when models collapse to marginal national averages by ignoring persona conditioning, and demonstrate how dynamic respondent-level attribute sampling during fine-tuning recovers genuine human demographic divergences.</p>
 </section>
@@ -191,7 +191,7 @@ window.Quarto = {
 <h1>Problem formulation and distributional evaluation</h1>
 <section id="subpopulation-distributional-prediction" class="level2">
 <h2 class="anchored" data-anchor-id="subpopulation-distributional-prediction">Subpopulation distributional prediction</h2>
-<p>Let a human survey dataset consist of respondents indexed by <span class="math inline">\(i \in \{1, \dots, N\}\)</span>. Each respondent has a vector of demographic and background attributes <span class="math inline">\(\mathbf{a}_i\)</span> (e.g., country, sex, age, education, religion, and political party) and answers to survey questions <span class="math inline">\(q \in \mathcal{Q}\)</span>. Each question <span class="math inline">\(q\)</span> has <span class="math inline">\(K_q\)</span> discrete response options <span class="math inline">\(\mathcal{Y}_q = \{y_1, \dots, y_{K_q}\}\)</span>. For ordinal (<code>score</code>) items, <span class="math inline">\((\mathcal{Y}_q, \preceq)\)</span> is totally ordered as <span class="math inline">\(y_1 \prec y_2 \prec \dots \prec y_{K_q}\)</span> from the lowest to the highest scale level.</p>
+<p>Let a human survey dataset consist of respondents indexed by <span class="math inline">\(i \in \{1, \dots, N\}\)</span>. Each respondent has a vector of demographic and background attributes <span class="math inline">\(\mathbf{a}_i\)</span> (e.g., sex, age, education, religion, income, and political party) and answers to survey questions <span class="math inline">\(q \in \mathcal{Q}\)</span>. Each question <span class="math inline">\(q\)</span> has <span class="math inline">\(K_q\)</span> discrete response options <span class="math inline">\(\mathcal{Y}_q = \{y_1, \dots, y_{K_q}\}\)</span>. For ordinal (<code>score</code>) items, <span class="math inline">\((\mathcal{Y}_q, \preceq)\)</span> is totally ordered as <span class="math inline">\(y_1 \prec y_2 \prec \dots \prec y_{K_q}\)</span> from the lowest to the highest scale level.</p>
 <p>A persona <span class="math inline">\(\boldsymbol{\lambda}\)</span> specifies a subset of attribute-value pairs (e.g., “Country: United States; Political party: Republican”). Let <span class="math inline">\(\mathcal{I}(\boldsymbol{\lambda}, q)\)</span> denote the set of human respondents matching persona <span class="math inline">\(\boldsymbol{\lambda}\)</span> who provided a valid answer to question <span class="math inline">\(q\)</span>, with group size <span class="math inline">\(n_{\boldsymbol{\lambda}, q} = |\mathcal{I}(\boldsymbol{\lambda}, q)|\)</span>. The empirical human response distribution (target PMF) is: <span id="eq-human-pmf"><span class="math display">\[
 P_{\mathrm{human}}(Y_{q, \boldsymbol{\lambda}} = y_k) = \frac{1}{n_{\boldsymbol{\lambda}, q}} \sum_{i \in \mathcal{I}(\boldsymbol{\lambda}, q)} \mathbb{I}(y_{i, q} = y_k), \quad k \in \{1, \dots, K_q\}.
 \tag{1}\]</span></span></p>
@@ -253,105 +253,128 @@ z_{q, \boldsymbol{\lambda}, k} = \frac{(\mathbf{W}_q \mathbf{h}_{\mathrm{q}})^\t
 <div id="tbl-datasets" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-datasets-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table&nbsp;1: Summary of human survey datasets used for training, calibration, and out-of-distribution evaluation.
+Table&nbsp;1: Summary of the 10-wave US ISSP respondent-level dataset across training, validation, and in-domain test splits.
 </figcaption>
 <div aria-describedby="tbl-datasets-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table">
 <colgroup>
-<col style="width: 20%">
-<col style="width: 20%">
-<col style="width: 20%">
-<col style="width: 20%">
-<col style="width: 20%">
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 15%">
+<col style="width: 15%">
+<col style="width: 15%">
+<col style="width: 15%">
+<col style="width: 15%">
 </colgroup>
 <thead>
 <tr class="header">
-<th>Split or role</th>
+<th>Split</th>
 <th>Dataset</th>
-<th>Source and scope</th>
-<th>Scale</th>
-<th>Question types</th>
+<th style="text-align: right;">Questions</th>
+<th style="text-align: right;">Score questions</th>
+<th style="text-align: right;">Choice questions</th>
+<th style="text-align: right;">Unique respondents</th>
+<th style="text-align: right;">Unique responses</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td>Training</td>
-<td>ISSP (2015 to 2024)</td>
-<td>10 thematic modules across 310 country-years</td>
-<td>458,753 respondents</td>
-<td>score, choice, noul</td>
+<td>ISSP US (2015 to 2024)</td>
+<td style="text-align: right;">494</td>
+<td style="text-align: right;">370</td>
+<td style="text-align: right;">124</td>
+<td style="text-align: right;">14,356</td>
+<td style="text-align: right;">610,291</td>
 </tr>
 <tr class="even">
-<td>Calibration</td>
-<td>ISSP held-out slots</td>
-<td>1% of (country, question) slots per year; country-level and 1-attribute marginal groups</td>
-<td>204 slots</td>
-<td>score, choice, noul</td>
+<td>Validation</td>
+<td>ISSP US (2015 to 2024)</td>
+<td style="text-align: right;">50</td>
+<td style="text-align: right;">43</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: right;">14,305</td>
+<td style="text-align: right;">64,201</td>
 </tr>
 <tr class="odd">
-<td>Out-of-distribution test</td>
-<td>SubPOP (GSS)</td>
-<td>US General Social Survey (GSS), 22 US demographic subpopulations</td>
-<td>133 questions; 2,926 targets</td>
-<td>64 score (Likert), 69 choice</td>
+<td>In-domain test</td>
+<td>ISSP US (2015 to 2024)</td>
+<td style="text-align: right;">72</td>
+<td style="text-align: right;">61</td>
+<td style="text-align: right;">11</td>
+<td style="text-align: right;">14,334</td>
+<td style="text-align: right;">92,992</td>
+</tr>
+<tr class="even">
+<td>Total</td>
+<td>ISSP US (2015 to 2024)</td>
+<td style="text-align: right;">616</td>
+<td style="text-align: right;">474</td>
+<td style="text-align: right;">142</td>
+<td style="text-align: right;">14,356</td>
+<td style="text-align: right;">767,484</td>
 </tr>
 </tbody>
 </table>
 </div>
 </figure>
 </div>
-<section id="dynamic-respondent-level-sampling-issp" class="level3">
-<h3 class="anchored" data-anchor-id="dynamic-respondent-level-sampling-issp">Dynamic respondent-level sampling (ISSP)</h3>
-<p>Rather than aggregating respondents into a fixed small set of demographic cells, which averages away attributes such as religion, political party, or income, our training sampler dynamically constructs persona-question records on the fly from respondent-level ISSP data. Specifically, for each training example, the sampler first draws a (year, country, question) slot uniformly at random. Next, it draws an attribute count <span class="math inline">\(k \sim \mathrm{Uniform}(0, A_{\text{avail}})\)</span> from up to 16 background attributes, namely sex, age, education, religion, religious attendance, party vote, left-right party position, turnout, household income, region, urban or rural residence, marital status, main activity, union membership, subjective social status, and ancestry. Finally, it samples an observed attribute combination with at least <span class="math inline">\(n_{\min}\)</span> matching respondents and computes their exact empirical answer shares as the training target.</p>
+<section id="dynamic-respondent-level-sampling-and-battery-stratified-split-issp" class="level3">
+<h3 class="anchored" data-anchor-id="dynamic-respondent-level-sampling-and-battery-stratified-split-issp">Dynamic respondent-level sampling and battery-stratified split (ISSP)</h3>
+<p>We construct our primary dataset from 10 waves of manually verified US respondent-level microdata from the International Social Survey Programme (ISSP 2015 to 2024, covering work orientations, role of government, social networks, religion, social inequality, environment, health care, family and gender roles, national identity, and digital societies, totalling <span class="math inline">\(14,356\)</span> unique human respondents and <span class="math inline">\(767,484\)</span> unique respondent-question responses across 616 answered US questions). Rather than pre-aggregating respondents into a fixed small set of single-attribute cells, which averages away attributes such as religion, political party, or income, our sampler dynamically constructs persona-question distributions on the fly from respondent-level microdata. Specifically, for a given survey wave and question, the sampler selects a subset of <span class="math inline">\(k\)</span> persona variables from 16 harmonized attributes, namely sex, age, education, religion, religious attendance, party vote, left-right party position, turnout, household income, region, urban or rural residence, marital status, main activity, union membership, subjective social status, and ancestry, filters the matching respondents (with at least <span class="math inline">\(n_{\min}\)</span> answers), and computes their exact empirical response shares as the target distribution.</p>
+<p>To ensure that our dataset supports both model adaptation and rigorous evaluation of off-the-shelf and fine-tuned models without question leakage, we partition all 616 answered US questions across the 10 waves using a battery-stratified split (<code>code/splits/split.json</code>). All standalone questions, two-item blocks, and cross-wave recurring questions are assigned strictly to the training set (494 questions, or <span class="math inline">\(80.2\%\)</span>, comprising <span class="math inline">\(610,291\)</span> responses from <span class="math inline">\(14,356\)</span> unique respondents). Across multi-item questionnaire batteries where three or more items share a thematic construct and response scale, we hold out one non-repeating item per battery for the ISSP test set (72 questions, or <span class="math inline">\(11.7\%\)</span>, comprising <span class="math inline">\(92,992\)</span> responses from <span class="math inline">\(14,334\)</span> unique respondents) and one non-repeating item from each of the 50 larger batteries (<span class="math inline">\(\ge 4\)</span> items) for the validation set (50 questions, or <span class="math inline">\(8.1\%\)</span>, comprising <span class="math inline">\(64,201\)</span> responses from <span class="math inline">\(14,305\)</span> unique respondents), keeping at least two sibling items per battery in training. Consequently, every held-out validation and test question is unseen during training while sharing a construct battery and scale with at least two training items.</p>
 </section>
-<section id="out-of-distribution-test-set-subpop-gss" class="level3">
-<h3 class="anchored" data-anchor-id="out-of-distribution-test-set-subpop-gss">Out-of-distribution test set (SubPOP / GSS)</h3>
-<p>We evaluate all models on the SubPOP evaluation split <span class="citation" data-cites="suh-etal-2025-language">(<a href="#ref-suh-etal-2025-language" role="doc-biblioref">Suh et al. 2025</a>)</span>, comprising 133 US General Social Survey questions across 22 single-attribute US subpopulations (2,926 total target distributions, consisting of 64 ordinal Likert <code>score</code> items and 69 categorical <code>choice</code> items) after excluding items that overlap with ISSP training questions. No temperature scaling (<span class="math inline">\(T=1\)</span>) is applied at test time.</p>
+<section id="external-out-of-distribution-test-set-subpop-gss" class="level3">
+<h3 class="anchored" data-anchor-id="external-out-of-distribution-test-set-subpop-gss">External out-of-distribution test set (SubPOP / GSS)</h3>
+<p>In addition to our multi-attribute ISSP test split, we evaluate all models on the SubPOP evaluation split <span class="citation" data-cites="suh-etal-2025-language">(<a href="#ref-suh-etal-2025-language" role="doc-biblioref">Suh et al. 2025</a>)</span>, comprising 133 US General Social Survey questions across 22 single-attribute US subpopulations (2,926 total target distributions, consisting of 64 ordinal Likert <code>score</code> items and 69 categorical <code>choice</code> items). No temperature scaling (<span class="math inline">\(T=1\)</span>) is applied at test time.</p>
 </section>
 </section>
 <section id="models-and-training-regimes" class="level2">
 <h2 class="anchored" data-anchor-id="models-and-training-regimes">Models and training regimes</h2>
-<p>We evaluate three primary model families and training configurations across identical data splits. First, we benchmark off-the-shelf pointer-head decision models (Kev-0.8B, Kev-4B, and Kev-9B), which pair pretrained Qwen3.5 backbones with released LoRA adapters and pointer heads trained on general decision benchmarks. Second, we adapt the Kev models on ISSP across several parameter-efficient and full-parameter regimes, either continuing training from the released adapter, training a fresh rank-<span class="math inline">\(R\)</span> LoRA adapter (<span class="math inline">\(R \in \{16, 64, 128, 256\}\)</span>) alongside the pointer head, unfreezing the top-<span class="math inline">\(L\)</span> transformer decoder layers (<span class="math inline">\(L \in \{2, 3, 6\}\)</span>), or fine-tuning all backbone weights together with the pointer head. Within these fine-tuned decision models, we also conduct data construction ablations comparing all 310 ISSP country-years against US-only respondents, varying persona attribute count <span class="math inline">\(k\)</span>, and varying the minimum respondent threshold <span class="math inline">\(n_{\min} \in \{1, 10, 100\}\)</span>. Third, to isolate the effect of the pointer head against a standard vocabulary readout, we evaluate Qwen3.5-0.8B both zero-shot and fine-tuned end-to-end through its language modeling head over option letters “A” through “L”.</p>
+<p>We evaluate three primary model families and training configurations across identical data splits. First, we benchmark off-the-shelf pointer-head decision models (Kev-0.8B, Kev-4B, and Kev-9B), which pair pretrained Qwen3.5 backbones with released LoRA adapters and pointer heads trained on general decision benchmarks. Second, we adapt the Kev models on the ISSP training split across several parameter-efficient and full-parameter regimes, either continuing training from the released adapter, training a fresh rank-<span class="math inline">\(R\)</span> LoRA adapter (<span class="math inline">\(R \in \{16, 64, 128, 256\}\)</span>) alongside the pointer head, unfreezing the top-<span class="math inline">\(L\)</span> transformer decoder layers (<span class="math inline">\(L \in \{2, 3, 6\}\)</span>), or fine-tuning all backbone weights together with the pointer head. Within these fine-tuned decision models, we also conduct data construction ablations varying the number of conditioning persona attributes <span class="math inline">\(k\)</span> and the minimum respondent threshold <span class="math inline">\(n_{\min} \in \{1, 10, 100\}\)</span>. Third, to isolate the effect of the pointer head against a standard vocabulary readout, we evaluate Qwen3.5-0.8B both zero-shot and fine-tuned end-to-end through its language modeling head over option letters “A” through “L”.</p>
 </section>
 </section>
 <section id="sec-results" class="level1">
 <h1>Results</h1>
 <section id="overall-distributional-fidelity-on-human-subpopulations-rq1" class="level2">
 <h2 class="anchored" data-anchor-id="overall-distributional-fidelity-on-human-subpopulations-rq1">Overall distributional fidelity on human subpopulations (RQ1)</h2>
-<p><a href="#tbl-main-results" class="quarto-xref">Table&nbsp;2</a> reports out-of-distribution test performance on SubPOP across all evaluated model families and training regimes.</p>
+<p><a href="#tbl-main-results" class="quarto-xref">Table&nbsp;2</a> reports test performance on the held-out ISSP multi-attribute test split and the external SubPOP benchmark across all evaluated model families and training regimes.</p>
 <div id="tbl-main-results" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-main-results-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table&nbsp;2: Out-of-distribution performance on SubPOP (2,926 subpopulation targets across 133 GSS questions). KL and JS divergences are in bits; <span class="math inline">\(W_1\)</span> is normalized by scale range (<span class="math inline">\(\%\)</span> of scale).
+Table&nbsp;2: Distributional performance on the held-out ISSP test split (72 multi-attribute questions) and external SubPOP benchmark (2,926 subpopulation targets across 133 GSS questions). KL and JS divergences are in bits; <span class="math inline">\(W_1\)</span> is normalized by scale range (<span class="math inline">\(\%\)</span> of scale).
 </figcaption>
 <div aria-describedby="tbl-main-results-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table">
 <colgroup>
-<col style="width: 10%">
-<col style="width: 10%">
-<col style="width: 13%">
-<col style="width: 13%">
-<col style="width: 13%">
-<col style="width: 13%">
-<col style="width: 13%">
-<col style="width: 13%">
+<col style="width: 8%">
+<col style="width: 8%">
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 11%">
 </colgroup>
 <thead>
 <tr class="header">
 <th>Model</th>
 <th>Regime</th>
-<th style="text-align: right;">All <span class="math inline">\(D_{\mathrm{KL}}\)</span> (<span class="math inline">\(\downarrow\)</span>)</th>
-<th style="text-align: right;">All <span class="math inline">\(D_{\mathrm{JS}}\)</span> (<span class="math inline">\(\downarrow\)</span>)</th>
-<th style="text-align: right;">Choice <span class="math inline">\(D_{\mathrm{KL}}\)</span> (<span class="math inline">\(\downarrow\)</span>)</th>
-<th style="text-align: right;">Score <span class="math inline">\(D_{\mathrm{KL}}\)</span> (<span class="math inline">\(\downarrow\)</span>)</th>
-<th style="text-align: right;">Score <span class="math inline">\(W_1\)</span> (<span class="math inline">\(\downarrow\)</span>)</th>
-<th style="text-align: right;">Score <span class="math inline">\(\Delta \mathrm{Cns}\)</span> (<span class="math inline">\(\to 0\)</span>)</th>
+<th style="text-align: right;">ISSP Test <span class="math inline">\(D_{\mathrm{KL}}\)</span> (<span class="math inline">\(\downarrow\)</span>)</th>
+<th style="text-align: right;">SubPOP All <span class="math inline">\(D_{\mathrm{KL}}\)</span> (<span class="math inline">\(\downarrow\)</span>)</th>
+<th style="text-align: right;">SubPOP All <span class="math inline">\(D_{\mathrm{JS}}\)</span> (<span class="math inline">\(\downarrow\)</span>)</th>
+<th style="text-align: right;">SubPOP Choice <span class="math inline">\(D_{\mathrm{KL}}\)</span> (<span class="math inline">\(\downarrow\)</span>)</th>
+<th style="text-align: right;">SubPOP Score <span class="math inline">\(D_{\mathrm{KL}}\)</span> (<span class="math inline">\(\downarrow\)</span>)</th>
+<th style="text-align: right;">SubPOP Score <span class="math inline">\(W_1\)</span> (<span class="math inline">\(\downarrow\)</span>)</th>
+<th style="text-align: right;">SubPOP Score <span class="math inline">\(\Delta \mathrm{Cns}\)</span> (<span class="math inline">\(\to 0\)</span>)</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td>Qwen3.5-0.8B (letters)</td>
 <td>Zero-shot</td>
+<td style="text-align: right;">TBD</td>
 <td style="text-align: right;">TBD</td>
 <td style="text-align: right;">TBD</td>
 <td style="text-align: right;">TBD</td>
@@ -368,6 +391,7 @@ Table&nbsp;2: Out-of-distribution performance on SubPOP (2,926 subpopulation tar
 <td style="text-align: right;">TBD</td>
 <td style="text-align: right;">TBD</td>
 <td style="text-align: right;">TBD</td>
+<td style="text-align: right;">TBD</td>
 </tr>
 <tr class="odd">
 <td>Kev-0.8B (pointer)</td>
@@ -378,10 +402,12 @@ Table&nbsp;2: Out-of-distribution performance on SubPOP (2,926 subpopulation tar
 <td style="text-align: right;">TBD</td>
 <td style="text-align: right;">TBD</td>
 <td style="text-align: right;">TBD</td>
+<td style="text-align: right;">TBD</td>
 </tr>
 <tr class="even">
 <td>Kev-0.8B (pointer)</td>
-<td>Fine-tuned (ISSP all)</td>
+<td>Fine-tuned (ISSP)</td>
+<td style="text-align: right;">TBD</td>
 <td style="text-align: right;">TBD</td>
 <td style="text-align: right;">TBD</td>
 <td style="text-align: right;">TBD</td>
@@ -390,16 +416,6 @@ Table&nbsp;2: Out-of-distribution performance on SubPOP (2,926 subpopulation tar
 <td style="text-align: right;">TBD</td>
 </tr>
 <tr class="odd">
-<td>Kev-0.8B (pointer)</td>
-<td>Fine-tuned (ISSP US)</td>
-<td style="text-align: right;">TBD</td>
-<td style="text-align: right;">TBD</td>
-<td style="text-align: right;">TBD</td>
-<td style="text-align: right;">TBD</td>
-<td style="text-align: right;">TBD</td>
-<td style="text-align: right;">TBD</td>
-</tr>
-<tr class="even">
 <td>Kev-4B (pointer)</td>
 <td>Off-the-shelf / FT</td>
 <td style="text-align: right;">TBD</td>
@@ -408,10 +424,12 @@ Table&nbsp;2: Out-of-distribution performance on SubPOP (2,926 subpopulation tar
 <td style="text-align: right;">TBD</td>
 <td style="text-align: right;">TBD</td>
 <td style="text-align: right;">TBD</td>
+<td style="text-align: right;">TBD</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Kev-9B (pointer)</td>
 <td>Off-the-shelf / FT</td>
+<td style="text-align: right;">TBD</td>
 <td style="text-align: right;">TBD</td>
 <td style="text-align: right;">TBD</td>
 <td style="text-align: right;">TBD</td>
@@ -435,11 +453,11 @@ Table&nbsp;2: Out-of-distribution performance on SubPOP (2,926 subpopulation tar
 </section>
 <section id="capturing-inter-group-demographic-contrasts-rq3" class="level2">
 <h2 class="anchored" data-anchor-id="capturing-inter-group-demographic-contrasts-rq3">Capturing inter-group demographic contrasts (RQ3)</h2>
-<p>To test whether models capture true sociological heterogeneity rather than memorizing a single marginal distribution per question, we evaluate inter-group Wasserstein contrast gaps <span class="math inline">\(G_q(P; \boldsymbol{\lambda}_a, \boldsymbol{\lambda}_b)\)</span> and signed mean shifts across contrasting subpopulations, such as democrat versus republican, male versus female, atheist versus protestant, and high versus low income, on items exhibiting the largest empirical human gaps. Furthermore, we show why fixed coarse aggregation (e.g., grouping only by country, sex, age, and education) induces persona blindness on unconditioned attributes, and how respondent-level dynamic subset sampling restores sensitivity to demographic conditioning.</p>
+<p>To test whether models capture true sociological heterogeneity rather than memorizing a single marginal distribution per question, we evaluate inter-group Wasserstein contrast gaps <span class="math inline">\(G_q(P; \boldsymbol{\lambda}_a, \boldsymbol{\lambda}_b)\)</span> and signed mean shifts across contrasting subpopulations, such as democrat versus republican, male versus female, atheist versus protestant, and high versus low income, on items exhibiting the largest empirical human gaps. Furthermore, we show why fixed coarse aggregation (e.g., grouping only by sex, age, and education) induces persona blindness on unconditioned attributes, and how respondent-level dynamic subset sampling restores sensitivity to demographic conditioning.</p>
 </section>
 <section id="ablation-studies-rq4" class="level2">
 <h2 class="anchored" data-anchor-id="ablation-studies-rq4">Ablation studies (RQ4)</h2>
-<p>We conduct four ablation studies to isolate the drivers of distributional alignment. First, we examine model scale and adaptation depth across 0.8B, 4B, and 9B backbones, comparing LoRA rank against top-layer unfreezing and full fine-tuning. Second, we vary persona construction and minimum group size (<span class="math inline">\(n_{\min}\)</span>), contrasting single-respondent one-hot targets (<span class="math inline">\(n_{\min}=1\)</span>) against aggregated subpopulation shares (<span class="math inline">\(n_{\min} \in \{10, 100\}\)</span>) and varying the number of conditioning attributes <span class="math inline">\(k\)</span>. Third, we compare cross-national training on all 310 ISSP country-years against single-country training on US-only ISSP modules when testing on US GSS subpopulations. Fourth, we evaluate the impact of prompt augmentation (e.g., shuffling option orders and reversing Likert scales during training) relative to canonical option ordering on test-time calibration.</p>
+<p>We conduct three ablation studies to isolate the drivers of distributional alignment. First, we examine model scale and adaptation depth across 0.8B, 4B, and 9B backbones, comparing LoRA rank against top-layer unfreezing and full fine-tuning. Second, we vary persona construction and minimum group size (<span class="math inline">\(n_{\min}\)</span>), contrasting single-respondent one-hot targets (<span class="math inline">\(n_{\min}=1\)</span>) against aggregated subpopulation shares (<span class="math inline">\(n_{\min} \in \{10, 100\}\)</span>) and varying the number of conditioning attributes <span class="math inline">\(k\)</span> (e.g., single-attribute versus multi-attribute persona combinations). Third, we evaluate the impact of prompt augmentation (e.g., varying persona formatting, shuffling option orders, and reversing Likert scales during training) relative to canonical option ordering on test-time calibration.</p>
 </section>
 </section>
 <section id="sec-discussion" class="level1">
@@ -450,12 +468,12 @@ Table&nbsp;2: Out-of-distribution performance on SubPOP (2,926 subpopulation tar
 </section>
 <section id="limitations-and-ethical-considerations" class="level2">
 <h2 class="anchored" data-anchor-id="limitations-and-ethical-considerations">Limitations and ethical considerations</h2>
-<p>Using silicon samples carries the risk of replacing underrepresented human voices in policy, marketing, or public health research if deployed uncritically. Moreover, demographic and geographic coverage biases in cross-national survey training corpora bound the populations for which distributional predictions remain valid.</p>
+<p>Using silicon samples carries the risk of replacing underrepresented human voices in policy, marketing, or public health research if deployed uncritically. Moreover, demographic and geographic coverage biases in survey training corpora bound the populations for which distributional predictions remain valid.</p>
 </section>
 </section>
 <section id="sec-conclusion" class="level1">
 <h1>Conclusion</h1>
-<p>We investigated whether decision models and constrained next-token LLMs can serve as calibrated samplers of human behavior. By pairing respondent-level cross-national survey training on ISSP with a distributional evaluation on SubPOP across information-theoretic divergences, ordinal 1-Wasserstein distance and scale dispersion, and inter-group demographic contrasts, we demonstrated both the effectiveness of distributional fine-tuning and the structural limits of current architectures in replicating human behavioral heterogeneity.</p>
+<p>We investigated whether decision models and constrained next-token LLMs can serve as calibrated samplers of human behavior. By pairing dynamic multi-attribute persona sampling on 10 waves of respondent-level ISSP data with a distributional evaluation on both held-out ISSP test items and SubPOP across information-theoretic divergences, ordinal 1-Wasserstein distance and scale dispersion, and inter-group demographic contrasts, we demonstrated both the effectiveness of distributional fine-tuning and the structural limits of current architectures in replicating human behavioral heterogeneity.</p>
 </section>
 
 
@@ -463,7 +481,7 @@ Table&nbsp;2: Out-of-distribution performance on SubPOP (2,926 subpopulation tar
 
 <section id="app-data" class="level2">
 <h2 class="anchored" data-anchor-id="app-data">Dataset construction and ISSP attribute harmonization</h2>
-<p>This appendix documents the 16 ISSP respondent attributes and country-specific variable mappings harmonized across the 2015 to 2024 survey waves, together with the overlap screening between ISSP training items and SubPOP GSS evaluation items.</p>
+<p>This appendix documents the 16 ISSP respondent attributes and variable mappings harmonized across the 2015 to 2024 US survey waves, together with the battery-stratified question split across training, calibration, and test sets.</p>
 
 </section>
 </div></section><section class="quarto-appendix-contents" role="doc-bibliography" id="quarto-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" data-line-spacing="2" role="list">

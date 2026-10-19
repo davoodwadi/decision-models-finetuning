@@ -23,6 +23,7 @@ venv/
 # Large data & archive files
 *.csv
 *.json
+!code/splits/split.json
 *.jsonl
 *.parquet
 *.dta
