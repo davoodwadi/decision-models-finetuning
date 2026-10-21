@@ -80,7 +80,21 @@ class KevPointerModel(SurveyModel):
         net.lm.config.use_cache = False                  # no generation: the cache only costs memory
         # a full-weight checkpoint (one of our full_finetune runs): continue from its backbone, not the plain base
         continued = full_finetune and checkpoint.meta.weights == "full"
-        if (lora_rank or full_finetune) and not continued:
+        if lora_rank and checkpoint.meta.weights == "lora":
+            if lora_rank < checkpoint.meta.lora:
+                raise ValueError(f"lora_rank {lora_rank} < checkpoint lora {checkpoint.meta.lora}")
+            from peft import load_peft_weights
+            src, r0 = load_peft_weights(checkpoint.path, device="cpu"), checkpoint.meta.lora
+            with torch.no_grad():
+                for name, param in net.lm.named_parameters():
+                    key = name.replace(".default.", ".")
+                    if "lora_A" in key:
+                        param[:r0].copy_(src[key].to(param.device, param.dtype))
+                    elif "lora_B" in key:
+                        param.zero_()
+                        param[:, :r0].copy_(src[key].to(param.device, param.dtype))
+            net.head.load_state_dict(meta.head)
+        elif full_finetune and not continued:
             net.head.load_state_dict(meta.head)          # released head only; the backbone starts as the plain base
         else:
             checkpoint.warm_start(net, meta)             # loads adapter or backbone + head; refuses a mismatched architecture

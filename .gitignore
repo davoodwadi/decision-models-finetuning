@@ -19,6 +19,7 @@ venv/
 *.onnx
 *.gguf
 **/tokenizer.json
+*.pkl
 
 # Large data & archive files
 *.csv

@@ -24,7 +24,7 @@ def options_and_targets(view):
     record, option_keys = to_record(request)
     questions = []
     for (v, q), meta in zip(view["questions"].items(), option_keys):
-        target = torch.tensor([q["target"].get(key, 0.0) for key in meta["keys"]])
+        target = torch.tensor([q["target"][key] for key in meta["keys"]])
         questions.append({"v": v, "src": q.get("src"), "type": q["type"],
                           "target": target / target.sum()})   # shares were rounded: renormalise
     return record, questions
