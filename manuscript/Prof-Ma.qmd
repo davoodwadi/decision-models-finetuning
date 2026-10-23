@@ -1,0 +1,54 @@
+Hello Prof. Ma,
+
+I hope you are having a great day.
+
+I have trained a few decision models (Kev 0.8B, 4B and 9B), and the results seem promising.
+
+We have a training dataset (ISSP 2015 to ISSP 2024) of 14,356 participants with 616 general likert/choice questions about religion, politics, health, etc. (767,484 unique responses),
+and a test set (SubPOP) with 133 US General Social Survey questions across 22 single-attribute personas (e.g., gender, political party). 
+
+I trained three decision models on the training set to minimize the KL divergence, which measures the distance between two distributions: 
+
+1. Kev 0.8B, which is based on Qwen 3.5 0.8B
+2. Kev 4B, which is based on Qwen 3.5 4B
+3. Kev 9B, which is based on Qwen 3.5 9B
+
+Figure below shows sample questions from the test set (SubPOP dataset) on the political party subsample (democrat vs. republican). 
+We compare baseline models (e.g., Kev 0.8) and trained models (e.g., Kev 0.8 FT) against the human sample (ground truth).
+The model has not seen these questions nor the human sample distributions during training. 
+
+
+![The distribution of responses from the human subpopulation and decision models](figures/political_party_mixed_kde_by_sample_subpop.png)
+
+The figure shows interesting patterns:
+
+1. As expected, larger baseline models do a better job in predicting the response distributions of people based solely off of their political party.
+2.  The small baseline model (Kev 0.8B) performs poorly out of the box (KL = 0.5433), but when trained (Kev 0.8B FT), it outperforms larger baseline models in predicting new human distributions (KL(`Kev 0.8B FT`) = 0.3254 vs. KL(`Kev 4B`)=0.5168).
+
+I think we could position the paper this way:
+
+1. Researchers use silicon sampling is used to predict human responses.
+2. LLMs are the type of models currently used for silicon sampling.
+3. LLMs output text and are ill-suited for silicon sampling (i.e., predicting probability distributions of human samples).
+4. Decision models are a new family of models that predict probability distributions based on a prompt.
+5. Architecturally, decision models are more suitable for silicon sampling because they output the probability distribution of the responses directly.
+6. Because LLMs and decision models are trained for output accuracy (e.g., determining whether a piece of code is safe or unsafe), they are not trained to produce probability distributions resembling human samples.
+7. By training decision models on human respondent data we show that, conditional on a persona (e.g., gender or political party), decision models can learn to approximate human samples better than the baseline models.
+   
+So far this reads like a NeurIPS Datasets and Benchmarks paper.
+To make it marketing, I'm taking one of the nutrition open datasets and predicting sample distributions on choice/likert questions using the baseline and trained Kev models.
+I will compare the KL divergence of the human sample distribution (ground truth) against the model predicted distributions.
+I'm expecting the trained decision models to considerably reduce the KL divergence compared to the baseline decision models. 
+This would be genuine generalizability because the trained model is not trained on nutrition profiles or warning labels. 
+
+To make the contribution stronger, as a post-hoc study, I thought what would happen if the researchers for the nutrition paper used our trained model to replace human respondents. 
+I asked whether our decision model could replicate the regression results of the paper. 
+This would give marketing researchers a glimpse into the end-to-end silicon sampling and how reliable it is for replacing human respondents.
+I'm planning to run this next.
+
+What do you think about the results/positioning. 
+Would love to hear your thoughts. 
+Also, if I was vague in any part, please let me know.
+
+Best,  
+Davood.

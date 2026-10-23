@@ -103,9 +103,9 @@ class KevPointerModel(SurveyModel):
         return cls(net, tok, meta, mode)
 
     @classmethod
-    def load(cls, run, device):
+    def load(cls, run, device, dtype=None):
         """A trained or released Kev checkpoint for evaluation, raw distribution (temperature 1, no calibration)."""
-        tok, net = load_checkpoint(run, device, LoadOptions(temperature=1.0))
+        tok, net = load_checkpoint(run, device, LoadOptions(dtype=dtype, temperature=1.0))
         return cls(net, tok, Checkpoint(run).meta, "loaded")
 
     def forward(self, batch):
