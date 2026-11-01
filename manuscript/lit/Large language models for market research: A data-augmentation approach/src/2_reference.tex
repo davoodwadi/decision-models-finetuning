@@ -1,0 +1,56 @@
+\section{Literature}
+\label{sec:literature}
+
+
+In this section, we review several key streams of literature relevant to our research. 
+
+\vspace{1mm}
+\noindent
+\underline{\textit{Technical development of natural language processing (NLP) and LLM}.}
+The development of LLMs represents a culmination of decades of advances in NLP and deep learning techniques. The foundational work of \cite{chomsky1956three} introduced formal models for language description, paving the way for computational approaches to linguistic analysis. Modern LLMs owe much to significant technical breakthroughs in recent years, such as the introduction of sequence-to-sequence models \citep{sutskever2014sequence} and the transformer architecture \citep{vaswani2017attention}, which enables efficient handling of sequential data and contextual understanding.
+
+Key milestones in this area include the development of BERT \citep{devlin2018bert}, which introduced bidirectional context modeling, and GPT \citep{radford2018improving}, which leveraged generative pre-training to advance NLP capabilities. These innovations culminated in LLMs like GPT-4 \citep{openai2023gpt}, characterized by their ability to perform complex language tasks after training on massive datasets.
+Importantly, further improvements, such as domain-specific adaptations as effective strategies for fine-tuning \citep[e.g., see][]{beltagy2019scibert, gururangan2020don, parthasarathy2024ultimate} and few-shot learning \citep{brown2020language} enable these models to achieve remarkable performance in specific tasks.
+We refer the readers to \cite{naveed2023comprehensive}
+for a review of the broader trajectory of LLM research. These technical advancements underpin the transformative potential of LLMs in applications such as social science and consumer behavior modeling.
+
+\vspace{1mm}
+\noindent
+\noindent
+\underline{\textit{Using LLMs for social sciences and market research}.}
+AI, especially LLMs, is making a pronounced impact on social sciences. Researchers have explored how these models can simulate human behavior and provide insights into societal phenomena. For instance, \cite{ziems2024can} discussed the potential of LLMs to transform computational social science by generating synthetic data and modeling complex social dynamics. However, questions remain about the reliability of these models in replicating real-world behavior, as highlighted by \cite{huang2024social} and \cite{yang2024large}, who cautioned against over-reliance on LLMs for social predictions due to their lack of lived experiences and contextual nuances. Similarly, \cite{gui2023challenge} pointed out challenges in using LLMs to simulate human behavior, especially from a causal inference perspective, where the models may fail to account for underlying causality in decision-making processes.
+
+In the domain of market research, LLMs have emerged as powerful tools for generating synthetic data that mimics human responses. Studies such as \cite{brand2023using} and \cite{argyle2023out} demonstrated the feasibility of using LLMs for simulating consumer preferences, while \cite{chen2023emergence} and \cite{horton2023large} highlighted the potential of these models as simulated economic agents. Still, the extent to which LLMs can faithfully replicate human preferences remains a point of debate, as explored by \cite{goli2024frontiers}, who emphasized the challenges in achieving alignment between AI-generated and human data.
+Our work provides an alternative perspective on this question: while LLMs may not fully replicate human behavior or replace humans in social sciences or market research, they can nonetheless offer valuable insights to improve existing methods. With the implementation of robust statistical procedures for correcting bias, LLMs can serve as effective tools for enhancing the accuracy and efficiency of current methodologies.
+
+
+\vspace{1mm}
+\noindent
+\noindent
+\underline{\textit{Conjoint analysis}.}
+Conjoint analysis has long been a cornerstone of market research, providing insights into consumer preferences by evaluating trade-offs between product attributes \citep{green1978conjoint, green1990conjoint}. Over time, this methodology has seen significant methodological advancements. On the decision-making side, early work by \cite{kohli1990heuristics} and \cite{wang2009branch} explored heuristics and optimization approaches for conjoint-based product line design, while \cite{kessels2008optimal} focused on optimizing experimental design for conjoint studies. Recent contributions, such as \cite{dzyabura2018offline}, extend the conjoint analysis to multi-channel settings, incorporating both online and offline consumer behaviors.
+
+Our research builds on the rich tradition of integrating methods from statistics or ML into conjoint analysis. While prior studies have leveraged advanced statistical models \citep{allenby2006hierarchical} and Bayesian frameworks \citep{eggers2021choice}, we introduce a novel data augmentation approach that bridges the gap between AI-generated and real-world data. Furthermore, as mentioned, \cite{goli2024frontiers} emphasized the limitations of using LLM-generated data alone for preference estimation, underscoring the need for innovative solutions like our proposed methodology. This methodological contribution represents a significant step forward in enhancing the robustness and scalability of conjoint analysis.
+
+\vspace{1mm}
+\noindent
+\revise{
+\underline{Prediction-Powered Inference (PPI).}
+Notably, our work also connects to PPI literature. PPI provides a framework for combining a small labeled dataset with a large pool of ML predictions to construct unbiased, valid confidence intervals that shrink as prediction quality improves \citep{angelopoulos2023prediction}. PPI++ \cite{angelopoulos2023ppi++} builds on this by replacing computationally intensive test-based constructions with simple Wald-type intervals, introducing a power-tuning mechanism that automatically adapts to prediction quality, and ensuring efficiency gains without risk of degradation when predictions are weak. Most recently, \cite{ji2025surrogates} reinterpret PPI through the surrogate-outcome literature, proposing RePPI, which recalibrates the imputed loss with flexible models to achieve efficiency-optimal inference under convex settings, dominating PPI and PPI++ when recalibration is consistent and still never worse than using labels alone. Together, the three works establish a coherent progression: PPI for validity, PPI++ for computational and adaptive efficiency, and RePPI for optimal use of predictions as modern surrogates.}
+
+\revise{
+At a high level, AAE and PPI share the same guiding principle: use a small dataset containing both real and AI labels to learn the discrepancy between them, and then apply this correction to a larger dataset containing only AI labels. 
+However, we note two key differences. 
+The key difference lies in how the two methods correct the discrepancy. PPI operates through a rectified loss function, subtracting the empirical log-likelihood difference from the primary set from the empirical log-likelihood of the auxiliary set. However, log-likelihood functions tend to flatten in high-dimensional feature spaces, which can lead to information loss when adjusting the aggregated loss.
+AAE, on the other hand, directly models the discrepancy between AI and real data as a function of the feature vector $x$ and AI label $z$. It corrects AI labels directly by replacing them with predictions of the real labels given the AI label and product features, enabling a more granular adjustment. As shown in our empirical findings in Section 6.3: AAE performs similarly to PPI when $x$ is low-dimensional, but outperforms PPI in higher-dimensional settings.}
+
+
+
+\vspace{1mm}
+\noindent
+\underline{\textit{Technology, Innovation, and Entrepreneurship}.}
+Our work also speaks to the literature of technology, innovation, and entrepreneurship, the intersection of which has been a focal point of operations management research. Foundational works such as \cite{shane200450th} provide a comprehensive overview of how technological advancements drive product development and entrepreneurial activities. Recent studies emphasize the role of AI and ML in reshaping operational tasks. For instance, \cite{terwiesch2019om} and \cite{bastani2022applied} highlight the potential of AI tools to optimize decision-making processes, while \cite{yoo2024next} identify new frontiers in digital innovation.
+
+Our work contributes to this stream by demonstrating how LLMs represent a disruptive innovation in market research. By democratizing access to market insights, LLMs enable startups and smaller firms to conduct sophisticated analyses previously reserved for resource-intensive operations \citep{olsen2020industry, choi2022disruptive}. Furthermore, our findings align with \cite{girotra2023ideas}, which discusses the transformative role of LLMs in idea generation and business innovation.
+Along a similar line, \cite{connell2024estimating} discusses how to correct the misclassification error in using LLM in place of human for classifying textual data, and \cite{ludwig2024large} develops an econometric framework to assess the validity of using LLMs in economics research, emphasizing the need to avoid training data leakage for prediction tasks and to ensure gold-standard measurement equivalence for estimation tasks, while providing guidance on mitigating potential biases and limitations. 
+Collectively, these insights underscore the potential of new technologies to revolutionize traditional operational practices, particularly for data collection and consumer analysis.

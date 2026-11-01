@@ -1,0 +1,219 @@
+\section{Comparison between the Covariances under a Specific Parametric Form}
+\label{app:comparison}
+
+Consider the specification of $\Prob(y = j\,|\,\x, z)$ given by 
+\begin{align}
+    g_j(\x, z; \thetavec^*) ~=~ \frac{e^{\check{\thetavec}^{\top}\x_{(j)}+ \eta\ind_{(z = j)}}}{1+\sum_{\ell \in \Kscr} e^{\check{\thetavec}^{\top}\x_{(\ell)}+ \eta\ind_{(z = \ell)}}}, \quad \forall j \in \Kscr.
+    \label{eqn:mnl-g}
+\end{align} 
+Let us define the random variable
+$
+\rvec(\x, z) := \sum_{j\in \Kscr}\big(\sigma_{j}(\x; \betavec^*) 
+ - g_{j}(\x, z; \thetavec^*)\big)\x_{(j)}
+$. 
+The next result follows. 
+
+\begin{prop}[Projection Error Decomposition under MNL]
+\label{prop:error-mnl}
+    If \eqref{eqn:mnl-g} holds, under Assumptions \ref{assumption:regularity-consistency} and \ref{assumption:regularity-normality},  $\check{\Jvec} -  \Gammavec\Lambdavec\Gammavec^{\top}$ equals to:
+  \begin{align}
+       &\E\left[\rvec(\x, z)\rvec(\x, z)^{\top}\right]
+        ~=~
+     \underbrace{\E_{\x}\left[
+      \left(\sum_{j\in \Kscr}\big(\sigma_{j}(\x; \betavec^*) 
+ - \Prob(y = j\,|\,\x)\big)\x_{(j)}
+     \right)\left(\sum_{j\in \Kscr}\big(\sigma_{j}(\x; \betavec^*) 
+ - \Prob(y = j\,|\,\x)\big)\x_{(j)}
+     \right)^{\top}
+     \right]}_{\text{\upshape{The degree of model misspecification}}}\notag\\
+     &~~~~~~~~~~~~~~~~~~~~+\underbrace{\E_{\x,z}\left[
+      \left(\sum_{j\in \Kscr}\big(g_{j}(\x, z; \thetavec^*)
+ - \Prob(y = j\,|\,\x)\big)\x_{(j)}
+     \right)\left(\sum_{j\in \Kscr}\big(g_{j}(\x, z; \thetavec^*)
+ - \Prob(y = j\,|\,\x)\big)\x_{(j)}
+     \right)^{\top}
+     \right]}_{\text{\upshape{The covariance of $\sum_{j\in \Kscr}g_{j}(\x, z; \thetavec^*))\x_{(j)}$}}}\succ 0.
+     \label{eqn:decomposition-variance}
+  \end{align}
+\end{prop}
+
+In this case, the difference $ \check{\Jvec} - \Gammavec\Lambdavec\Gammavec^{\top} $ decomposes neatly into two terms: one term reflects the extent to which the MNL choice model is misspecified, and the other term captures the covariance of $ \sum_{j \in \Kscr} g_{j}(\x, z; \thetavec^*) \x_{(j)} $,
+because  
+$
+\E_{z}\left[
+g_{j}(\x, z; \thetavec^*) \,\big|\,\x
+\right]\,=\,\Prob(y = j\,|\,\x).
+$
+This decomposition offers valuable insights into the conditions under which AAE achieves variance reduction compared to $ \hat{\betavec}^{\sf P}$. 
+Specifically, if model misspecification exists, so that the matrix from above is positive definite, or if the auxiliary label $ z $ is sufficiently informative, such that the associated covariance matrix is positive definite, then $\check{\Jvec} \succ \Gammavec\Lambdavec\Gammavec^{\top}$ holds, establishing AAE’s dominance. 
+Furthermore, as model misspecification increases or $ z $ becomes more informative, this dominance is amplified, resulting in a larger variance reduction by AAE.
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=120mm]{fig/eigen_prob_plot.pdf}
+    \caption{Minimum Eigenvalues and Absolute Probability Differences}
+    \label{fig:eigen}
+    \begin{minipage}{\textwidth}
+    \footnotesize
+    \begin{tabular}{p{1cm} p{15cm}}\hspace{-1mm}\textbf{Notes}: & \setlength{\baselineskip}{1.2\baselineskip} The plot shows averages of minimum eigenvalues (blue curve) and absolute probability differences (red curve) across 50 instances when $\eta$ changes.
+         The ribbons give the maximum and minimum values for either the minimum eigenvalue or the absolute probability difference corresponding to each $\eta$ value. The vertical axes are adjusted for the minimum eigenvalue or the absolute probability difference corresponding for better visualization. 
+    \end{tabular}
+  \end{minipage}
+\end{figure}
+
+Using this proposition, we can compute $ \check{\Jvec} -  \Gammavec\Lambdavec\Gammavec^{\top} = (1 - \alpha)\alpha(2p - 1)^2 > 0 $ in the context of Example \ref{examp:ai-bias}, given that $ p \neq 1/2 $ and $ \alpha \notin \{0,1\} $. Note that, in this simplified setting, there is no model misspecification as in \eqref{eqn:decomposition-variance}. When $ p = 1/2 $, $z$ becomes pure noise, and when $ \alpha \in \{0,1\} $, $ z $ is constant. In both cases, $ z $ is uninformative. Outside of these cases, we find that AAE performs better than using only the primary data. The advantage becomes more evident if we send $p \rightarrow 0$ or $1$. 
+In these cases, $z$ becomes more informative. 
+
+Next, we expand on this discussion, and numerically illustrate $ \check{\Jvec} -  \Gammavec\Lambdavec\Gammavec^{\top} $ under the specification of \eqref{eqn:mnl-g}, 
+and plot the results in Figure \ref{fig:eigen}. Specifically, we assume that 
+$
+\Prob(z = j \mid \x) = {e^{\bm{\zeta}^{\top}\x_{(j)}}}/\big(\sum_{\ell \in \Kscr} e^{\bm{\zeta}^{\top}\x_{(\ell)}}\big),\,\forall j\in \Kscr
+$,
+with $ d = 5 $ and $ k = 2 $.
+Using the specification in \eqref{eqn:mnl-g}, we vary $ \eta $ across the set $ \{0.01, 0.1, 0.5, 1, 2, 3, 4, 5, 6, 7, 8\} $, generating 50 instances for each $ \eta $ value and calculating the minimum eigenvalue of $ \check{\Jvec} -  \Gammavec\Lambdavec\Gammavec^{\top} = \E\left[\rvec(\x, z)\rvec(\x, z)^{\top}\right] $. In each instance, we sample each component of $ \check{\thetavec} $ and $ \bm{\zeta} $ from $ U[-2, 2] $ and each component of $ \x $ from $ U[-1, 1] $, independently of one another.
+In Figure \ref{fig:eigen}, we plot the average minimum eigenvalues across the 50 instances for each $ \eta $ (blue curve) alongside the average \textit{absolute probability differences} (red curve). The absolute probability difference here is defined as
+\[
+\E_{\x, z}\left[\frac{1}{k} \sum_{j \in \Kscr} \left| \sigma_{j}(\x; \betavec^*) - g_{j}(\x, z; \thetavec^*) \right|\right],
+\]
+which serves as an indicator of the distance between $ \sigma_{j}(\x; \betavec^*) $ and $ g_{j}(\x, z; \thetavec^*) $, thus intuitively reflecting the importance of $ z $.
+Note that one can also use the KL-divergence as the metric, but we find its scale difficult to comprehend intuitively compared with the absolute probability difference. 
+
+As $ \eta $ increases, the alignment between the random realizations of $ y $ and $ z $ also increases, signifying the growing value of the AI-generated label $ z $. This effect is illustrated in the red curve. 
+The minimum eigenvalue also rises in a similar trend. Notably, the minimum eigenvalue remains consistently positive across all instances, even when $ \eta = 0.01 $, very close to zero. In this case, $z$ is nearly a noise; yet in the worst case across the 50 instances, the minimum eigenvalue is still approximately $ 1 \times 10^{-6} > 0 $, indicating that as long as $ z $ contains a minimal amount of information, we generally expect the second part of Proposition \ref{prop:weak-dom} to hold.
+
+\subsection{Additional Proofs}
+
+\noindent
+\textbf{Proof of Proposition \ref{prop:error-mnl}.}
+To begin, let us recall that $
+\rvec ~=~ \sum_{j\in \Kscr}\big(\sigma_{j}(\x; \betavec^*) 
+ - g_{j}(\x, z; \thetavec^*)\big)\x_{(j)}
+$, where we suppress the dependency on $\x$ and $z$ in $\rvec$ for notation brevity. 
+Recycling the notations used in the proof of Proposition \ref{prop:weak-dom}, we have 
+$$\wvec~=~\sum_{j\in \Kscr}\big(\ind_{\{y = j\}} - \sigma_{j}(\x; \betavec^*)\big)\x_{(j)},
+$$
+and 
+$$
+\uvec = \nabla_{\thetavec} \log g_y(\x, z, \thetavec^*) = \sum_{j\in \Kscr}\big(\ind_{\{y = j\}} - g_{j}(\x, z; \thetavec^*)\big)\begin{pmatrix}
+    \x_{(j)}\\\\\ind_{\{z = j\}}
+\end{pmatrix}=
+\begin{pmatrix}
+    \tilde{\wvec}\\\\u_0
+\end{pmatrix},
+$$
+where $\tilde{\wvec} := \sum_{j\in \Kscr}\big(\ind_{\{y = j\}} - g_{j}(\x, z; \thetavec^*)\big)\x_{(j)}$ and $u_0 :=\sum_{j\in \Kscr}\big(\ind_{\{y = j\}} - g_{j}(\x, z; \thetavec^*)\big)\ind_{\{z = j\}}$.
+Therefore, $\rvec = \tilde{\wvec} - \wvec$. 
+Also, recall that $$
+\check{\Jvec} - \Gammavec\Lambdavec\Gammavec^{\top}~=~
+\E\left[\wvec \wvec^{\top} \right] - \E\left[\wvec \uvec^{\top} \right]\E\left[\uvec \uvec^{\top} \right]^{-1}\E\left[\uvec \wvec^{\top}\right].
+$$
+We examine each term separately. 
+We note 
+\begin{align*}
+ \wvec \uvec^{\top} = \wvec 
+ \begin{pmatrix}
+    \tilde{\wvec}^{\top} & u_0
+ \end{pmatrix}
+ = (\tilde{\wvec} - \rvec) 
+ \begin{pmatrix}
+    \tilde{\wvec}^{\top} & u_0
+ \end{pmatrix}
+ =  \begin{pmatrix}
+    \tilde{\wvec}\tilde{\wvec}^{\top} & u_0\tilde{\wvec}   
+ \end{pmatrix} - 
+ \begin{pmatrix}
+    \rvec\tilde{\wvec}^{\top} & u_0\rvec   
+ \end{pmatrix},
+\end{align*}
+and 
+$$
+\uvec \uvec^{\top} ~=~
+\begin{pmatrix}
+    \tilde{\wvec}\tilde{\wvec}^{\top} & u_0\tilde{\wvec}\\
+    u_0\tilde{\wvec}^{\top} & u_0^2
+\end{pmatrix}.
+$$
+Thus, 
+\begin{align*}
+    &\E\left[\wvec \uvec^{\top} \right]\E\left[\uvec \uvec^{\top} \right]^{-1}\E\left[\uvec \wvec^{\top}\right]~=~
+    \underbrace{\E\left[\begin{pmatrix}
+    \tilde{\wvec}\tilde{\wvec}^{\top} & u_0\tilde{\wvec}   
+ \end{pmatrix} \right]
+ \E\left[
+ \begin{pmatrix}
+    \tilde{\wvec}\tilde{\wvec}^{\top} & u_0\tilde{\wvec}\\
+    u_0\tilde{\wvec}^{\top} & u_0^2
+\end{pmatrix}\right]^{-1}
+\E\left[\begin{pmatrix}
+    \tilde{\wvec}\tilde{\wvec}^{\top} \\ u_0\tilde{\wvec}^{\top}  
+ \end{pmatrix} \right]}_{=:\Bvec_1}\\
+ &-\underbrace{\E\left[\begin{pmatrix}
+    \rvec\tilde{\wvec}^{\top} & u_0\rvec  
+ \end{pmatrix} \right]
+ \E\left[
+ \begin{pmatrix}
+    \tilde{\wvec}\tilde{\wvec}^{\top} & u_0\tilde{\wvec}\\
+    u_0\tilde{\wvec}^{\top} & u_0^2
+\end{pmatrix}\right]^{-1}
+\E\left[\begin{pmatrix}
+    \tilde{\wvec}\tilde{\wvec}^{\top} \\ u_0\tilde{\wvec}^{\top}  
+ \end{pmatrix} \right]}_{=:\Bvec_2} - \Bvec_2^{\top} +
+ \underbrace{\E\left[\begin{pmatrix}
+    \rvec\tilde{\wvec}^{\top} & u_0\rvec  
+ \end{pmatrix} \right]
+ \E\left[
+ \begin{pmatrix}
+    \tilde{\wvec}\tilde{\wvec}^{\top} & u_0\tilde{\wvec}\\
+    u_0\tilde{\wvec}^{\top} & u_0^2
+\end{pmatrix}\right]^{-1}
+\E\left[\begin{pmatrix}
+    \tilde{\wvec}\rvec^{\top} \\ u_0\rvec^{\top}  
+ \end{pmatrix} \right]}_{=:\Bvec_3}\\
+\stackrel{\text{(a)}}{=}&
+\E\left[\tilde{\wvec}\tilde{\wvec}^{\top} \right]
+\end{align*}
+To show (a), we argue as follows.
+First of all, 
+$$
+\E\left[
+\rvec\tilde{\wvec}^{\top}\right]~=~
+\E_{ z}\left[\rvec\left(\sum_{j\in \Kscr}
+\E\left[\ind_{\{y = j\}} - g_{j}(\x, z; \thetavec^*)|\x, z
+\right]\x_{(j)}\right)^{\top}
+\right] = \Ovec
+$$
+and similarly $\E\left[
+u_0\rvec\right] = 0$ so $\Bvec_2 = \Bvec_3 = \Ovec$.
+Also, 
+$$
+\Bvec_1 ~=~ \begin{pmatrix}
+  \Ivec & \Ovec   
+\end{pmatrix}
+\E\left[\begin{pmatrix}
+    \tilde{\wvec}\tilde{\wvec}^{\top} \\ u_0\tilde{\wvec}^{\top}  
+ \end{pmatrix} \right]
+~=~\E\left[\tilde{\wvec}\tilde{\wvec}^{\top} \right].
+$$
+This proves (a).
+
+Further, 
+$$
+\E\left[\wvec \wvec^{\top} \right] ~=~ \E\left[(\tilde{\wvec} - \rvec)(\tilde{\wvec} - \rvec)^{\top} \right] ~\stackrel{\text{(b)}}{=}~
+\E\left[\tilde{\wvec}\tilde{\wvec}^{\top} \right] + \E\left[\rvec\rvec^{\top} \right],
+$$
+where (b) follows because $\E\left[
+\rvec\tilde{\wvec}^{\top}\right] = \Ovec$.
+This proves that 
+$\check{\Jvec} - \Gammavec\Lambdavec\Gammavec^{\top} = \E\left[\rvec\rvec^{\top} \right]$. 
+Also, 
+using the fact that 
+$$
+\rvec~=~\sum_{j\in \Kscr}\big(\sigma_{j}(\x; \betavec^*) 
+ - \Prob(y = j\,|\,\x)\big)\x_{(j)} + \big(\Prob(y = j\,|\,\x) - g_{j}(\x, z; \thetavec^*)\big)\x_{(j)}
+$$
+and that $\E_{z}[g_{j}(\x, z; \thetavec^*)|\x] = \Prob(y = j\,|\,\x),$ 
+we have the decomposition. 
+\hfill $\blacksquare$
+\vspace{3mm}
+
+\vspace{3mm}

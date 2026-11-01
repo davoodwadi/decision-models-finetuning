@@ -1,0 +1,474 @@
+\section{Empirical Analysis I: COVID-19 Vaccination}
+\label{sec:empirical-1}
+
+\revise{
+In this section, we present empirical studies to validate our approach. First, we show that a range of LLM models, despite their differences in capabilities, all exhibit substantial misalignment between AI-generated and human-generated data in conjoint analysis. Second, we demonstrate that our proposed method can effectively mitigate this misalignment, leading to improved performance compared with using only human data or a naïve combination of human and AI-generated data. It is important to emphasize that our method functions as an enhancement to existing models. Even as LLMs continue to improve in their ability to simulate human responses, as long as some degree of misalignment remains between AI-generated and human labels, our approach can further enhance estimation accuracy.}
+
+% while our method is theoretically guaranteed to be correct in the asymptotic sense, it relies on two critical assumptions: the accurate knowledge of the function $g$ and the positive definiteness of the matrix $\check{\Jvec} - \Gammavec\Lambdavec\Gammavec^{\top}$. Both assumptions cannot be directly verified, so solid empirical study is necessary to demonstrate the merit of our proposed approach.}
+
+\subsection{Empirical Setup}
+\label{subsec:empirical-setup-1}
+We examine the performance of the AAE based on a high-impact real choice-based conjoint dataset for COVID-19 vaccines \citep{kreps2020factors}. The study was conducted on July 9, 2020, where 2,000 US adults were recruited to take a 15-minute survey through the Lucid platform. A quota-based sampling was employed to approximate nationally representative samples in terms of demographic characteristics. A total of 1,971 US adults responded to the survey. This survey is important because it provides evidence of factors associated with individual preferences toward COVID-19 vaccination. The results may help inform public health campaigns to address vaccine hesitancy.
+
+The dataset consists of responses from 1,971 participants, each expressing preferences for a series of hypothetical vaccines. Every respondent was shown five comparisons between two hypothetical vaccines, described by seven attributes with multiple levels, as outlined in Table \ref{tab:attributes}. Participants were asked to choose one of the two vaccines or opt for neither. We excluded respondents who did not select any vaccines in this setting, as many public LLMs, such as ChatGPT and Gemini, do not permit opting out of vaccines due to safety requirements. Since this data was excluded from both ground truth calculations and LLM data augmentation, this sample selection should not bias our comparisons between estimators. 
+
+Data leakage is a critical concern when selecting datasets for LLM-related empirical studies. It occurs when an LLM's training data overlaps with the testing data used to evaluate its performance, thereby compromising the validity of the evaluation. In our empirical studies, we use OpenAI's GPT models. Since OpenAI does not disclose its training data, we cannot confirm whether the conjoint dataset is part of the GPT models' training data. However, we do not consider this to be a significant issue. If data leakage were present---that is, if the GPT models had already seen the conjoint dataset---the na\"ive augmentation method would perform substantially better. Nevertheless, as we demonstrate later, the na\"ive augmentation method still produces significant biases, which our method effectively corrects. This highlights the critical importance of our approach.
+
+
+
+Using standard MLE, we estimated the best-in-class parameters $\bm{\beta}^*$, as shown in \eqref{eqn:best-in-class}. For each experiment, we randomly selected 240 respondents from the training set, yielding a dataset of 1,200 samples. The vaccine attributes in these samples were converted to text, and various versions of GPT were used to generate labels $z_i$. Details of the label generation process are provided in \cref{subsec:data-generation}. This produced a dataset $\Dscr$ with 1,200 data points.
+
+Based on $\Dscr$, we considered different primary and auxiliary dataset sizes with $m \in \{50, 100, 150, 200\}$ and $n = 1,000$. For each combination of $(m, n)$, we randomly sampled ${m}/{5}$ respondents from $\Dscr$, using their data as the primary set, $\Dscr^{\sf P} = \{(\x^{\sf P}_i, y^{\sf P}_i, z^{\sf P}_i)\}_{i=1}^{m}$. From the remaining dataset, we sampled ${n}/{5}$ respondents and used their vaccine features and GPT-generated labels as the auxiliary set, $\Dscr^{\sf A} = \{(\x_i, z_i)\}_{i=1}^{n}$. 
+\revise{
+For each GPT model, this resulted in a primary set of size $m$ and an auxiliary set of size $n$.
+In the next, we will discuss how to collect the auxiliary data in the conjoint analysis using different GPT models.} 
+
+\begin{table}
+\renewcommand{\arraystretch}{1.5}
+\centering
+{\footnotesize
+\caption{Attributes in the conjoint analysis}
+\label{tab:attributes}
+\begin{tabular}{p{45mm}p{112mm}}\hline\hline
+\multicolumn{1}{l}{\textbf{Feature}}
+ &  
+ \multicolumn{1}{l}{\textbf{Levels and Description}}
+ \\\hline
+{Efficacy}     & 50\%, 70\%, and 90\% (protection against severe symptoms);                     \\\hline
+{Protection Duration} & `1 year' and `5 years'
+\\\hline
+{Major Side-effects}  & `1 in 1,000,000' and `1 in 10,000' (hospitalization or death) 
+\\\hline
+{Minor Side-effects}  & `1 in 10' and `1 in 30' (flu-like symptoms)
+\\\hline
+{FDA approval process} & `The vaccine has been approved and licensed by the US Food and Drug Administration.' and `The vaccine has received an emergency use authorization from the US Food and Drug Administration.  This allows the expedited use of promising drugs that the FDA has found it reasonable to believe may be effective in combatting the virus'
+\\\hline
+{National Origin of Vaccine} &`China', `United Kingdom', and `United States'
+\\\hline
+{Endorsement} & `President Donald Trump', `US Centers for Disease Control and Prevention', `Vice President Joe Biden', and `World Health Organization'
+\\\hline
+\hline
+\end{tabular}
+}
+\end{table}
+
+\subsection{Conjoint Data Generation using LLMs}
+\label{subsec:data-generation}
+In this section, we present our procedure for generating conjoint data using LLMs. We propose a general framework for LLM-based conjoint data generation, where the input structure follows three key components to produce conjoint choice data:
+
+\vspace{10pt}
+
+\begin{mdframed} \footnotesize \underline{{\sc LLM-Based Conjoint Data Generation Framework}} 
+\begin{enumerate} 
+\item[(I)] \textbf{\textbf{Choice Task Instruction}}: Defining the context of the conjoint analysis, specifying the item to choose from, the task for the LLM (selecting from multiple options), and the persona the LLM should emulate. 
+\item[(II)] \textbf{\textbf{Choice Task Options Description}}: Details the attributes of each option in the conjoint choice set. 
+\item[(III)] \textbf{\textbf{Choice Extraction}}: Extracting the choice made by the LLM. \end{enumerate} 
+\end{mdframed}
+
+\vspace{10pt}
+
+This framework allows customization across different prompt designs, conjoint settings, and simulated subject groups, making it adaptable to various LLMs. The structured input ensures consistency in responses. In the subsequent sections, we use this framework to generate choice data with OpenAI's GPT, specifically \texttt{GPT-3.5-Turbo-0613}, \texttt{GPT-3.5-Turbo-0125}, \texttt{GPT-4}, and the \texttt{GPT-4o}.\footnote{\revise{At the time this paper was first written, \texttt{GPT-5} was not yet available to regular OpenAI API users and was therefore excluded from our empirical analysis. Nevertheless, as discussed earlier, because our method serves as an enhancement to existing models, we do not expect the qualitative conclusions of our results to change as model quality improves—so long as some degree of misalignment between model-generated and human labels remains.}} For each model, we generate conjoint data using two prompt engineering approaches: basic prompting and CoT prompting. For \texttt{GPT-4o}, we also implemented the few-shot prompting and fine-tuning.
+\revise{
+Before presenting the details of the prompting and fine-tuning techniques in the next, here we remark that our approach is not intended as an alternative to fine-tuning or prompt-based methods for improving LLM outputs. Rather, they are complementary, since our method, AAE, can be applied on top of outputs from models that have already been fine-tuned or employ sophisticated prompt engineering.} 
+
+\subsubsection{Basic Prompting.}
+
+ The basic prompting follows the three-part framework: it starts with an instruction specifying the choice task for GPT. In particular, we ask GPT to act like a random person to simulate the choice from a general population. More detailed demographic information can be added in this part to simulate choices from a more specific population. In the second part of the prompt, we parse the choice task options to text description. We use the minimalist representation of vaccine features, which was shown to be an effective prompting technique \citep{minimalistic}. In the last part, we ask which option GPT would choose and require it to return the answer as a single letter. An example of the basic prompt for GPT is shown below.
+ 
+\vspace{10pt}
+\begin{mdframed}
+{\footnotesize
+\textit{Input (I)}: You should act like a random person deciding whether or not to receive a COVID-19 vaccination.\\
+
+ \noindent \textit{Input (II)}: There are three options for you:\\
+A: Efficacy: 90\%. Protective duration: 5 years. Major side effect: 1 in 10,000. Minor side effect: 1 in 30. Authorization: Approved and licensed by the US Food and Drug Administration. Origin: China. Endorsement: US Centers for Disease Control and Prevention. \\
+B: Efficacy: 50\%. Protective duration: 1 year. Major side effect: 1 in 10,000. Minor side effect: 1 in 10. Authorization: Received an emergency use authorization from the US Food and Drug Administration.  This allows the expedited use of promising drugs that the FDA has found it reasonable to believe may be effective in combatting the virus. Origin: United Kingdom. Endorsement: World Health Organization. 
+C: You choose neither A nor B.\\
+
+\noindent\textit{Input (III)}:  Which option would you choose as a random person? Your response should be a single letter A, B, or C.
+
+\noindent\textit{Output}: A
+}
+\end{mdframed}
+
+
+\subsubsection{Chain-of-Thought (CoT) Prompting.}
+Recent advancements in prompting techniques, such as CoT prompting, Tree-of-Thought (ToT), and others, have significantly enhanced reasoning in LLMs. CoT, which structures intermediate reasoning steps, has become the most widely utilized due to its simplicity, interpretability, and robust performance across diverse tasks \citep{wei2022chain}. While methods like ToT, which explores branching reasoning paths \citep{yao2024tree}, and other approaches can offer advantages for specific tasks, they often require additional computational resources or fail to consistently outperform CoT across a wide range of domains. Thus, we experiment mainly with CoT for its balance of effectiveness and broad applicability.
+
+
+
+
+
+We apply this CoT prompting technique with the aim of improving the quality of the choice data generated. Specifically, we introduce conversations that guide GPT to compare the two vaccines feature by feature before arriving at a final choice in part \textit{(III)} of the data generation framework. An example of the CoT-based conversation is shown below.
+
+\vspace{15pt}
+
+\begin{mdframed}
+{\footnotesize
+\textit{Input}: Compare the efficacy of A and B, which one is better?\\
+\textit{Output}: Option A has a better efficacy rate at 90\% compared to option B's 50\% efficacy. This means that you would be more likely to be protected against COVID-19 with option A.\\\\
+\textit{Input}: Compare the protective duration of A and B, which one is better?\\
+\textit{Output}: Option A has a protective duration of 5 years, which is longer than Option B's protective duration of 1 year. Therefore, Option A offers better and longer protection.\\\\
+\textit{Input}: Compare the major side effects of A and B, which one is better?\\
+\textit{Output}: Both Option A and Option B exhibit the same odds of experiencing a major side effect, which is 1 in 10,000. Therefore, neither option is better than the other in this particular aspect. They are equal in terms of the risk of major side effects.\\\\
+\textit{Input}: Compare the minor effects of A and B, which one is better? (1 in 30 is lower than 1 in 10)\\
+\textit{Output}: Actually, Option B is better in terms of minor side effects. The risk of minor side effects for Option B is 1 in 10, which means 1 out of every 10 individuals could experience them. For Option A, it's higher with 1 in 30 individuals likely to experience minor side effects. In this scenario, a lower ratio (such as 1 in 10) means a higher chance of side effects.\\\\
+\textit{Input}: Compare the authorization of A and B, which one is better?\\
+\textit{Output}: Option A is approved and licensed by the US Food and Drug Administration, which is a more definitive sign of its safety and effectiveness than an emergency use authorization. Option B has received an emergency use authorization, which is a quicker approval process used during public health emergencies, and still shows that the FDA believes it may be effective against the virus but doesn't represent full approval. Therefore, in terms of authorization, Option A is better as it has full FDA approval.\\\\
+\textit{Input}: Compare the endorsement of A and B, which one is better?\\
+\textit{Output}: Both Option A and Option B have endorsements from highly respected organizations. Option A is endorsed by the US Centers for Disease Control and Prevention, while Option B is endorsed by the World Health Organization. It's difficult to categorically say which endorsement is better as they're both credible. However, if you're based in the US, you might have more trust in the endorsement from the US CDC. Conversely, if you're based elsewhere in the world or place more trust in a globally recognized body, the WHO's endorsement might carry more weight for you.\\\\
+\textit{Input}: Based on all the previous reasoning, which option would you choose?\\
+\textit{Output}: Based on efficacy, protective duration, and authorization, Option A seems to be the better choice. Although it has a slightly higher chance of minor side effects, its benefits in terms of providing more robust and longer-lasting protection against COVID-19 and having full FDA approval outweigh the slightly elevated risk. However, each individual's decision should take into account a multiple set of factors, including their personal health situation and discussions with healthcare professionals.\\\\
+\textit{Input}: Return the choice in the previous answer as a single letter A, B, or C.\\
+\textit{Output}: A
+}
+\end{mdframed}
+\vspace{15pt}
+
+As the example above illustrates, CoT helps GPT make a more informed choice and it allows us to know its reasoning process more explicitly. Note that even with CoT, GPT might still make certain mistakes, such as when comparing the magnitude of minor effects in the example above. This type of mistake often happens in arithmetic tasks, and it is hypothesized in the past due to tokenization of these models. One approach to alleviate this type of situation is to provide further guidance in the reasoning steps, such as indicating ``1 in 10" is worse than ``1 in 30" regarding minor effects, as shown in the above example. In general, CoT helps GPT to have a more comprehensive evaluation of all choice features, thus becoming more robust against minor reasoning errors. 
+  
+\subsubsection{Few-shot Prompting.}
+Few-shot prompting is a technique in natural language processing where a model is guided to perform a specific task by providing a small number of examples directly in the input prompt \citep{brown2020language}. This approach is particularly useful in zero-shot and low-resource scenarios, demonstrating strong performance across a variety of tasks such as text classification, translation, and question-answering. We implement the few-shot prompting with \texttt{GPT-4o} by demonstrating ten survey questions with their true human labels at the beginning of part \textit{(I)} of the data generation framework. Below is an example of the few-shot prompting:
+
+\vspace{10pt}
+\begin{mdframed}
+{\footnotesize
+\textit{Input (I)}: Demonstrations:\\
+You should act like a random person deciding whether or not to receive a COVID-19 vaccination.\\
+There are three options for you:\\
+A: Efficacy: 70\%. Protective duration: 5 years. Major side effect: 1 in 10,000. Minor side effect: 1 in 30. Authorization: Received an emergency use authorization from the US Food and Drug Administration.  This allows the expedited use of promising drugs that the FDA has found it reasonable to believe may be effective in combatting the virus. Origin: United States. Endorsement: World Health Organization. \\
+B: Efficacy: 50\%. Protective duration: 5 years. Major side effect: 1 in 1,000,000. Minor side effect: 1 in 30. Authorization: Approved and licensed by the US Food and Drug Administration. Origin: China. Endorsement: US Centers for Disease Control and Prevention.\\ 
+C: You choose neither A nor B. \\\\
+Which option would you choose as a random person? Your response should be a single letter A, B, or C. \\\\
+{\color{red} B}\\\\
+... (the other nine demonstrations).\\
+\\
+You should act like a random person deciding whether or not to receive a COVID-19 vaccination.}
+\end{mdframed}
+
+
+\subsubsection{Fine-tuning.}
+%Let us have a section on fine-tuning. 
+
+Fine-tuning is another major approach in transfer learning that enhances a model's performance on a specific task with a few examples. In this process, a pre-trained model is adapted to a specific task by further training it on new, task-specific data. Fine-tuned models have the potential to achieve higher accuracy and better performance for the specific task. In our experiments, we fine-tuned \texttt{GPT-4o} by training it further upon 50 samples of real data.\footnote{OpenAI API recommends using 50-100 well-crafted demonstrations, which typically leads to clear improvements. } Basic prompting was employed to generate outputs from the fine-tuned \texttt{GPT-4o} model. Details of the fine-tuning implementation can be found at \cite{finetune}.
+
+\subsection{Estimators and the Evaluation Metric}
+\revise{
+In this section, we describe the empirical construction and evaluation of our estimators. For each version of the GPT model, we compute the primary-data-only estimator, auxiliary-data-only estimator (i.e., using only AI-generated data), naïve augmentation estimator, and AAE estimator based on $(\Dscr^{\sf P}, \Dscr^{\sf A})$, denoted respectively as
+$\hat{\betavec}^{\sf P}$, $\hat{\betavec}^{\sf A}$, $\hat{\betavec}^{\sf Naive}$, and $\hat{\betavec}^{\sf AAE}$.
+We also implement the PPI estimator \citep{angelopoulos2023prediction} and the PPI++ estimator \citep{angelopoulos2023ppi++}, yielding $\hat{\betavec}^{\sf PPI}$ and $\hat{\betavec}^{\sf PPI++}$, respectively. All implementation details and code are provided in XXX.
+
+Since the other estimators are straightforward to construct, we focus here on the hyperparameter choices for our AAE estimator. In Step 1 of AAE, we use a small feed-forward neural network to model $\big(g_j(\x, z; \thetavec^*): j \in \Kscr^+\big)$, consisting of two hidden layers with ten and five neurons, respectively, and employing the sigmoid activation function for all neurons. We train this network using the Adam optimizer \citep{kingma2014adam} with a learning rate of $10^{-4}$ to minimize the cross-entropy loss.\footnote{We also approximated the $\mathbf{g}(\cdot)$ function using alternative methods, including logistic regression and random forests. The qualitative results—namely, that our estimators outperform the alternatives—remained consistent. For brevity, we report only the neural network results.} In Step 2 of AAE, we pool both primary and axillary datasets to construct the empirical loss function in \eqref{eqn:AAE-def} to gain efficiency. Our main theoretical results remain valid under this modification, though additional care is required to account for the correlation between the primary data and $\hat{\thetavec}$.}
+
+% A small feed-forward neural network was trained in Step 1 of AAE to model $\big(g_j(\x, z; \thetavec^*):j\in \Kscr^+\big)$. We used two hidden layers with ten and five neurons, respectively, and the sigmoid function as the active function for all neurons. With a learning rate of $10^{-4}$, we adopt the standard Adam algorithm \citep{kingma2014adam} to minimize the cross-entropy loss to training the neural network\footnote{We approximated the $\mathbf{g}(\cdot)$ function using various methods, including logistic regression and random forests. The results, i.e., our estimators outperform other estimators, were qualitatively consistent. Hence we only report the results with neural networks.}.
+% \revise{Also, in this empirical study,in the second step of AAE, rather than relying solely on the auxiliary data as described in Section \ref{sec:estimation}, we pool both datasets to construct the empirical loss function in \eqref{eqn:AAE-def}. Theoretically, our main results remain valid in this case, though additional care is required to address the correlation between the primary data and $\hat{\thetavec}$. Empirically, this modification yields slightly improved performance.} 
+% \revise{In addition, we compute the PPI estimator \citep{angelopoulos2023prediction} and PPI++ estimator \citep{angelopoulos2023ppi++}, yielding
+% $\hat{\betavec}^{\sf PPI}$, $\hat{\betavec}^{\sf PPI++}$, respectively. }
+
+
+
+
+
+% We focus on the original PPI method proposed in \cite{angelopoulos2023prediction} and its optimized version, PPI++, introduced in \cite{angelopoulos2023ppi++}, which together capture the core ideas of the PPI literature.
+\revise{
+To assess the performance of the estimators, we calculated the MAPE aggregated across all features:
+\begin{equation*}
+    {\sf MAPE}^l ~=~ \frac{1}{d}\left(\sum_{j=1}^d \frac{|\hat{\betavec}^l_j - \betavec^*_j|}{|\betavec^*_j|} \right) \times 100 \%\,,~~~ \forall l \,\in\, \{{\sf P}, {\sf A}, {\sf Naive}, {\sf AAE}, \revise{{\sf PPI}, {\sf PPI^{++}}} \}\,.
+\end{equation*}
+For each combination of dataset sizes $(m, n)$, we conducted 50 independent experimental runs and averaged the MAPE to serve as the final performance indicator. We adjust the MAPE values by adding a small constant to the denominator to eliminate the effect of parameters with very small magnitudes.
+Since MAPE may place greater weight on features with small ground truth coefficients, we also demonstrate that the results remain robust when evaluated using MSE. Details are provided in Appendix \ref{app:empirical-mse}.
+In the subsequent discussion, we use ${\sf MAPE}^{\sf P}$, the MAPE based on the primary dataset, as the reference point and report the difference in MAPE between each focal estimator and ${\sf MAPE}^{\sf P}$. This difference quantifies the performance gain achieved by employing a given estimator relative to using only the primary dataset. For instance, if ${\sf MAPE}^{\sf AAE} - {\sf MAPE}^{\sf P} = -10\%$, it indicates that the AAE estimator reduces the MAPE by 10\% compared with using the primary dataset.}
+
+
+
+\subsection{Our Approach v.s. Other Approaches of Using LLM-generated Data}
+
+\revise{
+In this section, we present a detailed discussion of the empirical results comparing our estimators to other methods of utilizing LLM-generated data. \cref{tab:bias-reduction} summarizes MAPE difference between various estimators and the MAPE of using only the primary datasets, $\hat{\betavec}^{\sf P}$, 
+i.e., ${\sf MAPE}^{l} - {\sf MAPE}^{\sf P}$ for $l \,\in\, \{{\sf P}, {\sf A}, {\sf Naive}, {\sf AAE}, \revise{{\sf PPI}, {\sf PPI^{++}}}\}$.
+Please note that $\hat{\bm{\beta}}^{\sf p}$ is the same across all GPT models, with or without CoT, since it employs primary data only. Therefore, the difference in MAPE represents how much gain in MAPE one can get by employing a focal estimator in comparison with simply using the primary dataset.}
+Please also refer to Section \ref{subsec:empirical-setup-1} for details of the error metric.
+The first column of the table indicates the versions of the GPT model. The second column indicates the prompting technique. The rest of the columns show the difference in the MAPE after augmented $n=1,000$ GPT-generated samples to a real set with $m$ samples with $\hat{\betavec}^{\sf A}$, $\hat{\betavec}^{\sf Naive}$, $\hat{\betavec}^{\sf AAE}$, \revise{$\hat{\betavec}^{\sf PPI}$, and $\hat{\betavec}^{\sf PPI++}$}, respectively. Therefore, a \textit{negative} number indicates \textit{error reduction}, while a positive number means the error becomes larger after adding GPT data. 
+Below, we highlight several key observations from the results.
+
+
+\begin{table}[!ht]
+\renewcommand{\arraystretch}{1.3}
+\centering
+{\footnotesize
+\caption{Bias Reduction from $\hat{\betavec}^{\sf P}$ (\%)}
+\label{tab:bias-reduction}
+\begin{tabular}{cccccccccccccc}\hline\hline
+& & \multicolumn{6}{c}{$m=50$} & \multicolumn{6}{c}{$m=100$} \\\hline
+\textbf{Model}  & \textbf{Prompt} & $\hat{\betavec}^{\sf A}$ & $\hat{\betavec}^{\sf Naive}$  &  $\hat{\betavec}^{\sf PPI}$ & $\hat{\betavec}^{\sf PPI^{++}}$ & $\hat{\betavec}^{\sf AAE}$   & $p_{\max}$ & $\hat{\betavec}^{\sf A}$ & $\hat{\betavec}^{\sf Naive}$  & $\hat{\betavec}^{\sf PPI}$ & $\hat{\betavec}^{\sf PPI^{++}}$ & $\hat{\betavec}^{\sf AAE}$  & $p_{\max}$ \\\hline
+\multirow{2}{*}{{\makecell{\texttt{GPT-3.5}\\\texttt{-Turbo-0613}}}} & Basic & -5.45 & -10.80 & - & - & -13.72 & 8E-11 & 1.30 & -4.53 & - & - & -6.90 & 4E-08 \\
+ & CoT & 20.18 & 16.81 & - & - & -14.79 & 1E-15 & 26.93 & 20.62 & - & - & -8.09 & 3E-12 \\
+\multirow{2}{*}{\makecell{\texttt{GPT-3.5}\\\texttt{-Turbo-0125}}} & Basic & -8.91 & -9.92 & - & - & -13.29 & 2E-14 & -2.16 & -3.21 & - & - & -6.50 & 2E-09 \\
+ & CoT & 15.67 & 10.95 & - & - & -14.84 & 2E-15 & 22.43 & 14.71 & 25.28 & 5.14 & -7.72 & 4E-11 \\
+\multirow{2}{*}{\texttt{GPT-4}} & Basic & 14.81 & 12.39 & - & - & -15.70 & 6E-17 & 21.56 & 16.20 & - & - & -8.04 & 3E-12 \\
+ & CoT & 21.77 & 18.12 & - & - & -15.80 & 2E-16 & 28.53 & 22.49 & 23.29 & 4.13 & -8.30 & 2E-09 \\
+\multirow{3}{*}{\texttt{GPT-4o}} & Basic & 15.70 & 13.05 & - & - & -15.55 & 1E-16 & 22.46 & 17.34 & 23.05 & 4.93 & -8.06 & 2E-12 \\
+ & CoT & 20.61 & 16.50 & - & - & -15.74 & 2E-16 & 27.37 & 20.49 & 19.30 & 4.42 & -8.06 & 3E-12 \\
+ & FS & 12.46 & 9.71 & - & - & -16.16 & 9E-18 & 19.22 & 14.56 & 17.83 & 4.46 & -8.26 & 2E-12 \\
+\makecell{\texttt{GPT-4o}\\   \texttt{Fine-tuned}} & Basic & 4.83 & 3.18 & - & - & -16.66 & 2E-18 & 11.59 & 7.96 & 22.90 & 4.90 & -9.58 & 2E-14\\ \hline  
+
+& & \multicolumn{6}{c}{$m=150$} & \multicolumn{6}{c}{$m=200$} \\\hline
+\textbf{Model}  & \textbf{Prompt} & $\hat{\betavec}^{\sf A}$ & $\hat{\betavec}^{\sf Naive}$  &  $\hat{\betavec}^{\sf PPI}$ & $\hat{\betavec}^{\sf PPI^{++}}$ & $\hat{\betavec}^{\sf AAE}$   & $p_{\max}$ & $\hat{\betavec}^{\sf A}$ & $\hat{\betavec}^{\sf Naive}$  & $\hat{\betavec}^{\sf PPI}$ & $\hat{\betavec}^{\sf PPI^{++}}$ & $\hat{\betavec}^{\sf AAE}$  & $p_{\max}$ \\\hline
+\multirow{2}{*}{\makecell{\texttt{GPT-3.5}\\\texttt{-Turbo-0613}}} & Basic & 6.90 & -2.06 & - & - & -2.09 & 0.47 & 7.56 & -1.79 & - & - & -0.96 & 0.979 \\
+ & CoT & 32.53 & 23.06 & 19.34 & 2.93 & -3.12 & 2E-05 & 33.19 & 21.10 & 16.08 & 2.19 & -1.82 & 4E-04 \\
+\multirow{2}{*}{\makecell{\texttt{GPT-3.5}\\\texttt{-Turbo-0125}}} & Basic & 3.43 & 0.86 & 24.15 & 3.48 & -1.78 & 0.006 & 4.10 & 1.60 & 16.70 & 1.92 & -0.76 & 0.091 \\
+ & CoT & 28.02 & 17.72 & 16.44 & 3.39 & -2.74 & 2E-04 & 28.69 & 16.16 & 10.94 & 1.95 & -1.81 & 7E-04 \\
+\multirow{2}{*}{\texttt{GPT-4}} & Basic & 27.16 & 20.03 & 11.61 & 2.91 & -3.12 & 3E-05 & 27.82 & 19.20 & 10.90 & 1.94 & -2.04 & 2E-04 \\
+ & CoT & 34.12 & 26.33 & 13.86 & 2.95 & -3.37 & 9E-06 & 34.79 & 24.10 & 10.21 & 1.96 & -2.27 & 3E-05 \\
+\multirow{3}{*}{\texttt{GPT-4o}} & Basic & 28.05 & 20.90 & 13.93 & 3.23 & -3.07 & 4E-05 & 28.72 & 19.65 & 11.13 & 1.92 & -1.84 & 2E-04 \\
+ & CoT & 32.96 & 23.65 & 13.28 & 3.29 & -3.31 & 8E-06 & 33.63 & 21.28 & 10.20 & 1.99 & -2.25 & 5E-05 \\
+ & FS & 24.81 & 18.41 & 11.68 & 2.78 & -3.44 & 6E-06 & 25.48 & 17.50 & 11.31 & 2.18 & -2.10 & 9E-05 \\
+\makecell{\texttt{GPT-4o}\\   \texttt{Fine-tuned}} & Basic & 17.18 & 12.46 & 13.25 & 2.87 & -4.81 & 8E-10 & 17.85 & 11.31 & 11.21 & 1.93 & -3.36 & 5E-09\\\hline\hline
+\end{tabular} 
+\begin{minipage}{15.5cm}
+    \footnotesize
+    \vspace{3pt}
+    \begin{tabular}{p{1cm} p{14cm}}
+         \textbf{Notes}: & \setlength{\baselineskip}{1.2\baselineskip} 
+        For each estimator under each experimental condition, we perform 50 independent runs and report the average MAPE difference between the focal estimator and $\hat{\betavec}^{\sf P}$. In each condition, the estimators have access to a real dataset with $m$ samples and an auxiliary dataset containing $n = 1{,}000$ GPT-generated samples. The reported average MAPE difference thus represents the increase or decrease in MAPE resulting from incorporating these $n = 1{,}000$ AI-generated samples, relative to using only the $m$ human-labeled samples. For each experimental condition, we also report the maximum p-value from all pairwise t-tests comparing the MAPE of $\hat{\betavec}^{\sf AAE}$ with those of the other estimators under the column $p_{\max}$. The test shows that $\hat{\betavec}^{\sf AAE}$ outperforms other estimators at the 99\% significance level for all instances, except for the ones marked with a star. A “–” symbol denotes cases where the numerical value exceeds 1{,}000, which primarily arises from singularity issues encountered by PPI-based methods when the primary dataset is small, leading to parameter estimates dominated by random initialization.    
+    \end{tabular}
+  \end{minipage}}
+\end{table}
+
+
+% \begin{table}[!ht]
+% \renewcommand{\arraystretch}{1.3}
+% \centering
+% {\footnotesize \color{blue}
+% \caption{Bias Reduction from $\hat{\betavec}^{\sf P}$ (\%)}
+% \label{tab:bias-reduction}
+% \begin{tabular}{cccccccccccccc}\hline\hline
+% & & \multicolumn{6}{c}{$m=50$} & \multicolumn{6}{c}{$m=100$} \\\hline
+% \textbf{Model}  & \textbf{Prompt} & $\hat{\betavec}^{\sf A}$ & $\hat{\betavec}^{\sf Naive}$  &  $\hat{\betavec}^{\sf PPI}$ & $\hat{\betavec}^{\sf PPI^{++}}$ & $\hat{\betavec}^{\sf AAE}$   & $p_{\max}$ & $\hat{\betavec}^{\sf A}$ & $\hat{\betavec}^{\sf Naive}$  & $\hat{\betavec}^{\sf PPI}$ & $\hat{\betavec}^{\sf PPI^{++}}$ & $\hat{\betavec}^{\sf AAE}$  & $p_{\max}$ \\\hline
+% \multirow{2}{*}{\makecell{\texttt{GPT-3.5}\\\texttt{-Turbo-0613}}} & Basic & -5.45 & -10.80 & - & - & -13.72 & 8E-11 & 1.30 & -4.53 & - & - & -6.90 & 4E-08 \\
+%  & CoT & 20.18 & 16.81 & - & - & -14.79 & 1E-15 & 26.93 & 20.62 & - & - & -8.09 & 3E-12 \\
+% \multirow{2}{*}{\makecell{\texttt{GPT-3.5}\\\texttt{-Turbo-0125}}} & Basic & -8.91 & -9.92 & - & - & -13.29 & 2E-14 & -2.16 & -3.21 & - & - & -6.50 & 2E-09 \\
+%  & CoT & 15.67 & 10.95 & - & - & -14.84 & 2E-15 & 22.43 & 14.71 & 25.28 & - & -7.72 & 4E-11 \\
+% \multirow{2}{*}{\texttt{GPT-4}} & Basic & 14.81 & 12.39 & - & - & -15.70 & 6E-17 & 21.56 & 16.20 & - & - & -8.04 & 3E-12 \\
+%  & CoT & 21.77 & 18.12 & - & - & -15.80 & 2E-16 & 28.53 & 22.49 & 23.29 & - & -8.30 & 2E-09 \\
+% \multirow{3}{*}{\texttt{GPT-4o}} & Basic & 15.70 & 13.05 & - & - & -15.55 & 1E-16 & 22.46 & 17.34 & 23.05 & - & -8.06 & 2E-12 \\
+%  & CoT & 20.61 & 16.50 & - & - & -15.74 & 2E-16 & 27.37 & 20.49 & 19.30 & 4.42 & -8.06 & 3E-12 \\
+%  & FS & 12.46 & 9.71 & - & - & -16.16 & 9E-18 & 19.22 & 14.56 & 17.83 & - & -8.26 & 2E-12 \\
+% \makecell{\texttt{GPT-4o}\\ \texttt{Fine-tuned}} & Basic & 4.83 & 3.18 & - & - & -16.66 & 2E-18 & 11.59 & 7.96 & 22.90 & - & -9.58 & 2E-14\\ \hline  
+
+% & & \multicolumn{6}{c}{$m=150$} & \multicolumn{6}{c}{$m=200$} \\\hline
+% \textbf{Model}  & \textbf{Prompt} & $\hat{\betavec}^{\sf A}$ & $\hat{\betavec}^{\sf Naive}$  &  $\hat{\betavec}^{\sf PPI}$ & $\hat{\betavec}^{\sf PPI^{++}}$ & $\hat{\betavec}^{\sf AAE}$   & $p_{\max}$ & $\hat{\betavec}^{\sf A}$ & $\hat{\betavec}^{\sf Naive}$  & $\hat{\betavec}^{\sf PPI}$ & $\hat{\betavec}^{\sf PPI^{++}}$ & $\hat{\betavec}^{\sf AAE}$  & $p_{\max}$ \\\hline
+% \multirow{2}{*}{\makecell{\texttt{GPT-3.5}\\\texttt{-Turbo-0613}}} & Basic & 6.90 & -2.06 & - & - & -2.09 & 0.47* & 7.56 & -1.79 & - & - & -0.96 & 0.979* \\
+%  & CoT & 32.53 & 23.06 & 19.34 & - & -3.12 & 2E-05 & 33.19 & 21.10 & 16.08 & - & -1.82 & 4E-04 \\
+% \multirow{2}{*}{\makecell{\texttt{GPT-3.5}\\\texttt{-Turbo-0125}}} & Basic & 3.43 & 0.86 & 24.15 & - & -1.78 & 0.006 & 4.10 & 1.60 & 16.70 & - & -0.76 & 0.091* \\
+%  & CoT & 28.02 & 17.72 & 16.44 & - & -2.74 & 2E-04 & 28.69 & 16.16 & 10.94 & 1.95 & -1.81 & 7E-04 \\
+% \multirow{2}{*}{\texttt{GPT-4}} & Basic & 27.16 & 20.03 & 11.61 & 2.91 & -3.12 & 3E-05 & 27.82 & 19.20 & 10.90 & 1.94 & -2.04 & 2E-04 \\
+%  & CoT & 34.12 & 26.33 & 13.86 & 2.95 & -3.37 & 9E-06 & 34.79 & 24.10 & 10.21 & 1.96 & -2.27 & 3E-05 \\
+% \multirow{3}{*}{\texttt{GPT-4o}} & Basic & 28.05 & 20.90 & 13.93 & 3.23 & -3.07 & 4E-05 & 28.72 & 19.65 & 11.13 & 1.92 & -1.84 & 2E-04 \\
+%  & CoT & 32.96 & 23.65 & 13.28 & 3.29 & -3.31 & 8E-06 & 33.63 & 21.28 & 10.20 & 1.99 & -2.25 & 5E-05 \\
+%  & FS & 24.81 & 18.41 & 11.68 & 2.78 & -3.44 & 6E-06 & 25.48 & 17.50 & 11.31 & - & -2.10 & 9E-05 \\
+% \makecell{\texttt{GPT-4o}\\   \texttt{Fine-tuned}} & Basic & 17.18 & 12.46 & 13.25 & 2.87 & -4.81 & 8E-10 & 17.85 & 11.31 & 11.21 & 1.93 & -3.36 & 5E-09\\\hline\hline
+% \end{tabular} 
+% \begin{minipage}{15.5cm}
+%     \footnotesize
+%     \vspace{3pt}
+%     \begin{tabular}{p{1cm} p{14cm}}
+%          \textbf{Notes}: & \setlength{\baselineskip}{1.2\baselineskip} 
+%         For each estimator under each experimental condition, we perform 50 independent runs and report the average MAPE difference between the focal estimator and $\hat{\betavec}^{\sf P}$. In each condition, the estimators have access to a real dataset with $m$ samples and an auxiliary dataset containing $n = 1{,}000$ GPT-generated samples. The reported average MAPE difference thus represents the increase or decrease in MAPE resulting from incorporating these $n = 1{,}000$ AI-generated samples, relative to using only the $m$ human-labeled samples. For each experimental condition, we also report the maximum p-value from all pairwise t-tests comparing the MAPE of $\hat{\betavec}^{\sf AAE}$ with those of the other estimators under the column $p_{\max}$. The test shows that $\hat{\betavec}^{\sf AAE}$ outperforms other estimators at the 99\% significance level for all instances, except for the ones marked with a star. A “–” symbol denotes cases where the numerical value exceeds 1{,}000, which primarily arises from singularity issues encountered by PPI-based methods when the primary dataset is small, leading to parameter estimates dominated by random initialization.    
+%     \end{tabular}
+%   \end{minipage}}
+% \end{table}
+% \begin{table}[!ht]
+% \renewcommand{\arraystretch}{1.3}
+% \centering
+% {\footnotesize
+% \caption{Bias Reduction from $\hat{\betavec}^{\sf P}$ (\%)}
+% \label{tab:bias-reduction}
+% \begin{tabular}{cccccccccc}\hline\hline
+% & & \multicolumn{4}{c}{$m=50$} & \multicolumn{4}{c}{$m=100$} \\\hline
+% \textbf{Model}  & \textbf{Prompt} & $\hat{\betavec}^{\sf A}$ & $\hat{\betavec}^{\sf Naive}$  & $\hat{\betavec}^{\sf AAE}$   & $p_{\max}$ & $\hat{\betavec}^{\sf A}$ & $\hat{\betavec}^{\sf Naive}$  & $\hat{\betavec}^{\sf AAE}$  & $p_{\max}$ \\\hline
+% \multirow{2}{*}{\texttt{GPT-3.5-Turbo-0613}} & Basic & -5.45 & -10.80 & -13.72 & 8e-11 & 1.30 & -4.53 & -6.90 & 4e-08 \\
+%  & CoT & 20.18 & 16.81 & -14.79 & 1e-15 & 26.93 & 20.62 & -8.09 & 3e-12 \\
+% \multirow{2}{*}{\texttt{GPT-3.5-Turbo-0125}} & Basic & -8.91 & -9.92 & -13.29 & 2e-14 & -2.16 & -3.21 & -6.50 & 2e-09 \\
+%  & CoT & 15.67 & 10.95 & -14.84 & 2e-15 & 22.43 & 14.71 & -7.72 & 4e-11 \\
+% \multirow{2}{*}{\texttt{GPT-4}} & Basic & 14.81 & 12.39 & -15.70 & 6e-17 & 21.56 & 16.20 & -8.04 & 3e-12 \\
+%  & CoT & 21.77 & 18.12 & -15.80 & 2e-16 & 28.53 & 22.49 & -8.30 & 2e-12 \\
+% \multirow{3}{*}{\texttt{GPT-4o}} & Basic & 15.70 & 13.05 & -15.55 & 1e-16 & 22.46 & 17.34 & -8.06 & 2e-12 \\
+%  & CoT & 20.61 & 16.50 & -15.74 & 2e-16 & 27.37 & 20.49 & -8.06 & 3e-12 \\
+%  & FS & 12.46 & 9.71 & -16.16 & 9e-18 & 19.22 & 14.56 & -8.26 & 2e-12 \\
+% \texttt{GPT-4o Fine-tuned} & Basic & 4.83 & 3.18 & -16.66 & 2e-18 & 11.59 & 7.96 & -9.58 & 2e-14\\ \hline  
+% &  & \multicolumn{4}{c}{$m=150$} & \multicolumn{4}{c}{$m=200$} \\\hline
+%  \textbf{Model}  & \textbf{Prompt} & $\hat{\betavec}^{\sf A}$ & $\hat{\betavec}^{\sf Naive}$  & $\hat{\betavec}^{\sf AAE}$   & $p_{\max}$ & $\hat{\betavec}^{\sf A}$ & $\hat{\betavec}^{\sf Naive}$  & $\hat{\betavec}^{\sf AAE}$  & $p_{\max}$\\\hline
+% \multirow{2}{*}{\texttt{GPT-3.5-Turbo-0613}} & Basic & 6.90 & -2.06 & -2.09 & 0.470* & 7.56 & -1.79 & -0.96 & 0.979* \\
+%  & CoT & 32.53 & 23.06 & -3.12 & 2e-05 & 33.19 & 21.10 & -1.82 & 4e-04 \\
+% \multirow{2}{*}{\texttt{GPT-3.5-Turbo-0125}} & Basic & 3.43 & 0.86 & -1.78 & 0.006 & 4.10 & 1.60 & -0.76 & 0.091* \\
+%  & CoT & 28.02 & 17.72 & -2.74 & 2e-04 & 28.69 & 16.16 & -1.81 & 7e-04 \\
+% \multirow{2}{*}{\texttt{GPT-4}} & Basic & 27.16 & 20.03 & -3.12 & 3e-05 & 27.82 & 19.20 & -2.04 & 2e-04 \\
+%  & CoT & 34.12 & 26.33 & -3.37 & 9e-06 & 34.79 & 24.10 & -2.27 & 3e-05 \\
+% \multirow{3}{*}{\texttt{GPT-4o}} & Basic & 28.05 & 20.90 & -3.07 & 4e-05 & 28.72 & 19.65 & -1.84 & 2e-04 \\
+%  & CoT & 32.96 & 23.65 & -3.31 & 8e-06 & 33.63 & 21.28 & -2.25 & 6e-05 \\
+%  & FS & 24.81 & 18.41 & -3.44 & 6e-06 & 25.48 & 17.50 & -2.10 & 9e-05 \\
+% \texttt{GPT-4o Fine-tuned} & Basic & 17.18 & 12.46 & -4.81 & 9e-10 & 17.85 & 11.31 & -3.36 & 5e-09\\\hline\hline
+% \end{tabular} 
+% \begin{minipage}{15.5cm}
+%     \footnotesize
+%     \vspace{3pt}
+%     \begin{tabular}{p{1cm} p{14cm}}
+%          \textbf{Notes}: & \setlength{\baselineskip}{1.2\baselineskip} 
+%     This table presents the  MAPE differences between the three estimators with $\hat{\betavec}^{\sf P}$
+%     after augmented $n=1,000$ GPT-generated samples to a real set with $m$ samples with the AI-only estimator $\hat{\betavec}^{\sf A}$, na\"ive estimator $\hat{\betavec}^{\sf Naive}$ and the AAE estimator $\hat{\betavec}^{\sf AAE}$, respectively, averaged over 50 experimental runs. AAE significantly reduces error from the primary set, and outperforms the AI-only and na\"ive augmentation estimators. Pairwise t-tests on the MAPE of $\hat{\betavec}^{\sf AAE}$ vs  $\hat{\betavec}^{\sf P}$, 
+%     $\hat{\betavec}^{\sf AAE}$ vs  $\hat{\betavec}^{\sf A}$,
+%     and $\hat{\betavec}^{\sf AAE}$ vs  $\hat{\betavec}^{\sf Naive}$  show that $\hat{\betavec}^{\sf AAE}$ outperforms $\hat{\betavec}^{\sf P}$, $\hat{\betavec}^{\sf A}$, and $\hat{\betavec}^{\sf Naive}$ at the 99\% significance level for all instances, except for the ones marked with a star. The maximum p-value of the pairwise t-tests are shown under the column $p_{\max}$.
+%     \end{tabular}
+%   \end{minipage}
+% }
+% \end{table}
+\subsubsection{AI-only Estimation or Na\"ive Augmentation Incurs More Error.} 
+\revise{
+Our results indicate that relying solely on AI-generated data (yielding estimator $\hat{\betavec}^{\sf A}$) or na\"ively combining AI-generated and human data (yielding estimator $\hat{\betavec}^{\sf Naive}$) can introduce substantial estimation errors relative to simply using primary dataset $\hat{\betavec}^{\sf P}$. As shown in \cref{tab:bias-reduction}, while $\hat{\betavec}^{\sf A}$ and $\hat{\betavec}^{\sf Naive}$ based on advanced models with advanced prompting techniques may actually increase estimation errors, these simple estimators can reduce error when using more basic models and prompts, such as \texttt{GPT-Turbo-3.5-0613} and \texttt{GPT-Turbo-3.5-0125}. This finding highlights an inconsistency between an LLM’s intrinsic capability and its effectiveness in generating data that resemble human preferences, an observation consistent with prior research \citep{goli2024frontiers}.
+}
+
+\revise{Interestingly, this inconsistency is counterintuitive: the performance of the AI-only estimator and the naïve augmentation approach does not improve with more advanced GPT models or more sophisticated prompting strategies; in many cases, it actually deteriorates. For example, after implementing CoT prompting, we observe that MAPE further increases across models. We conjecture that, in such cases, the LLM becomes “overly rational,” generating choices that may encode richer information but deviate more strongly from human behavior. Although fine-tuning a base model (in this case, GPT-4o) on the primary dataset helps mitigate some of the bias introduced by incorporating auxiliary data, it does not fully resolve the issue: including auxiliary datasets still increases MAPE relative to using the primary dataset alone.}
+
+% only based on selected features.  
+% Indeed, pure AI estimation and na\"ive augmentation both rely on the assumption that AI-generated data closely resembles the distribution of human data, which often does not hold, because LLMs are trained as general-purpose token-generators, not for conjoint analysis. 
+% With limit data, fine-tuning and prompt engineering methods might not solve the problem either. 
+% Using AI-generated data can become a wild goose chase—experimenting with various AI models, prompting techniques, or fine-tuning methods in hopes that one dataset aligns with human data. 
+% However,
+% as will be discussed in detail in the next section, our approach consistently adds value on top of these approaches on the engineering side. 
+% These methods and ours operate under different constraints: in principle our approach can be applied off the shelf to any data consistent, without altering the LLM itself, whereas fine-tuning and prompt engineering are problem-specific and often time-consuming.}
+
+From \cref{tab:bias-reduction}, one can see that the na\"ive augmentation consistently outperforms pure AI estimation. Indeed, blending in some real data can help align the estimation results. In particular, pure AI estimation can be regarded as a special case of na\"ive augmentation. In the following, we examine the performance of AAE by comparing it with the na\"ive augmentation.
+
+\subsubsection{AAE Regulates Error Consistently.} 
+\revise{First, as shown in \cref{tab:bias-reduction}, $\hat{\betavec}^{\sf AAE}$ is consistently negative across all models and prompting techniques, indicating that our AAE approach significantly reduces estimation errors relative to using human data alone—regardless of the underlying model or inference quality. We then perform pairwise t-tests comparing $\hat{\betavec}^{\sf AAE}$ with all other estimators in each setting reported in \cref{tab:bias-reduction}, and summarize the maximum p-values across these comparisons. The results show that $\hat{\betavec}^{\sf AAE}$ outperforms all benchmark estimators at the 99\% significance level in every instance, except for the few cases marked with a star.}
+
+\revise{More interestingly, unlike the simpler estimators, AAE’s performance improves consistently with more advanced versions of GPT models and more sophisticated prompting strategies. It achieves the largest error reduction when applied to the fine-tuned \texttt{GPT-4o} model using all available data. We find that CoT prompting, few-shot prompting, and fine-tuning each contribute to significant error reductions, with fine-tuning being the most effective. As more advanced GPT versions and carefully designed prompts produce more informative AI-generated labels, the effectiveness of AAE correspondingly increases. This observation is consistent with our theoretical discussion in Appendix \ref{app:comparison}, which provides formal support for this intuition. This underscores the potential of AAE to deliver superior results with future iterations of LLMs or other AI-based data generators—provided that the augmentation follows a statistically sound estimation strategy such as ours. Indeed, AAE not only regulates the estimation error in AI-generated data but also offers a principled framework for guiding future improvements in AI-assisted estimation.}
+
+
+
+
+% Comparing $\hat{\betavec}^{\sf Naive}$ with $\hat{\betavec}^{\sf AAE}$ in \cref{tab:bias-reduction}, we observe that $\hat{\betavec}^{\sf AAE}$ consistently outperforms $\hat{\betavec}^{\sf Naive}$ and significantly reduces estimation error regardless of GPT models and prompts. This underscores the key advantage of our method: regularizing estimation error, irrespective of the model or the quality of inference techniques. More importantly, AAE's performance improves consistently with more advanced versions of GPTs and better prompting strategies: It achieves the most substantial error reduction with the fine-tuned \texttt{GPT-4o} with all data. We find that CoT, few-shot prompting, and fine-tuning all significantly reduce error, with fine-tuning being the most effective.
+
+% Indeed, more advanced GPT versions and careful prompt designs result in more informative AI-generated labels, which enhances AAE’s effectiveness. 
+% \revise{
+% This supports our discussion in Appendix \ref{app:comparison}, which demonstrates that the same insight on the theoretical side.} However, despite the improved informativeness of these labels, they do not necessarily align more closely with human-generated data. As a result, the performance of $\hat{\betavec}^{\sf Naive}$ does not necessarily improve. This highlights the potential of AAE to achieve better outcomes with future iterations of LLMs or other forms of AI data generators, of course, under statistically sound estimation strategy such as ours.
+% Indeed, our AAE not only regulates estimation error in AI-generated data but also has the potential to resolve the wild goose chase by providing a structured direction for improving estimation results. 
+
+\revise{Furthermore, we observe that AAE generally outperforms the PPI-based methods across different models and prompting strategies. The PPI estimator’s MAPE differences are missing for some experimental cases because its performance is unstable due to singularity issues, particularly when the primary dataset size $m$ is small. In \cref{sec:empirical-2-aae-ppi}, we provide a more detailed comparison between AAE and PPI-based methods using both a real dataset and a synthetic dataset, to further investigate the sources of their performance differences.}
+% We conduct statistical tests on the results in \cref{tab:bias-reduction}. Specifically, pairwise t-tests show that $\hat{\betavec}^{\sf AAE}$ outperforms other benchmark estimatorse at the 99\% significance level for all instances, except for the few cases marked with a star. 
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[width=0.5\textwidth]{fig/boxplot.pdf}
+    \caption{Illustration of  $\hat{\betavec}^{\sf AAE}$ and $\hat{\betavec}^{\sf Naive}$ by Feature}
+    \label{fig:comparison}
+    \vspace{3mm}
+    \begin{minipage}{\textwidth}
+    \footnotesize
+    \begin{tabular}{p{1cm} p{15cm}}\hspace{-1mm}\textbf{Notes}: & \setlength{\baselineskip}{1.2\baselineskip} 
+    The figures presents the ground-truth parameters $\betavec^*$ (in the red curve), $\hat{\betavec}^{\sf AAE}$ (orange box) and $\hat{\betavec}^{\sf Naive}$  (blue box). 
+        The percentiles in the box plots are based on the 50 experimental runs with $m = 100$. 
+    \end{tabular}
+  \end{minipage}
+\end{figure}
+
+
+\revise{Finally, beyond the aggregate comparison in \cref{tab:bias-reduction}, Figure \ref{fig:comparison} illustrates the feature-level discrepancies between $\hat{\betavec}^{\sf Naive}$ and $\hat{\betavec}^{\sf AAE}$. The figure compares the estimated parameter values for eleven features across $\hat{\betavec}^{\sf Naive}$, $\hat{\betavec}^{\sf AAE}$, and the ground truth, using $m = 100$ primary data points and $n = 1{,}000$ auxiliary data points. As shown, the  na\"ive augmentation approach produces substantially larger estimation errors—particularly for the most influential vaccine features—whereas AAE yields estimates that are much more closely aligned with the ground truth.}
+
+
+
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.3}
+\centering
+{\footnotesize
+\caption{Percentage of Saving in Data Size (\%)}
+\label{tab:saving}
+\begin{tabular}{cccccc}\hline\hline
+Model    & Prompt & $m=50$          & $m=100$         & $m=150$         &$m=200$         \\\hline
+\multirow{2}{*}{\texttt{GPT-3.5-Turbo-0613}} & Basic & 73.59   (0.69) & 46.48 (1.64) & 30.97 (1.68) & -0.86 (2.80)* \\
+ & CoT & 76.05 (1.63) & 52.84 (2.61) & 37.34 (2.93) & 8.37 (4.49) \\
+\multirow{2}{*}{\texttt{GPT-3.5-Turbo-0125}} & Basic & 71.64 (0.77) & 42.67 (1.63) & 27.65 (1.36) & -3.72 (2.75)* \\
+ & CoT & 77.24 (1.23) & 52.44 (1.98) & 36.22 (2.19) & 10.73 (3.77) \\
+\multirow{2}{*}{\texttt{GPT-4}} & Basic & 79.30 (1.20) & 53.23 (2.28) & 39.83 (2.00) & 14.01 (3.17) \\
+ & CoT & 78.40 (1.68) & 53.70 (2.89) & 40.76 (2.22) & 14.96 (3.78) \\
+\multirow{3}{*}{\texttt{GPT-4o}} & Basic & 77.86 (1.56) & 51.91 (2.74) & 38.10 (2.41) & 9.39 (4.35) \\
+ & CoT & 78.81 (1.45) & 52.64 (2.66) & 41.02 (2.13) & 15.14 (3.82) \\
+ & FS & 79.39 (1.41) & 53.79 (2.56) & 42.47 (1.97) & 13.00 (3.99) \\
+\texttt{GPT-4o Fine-tuned} & Basic & 79.81 (1.63) & 58.04 (3.22) & 50.20 (2.27) & 24.86 (4.16)       \\\hline\hline
+\end{tabular}}
+\begin{minipage}{15.5cm}
+\vspace{3pt}
+    \footnotesize
+    \begin{tabular}{p{1cm} p{14cm}}
+         \textbf{Notes}: & \setlength{\baselineskip}{1.2\baselineskip} 
+    This table presents the percentage of data saved using AAE with various GPT models, averaged over 50 experimental runs. The standard errors are shown in parentheses. One sample t-tests show that the savings are all significant at the 95\% level except for the ones marked with a star.
+    \end{tabular}
+  \end{minipage}
+\end{table}
+
+
+\subsection{Our Approach v.s. Human-only Data---Economic Value of Our Approach } 
+\label{sec:empirical-1-economic-value}
+
+
+
+So far, we have focused on evaluating our method based on estimation error against other ways of utilizing AI data. In practice, the primary goal of using AI as a data augmenter in market research is to reduce the costs of hiring real survey participants. Thus, we evaluated the percentage of data saved using AAE with various GPT models, as summarized in \cref{tab:saving}. Specifically, for a given error reduction achieved by applying AAE to a real dataset of size $n_1$, we calculated the amount of real data samples, $n_2$, required to achieve the same error reduction without AI augmentation. The percentage of data saved is then estimated as $((n_2 - n_1)/n_2) \times 100\%$.
+
+Our results show that with fine-tuned \texttt{GPT-4o}, data savings range from 24.9\% to 79.8\%. When the primary set is small ($m=50$), AAE saves between 71.64\% and 79.8\% of data samples, regardless of the GPT model or prompt design. With a moderate primary set size ($m=100, 150$), savings range from 27.7\% to 58.0\%, again consistent across GPT models and prompts. Compared to the costs of recruiting real survey participants, the costs of generating AI-based data are negligible and will continue to decrease as generative AI technology advances. In practice, conjoint surveys must be regularly re-administered across different product categories and customer segments to account for evolving consumer preferences. This can result in a substantial number of surveys being required over time. Thus, we conclude that AAE offers significant cost savings in the long run.
+
+
+
+
+
+
+
+% \subsubsection{A Further Examination of the Value of LLM-generated Data.} 
+% We evaluate the value of GPT-generated choice data by comparing it against hypothetical benchmark datasets. Specifically, we create benchmark datasets containing $\rho \in \{50\%, 60\%, \ldots, 80\% \}$ correct labels by randomly perturbing the real label $y$. For each dataset, we set $z = y$ with a probability of $\rho$ and $z = 1-y$ with a probability of $1-\rho$. \mx{In addition, we consider a perfect benchmark with $\rho = 100\%$, which includes all true labels.} These benchmarks are hypothetical, as we do not have access to the real labels in the auxiliary dataset. The $\rho = 50\%$ benchmark represents a dataset with completely random labels. Thus, any dataset that achieves better error reduction than this benchmark is valuable, as it contains some latent information from the correct labels, which are not available in reality. As $\rho$ increases, the correlation between $y$ and $z$ strengthens, indicating that the augmented dataset provides more useful information.
+
+% \cref{tab:benchmarks} displays the estimation error for these benchmark datasets. As shown, the error decreases as $\rho \rightarrow 1$. When the augmented label $z$ is more closely correlated with the true label $y$, the performance of AAE improves. This result supports the effectiveness of AAE and highlights its potential with higher-quality data.
+% \begin{table}[ht]
+% \renewcommand{\arraystretch}{1.2}
+% \centering
+% {\footnotesize
+% \centering
+% \caption{Change in MAPE per feature (\%) with hypothetical benchmark datasets}
+% \label{tab:benchmarks}
+% \begin{tabular}{ccccc}\hline\hline
+% ~~~~~~~~~~~~~$\rho$ (\%)~~~~~~~~~~~~~  & ~~~~~~~~$m=50$~~~~~~~~  & ~~~~~~~~$m=100$~~~~~~~~ & ~~~~~~~~$m=150$~~~~~~~~ & ~~~~~~~~$m=200$~~~~~~~~ \\\hline
+% 50  & -13.70 & -6.90  & -1.90 & -0.94 \\
+% 60  & -13.68 & -7.03  & -2.09 & -1.04 \\
+% 70  & -14.80 & -8.14  & -3.18 & -2.17 \\
+% 80  & -16.23 & -9.22  & -4.03 & -3.05 \\
+% % 90  & -16.24 & -9.18  & -4.02 & -3.22 \\
+% 100 & -20.48 & -13.29 & -7.65 & -7.00\\\hline\hline
+% \end{tabular}}
+% \end{table}
+
+% Based on the benchmark dataset performance, we estimate the percentage of correct labels needed in a hypothetical dataset to achieve the same error reduction as with the GPT datasets using AAE, summarized in \cref{tab:value}. Generally, GPT datasets combined with AAE are equivalent to a dataset with 60\% to 70\% correct labels. Moreover, using more advanced versions of GPT or CoT significantly improves performance compared to the 50\% benchmark. 
+% For a visualization, please see Figure \ref{fig:comparison}(b).
+% \mx{For example, fine-tuned \texttt{GPT-4o} achieves performance comparable to a dataset with 80\% of correct labels.}
+% These findings demonstrate that LLM-generated conjoint data holds significant value and suggest further potential for improvement with more powerful LLMs and advanced prompting techniques.
+ 
+
+% \begin{table}[ht]
+% \renewcommand{\arraystretch}{1.2}
+% \centering
+% {\footnotesize
+% \caption{Equivalent percentage of correct labels (\%)}
+% \label{tab:value}
+% \begin{tabular}{cccccc}\hline\hline
+% ~~~~~~~Model~~~~~~~                               & ~~~~~Prompt~~~~~ & ~~~~~~$m=50$~~~~~~ & ~~~~~~$m=100$~~~~~~ & ~~~~~~$m=150$~~~~~~ & ~~~~~~$m=200$~~~~~~ \\\hline
+% \multirow{2}{*}{GPT-3.5-Turbo-0613}  & Basic  & 60.3          & 50.0           & 59.8           & 51.7           \\
+%                                      & CoT    & 69.9          & 69.5           & 69.4           & 66.9           \\\hline
+% \multirow{2}{*}{GPT-3.5-Turbo-0125}  & Basic  & 50.0          & 50.0           & 50.0           & 50.0           \\
+%                                      & CoT    & 70.3          & 66.2           & 65.9           & 66.8           \\\hline
+% \multirow{2}{*}{GPT-4}               & Basic  & 76.3          & 69.1           & 69.4           & 68.8           \\
+%                                      & CoT    & 77.0          & 71.4           & 72.2           & 71.0           \\\hline
+% \multirow{3}{*}{GPT-4o}              & Basic  & 75.2          & 69.3           & 69.0           & 67.0           \\
+%                                      & CoT    & 76.6          & 69.3           & 71.5           & 70.9           \\
+%                                      & Few-shot     & 79.5          & 71.2           & 73.1           & 69.4           \\\hline
+% \multicolumn{1}{l}{GPT-4o Finetuned} & Basic  & 81.0          & 80.9           & 82.2           & 80.8  \\ \hline\hline
+% \end{tabular}}
+% \end{table}
+

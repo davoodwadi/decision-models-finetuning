@@ -1,0 +1,244 @@
+\section{Theoretical Properties of the AAE Estimator}
+\label{sec:consistency-normality}
+
+This section establishes the large-sample and finite-sample properties of our estimator, $\hat{\betavec}^{\sf AAE}$.
+\revise{We first show that it is consistent and asymptotically normal under mild conditions (Theorem \ref{thm:consistency}), extending classical extremum-estimator arguments to the two-stage setting with AI-generated data.
+We then compare its efficiency with existing estimators. Unlike naïve approaches that are generally biased, AAE is asymptotically unbiased and achieves variance reduction. In particular, Proposition \ref{prop:weak-dom} shows that the variance of AAE weakly—and often strictly—dominates that of the plug-in estimator $\hat{\betavec}^{\sf P}$, especially with informative auxiliary data.
+Finally, we provide a finite-sample high-probability bound (Theorem \ref{thm:aae-bound}), which highlights the dependence on first-stage estimation error. In the logistic regression case, we derive a new KL-based risk bound (Proposition \ref{prop:kl}). Overall, AAE enjoys both classical asymptotic guarantees and strong finite-sample performance.}
+
+\subsection{Asymptotic Analysis}
+\label{sec:main-results}
+
+To deliver the analysis, a set of common regularity assumptions are needed. The first set of assumptions is used in the analysis of the consistency of $\hat{\betavec}^{\sf AAE}$.
+
+\begin{assm}[Regularity Conditions for Consistency] 
+\label{assumption:regularity-consistency}
+The following assumptions hold. 
+\begin{itemize}
+\setlength\itemsep{-0.3em}
+    \item [$(i)$]
+    We assume that
+    $\x \in \Xscr$ with probability one, where $\Xscr$ is bounded. Also, 
+    $\E_{\x}[\x \x^{\top}] \succ 0$ and $\Prob(y\,|\,\x) \geq c$ for all $\x \in \Xscr$, $y \in \Kscr$ and some constant $c > 0$.
+    \item [$(ii)$] $\hat{\thetavec} \pconverge \thetavec^*$. 
+    \item [$(iii)$] $\big(g_j(\x, z; \thetavec):j\in \Kscr^+\big)$ is continuous in $\thetavec$ for all $\x\in \Xscr$ and $z \in \Kscr^+$.
+\end{itemize}    
+\end{assm}
+
+Comparing to those assumptions required in classical consistency results, such as Theorem 5.1 in \cite{van2000asymptotic} or Theorem 2.1 in \cite{newey1994large}, Assumption \ref{assumption:regularity-consistency} presents similar or even weaker regularity conditions that guarantee consistency in a setting that significantly extends that of classical analysis of MLE under the MNL model, by exploiting the concavity in the problem structure. Part $(i)$ in Assumption \ref{assumption:regularity-consistency} essentially serves as an identification condition, which should be satisfied in practical scenarios. Part $(ii)$ states that the first-step estimator needs to be consistent, which usually is satisfied as long as the models $\gvec(\cdot) := \big(g_j(\x, z; \thetavec^*):j\in \Kscr^+\big)$ are appropriately specified and reasonable estimation strategy such as the MLE is adopted. Part $(iii)$ is a regularity condition on the functional smoothness. This assumption holds for many widely used models, for example, the MNL model or the neural networks.
+
+Next, the second set of assumptions helps establish asymptotic normality. 
+
+\begin{assm}[Regularity Conditions for Asymptotical Normality] 
+\label{assumption:regularity-normality}
+We assume that the following conditions hold. 
+\begin{itemize}
+\setlength\itemsep{-0.3em}
+    \item [$(i)$] $\sqrt{m}(\hat{\thetavec} - \thetavec^*)\rightsquigarrow N(\Ovec, \Lambdavec)$.
+    \item [$(ii)$] $\frac{n}{m}\rightarrow \rho$, where $0 < \rho < \infty$. 
+    \item [$(iii)$] For each $j\in \Kscr$, $g_j(\x, z; \thetavec)$ is differentiable for all $\theta$, $\x \in \Xscr$ and $z\in \Kscr$ and there exists an open neighborhood $\Nscr$ of $\thetavec^*$ such that $\,\E_{\x,z}\big[\sup_{\thetavec \subset \Nscr}\lVert \nabla_{\thetavec} g_j(\x, z; \thetavec) \rVert_2\big] \,<\, \infty$.  
+\end{itemize}    
+\end{assm}
+
+\revise{Assumption \ref{assumption:regularity-normality} is again mild. The first item states that $\hat{\thetavec}$ is asymptotically normal, which is expected.} The second item maintains that the ratio between the sample sizes of two data sets needs to be reasonable. The last item is a smoothness condition. Furthermore, to simplify the presentation, some definitions are necessary. We first define 
+$\Avec(\x; \betavec) \in \Real^{k \times k}$ with 
+\begin{align}
+\label{eqn:A-def}
+    \Avec(\x; \betavec)~:=~ \sum_{j \in \Kscr}\sigma_{j}(\x; \betavec)\left(
+\x_{(j)} \x_{(j)}^{\top} - 
+\sum_{j' \in \Kscr} \sigma_{j'}(\x; \betavec)\x_{(j)} \x_{(j')}^{\top}
+\right)
+\end{align}
+and $\Omegavec \in  \Real^{k \times k}$ and $\Gammavec \in \Real^{k \times q}$ with 
+\begin{align}
+\label{eqn:Omega-Gamma}
+    \Omegavec := \E_{\x}\left[\Avec(\x;\betavec^*) \right] ~\text{ and }~ \Gammavec := \E_{\x,z}\left[\sum_{j \in \Kscr^+} \left(\ind_{\{j\neq 0\}}\x_{(j)} - \sum_{j' \in \Kscr}\sigma_{j'}(\x, \betavec^*)\x_{(j')}\right)\nabla_{\thetavec} g_j(\x, z, \thetavec^*)\right].
+\end{align}
+Further, we let 
+$$
+\Jvec ~:=~ \E_{\x,z}\left[
+\left(\sum_{j\in \Kscr}\big(g_j(\x, z; {\thetavec}^*) - \sigma_{j}(\x; \betavec^*)\big)\x_{(j)}\right)
+\left(\sum_{j\in \Kscr}\big(g_j(\x, z; {\thetavec}^*) - \sigma_{j}(\x; \betavec^*)\big)\x_{(j)}\right)^{\top}
+\right] \in \Real^{k \times k}.
+$$
+Equipped with these assumptions and definitions, we show the following key result. 
+
+\begin{thm}[Consistency and Asymptotic Normality of AI-augmented Estimator]
+\label{thm:consistency}
+~
+\begin{itemize}
+    \item [$(i)$] Under Assumption \ref{assumption:regularity-consistency}, the optimizer  
+    $\betavec^*$ defined in \eqref{eqn:best-in-class} is unique and the AAE satisfies 
+    $\hat{\betavec}^{\sf AAE} \pconverge \betavec^*$, when $m,n\rightarrow \infty$.
+
+    \item [$(ii)$] Under Assumptions \ref{assumption:regularity-consistency} and \ref{assumption:regularity-normality}, it holds that 
+    \begin{align*}
+            \sqrt{n}(\hat{\betavec}^{\sf AAE} - \betavec^*)&= \Omegavec^{-1} \left(\frac{1}{n}\sum_{i=1}^n  \sum_{j\in \Kscr}\big(g_j(\x, z; {\thetavec}^*) - \sigma_{j}(\x; \betavec^*)\big)\x_{(j)} + \sqrt{\frac{n}{m}} \Gammavec\times \sqrt{m}(\hat{\thetavec} - \thetavec^*)\right) + o_{\text{\upshape{P}}}(1)\\
+    &\rightsquigarrow N\Big(\Ovec,\, \Omegavec^{-1}\big(\Jvec + \rho\times\Gammavec\Lambdavec\Gammavec^{\top}\big)\Omegavec^{-1}\Big).
+    \end{align*}
+\end{itemize}
+\end{thm}
+
+While some aspects of our proof of Theorem \ref{thm:consistency} draw on classical analysis of extremum estimators, the consistency argument we present for a misspecified model with two-stage estimators appears to be novel.
+First, the identification of the model parameter and its justification (Lemma \ref{lem:unique-optimizer}) is, to the best of our knowledge, new. 
+Second, with the presence of auxiliary data $z$, we reformulate the loss function as shown in \eqref{eqn:best-in-class}. This leads to a novel approach that converts the consistency of $\hat{\thetavec}$ into the uniform convergence of $\widehat{Q}(\hat{\thetavec}; \betavec)$ (Lemma \ref{lem:uniform-convergence}). 
+Third, our concavity-based consistency analysis also seems fresh.
+
+\subsection{Value of AI-Augmented Estimation}
+\label{sec:AAE}
+We compare our proposed estimator, $\hat{\betavec}^{\sf AAE}$, with the three benchmark approaches $\hat{\betavec}^{\sf Naive}$, $\hat{\betavec}^{\sf A}$ and $\hat{\betavec}^{\sf P}$ that were discussed in Section \ref{sec:3-estimators}. 
+With Theorem \ref{thm:consistency} and Proposition \ref{prop:bias}, the merit of $\hat{\betavec}^{\sf AAE}$ over $\hat{\betavec}^{\sf Naive}$ and $\hat{\betavec}^{\sf A}$ is clear: while $\hat{\betavec}^{\sf AAE}$ delivers asymptotically unbiased estimation, both $\hat{\betavec}^{\sf Naive}$ and $\hat{\betavec}^{\sf A}$ are in general biased. 
+Thus, the use of $\hat{\betavec}^{\sf AAE}$  enables valid estimation, inference, or
+subsequent downstream optimization, for example, for product design, while the other two estimators lead to inferior decisions. 
+Thus, let us focus on the comparison of $\hat{\betavec}^{\sf AAE}$ and $\hat{\betavec}^{\sf P}$ to demonstrate that the convergence speed of $\hat{\betavec}^{\sf AAE}$ being faster than that of $\hat{\betavec}^{\sf P}$. 
+
+ In this case, standard analysis shows that, under appropriate regularity conditions, the resulting estimator $\hat{\betavec}^{\sf P}$ satisfies:
+$
+\sqrt{m}\big(\hat{\betavec}^{\sf P} - \betavec^*\big) \rightsquigarrow N\Big(\Ovec,\, \Omegavec^{-1}\check{\Jvec}\Omegavec^{-1}\Big),
+$
+where $\Omegavec$ is defined in \eqref{eqn:Omega-Gamma}, and
+$$
+\check{\Jvec}~:=~\E_{\x,y,z}\left[
+    \left(\sum_{j\in \Kscr}\big(\ind_{\{y = j\}} - \sigma_{j}(\x; \betavec^*)\big)\x_{(j)}\right)
+    \left(\sum_{j\in \Kscr}\big(\ind_{\{y = j\}} - \sigma_{j}(\x; \betavec^*)\big)\x_{(j)}\right)^{\top}
+\right] \in \Real^{k \times k}.
+$$
+By Theorem \ref{thm:consistency}, the variance of the AAE, $\hat{\betavec}^{\sf AAE}$, can be expressed as
+$
+\Omegavec^{-1}\Jvec\Omegavec^{-1}/n + \Omegavec^{-1} \Gammavec\Lambdavec\Gammavec^{\top}\Omegavec^{-1}/m.
+$
+Thus, our AAE performs better if and only if:
+\begin{align}
+\label{eqn:variance-comparison}
+    {\sf Var}^{\sf P}~:=~ \frac{1}{m}\Omegavec^{-1}\check{\Jvec}\Omegavec^{-1} ~\succeq~ {\sf Var}^{\sf AAE}~:=~\frac{1}{n}\Omegavec^{-1}\Jvec\Omegavec^{-1} + \frac{1}{m}\Gammavec\Lambdavec\Gammavec^{\top}\Omegavec^{-1},
+\end{align}
+or equivalently $\check{\Jvec}/m \succeq {\Jvec}/n + \Omegavec^{-1}\Gammavec\Lambdavec\Gammavec^{\top}/m$.
+The next result follows. 
+
+\begin{prop}[Dominance of ${\sf Var}^{\sf AAE}$.] \label{prop:weak-dom}
+Assume Assumptions \ref{assumption:regularity-consistency} and \ref{assumption:regularity-normality} hold and $$\Lambdavec ~=~\E_{\x,y,z}\big[
+    \nabla_{\theta} \log g_y(\x, z, \thetavec^*)
+    \nabla_{\theta} \log g_y(\x, z, \thetavec^*)^{\top}
+    \big]^{-1}.$$ 
+    \begin{itemize}
+        \item [$(i)$] It holds that $\check{\Jvec} \succeq \Gammavec\Lambdavec\Gammavec^{\top}$. Therefore, for any $\delta > 0$ and any $m$, ${\sf Var}^{\sf AAE} \prec {\sf Var}^{\sf P} + \delta \mathbf{I}$ for all $n$ sufficiently large. 
+    \item [$(ii)$] If $\check{\Jvec} \succ \Gammavec\Lambdavec\Gammavec^{\top}$, for any $m$, ${\sf Var}^{\sf AAE} \prec {\sf Var}^{\sf P}$ for all $n$ sufficiently large. 
+    \end{itemize}
+\end{prop}
+
+
+The assumption we introduce regarding the form of $ \Lambdavec $ is quite mild—it holds as long as $ \hat{\thetavec} $ is estimated via MLE and the standard regularity conditions are met \citep{van2000asymptotic}. 
+The first part of the proposition asserts that the variance of AAE weakly dominates the variance of $ \hat{\betavec}^{\sf P} $: as long as the auxiliary dataset is sufficiently large, the variance of $ \hat{\betavec}^{\sf AAE} $ does not exceed that of $ \hat{\betavec}^{\sf P} $, up to an arbitrarily small constant. This conclusion follows directly from $ \check{\Jvec} \succeq \Gammavec\Lambdavec\Gammavec^{\top} $ because we can let $ n $ tend toward infinity in \eqref{eqn:variance-comparison}. The argument hinges on representing $ \check{\Jvec} - \Gammavec\Lambdavec\Gammavec^{\top} $ as the variance of the residual from projecting $ \sum_{j\in \Kscr}\big(\ind_{\{y = j\}} - \sigma_{j}(\x; \betavec^*)\big)\x_{(j)} $ onto the linear space spanned by $ \nabla_{\theta} \log g_y(\x, z, \thetavec^*) $.
+For the second part, if $ \check{\Jvec} \succ \Gammavec\Lambdavec\Gammavec^{\top} $, the strong dominance $ {\sf Var}^{\sf AAE} \prec {\sf Var}^{\sf P} $ for all sufficiently large $ n $ follows by a similar reasoning.
+
+Is $ \check{\Jvec} \succ \Gammavec\Lambdavec\Gammavec^{\top} $ generally true? By interpreting $ \check{\Jvec} - \Gammavec\Lambdavec\Gammavec^{\top} $ as the variance of the residual from projecting $ \sum_{j\in \Kscr}\big(\ind_{\{y = j\}} - \sigma_{j}(\x; \betavec^*)\big)\x_{(j)} $ onto the space spanned by $ \nabla_{\theta} \log g_y(\x, z, \thetavec^*) $, we observe that this inequality should hold in many cases, although providing a general, primitive sufficient condition seems challenging without a specific form of $g(\cdot)$. To illustrate this further and gain more insights, we refer the readers to Appendix \ref{app:comparison}, 
+where we show that under specific parametric forms of $g(\cdot)$, item (ii) in the proposition indeed holds in general, and more informative AI-generated labels leads to more variance reduction and therefore higher estimation accuracy.
+
+\revise{Finally, we remark that while our original asymptotic theory assumed $m \to \infty$, which is unrealistic, it is well known (e.g., via Berry-Esseen’s Central Limit Theorem, \cite{feller1971introduction}) that asymptotic variance formulas often provide accurate approximations even at moderate sample sizes. Thus, we believe our asymptotic results still offer meaningful insights into how the AAE estimator reduces variance and bias relative to standard baselines. Moreover, the asymptotic analysis shows that although the machine data are biased, the correction yields unbiased estimates, an essential property for any debiasing method. In contrast, na\"ive approaches, such as simply concatenating two datasets, produce biased estimates even with large sample sizes. 
+Motivated by this, we next present a finite sample analysis that is more realistic.} 
+
+\subsection{Finite Sample Analysis}
+\label{sec:finite}
+
+\revise{
+Given that we typically aim to augment a limited amount of human-labeled data with AI-generated data, we extend our theoretical analysis in this section to derive a finite-sample, high-probability performance bound when human data is finite. Throughout, we assume that $\x = (\x^{\top}_{(1)}, \x^{\top}_{(2)}, \dots, \x^{\top}_{(k)})^{\top}$ is a random vector such that each subvector $\x_{(j)}$ has sub-Gaussian norm $\sigma_{\x_{(j)}}$ and is on a bounded support. Without loss of generality, we assume with probability one that $\lVert \x_{(j)} \rVert_{\infty} \leq 1$ for all $j \in \Kscr$. Let $\Sigmavec = \E\left[\sum_{j \in \Kscr} \x_{(j)} \x_{(j)}^{\top}\right]$ denote the population covariance, which we assume is positive definite. We further define
+$
+\kappa = \E\left[\max_{j \in \Kscr} \lVert \x_{(j)} \rVert_2^2\right] \leq \operatorname{trace}(\Sigmavec).
+$
+Additionally, we assume prior knowledge of an $\ell_1$-norm bound on the true parameter vector, i.e., $\lVert \betavec^* \rVert_1 \leq R$ for some known constant $R$, and we solve \eqref{eqn:AAE-def} under the constraint $\lVert \betavec \rVert_1 \leq R$.
+These assumptions are standard in finite-sample analyses of logistic-type models \citep{chardon2024finite, chen2022statistical, wainwright1945high}. Since the specification of $\gvec(\cdot)$ can vary depending on the application, the performance of the first-stage estimation may differ accordingly. To address this, we introduce the following critical assumption. Let $\Tilde{d}$ denote the dimensionality of the parameter space in $\gvec(\cdot)$.
+
+
+\begin{assm}[First Stage Performance]
+With probability at least $1 - \delta$, it holds that 
+$$
+\E_{\x, z}\Big[
+    {\sf KL}\big( \mathbf{g}(\x, z, \thetavec^*)\,\big\vert\,\mathbf{g}(\x, z, \hat{\thetavec})\big)
+    \Big] \preceq \epsilon_1\big(m,\Tilde{d}, \delta\big).
+$$    
+\end{assm}
+
+Under this assumption, we state our key result as follows. 
+
+\begin{thm}[AAE Finite Sample Bound]
+\label{thm:aae-bound}
+    It holds that
+    with probability at least $1-3\delta$,  $$
+    \big\lVert \hat{\betavec}^{\sf AAE} - {\betavec}^* \big\rVert_2~\leq~\frac{
+\left(2\sqrt{2\kappa} + 8  
+       \right)e^R(1 + ke^R)^2\sqrt{\epsilon_1\big(m,\Tilde{d},\delta\big)}
+}{\lambda_{\min}(\Sigmavec)}$$
+    provided that ($c_1$ and $c_2$ are absolute constants) $$
+     n \geq 
+\max\left\{
+\frac{d
+\left(
+\frac{1}{c_2}\log\left(\frac{k}{\delta}\right) \vee 1\right)
+}{\frac{\lambda_{\min}(\Sigmavec)}{2K}\wedge 1},~ \frac{2d\left(\sum_{j \in \Kscr}\sigma_{\x_{(j)}}\right)^2}{c_1\epsilon_1\big(m,\Tilde{d},\delta\big)}\log\left(\frac{4}{\delta}\right)
+    \right\}
+    $$
+\end{thm}
+
+A key insight of the theorem is that the error is critically dependent on the error of estimating the conditional probability, $\Prob(y | \x, z)$, in the first stage. While the specific error bounds vary depending on the model specification, an order of $\sqrt{\tilde{d}/m}$ appears typical.
+We illustrate this insight with the following example, which applies to a range of potential applications.
+
+\begin{examp}[Logistic Regression for First Stage]
+\label{exam:logistic}
+{\upshape
+    Let us assume that 
+    $$
+    g_{j}(\x, z; \thetavec) = \frac{e^{\theta^{\top}\phi_j(\x, z)}}{1+\sum_{j' \in \Kscr}e^{\theta^{\top}\phi_{j'}(\x, z)}}~~\forall j \in \Kscr.
+    $$
+    where for every $j$, $\phi_{j}(\x, z) : \Real^{d+1} \mapsto \Tilde{d}$ is a feature mapping. For a simplistic instance, we may have $\phi_{(j)}(\x, z) = (\Indicator\{z = j\}, \x^{\top})^{\top}$ while there are many other possibilities. 
+    For notation simplicity, let us write $\tilde{\x} = (\tilde{\x}^{\top}_{(1)}, \tilde{\x}^{\top}_{(2)}, \dots, \tilde{\x}^{\top}_{(k)})^{\top}$, where $\tilde{\x}_{(j)} = \phi_{j}(\x, z)$ for all $j\in \Kscr$. 
+    we assume it has a distribution such that each subvector $\tilde{\x}^{\top}_{(j)}$ has a sub-Gaussian norm $\sigma_{\tilde{\x}_{(j)}}$ and $\x^{\top}_{(j)}$'s infinity norm is bounded by one.
+    Also, we assume that it is known that $\lVert \thetavec^* \rVert_{1} \leq \tilde{R}$ for some constant $\tilde{R}$ so estimate $\thetavec^*$ by solving the 
+    maximum likelihood problem    with the constraint that $\lVert \thetavec^* \rVert_{1} \leq \tilde{R}$.
+    Under these assumptions, we derive the following result on the information-theoretic excess-risk inequality, which generalizes that of classical regression or logistic regression analysis based on a localization argument. 
+    To our knowledge, it is new.
+    The hidden constants in the result depends on $R$,  $\Tilde{R}$, $k$, $\sigma_{\tilde{\x}_{(j)}}$, $\sigma_{{\x}_{(j)}}$, $\Sigmavec$ and $\kappa$.
+    Since in typical applications of our approach, the number of products offered to the customer, $k$, is small, so we treat it as a constant and focus on the dependency of our finite sample bound on $m$, the sample size of primary data, $d$ and $\tilde{d}$, the number of parameters. 
+    }
+
+    \begin{prop}[Finite Sample KL-excess-risk Bound]
+    \label{prop:kl}
+    Under the setup in Example \ref{exam:logistic}, with probability at least $1 - \delta$, 
+    $$
+    \E_{\x, z}\Big[
+    {\sf KL}\big( \mathbf{g}(\x, z, \thetavec^*)\,\big\vert\,\mathbf{g}(\x, z, \hat{\thetavec})\big)
+    \Big] ~\preceq~ \frac{\tilde{d}\log (m/\delta) }{m}.
+    $$
+    Thus, if $n$ is sufficiently large, with probability $1-3\delta$, 
+    $$
+    \big\lVert \hat{\betavec}^{\sf AAE} - {\betavec}^* \big\rVert_2~\preceq~
+    \sqrt{\frac{\tilde{d}\log (m/\delta)}{m}}.$$
+    \end{prop}
+
+    \upshape{
+    When $\tilde{d} \lesssim d$, our estimator enjoys the finite-sample error bound $
+\bigl\lVert \hat{\betavec}^{\sf AAE} -\betavec^{*}\bigr\rVert_{2}\;\lesssim\;\sqrt{\frac{d\log(m/\delta)}{m}}$.
+One can compare existing finite sample analysis of MNL models \citep[e.g.,see][]{chen2022statistical} in the classical setting with ours. 
+We observe that our result do not require any assumptions on the magnitude of $m$, which is typically required to ensure that approximate identification conditions
+of the loss function is met to approximately recover $\betavec$. 
+Instead, equipped with this strong KL bound from Step 1, Step 2 can simply draw a larger auxiliary sample (take $n$ large) to offset any conditioning issues.
+Therefore, viewed this way, our two-step procedure offers a practical route to high-quality prediction without the stringent sample-size and conditioning requirements usually imposed for parameter estimation.
+In essence, the AAE simply propogates the the first-stage risk, measured by the KL-divergence, into the second stage. 
+}
+\end{examp}}
+\vspace{-5mm}
+\subsection{Additional Discussions}
+\label{sec:additional}
+
+\revise{
+Before we embark on the empirical discussions, we highlight two comments.
+First, we remark that our framework of using AI-augmented data to facilitate the estimation and boost the accuracy extends beyond the setting for conjoint analysis. We believe that it is generally applicable for many statistical problems.
+While leaving the study of more general problems to future work, in Appendix \ref{app:regression}, we extend our proposed data-augmentation approach to the regression setting with continuous target variables, providing an AI-Augmented Regression Estimator (AARE). 
+Specifically, the setup for AARE maintains the core focus on two datasets: a small primary dataset containing real labels $y$ and AI-generated labels $z$, and a large auxiliary dataset with only features $\x$ and AI-generated labels $z$. The objective is to estimate the best linear predictor parameter $\betavec^{*}$ that minimizes the expected squared error, $\E[(y-\x^{\top}\betavec)^2]$. The AARE estimation proceeds in two steps that are analogous to AAE. In the discussion in Appendix \ref{app:regression}, we also provide a theoretical analysis of AARE, demonstrating that it possesses the desired asymptotic properties mirroring the key properties of AAE that have been discussed in this section.}
+
+\revise{
+Second, following our overview in the literature review comparing PPI \citep[e.g.,][]{angelopoulos2023prediction,angelopoulos2023ppi++} with our approach, we now provide a more detailed discussion. Our method directly learns the transformation of outcomes conditional on features (including the AI-generated outcome), whereas PPI focuses on subtracting the loss function of one outcome from another. The key distinction lies in the amount of information retained: by relying only on the loss function rather than the full mapping between features and outcomes, PPI risks discarding important information. When no such information is lost, the two approaches may perform similarly—typically in cases with few features and when the loss transformation approximates the outcome transformation closely. However, this equivalence rarely holds in practice. In many realistic settings with high-dimensional features, the PPI loss no longer captures the full mapping, and we find that our method outperforms PPI both in our settings (Tables \ref{tab:bias-reduction} and \ref{tab:aae-ppi-census}) and in theirs, with the performance gap widening as feature dimension increases.
+
+Moreover, we acknowledge that our ability to capture the full mapping relies on a strong first-stage assumption, which parametrizes the distribution of outcomes conditional on features and AI labels. While this assumption underpins our theoretical analysis, our empirical studies show that it does not restrict the practicality of our approach and, in fact, enables AAE to outperform PPI. Moreover, this assumption provides additional flexibility and guarantees a provable performance boost. Importantly, in our framework, $z_i$ need not be the literal “label”—as long as it carries useful information and the parametric assumption holds (In the extreme, $z_i$ could even equal $-y_i$), our method remains applicable. By contrast, the utility of PPI, as emphasized in \cite{angelopoulos2023prediction}, depends critically on the accuracy of the AI-generated label. Furthermore, Proposition \ref{prop:weak-dom} establishes the dominance of our estimator over $\betavec^{\sf P}$, a discussion absent from the PPI framework.
+
+Finally, the formats of asymptotic and finite-sample guarantees of the two approaches are comparable (see Theorems \ref{thm:consistency} and \ref{thm:aae-bound} in our paper versus Theorem 1 in \cite{angelopoulos2023ppi++} and Corollary B.3 in \cite{angelopoulos2023prediction}). For example, in finite samples, both methods yield high-probability error bounds that ultimately depend on the informativeness of the AI-generated label. In our setting, this appears as the error term $\epsilon_1(m,\Tilde{d},\delta)$, while in PPI it appears as the width of the rectifier confidence interval $(\mathcal{R}^l_{\alpha}(\theta), \mathcal{R}^u_{\alpha}(\theta))$. Although the exact comparison depends on the problem, our empirical results consistently suggest that our approach tends to outperform PPI.
+}

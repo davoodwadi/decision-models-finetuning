@@ -1,0 +1,1193 @@
+\section{Supporting Arguments for Section \ref{sec:consistency-normality}}
+
+\subsection{Proofs of Main Results}
+
+\noindent
+\revise{
+\textbf{Proof of Theorem \ref{thm:consistency}.} We first prove the first part of the Theorem. 
+As the first step, we argue that the optimizer in \eqref{eqn:best-in-class} exists and is uniquely defined, whose proof is presented later. 
+This result only requires $(i)$ in Assumption \ref{assumption:regularity-consistency}.
+
+\begin{lem}[Unique Optimizer]
+\label{lem:unique-optimizer}
+    There exists a unique optimizer in \eqref{eqn:best-in-class}. 
+\end{lem}
+
+Given the lemma, we can link the global loss function to the empirical loss function that we use as follows.
+By Lemma \ref{lem:unique-optimizer}, $\betavec^*$ is the unique solution to $\max_{\betavec\in \Real^{k}}Q(\betavec)$, where 
+\begin{align}
+\label{eqn:reformulation}
+     Q(\betavec) ~:=~&\E_{\x}\left[
+    \sum_{j\in \Kscr^+} \Prob\big(y = j| \x\big)\log\sigma_{j}(\x, \betavec)
+    \right]~\stackrel{\text{(a)}}{=}~\E_{\x}\left[
+    \sum_{j\in \Kscr^+} \E_{z}\big[\Prob\big(y = j| \x, z\big)\big|\x\big]\log\sigma_{j}(\x, \betavec)
+    \right]\nonumber\\
+    ~=~&\E_{\x}\hspace{-1mm}\left[
+     \E_{z}\left[\sum_{j\in \Kscr^+}\Prob\big(y = j| \x, z\big)\log\sigma_{j}(\x, \betavec)\,\Bigg|\,\x\right]
+    \right]~=~\E_{\x, z}\hspace{-1mm}\left[
+     \sum_{j\in \Kscr^+}\Prob\big(y = j| \x, z\big)\log\sigma_{j}(\x, \betavec)
+    \right]\nonumber\\
+    ~\stackrel{\text{(b)}}{=}~&    
+    \E_{\x}\left[
+    \sum_{j\in \Kscr^+}g_j(\x_i, z_i; {\thetavec}^*)\log\sigma_{j}(\x, \betavec)
+    \right],
+\end{align}
+where (a) follows from an application of the law of total expectation and (b) follows from the definition of $\big(g_j(\x, z; \thetavec^*):j\in \Kscr^+\big)$.
+Then, using the representation of $Q(\betavec)$ in 
+\eqref{eqn:reformulation}, the next lemma shows that our empirical loss function converges uniformly to $Q(\betavec)$. 
+Let $\epsilon$ be an arbitrary positive constant and $\Bscr(\betavec^*, \epsilon)$ be a closed ball around $\betavec^*$ with a radius $\epsilon$.
+
+\begin{lem}[Uniform Convergence]
+\label{lem:uniform-convergence}
+    $
+    \sup_{\betavec \in \Bscr(\betavec^*, \epsilon)}
+    \left|
+    \widehat{Q}(\hat{\thetavec};\betavec) - {Q}(\betavec)
+    \right| \pconverge 0
+    $ as $m,n \rightarrow \infty$.
+\end{lem}
+
+From now on, let us fix any $\epsilon_1 > \epsilon_2 > 0$. 
+Since $\Bscr(\betavec^*, \epsilon_1)$ is compact and ${Q}(\betavec)$ is continuous, as implied by the dominated convergence theorem, there exists $\delta > 0$ such that 
+\begin{align}
+\label{eqn:outer-circle}
+    {Q}(\betavec^*) ~=~ \sup_{\betavec\in\Bscr(\betavec^*, \epsilon_1)\setminus \Bscr(\betavec^*, \epsilon_2)}{Q}(\betavec) + \delta.
+\end{align}
+Indeed, if $\sup_{\betavec\in\Bscr(\betavec^*, \epsilon_1)\setminus \Bscr(\betavec^*, \epsilon_2)}{Q}(\betavec)$ is equal to the ${Q}(\betavec^*)$, due to the compactness of 
+$\Bscr(\betavec^*, \epsilon_1)$, 
+we can find a sequence in $\Bscr(\betavec^*, \epsilon_1)\setminus \Bscr(\betavec^*, \epsilon_2)$ that converges to a point $\tilde{\betavec}$ such that $\lVert \tilde{\betavec} - \betavec^*\rVert_2 \geq \epsilon_2$ and ${Q}(\betavec^*) = {Q}(\tilde{\betavec})$.
+This contradicts Lemma \ref{lem:unique-optimizer}.
+Let us define $\event$ as the event on which $\sup_{\betavec \in \Bscr(\betavec^*, \epsilon_1)}
+\left|
+\widehat{Q}(\hat{\thetavec};\betavec) - {Q}(\betavec)
+\right| \leq \frac{\delta}{3}$. Therefore, by Lemma \ref{lem:uniform-convergence}, $\Prob(\event^c)\rightarrow 0$. 
+On $\event$, we have 
+\begin{align}
+    &\max_{\betavec \in \Bscr(\betavec^*, \epsilon_2)} \widehat{Q}(\hat{\thetavec};\betavec)~\geq~\widehat{Q}(\hat{\thetavec};\betavec^*)~\stackrel{\text{(c)}}{\geq}~{Q}(\betavec^*) -\frac{\delta}{3} \stackrel{\text{(d)}}{=} \sup_{\betavec\in\Bscr(\betavec^*, \epsilon_1)\setminus \Bscr(\betavec^*, \epsilon_2)}{Q}(\betavec)  + \frac{2\delta}{3}    \label{eqn:delta/3}\\ &~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\stackrel{\text{(e)}}{\geq}~\sup_{\betavec\in\Bscr(\betavec^*, \epsilon_1)\setminus \Bscr(\betavec^*, \epsilon_2)}\widehat{Q}(\hat{\thetavec};\betavec) + \frac{\delta}{3},\nonumber
+\end{align}
+where (c) and (e) follow from the definition of $\event$ and (d)
+follows from \eqref{eqn:outer-circle}.
+Let us assume $\betavec' \in \argmax _{\betavec\in \Bscr(\betavec^*, \epsilon_2)}
+\widehat{Q}(\hat{\thetavec};\betavec)$.
+For any $\betavec \in \Bscr(\betavec^*, \epsilon_1)^{\text{c}}$, there exists $\lambda \in (0,1)$ with $\lambda\betavec' +(1 - \lambda)\betavec \in \Bscr(\betavec^*, \epsilon_1)\setminus \Bscr(\betavec^*, \epsilon_2)$.
+Then, by \eqref{eqn:delta/3},
+$$
+\widehat{Q}(\hat{\thetavec};\betavec')~>~\frac{\delta}{3} + \widehat{Q}\Big(\hat{\thetavec};\lambda\betavec' +(1 - \lambda)\betavec\Big) ~\geq~ \frac{\delta}{3} + \lambda\widehat{Q}(\hat{\thetavec};\betavec') + (1 - \lambda)\widehat{Q}(\hat{\thetavec};\betavec)
+$$
+due to the concavity of $\widehat{Q}(\hat{\thetavec};\cdot)$.
+Thus, $\widehat{Q}(\hat{\thetavec};\betavec') ~>~ \frac{\delta}{3( 1 - \lambda)} + \widehat{Q}(\hat{\thetavec};\betavec)> \frac{\delta}{3} + \widehat{Q}(\hat{\thetavec};\betavec)$. In sum, 
+\begin{align}
+\label{eqn:beta-prime-delta/3}
+    \widehat{Q}(\hat{\thetavec};\betavec') ~\geq~ \sup_{\betavec \in \Bscr(\betavec^*, \epsilon_2)^{\text{c}}} \widehat{Q}(\hat{\thetavec};\betavec) + \frac{\delta}{3}.
+\end{align}
+Therefore, on $\event$, it must be that $\hat{\betavec}^{\sf AAE} \in \Bscr(\betavec^*, \epsilon_2)$, since $\hat{\betavec}^{\sf AAE} ~\in~\argmax_{\betavec \in \Real^{d}}\widehat{Q}(\hat{\thetavec};\betavec)$. Since $\Prob(\event^c)\rightarrow 0$, the conclusion follows.\footnote{\revise{In case $\hat{\betavec}^{\sf AAE}$ is chosen such that $
+\widehat{Q}(\hat{\thetavec};\hat{\betavec}^{\sf AAE}) = \sup_{\betavec \in \Real^{d}} \widehat{Q}(\hat{\thetavec};\betavec) - o_{\text{P}}(1)
+$, we notice that \eqref{eqn:beta-prime-delta/3} implies that 
+$$
+\Prob\big(\hat{\betavec}^{\sf AAE} \notin \Bscr(\betavec^*, \epsilon_2)\big) \leq \Prob\left(\widehat{Q}(\hat{\thetavec};\hat{\betavec}^{\sf AAE}) \leq \sup_{\betavec \in \Real^{d}} \widehat{Q}(\hat{\thetavec};\betavec) - \delta/3\right) + 
+\Prob(\event^c)\rightarrow 0
+,$$
+so the consistency still follows.} 
+} 
+
+For the second part of the theorem, we argue as follows. 
+By the Taylor expansion and the first order condition, which holds with probability approaching one since $\hat{\betavec}^{\sf AAE} \stackrel{\text{P}}{\rightarrow}{\betavec}^*$, we have 
+\begin{align}
+\label{eqn:taylor-1}
+    \Ovec ~=&~ \frac{1}{n}\sum_{i=1}^n\sum_{j\in \Kscr^+}g_j(\x_i, z_i; \hat{\thetavec})\nabla_{\betavec}\log \sigma_j(\x_i; \hat{\betavec}^{\sf AAE})\\
+    &~~~~~~~~~~~~~~~~~~~~~~~=~\frac{1}{n}\sum_{i=1}^n\sum_{j\in \Kscr^+}g_j(\x_i, z_i; \hat{\thetavec})\Big(\nabla_{\betavec}\log \sigma_j(\x_i; {\betavec}^*) + \nabla^2_{\betavec}\log \sigma_j(\x_i; \tilde{\betavec})(\hat{\betavec}^{\sf AAE} - \betavec^*)\Big),\nonumber
+\end{align}
+where $\tilde{\betavec} \in [\betavec^*, \hat{\betavec}^{\sf AAE}]$.
+Because by Theorem \ref{thm:consistency}, $\hat{\betavec}^{\sf AAE} \pconverge \betavec^*$, 
+$\tilde{\betavec} \pconverge \betavec^*$.
+Similarly, we have the following Taylor expansion, 
+where $\tilde{\thetavec} \in [{\thetavec}^*, \hat{\thetavec}]$ and  $\tilde{\thetavec}\pconverge \thetavec^*$: 
+\begin{align}
+\label{eqn:Taylor-2}
+    & \sum_{i=1}^n\sum_{j\in \Kscr^+}g_j(\x_i, z_i; \hat{\thetavec})\nabla_{\betavec}\log \sigma_j(\x_i; {\betavec}^*) ~=~\\ 
+     & ~~~~~~~~~~~~~~\sum_{i=1}^n\sum_{j\in \Kscr^+}g_j(\x_i, z_i; {\thetavec}^*)\nabla_{\betavec}\log \sigma_j(\x_i; {\betavec}^*) + \sum_{i=1}^n\sum_{j\in \Kscr^+}\nabla_{\betavec}\log \sigma_j(\x_i; {\betavec}^*) \nabla_{\thetavec}g_j(\x_i, z_i; \tilde{\thetavec})^{\top}
+      (\hat{\thetavec} - \thetavec^*).\nonumber
+\end{align}
+We next present an intermediate result regarding the derivatives.
+
+\begin{lem}[Convergence to $\Omegavec$ and $\Gammavec$] 
+\label{lem:Omega}
+It holds that 
+\begin{align*}
+        \frac{1}{n} \sum_{i=1}^n \sum_{j\in \Kscr^+} g_j(\x_i, z_i; \hat{\thetavec})\nabla^2_{\betavec}\log \sigma_j(\x_i; \tilde{\betavec}) \,\pconverge\, \Omegavec ~~\text{and}~~\frac{1}{{n}}\sum_{i=1}^n\sum_{j\in \Kscr^+}
+    \nabla_{\betavec}\log \sigma_j(\x_i; {\betavec}^*) \nabla_{\thetavec}g_j(\x_i, z_i; \tilde{\thetavec})^{\top} \,\pconverge\, \Gammavec.
+\end{align*}
+\end{lem}
+Therefore, \eqref{eqn:taylor-1} implies that 
+\begin{align*}
+    ~\sqrt{n}(\hat{\betavec}^{\sf AAE} - \betavec^*)
+    ~=&~\Omegavec^{-1}\times \frac{1}{\sqrt{n}}\sum_{i=1}^n\sum_{j\in \Kscr^+}g_j(\x_i, z_i; \hat{\thetavec})\nabla_{\betavec}\log \sigma_j(\x_i; {\betavec}^*) + o_{\text{\upshape{P}}}(1)\\
+    ~\stackrel{\text{(a)}}{=}&~\Omegavec^{-1}\times \Bigg[\frac{1}{\sqrt{n}}\sum_{i=1}^n\sum_{j\in \Kscr^+}
+    g_j(\x_i, z_i; {\thetavec}^*)\nabla_{\betavec}\log \sigma_j(\x_i; {\betavec}^*)\\
+    &+ \sqrt{\frac{n}{m}}\times
+    \left(\frac{1}{{n}}\sum_{i=1}^n\sum_{j\in \Kscr^+}
+    \nabla_{\betavec}\log \sigma_j(\x_i; {\betavec}^*) \nabla_{\thetavec}g_j(\x_i, z_i; \tilde{\thetavec})^{\top}\right)\times
+      \sqrt{m}(\hat{\thetavec} - \thetavec^*)\Bigg]
+     + o_{\text{\upshape{P}}}(1),
+\end{align*}
+where (a) follows from \eqref{eqn:Taylor-2}.
+Using the second display of Lemma \ref{lem:Omega} and verifying 
+$$
+\sum_{j\in \Kscr^+}
+    g_j(\x, z; {\thetavec}^*)\nabla_{\betavec}\log \sigma_j(\x; {\betavec}^*) ~=~\sum_{j\in \Kscr}\big(g_j(\x, z; {\thetavec}^*) - \sigma_{j}(\x; \betavec^*)\big)\x_{(j)}~~\forall\, \x \in \Xscr, \forall\, z \in \Kscr,
+$$
+which follows from a straightforward calculation as remarked in Lemma \ref{lem:derivative},
+we have 
+$$\sqrt{n}(\hat{\betavec}^{\sf AAE} - \betavec^*)~=~ \Omegavec^{-1}\times \left(\frac{1}{n}\sum_{i=1}^n  \sum_{j\in \Kscr}\big(g_j(\x_i, z; {\thetavec}^*) - \sigma_{j}(\x_i; \betavec^*)\big)\x_{(j)} + \sqrt{\frac{n}{m}} \Gammavec\times \sqrt{m}(\hat{\thetavec} - \thetavec^*)\right) + o_{\text{\upshape{P}}}(1).
+$$
+The weak convergence results from the Lindeberg–L\'evy central limit theorem.
+\hfill $\blacksquare$}
+\vspace{3mm}
+
+\revise{\noindent
+\textbf{Proof of Proposition  \ref{prop:weak-dom}.}
+The proof begins with a reformulation of $\Gammavec$ as follows 
+\begin{align*}
+    \Gammavec ~&=~ \E_{\x,z}\left[\sum_{j \in \Kscr^+} \left(\ind_{\{j\neq 0\}}\x_{(j)} - \sum_{j' \in \Kscr}\sigma_{j'}(\x, \betavec^*)\x_{(j')}\right)\nabla_{\thetavec} g_j(\x, z, \thetavec^*)^{\top} \right]\\
+    &~~~~~~~~~~~~~~~~~~=~
+    \E_{\x,z}\left[\sum_{j \in \Kscr^+}g_j(\x, z, \thetavec^*)  \left(\ind_{\{j\neq 0\}}\x_{(j)} - \sum_{j' \in \Kscr}\sigma_{j'}(\x, \betavec^*)\x_{(j')}\right)\frac{1}{g_j(\x, z, \thetavec^*) }\nabla_{\thetavec} g_j(\x, z, \thetavec^*)^{\top} \right]\\
+    &~~~~~~~~~~~~~~~~~~\stackrel{\text{(a)}}{=}~
+    \E_{\x,z}\left[\sum_{j \in \Kscr^+} g_j(\x, z, \thetavec^*) \left(\ind_{\{j\neq 0\}}\x_{(j)} - \sum_{j' \in \Kscr}\sigma_{j'}(\x, \betavec^*)\x_{(j')}\right)\nabla_{\thetavec} \log g_j(\x, z, \thetavec^*)^{\top} \right]\\
+    ~&~~~~~~~~~~~~~~~~~~\stackrel{\text{(b)}}{=}~
+    \E_{\x,y,z}\left[\bigg(\sum_{j\in \Kscr}\big(\ind_{\{y = j\}} - \sigma_{j}(\x; \betavec^*)\big)\x_{(j)}\bigg)\nabla_{\thetavec} \log g_y(\x, z, \thetavec^*)^{\top} \right],
+\end{align*}
+where (a) follows from the definition of $\nabla_{\thetavec} \log g_j(\x, z, \thetavec^*)^{\top}$ and (b) follows because
+\begin{align*}
+    &\sum_{j \in \Kscr^+} g_j(\x, z, \thetavec^*) \left(\ind_{\{j\neq 0\}}\x_{(j)} - \sum_{j' \in \Kscr}\sigma_{j'}(\x, \betavec^*)\x_{(j')}\right)\nabla_{\thetavec} \log g_j(\x, z, \thetavec^*)^{\top}\\
+    &~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~=~
+\E_{y}
+\left[
+\bigg(\sum_{j\in \Kscr}\big(\ind_{\{y = j\}} - \sigma_{j}(\x; \betavec^*)\big)\x_{(j)}\bigg)\nabla_{\thetavec} \log g_y(\x, z, \thetavec^*)^{\top}~\bigg|~\x, z
+\right].
+\end{align*}
+Therefore, if we define 
+$$
+\uvec ~=~ \nabla_{\thetavec} \log g_y(\x, z, \thetavec^*)^{\top}~\text{ and }~\wvec~=~\sum_{j\in \Kscr}\big(\ind_{\{y = j\}} - \sigma_{j}(\x; \betavec^*)\big)\x_{(j)},
+$$
+it follows that the projection of $\wvec$ on $\uvec$ is $\E\left[\wvec \uvec^{\top} \right]\E\left[\uvec \uvec^{\top} \right]^{-1}\uvec$ and the covariance of the residual of the projection, i.e., $\wvec - \E\left[\wvec \uvec^{\top} \right]\E\left[\uvec \uvec^{\top} \right]^{-1}\uvec$,
+is 
+\begin{align*}
+&
+\E\left[
+\left(\wvec - \E\left[\wvec \uvec^{\top} \right]\E\left[\uvec \uvec^{\top} \right]^{-1}\uvec\right)\left(\wvec - \E\left[\wvec \uvec^{\top} \right]\E\left[\uvec \uvec^{\top} \right]^{-1}\uvec\right)^{\top}
+\right]\\
+&~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\stackrel{\text{(c)}}{=}~\E\left[\wvec \wvec^{\top} \right] - \E\left[\wvec \uvec^{\top} \right]\E\left[\uvec \uvec^{\top} \right]^{-1}\E\left[\uvec \wvec^{\top} \right]~\stackrel{\text{(d)}}{=}~\check{\Jvec} - \Gammavec\Lambdavec\Gammavec^{\top},
+\end{align*}
+where (c) follows by algebra and (d) follows by the definitions of $\check{\Jvec}$, $\Gammavec$ and $\Lambdavec$.
+Therefore, $\check{\Jvec} \succeq \Gammavec\Lambdavec\Gammavec^{\top}$ and the first claim follows.
+As indicated in the main text, the rest of the results follow from sending $n$ to infinity. 
+\hfill $\blacksquare$
+\vspace{3mm}}
+
+\revise{
+\noindent
+\textbf{Proof of Theorem  \ref{thm:aae-bound}.}
+Let us assume that $-\widehat{Q}(\hat{\thetavec};\betavec)$ is strongly convex with parameter $\hat{\eta}$. 
+    Then, we derive a basic inequality
+    $$
+    -\widehat{Q}(\hat{\thetavec};\betavec^*) - \nabla\widehat{Q}(\hat{\thetavec};\betavec^*)^{\top}\left(\hat{\betavec}^{\sf AAE} - {\betavec}^* \right) + \frac{\hat{\eta}}{2}\big\lVert \hat{\betavec}^{\sf AAE} - {\betavec}^* \big\rVert^2_2~\leq~-\widehat{Q}(\hat{\thetavec};\hat{\betavec}^{\sf AAE})~\leq~-\widehat{Q}(\hat{\thetavec};\hat{\betavec}^*),
+    $$
+    which implies 
+    \begin{align}
+    \label{eqn:basic-consequence}
+        \big\lVert \hat{\betavec}^{\sf AAE} - {\betavec}^* \big\rVert_2 ~\leq~ \frac{2}{\hat{\eta}}\big\lVert 
+        \nabla\widehat{Q}(\hat{\thetavec};\betavec^*)
+        \big\rVert_2.  
+    \end{align}
+   We note that 
+   \begin{align*}
+          &\nabla\widehat{Q}(\hat{\thetavec};\betavec^*)~=~ \frac{1}{n}\sum_{i=1}^n\sum_{j \in \Kscr}\left(g_j(\x_i, z_i; \hat{\thetavec}) - \sigma_j(\x_i; \betavec^*)\right)\x_{i(j)}\\
+          ~&~~~~~~~=~ \frac{1}{n}\sum_{i=1}^n\sum_{j \in \Kscr}\left(g_j(\x_i, z_i; \hat{\thetavec}) - g_j(\x_i, z_i; {\thetavec}^*)\right)\x_{i(j)} + \frac{1}{n}\sum_{i=1}^n\sum_{j \in \Kscr}\left(g_j(\x_i, z_i; {\thetavec}^*) - \sigma_j(\x; \betavec^*)\right)\x_{i(j)}.
+   \end{align*}
+   By assumption, for any $\ell = 1,\dots, d$, $\E_{z}[g_j(\x, z; {\thetavec}^*)x_{(j)\ell}|\x] = \sigma_j(\x; \betavec^*)x_{(j)\ell}$ and 
+    the sub-Gaussian norm of $\frac{1}{n}\sum_{i=1}^n\sum_{j \in \Kscr}\left(g_j(\x_i, z_i; {\thetavec}^*) - \sigma_j(\x_i; \betavec^*)\right)\x_{i(j)}$ satisfies 
+    \begin{align*}
+        & \left \lVert \frac{1}{n}\sum_{i=1}^n\sum_{j \in \Kscr}\left(g_j(\x_i, z_i; {\thetavec}^*) - \sigma_j(\x_i; \betavec^*)\right)\x_{i(j)}\right\rVert_{\psi_2}\leq \sum_{j \in \Kscr}\left \lVert \frac{1}{n}\sum_{i=1}^n\left(g_j(\x_i, z_i; {\thetavec}^*) - \sigma_j(\x_i; \betavec^*)\right)\x_{i(j)}\right\rVert_{\psi_2}\\
+        \stackrel{\text{(a)}}{\leq} & \frac{1}{\sqrt{n}}\sum_{j \in \Kscr}\left \lVert \left(g_j(\x, z; {\thetavec}^*) - \sigma_j(\x; \betavec^*))\right)\x_{(j)}\right\rVert_{\psi_2} \leq \frac{2}{\sqrt{n}}\sum_{j \in \Kscr}\left \lVert\x_{(j)}\right\rVert_{\psi_2} = \frac{2}{\sqrt{n}}\sum_{j \in \Kscr} \sigma_{\x_{(j)}},
+    \end{align*}
+    where (a) follows because the samples are i.i.d.
+    Let $N({1/2}, \ell_2)$ be a $1/2$-cover of the unit $\ell_2$-norm ball in $\Real^d$ so $|N({1/2}, \ell_2)| \leq 5^d$. 
+    For any $\mathbf{b}$ in the  unit $\ell_2$-norm ball, we assume that it is covered by $T(\bvec) \in N({1/2}, \ell_2)$. 
+    For any $\mathbf{a} \in \Real^d$, we note that 
+    $$\lVert \mathbf{a} \rVert_2 = \sup_{\mathbf{b} \in \Real^d \lVert \mathbf{b} \rVert_2 \leq 1}\avec^{\top}\bvec \leq \sup_{\mathbf{b} \in \Real^d \lVert \mathbf{b} \rVert_2 \leq 1}\avec^{\top}(\bvec - T(\bvec)) + \max_{\tilde{\bvec} \in N_{1/2}} \avec^{\top}\tilde{\bvec}\leq \frac{1}{2}\lVert \mathbf{a} \rVert_2 + \max_{\tilde{\bvec} \in N({1/2}, \ell_2)} \avec^{\top}\tilde{\bvec}$$ 
+    so $\lVert \mathbf{a} \rVert_2  \leq 2\max_{\tilde{\bvec} \in N({1/2}, \ell_2)} \avec^{\top}\tilde{\bvec}$. 
+    Then by Lemma 2.2.2 in \cite{vaart2023empirical}, it holds that 
+    \begin{align*}
+         & \left \lVert \left \lVert \frac{1}{n}\sum_{i=1}^n\sum_{j \in \Kscr}\left(g_j(\x_i, z_i; {\thetavec}^*) - \sigma_j(\x_i; \betavec^*)\right)\x_{i(j)}\right\rVert_2 \right\rVert_{\psi_2}\\
+        & ~~~~~~\preceq   \sqrt{d\log(5)}\max_{\tilde{\bvec} \in N_{1/2}} 
+         \left\lVert
+        \left(\frac{1}{n}\sum_{i=1}^n\sum_{j \in \Kscr}\left(g_j(\x_i, z_i; {\thetavec}^*) - \sigma_j(\x_i; \betavec^*)\right)\x_{i(j)}\right)\tilde{\bvec}
+         \right \rVert_{\psi_2} \preceq \sqrt{\frac{d\log(5)}{n}}\sum_{j \in \Kscr}\sigma_{\x_{(j)}}.
+    \end{align*}
+    Thus, using Markov inequality, we observe that for some absolute constant $c_1$
+    \begin{align}
+    \label{eqn:hoeffding-1}
+    \Prob \left(
+     \left \lVert \frac{1}{n}\sum_{i=1}^n\sum_{j \in \Kscr}\left(g_j(\x_i, z_i; {\thetavec}^*) - \sigma_j(\x_i; \betavec^*)\right)\x_{i(j)}\right\rVert_2 \geq t_1 \right) \leq 2e^{-\frac{c_1n t_1^2}{d\left(\sum_{j \in \Kscr}\sigma_{\x_{(j)}}\right)^2}}
+    \end{align}
+    Also, for any random variable $w$, we let $\lVert w\rVert_{L_2(\Prob)}:=(\E[w^2])^{\frac{1}{2}}$ and obtain 
+    \begin{align*}
+        & \E_{\x, z}\left[\left\lVert
+        \frac{1}{n}\sum_{i=1}^n\sum_{j \in \Kscr}\left(g_j(\x_i, z_i; {\thetavec}^*) - g_j(\x_i, z_i; \hat{\thetavec})\right)\x_{i(j)}\right \rVert_2
+        \right]\leq
+        \E_{\x, z}\left[\left\lVert
+        \sum_{j \in \Kscr}\left(g_j(\x, z; {\thetavec}^*) - g_j(\x, z; \hat{\thetavec})\right)\x_{(j)}\right \rVert_2
+        \right]\\
+        \leq & \E_{\x, z}\left[\sum_{j \in \Kscr}
+        \left|g_j(\x, z; {\thetavec}^*) - g_j(\x_i, z_i; \hat{\thetavec})\right| 
+        \left\lVert
+        \x_{(j)}\right \rVert_2
+        \right]\leq
+        \E_{\x, z}\left[\max_{j \in \Kscr}\left\lVert
+        \x_{(j)}\right \rVert_2\cdot \sum_{j \in \Kscr}
+        \left|g_j(\x, z; {\thetavec}^*) - g_j(\x_i, z_i; \hat{\thetavec})\right| 
+        \right]\\
+        \leq &\left\lVert\max_{j \in \Kscr}\left\lVert
+        \x_{(j)}\right \rVert_2
+        \right\rVert_{L_2(\Prob)}
+        \cdot 
+        \left\lVert\sum_{j \in \Kscr}
+        \left|g_j(\x, z; {\thetavec}^*) - g_j(\x_i, z_i; \hat{\thetavec})\right|\right\rVert_{L_2(\Prob)}\\
+        \stackrel{\text{(b)}}{\leq} &\frac{1}{\sqrt{2}}\left\lVert\max_{j \in \Kscr}\left\lVert
+        \x_{(j)}\right \rVert_2
+        \right\rVert_{L_2(\Prob)}\cdot\left( \E_{\x, z}\left[{\sf KL}\big( \mathbf{g}(\x, z, \thetavec^*)\,\big\vert\,\mathbf{g}(\x, z, \hat{\thetavec})\big) \right]\right)^{1/2} \leq \sqrt{\frac{\kappa\epsilon_1\big(m,\Tilde{d},\delta\big)}{2}},
+    \end{align*}
+    where (b) follows from the Pinsker's inequality.
+    Next, using an argument similar to \eqref   {eqn:hoeffding-1}, we have 
+    \begin{align}
+    \label{eqn:hoeffding-2}
+        \Prob \left(
+    \left\lVert
+        \frac{1}{n}\sum_{i=1}^n\sum_{j \in \Kscr}\left(g_j(\x_i, z_i; {\thetavec}^*) - g_j(\x_i, z_i; \hat{\thetavec})\right)\x_{i(j)}\right \rVert_2 \geq \sqrt{\frac{\kappa\epsilon_1\big(m,\Tilde{d},\delta\big)}{2}} + t_1 \right) \leq 2e^{-\frac{c_1n t_1^2}{d\left(\sum_{j \in \Kscr}\sigma_{\x_{(j)}}\right)^2}}
+    \end{align}
+    Thus, combining \eqref{eqn:hoeffding-1} and \eqref{eqn:hoeffding-2}, we have 
+    \begin{align}
+    \label{eqn:derivative-infity-norm}
+       \Prob \left(\left\lVert\nabla\widehat{Q}(\hat{\thetavec};\betavec^*) \right \rVert_{2} \geq \frac{\kappa}{\sqrt{2}}\sqrt{\epsilon_1\big(m,\Tilde{d},\delta\big)} +2t_1 \right) \leq 4e^{-\frac{c_1n t_1^2}{2d\left(\sum_{j \in \Kscr}\sigma_{\x_{(j)}}\right)^2}}.
+    \end{align}
+
+    To characterize $\hat{\eta}$, we note that $$-\nabla^2\widehat{Q}(\hat{\thetavec};\betavec) = \frac{1}{n}\sum_{i=1}^n \sum_{j \in \Kscr}\sigma_j(\x; \betavec)\left(
+    \x_{i(j)}\x^{\top}_{i(j)} - \sum_{j' \in \Kscr}\sigma_{j'}(\x; \betavec)\x_{i(j)}\x^{\top}_{i(j')} 
+    \right),$$ so for any $\qvec \in \Real^{d}$, 
+    \begin{align*}
+        &\qvec^{\top}\left(-\nabla^2\widehat{Q}(\hat{\thetavec};\betavec)\right)\qvec~=~ \frac{1}{n}\sum_{i=1}^n \sum_{j \in \Kscr}\sigma_j(\x; \betavec)\left(
+    \left(\qvec^\top \x_{i(j)}\right)^2 - \sum_{j' \in \Kscr}\sigma_{j'}(\x; \betavec)\left(\qvec_{(j)}^\top \x_{i(j)}\right)\left(\qvec^\top \x_{i(j')}\right)
+    \right)\\
+    \geq~ &\frac{1}{n}\sum_{i=1}^n \sum_{j \in \Kscr}\sigma_0(\x_i; \betavec)\min_{j\in \Kscr}\sigma_j(\x_i; \betavec) \cdot\qvec^{\top}\left(\sum_{j \in \Kscr}\x_{i(j)}\x^{\top}_{i(j)}\right)\qvec ~\geq~ \frac{1}{e^R(1 + ke^R)^2}\cdot\qvec^{\top}\widehat{\Sigmavec}\qvec,
+    \end{align*}
+    where we write $\widehat{\Sigmavec}:= (1/n)\sum_{i=1}^n\sum_{j \in \Kscr}\x_{i(j)}\x^{\top}_{i(j)}$.
+    Let us also  write $\Sigmavec_{(j)} := \E\big[\sum_{j\in \Kscr}\x_{(j)}\x_{(j)}^{\top}\big]$ and its empirical counterpart as $\widehat{\Sigmavec}_{(j)}$. 
+    Adapting the arguments in Theorem 5.39 of \cite{vershynin2010introduction}, we obtain that $\Prob\left(\left\lVert \widehat{\Sigmavec}_{(j)} - {\Sigmavec}_{(j)}\right\rVert_2 \leq t_3\right) \geq 1 - e^{-c_3 t_2^2}$ for all $t_3 \in (0,1)$ and $t_2 > 1$ as long as $n \geq c_2dt_2t_3$, where $c_1$ and $c_2$ are constants that depends on $\max_{j \in \Kscr}\sigma_{\x_{(j)}}$. 
+    Let us set $t_3 = \lambda_{\min}(\Sigmavec)/2K \wedge 1$. 
+    Then as long as $n \geq
+\frac{dt_2}{\lambda_{\min}(\Sigmavec)/2K \wedge 1}$, with an application of union bound and triangular inequality, we have that with probability at least $1 - ke^{-c_3t^2_2}$,  
+$\left\lVert \widehat{\Sigmavec}- {\Sigmavec}\right\rVert_2 \leq \lambda_{\min}(\Sigmavec)/2$ so $\lambda_{\min}(\widehat{\Sigmavec}) \geq \lambda_{\min}(\Sigmavec)/2$.
+Together with \eqref{eqn:derivative-infity-norm} and \eqref{eqn:basic-consequence}, 
+it holds that 
+$$
+\Prob
+\left(
+\big\lVert \hat{\betavec}^{\sf AAE} - {\betavec}^* \big\rVert_2 ~\leq~ \frac{
+\left(2\sqrt{2\kappa\epsilon_1\big(m,\Tilde{d},\delta\big)} + 8t_1  
+       \right)e^R(1 + ke^R)^2
+}{\lambda_{\min}(\Sigmavec)}
+\right)
+\geq 1 - 4e^{-\frac{c_1n t_1^2}{2d\left(\sum_{j \in \Kscr}\sigma_{\x_{(j)}}\right)^2}} - ke^{-c_3t^2_2} - \delta.
+$$
+We set $t_1 = \sqrt{\epsilon_1\big(m,\Tilde{d}, ,\delta\big)}$ and $t_2 = (1/c_2)\log\left(k/\delta\right)\vee 1$, we observe that as long as 
+$$n ~\geq~ 
+\max\left\{
+\frac{d
+\left(
+\frac{1}{c_2}\log\left(\frac{k}{\delta}\right) \vee 1\right)
+}{\frac{\lambda_{\min}(\Sigmavec)}{2K}\wedge 1},~ \frac{2d\left(\sum_{j \in \Kscr}\sigma_{\x_{(j)}}\right)^2}{c_1\epsilon_1\big(m,\Tilde{d},\delta\big)}\log\left(\frac{4}{\delta}\right)
+    \right\},
+$$
+the conclusion holds.
+\hfill $\blacksquare$}
+\vspace{3mm}
+
+\revise{
+\noindent
+\textbf{Proof of Proposition  \ref{prop:kl}.}
+The proof relies on a localization argument. 
+    On the notation side, for simplicity we follow that of empirical process literature. 
+    To begin with, we define the function class
+    $$
+    \mathscr{F}~:=~ \left\{
+    \fvec \in \Real^k\,:\,f_j(\tilde{\x}_{(j)}) = \tilde{\x}_{(j)}^{\top}\thetavec~\forall j \in \Kscr ~\text{for some}~ \thetavec \in \Real^d ~\text{with}~ \lVert \thetavec \rVert_1 \leq \tilde{R}
+    \right\}.
+    $$
+    In particular, $\fvec^*(\tilde{\x}) = (\tilde{\x}_{(1)}^{\top}\thetavec^*, \dots, \tilde{\x}_{(k)}^{\top}\thetavec^*)$ and we write $\Fscr^* = \Fscr - \fvec^*$. 
+    It is easy to check that $\Fscr^*$ is star-shaped, i.e., if $\hvec \in \Fscr^*$, $\alpha\hvec \in \Fscr^*$ for all $\alpha \in [0,1]$, since the constraint $\lVert \thetavec \rVert_1 \leq \tilde{R}$ defines a convex set. 
+    We define 
+    $$
+    \sigma_j(\fvec(\tilde{\x})) := \frac{e^{f_j(\tilde{\x})}}{1 + \sum_{j'\in \Kscr}e^{f_{j'(\tilde{\x})}}}~ \forall\, j\in \Kscr,~\text{ and }~
+    \Lcal(\fvec(\tilde{\x}), y) := -\Indicator\{y \neq 0\}f_y(\tilde{\x}) + \log\left(1 + \sum_{j\in \Kscr}e^{f_{j}(\tilde{\x})}\right),
+    $$
+    and sometimes abuse notation to write them as $\sigma_j(\fvec)$ and $\Lcal(\fvec, y)$ for a given $({\tilde{\x}}, y)$ which is clear from the context.
+    Also, it is convenient to
+    use $\Prob_m (\cdot)$ and $\Prob(\cdot)$ to the denote the empirical and population expectations of functions. We 
+    further  define the norm, $\lVert \hvec\rVert_2(\tilde{\x}) ~=~ \left(\sum_{j \in \Kscr} h_j(\tilde{\x})^2\right)^{1/2}$, which is a function of $\tilde{
+    \x}$ and sometimes write it as $\lVert \hvec\rVert_2$ when $\tilde{\x}$ is fixed and clear from the context. 
+    Also, 
+    $$\lVert \hvec\rVert_m~=~ \big(\Prob_m\lVert \hvec\rVert_2^2\big)^{1/2},~\text{ and }~\lVert \hvec\rVert_{L_2(\Prob)}~=~ \big(\Prob\lVert \hvec\rVert_2^2\big)^{1/2},$$
+    for any function $\hvec$ in $\Fscr$ or $\Fscr^*$.
+    We note that $\Lcal(\cdot, y)$ is lipschitz in the first argument in the next.} 
+
+    \revise{    \begin{lem}[Lipschitz Continuity of $\Lcal$]\label{lem:lipschitz}
+    For any $\fvec, \fvec' \in \Fscr$, $\tilde{\x}$ and $y$,
+    it holds that 
+        $$|\Lcal(\fvec, y) - \Lcal(\fvec', y)| \,\leq\, 2\lVert \fvec - \fvec'  \rVert_2 ~\text{ and }~ |\Lcal(\fvec, y) - \Lcal(\fvec', y)|  ~\leq~ 4\tilde{R}\sqrt{k}.$$
+    \end{lem}}
+
+    \revise{
+    With the preparation so far, in the next, we focus on a
+    finite sample bound of the quantity
+    $Z_m(r):=\sup_{\fvec\in \Fscr:\, \lVert \fvec - \fvec^*\rVert_{L_2(\Prob)}\leq r}\big|
+    \Prob_m(\Lcal_{\fvec} - \Lcal_{\fvec^*} ) - \Prob(\Lcal_{\fvec} - \Lcal_{\fvec^*} ) 
+    \big|$,
+    where for clarity we re-iterate $$
+    \Prob_m(\Lcal_{\fvec} - \Lcal_{\fvec^*} ) = \frac{1}{m}\sum_{i=1}^m \Lcal(\fvec(\tilde{\x}_i), y_i) - \Lcal(\fvec^*(\tilde{\x}_i), y_i)~\text{ and }~
+    \Prob(\Lcal_{\fvec} - \Lcal_{\fvec^*} ) = \E_{\tilde{\x}, z}\left[
+    \Lcal(\fvec(\tilde{\x}), y) - \Lcal(\fvec^*(\tilde{\x}), y)
+    \right]. 
+    $$
+    Particularly, we focus on $r \geq \delta_m$ where $\delta_m$ is a specific solution that we will define later to the equation 
+    $\overline{\sf Rad}(\delta, \Fscr^*)\leq 
+    \frac{\delta^2}{\tilde{R}\sqrt{k}}$. 
+    Here we define the localized Rademacher complexity 
+    $$
+    \overline{\sf Rad}(\delta, \Fscr^*) ~:=~ \E_{\tilde{\x},\epsvec}\left[
+    \sup_{\hvec \in \Fscr^*: \lVert \hvec\rVert_{L_2(\Prob)}\leq \delta}\left|
+    \frac{1}{m}\sum_{i=1}^m\sum_{j \in \Kscr}\epsilon_{ij}h_j(\tilde{\x}_{i,(j)})
+    \right|
+    \right], 
+    $$
+    where $\epsilon_{ij}$ are i.i.d. Rademacher random variables that take values in $\{-1, +1\}$, each with probability $1/2$.
+    Note that this generalizes the classical single-dimensional localized Rademacher complexity to a multi-dimensional setting. 
+    We remark on its key properties.}
+    \revise{
+    \begin{lem}[Localized Rademacher Complexity]
+    \label{lem:local-rade}
+        It holds that 
+        $\overline{\sf Rad}(\delta, \Fscr^*)$ is non-decreasing and 
+        $\overline{\sf Rad}(\delta, \Fscr^*)/\delta$ is non-increasing in $\delta$. Define $\delta_m^* := \inf\left\{\delta \geq 0:\, \overline{\sf Rad}(\delta, \Fscr^*)\leq  \frac{\delta^2}{\tilde{R}\sqrt{k}}\right\}$.
+        Then $\delta_m^* > 0$ is finite and $\overline{\sf Rad}(\delta_m^*, \Fscr^*) = \frac{(\delta^*_m)^2}{\tilde{R}\sqrt{k}}$. 
+        For any $\delta \geq \delta_m^*$, $\overline{\sf Rad}(\delta, \Fscr^*)\leq  \frac{\delta^2}{\tilde{R}\sqrt{k}}$.
+    \end{lem}}
+
+    \revise{
+    Let us assume that $r \geq \delta_m \geq \delta^*_m$. 
+    Then, defining $\epsilon_i$'s as i.i.d. Rademacher variables, it holds that 
+    \begin{align}
+    \label{eqn:Zm(r)}
+        \E_{\x}\left[ Z_m(r) \right]\stackrel{\text{(a)}}{\leq} 2\E\left[\sup_{\substack{
+        \fvec \in \Fscr:\\ \lVert \fvec - \fvec^*\rVert_{L_2(\Prob)} \leq r}} 
+        \frac{1}{m}\left|\sum_{i=1}^m \epsilon_i \Big(\Lcal(\fvec(\tilde{\x}_i), y_i) - \Lcal(\fvec^*(\tilde{\x}_i), y_i)
+        \Big) \right|
+        \right]
+        \stackrel{\text{(b)}}{\leq}4\overline{\sf Rad}(r, \Fscr^*)
+        \stackrel{\text{(c)}}{\leq}\frac{4r\delta_m}{\tilde{R}\sqrt{k}} \leq \frac{4r^2}{\tilde{R}\sqrt{k}},
+    \end{align}
+    where (a) follows from a classical symmetrization argument \cite[e.g., see Lemma 2.3.1 in][]{vaart2023empirical}, (b) follows from follows from Lemma \ref{lem:lipschitz} and a multi-variate contraction inequality for Rademacher complexity, \cite[e.g., see][]{maurer2016vector} and (c) follows because $\frac{\overline{\sf Rad}(r, \Fscr^*)}{r^2} \leq \frac{\overline{\sf Rad}(\delta_m, \Fscr^*)}{\delta_m^2} \leq \delta_m.$
+    
+    
+    If $\fvec \in \Fscr$
+    and $\lVert \fvec - \fvec^*\rVert_{L_2(\Prob)}\leq r$,
+    $
+    {\sf Var}\left(\Lcal_{\fvec} - \Lcal_{\fvec^*}\right) ~\leq~ \Prob\left[(\Lcal_{\fvec} - \Lcal_{\fvec^*})^2\right]~\leq~ 4 \lVert \fvec - \fvec^*\rVert^2_{L_2(\Prob)}~\leq~ 4r^2$ due to Lemma \ref{lem:lipschitz}.
+    Then, 
+    \begin{align*}
+        &\E_{\x, \y}\left[\sup_{\substack{\fvec \in \Fscr: \\\lVert \fvec - \fvec^*\rVert_{L_2(\Prob)} \leq r}} \Prob_m\left[\left(\Lcal_{\fvec} - \Lcal_{\fvec^*} - \Prob(\Lcal_{\fvec} - \Lcal_{\fvec^*} ) 
+        \right)^2\right]
+        \right]\\~\leq~ & \E_{\x, \y}\left[\sup_{\substack{\fvec \in \Fscr: \\\lVert \fvec - \fvec^*\rVert_{L_2(\Prob)} \leq r}}\Prob_m\left[\left(\Lcal_{\fvec} - \Lcal_{\fvec^*} - \Prob(\Lcal_{\fvec} - \Lcal_{\fvec^*} ) 
+        \right)^2 - {\sf Var}(\Lcal_{\fvec} - \Lcal_{\fvec^*})\right]
+        \right] + \sup_{\substack{\fvec \in \Fscr: \\\lVert \fvec - \fvec^*\rVert_{L_2(\Prob)} \leq r}}{\sf Var}(\Lcal_{\fvec} - \Lcal_{\fvec^*})\\
+        ~\leq~ & 2\E_{\x, \y,\epsvec}\left[\sup_{\substack{\fvec \in \Fscr: \\\lVert \fvec - \fvec^*\rVert_{L_2(\Prob)} \leq r}}
+        \frac{1}{m}\left|\sum_{i=1}^m \epsilon_i \Big(\Lcal(\fvec(\tilde{\x}_i), y_i) - \Lcal(\fvec^*(\tilde{\x}_i), y_i) - \Prob(\Lcal_{\fvec} - \Lcal_{\fvec^*} ) 
+        \Big)^2 \right|
+        \right] + 4r^2\\
+        ~\stackrel{\text{(d)}}{\leq}~ & 32\tilde{R}\sqrt{k}\E_{\x, \y,\epsvec}\left[\sup_{\substack{\fvec \in \Fscr: \\\lVert \fvec - \fvec^*\rVert_{L_2(\Prob)} \leq r}}
+        \frac{1}{m}\left|\sum_{i=1}^m \epsilon_i \Big(\Lcal(\fvec(\tilde{\x}_i), y_i) - \Lcal(\fvec^*(\tilde{\x}_i), y_i) - \Prob(\Lcal_{\fvec} - \Lcal_{\fvec^*} ) 
+        \Big) \right|
+        \right] + 4r^2\\
+        ~\stackrel{\text{(e)}}{\leq}~ & 64\tilde{R}\sqrt{k}\E_{\x,\y}\left[ Z_m(r) \right]+ 4r^2~\stackrel{\text{(f)}}{\leq}
+        260r^2,
+    \end{align*}
+    where (d) follows by the standard Rademacher contraction inequality because by Lemma \ref{lem:lipschitz}, it holds that $|\Lcal(\fvec(\tilde{\x}_i), y_i) - \Lcal(\fvec^*(\tilde{\x}_i), y_i) - \Prob(\Lcal_{\fvec} - \Lcal_{\fvec^*} )| \leq 8\tilde{R}\sqrt{k}$,
+    (e) uses the reverse symmetrization argument as in Proposition 4.11 in \cite{wainwright1945high},
+    and (f) follows from \eqref{eqn:Zm(r)}.
+    Therefore, using the Talagrand inequality \citep{wainwright1945high}, we conclude that for any $u > 0$ and $r \geq \delta_m \geq \delta^*_m$, 
+    \begin{align}
+    \label{eqn:concentration-z}
+        \Prob\left(Z_m(r) \geq \frac{4\delta_m r}{\tilde{R}\sqrt{k}} + u\right) ~\leq~ c_1e^{-\frac{c_2 m u^2}{r^2 + \tilde{R}\sqrt{k}u}}.
+    \end{align}
+
+     Also, by assumption, it holds that $\lVert \fvec - \fvec^*\rVert_{L_2(\Prob)} \leq 2\tilde{R}\sqrt{k}$. 
+    Let us consider a sequence of radius $r_\eta = 2^{\eta} \delta_m$ for $\eta = 0, \dots, M-1$, where $M = \left\lceil \log_2\left(\frac{2\tilde{R}\sqrt{k}}{\delta_m}\right) \right \rceil$, and let $r_M = 2\tilde{R}\sqrt{k}$. 
+    For each $\eta \geq 1$, we let  $r = r_\eta$ and $u = \frac{\delta_m r_\eta}{\tilde{R}\sqrt{k}}$ in \eqref{eqn:concentration-z} to obtain $\Prob\left(Z_m(r_\eta) \geq \frac{5\delta_m r_{\eta}}{\tilde{R}\sqrt{k}}\right) \leq c_1 e^{-\frac{c_3 m \delta^2_m r^2_\eta/R^2 k}{r^2_\eta + \delta_m r_\eta}} \stackrel{\text{(g)}}{\leq} c_1 e^{-\frac{c_4 m \delta^2_m}{R^2k}}$, where (g) follows because $r_\eta \geq \delta_m$. 
+    On $\cap_{\eta = 1}^M\left\{Z_m(r_\eta) \leq \frac{5\delta_m r_{\eta}}{\tilde{R}\sqrt{k}}\right\}$, it holds that for any $\fvec \in \Fscr^*$ such that $\lVert \fvec - \fvec^*\rVert_{L_2(\Prob)} > \delta_m$, 
+    $$
+    \big|
+    \Prob_m(\Lcal_{\fvec} - \Lcal_{\fvec^*} ) - \Prob(\Lcal_{\fvec} - \Lcal_{\fvec^*} ) 
+    \big|~\leq~ \frac{5\delta_m r_{\hat{\eta}}}{\tilde{R}\sqrt{k}} ~\stackrel{\text{(h)}}{\leq}~ \frac{10\delta_m\lVert \fvec - \fvec^*\rVert_{L_2(\Prob)}  }{\tilde{R}\sqrt{k}}, 
+    $$
+    where we let $\hat{\eta}$ be the smallest $\eta$ such that $r_{\eta} \geq \lVert \fvec - \fvec^*\rVert_{L_2(\Prob)} $. 
+    Note that this implies that $r_{\hat{\eta}}/2 \leq \lVert \fvec - \fvec^*\rVert_{L_2(\Prob)}$, which enables (h). 
+    Take a union bound over all $\eta = 1, \dots, M$, we observe that the event $\cap_{\eta = 1}^M\left\{Z_m(r_\eta) \leq \frac{5\delta_m r_{\eta}}{\tilde{R}\sqrt{k}}\right\}$ happens with probability 
+    $1 - c_1e^{\log M -\frac{c_4 m \delta^2_m}{R^2k}} \geq 
+    1 - c_1e^{-\frac{c_5 m \delta^2_m}{R^2k}}$, if $\log M \leq \frac{c_4 m \delta^2_m}{2R^2k}$ or equivalently 
+    $m \delta^2_m \geq c_6 R^2k\log\left(\log\left(\frac{\tilde{R}\sqrt{k}}{\delta_m}\right)\right)$ for some absolute constant $c_6$.
+    We summarize this key result next.
+    
+    \begin{lem} [Uniform Bound]
+    \label{lem:uniform}
+    If $\delta_m \geq \delta_m^*$ is such that $m \delta^2_m \geq c_6 R^2k\log\left(\log\left(\frac{\tilde{R}\sqrt{k}}{\delta_m}\right)\right)$, 
+    $$
+        \Prob\left(
+          \big|
+    \Prob_m(\Lcal_{\fvec} - \Lcal_{\fvec^*} ) - \Prob(\Lcal_{\fvec} - \Lcal_{\fvec^*} ) 
+    \big|~\leq~  \frac{10\delta_m\lVert \fvec - \fvec^*\rVert_{L_2(\Prob)}  }{\tilde{R}\sqrt{k}}~~\forall~\lVert \fvec - \fvec^*\rVert_{L_2(\Prob)} > \delta_m 
+        \right) \geq 1 - c_1e^{-\frac{c_5 m \delta^2_m}{R^2k}}.$$
+    \end{lem}
+
+    We also need the following result on the strong convexity of $\Prob(\Lcal_{\fvec} - \Lcal_{\fvec^*} )$.
+
+    \begin{lem}[Strong Convexity]
+    \label{lem:strong-convexity}
+        It holds that $$
+        \Prob(\Lcal_{\fvec} - \Lcal_{\fvec^*} ) ~\geq~ \frac{1}{2}e^{-\tilde{R}}(1 + ke^{\tilde{R}})^{-2} \lVert \fvec - \fvec^*\rVert_{L_2(\Prob)}
+        $$
+    \end{lem}
+
+    In \eqref{eqn:concentration-z}, setting $r = \delta_m$ and $u = \frac{\delta^2_m}{\tilde{R}\sqrt{k}}$, we obtain $  \Prob\left(Z_m(\delta_m) \geq \frac{5\delta_m^2}{\tilde{R}\sqrt{k}}\right)\leq c_1e^{-\frac{c_7 m \delta_m^2}{R^2k}}.$
+    Combining this with the previous two lemmas, and noting that $\Prob_m(\Lcal_{\fvec} - \Lcal_{\fvec^*} )\leq 0$, we have 
+    \begin{align}
+    \label{eqn:final-chain}
+    \frac{1}{2}e^{-\tilde{R}}(1 + ke^{\tilde{R}})^{-2} \lVert \hat{\fvec} - \fvec^*\rVert_{L_2(\Prob)}^2~\leq~ \Prob(\Lcal_{\hat{\fvec}} - \Lcal_{\fvec^*} ) ~\leq~ \frac{10\delta_m\lVert \hat{\fvec} - \fvec^*\rVert_{L_2(\Prob)}  }{\tilde{R}\sqrt{k}} + \frac{5\delta_m^2}{\tilde{R}\sqrt{k}},
+    \end{align}
+    with probability at least $1 -
+2c_1e^{-\frac{c_8 m \delta_m^2}{R^2k}}$.    After algebra (i.e., an application of Young's inequality), this implies
+    $$
+    \lVert \hat{\fvec} - \fvec^*\rVert_{L_2(\Prob)}^2~\leq~\frac{2\delta^2_m}{R^2{k}}\left(
+    200e^{2\tilde{R}}(1 + ke^{\tilde{R}})^{4} 
+    + 10e^{\tilde{R}}(1 + ke^{\tilde{R}})^{2}\tilde{R}\sqrt{k}
+    \right),
+    $$
+    which by \eqref{eqn:final-chain} again, implies that 
+    \begin{align}
+        \label{eqn:pre-conclusion}
+           \Prob(\Lcal_{\hat{\fvec}} - \Lcal_{\fvec^*} ) ~\leq~ \frac{\delta^2_m}{R^2 k}\left[
+    10\sqrt{2}\left(
+    200e^{2\tilde{R}}(1 + ke^{\tilde{R}})^{4} 
+    + 10e^{\tilde{R}}(1 + ke^{\tilde{R}})^{2}\tilde{R}\sqrt{k}
+    \right)^{\frac{1}{2}} + \tilde{R}\sqrt{k}
+    \right]. 
+    \end{align}
+    Finally, the next result follows. The constant in this result is an abosolute one.
+    \begin{lem}[Bounding the Localized complexity]
+    \label{lem:local-complexity}
+        It holds that 
+        $\delta^*_m \preceq R\sqrt{\frac{kd}{m}}$. 
+    \end{lem}
+    In view of the conditions of Lemma \ref{lem:uniform}, it is therefore sufficient to take $\delta_m = c_9 R\sqrt{\frac{k\tilde{d} \log(m/\delta)}{m}}$ for some absolute constant $c_9$.
+    Then, our desired conclusion  follows from \eqref{eqn:pre-conclusion} because $\Prob(\Lcal_{\hat{\fvec}} - \Lcal_{\fvec^*} ) = \E_{\x, z}\Big[
+    {\sf KL}\big( \mathbf{g}(\x, z, \thetavec^*)\,\big\vert\,\mathbf{g}(\x, z, \hat{\thetavec})\big)
+    \Big]$.
+\hfill $\blacksquare$}
+\vspace{3mm}
+
+
+\subsection{Additional Supporting Lemmas and Proofs}
+
+\begin{lem}[Derivative Computation]
+\label{lem:derivative}
+Suppose that $\alphavec \in \Real^{k+1}_+$ satisfies $\sum_{j\in\Kscr^+}\alpha_j = 1$. 
+Then
+$$
+\nabla_{\betavec}\left(
+\sum_{j\in\Kscr^+}\alpha_j \log \sigma_{j}(\x; \betavec)
+\right) ~=~\sum_{j\in \Kscr}(\alpha_j - \sigma_{j}(\x; \betavec))\x_{(j)}
+~~\text{ 
+and }~~
+\nabla_{\betavec}^2\left(
+\sum_{j\in\Kscr^+}\alpha_j \log \sigma_{j}(\x; \betavec)
+\right) ~=~-\Avec(\x; \betavec).
+$$
+\end{lem}
+
+\noindent
+\textbf{Proof.}
+    The proof of this lemma follows from a straightforward computation and we skip the details. \hfill $\blacksquare$
+    \vspace{3mm}
+
+\begin{lem}[Bounds on the Quadratic Form]
+\label{lem:eigen}
+    Let us fix any $\x\in \Xscr$, $\betavec \in \Real^{k}$,
+    and $\uvec \in \Real^{k}$.
+    $$\sigma_{0}(\x; \betavec)
+    \min_{j\in \Kscr}\sigma_{j}(\x; \betavec)\sum_{j\in \Kscr}(\x_{(j)} \uvec)^2~\leq~ \uvec^{\top}\Avec(\x; \betavec) \uvec ~\leq~ \sigma_{0}(\x; \betavec)\max_{j\in \Kscr}\sigma_{j}(\x; \betavec)\sum_{j\in \Kscr}(\x_{(j)} \uvec)^2.
+    $$
+\end{lem}
+
+\noindent
+\textbf{Proof.}
+    Define matrix $\bm{\Sigma}(\x; \betavec) \in \Real^{d\times d}$ such that $\bm{\Sigma}_{jj'}(\x; \betavec)=\ind_{\{j = j'\}}\sigma_{j}(\x; \betavec^*) - \sigma_{j}(\x; \betavec)\sigma_{j'}(\x, \betavec)$ for each $1\leq j,j' \leq d$. 
+    Then, $\uvec^{\top}\Avec(\x; \betavec) \uvec = \sum_{j\in \Kscr}\sum_{j'\in \Kscr}\bm{\Sigma}_{jj'}(\x; \betavec)(\x_{(j)}^{\top} \uvec)(\x_{(j)} ^{\top}\uvec)$.
+    Therefore, it suffices to  show that $$\sigma_{0}(\x; \betavec) \min_{j\in \Kscr}\sigma_{j}(\x; \betavec) \Ivec ~\preceq~ \bm{\Sigma}(\x; \betavec) ~\preceq~ \sigma_{0}(\x; \betavec)\max_{j\in \Kscr}\sigma_{j}(\x; \betavec) \Ivec.$$
+    Indeed, by the Gershgorin circle theorem, it holds that any eigenvalue $\lambda$ of $\bm{\Sigma}$ satisfies 
+    \begin{align*}
+        &\sigma_{0}(\x; \betavec)\min_{j\in \Kscr}\sigma_{j}(\x; \betavec)~=~\min_{j\in \Kscr} \left\{\sigma_{j}(\x; \betavec)- \sum_{j' \in \Kscr}\sigma_{j}(\x; \betavec)\sigma_{j'}(\x; \betavec) \right\}~\leq~ \lambda\\
+        &~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\leq~ \max_{j\in \Kscr} \left\{\sigma_{j}(\x; \betavec)- \sum_{j' \in \Kscr}\sigma_{j}\sigma_{j'}(\x; \betavec) \right\} = \sigma_{0}(\x; \betavec)\max_{j\in \Kscr}\sigma_{j}(\x; \betavec).
+    \end{align*}
+    Therefore, we conclude the proof.\hfill $\blacksquare$
+    
+    \vspace{3mm}
+
+    \revise{\textbf{Proof of Theorem \ref{thm:aare}.}
+We will first prove the first item of Theorem \ref{thm:aare}.
+Whenever $\sum_{i=1}^n\x_i \x_i^{\top}$ is invertible, it holds that 
+$$
+\hat{\betavec}^{\sf AARE} ~=~ \left(\frac{1}{n}\sum_{i=1}^n\x_i \x_i^{\top}\right)^{-1} \cdot\frac{1}{n}\sum_{i=1}^n\x_i g(\x_i, z_i; \hat{\thetavec}). 
+$$
+Since $\ddot{\mathbf{\Omega}} = \E[\x \x^{\top}] \succ 0$, it holds that $\frac{1}{n}\sum_{i=1}^n \x_i \x_i^{\top}\pconverge \ddot{\mathbf{\Omega}}$, so one can verify that 
+\begin{align*}
+    \hat{\betavec}^{\sf AARE} ~&=~ \ddot{\mathbf{\Omega}}^{-1} \cdot\frac{1}{n}\sum_{i=1}^n\x_i g(\x_i, z_i; \hat{\thetavec}) + o_{\text{P}}(1)\\
+    ~&=~ \betavec^* + \ddot{\mathbf{\Omega}}^{-1}\cdot \frac{1}{n}\sum_{i=1}^n\x_i \bigg[
+    \left(g(\x_i, z_i; \hat{\thetavec})-g(\x_i, z_i, {\thetavec}^*)\right)+
+    \left(g(\x_i, z_i, {\thetavec}^*) - \x_i^\top \betavec^*\right)\bigg] + o_{\text{P}}(1).
+\end{align*}
+Note that the first-order condition of \eqref{eqn:regression-best-in-class} implies that $\E\bigg[\left(g(\x, z; \theta^*) - \x^{\top}\betavec^*\right)\x\bigg] = 0$ so $\frac{1}{n}\sum_{i=1}^n\left(g(\x_i, z_i, {\thetavec}^*) - \x_i^\top \betavec^*\right)\x_i \pconverge 0$.
+Furthermore, since $\hat{\thetavec} \pconverge \thetavec^*$, it holds that there is a sequence of positive constants $\{\epsilon_n\}_{n=1}^\infty$ that converges to zero such that $\Prob\left(
+\big \lVert
+\hat{\thetavec} - \thetavec^*
+\big \rVert > \epsilon_n
+\right) \rightarrow 0$.
+By Markov's inequality, for any fixed $\epsilon > 0$, 
+\begin{align}
+\label{eqn:chain-x-times-g}
+    & \Prob\left(\left\lVert\frac{1}{n}\sum_{i=1}^n\x_i 
+    \left(g(\x_i, z_i; \hat{\thetavec})-g(\x_i, z_i, {\thetavec}^*)\right)\right \rVert\geq \epsilon\right)\\
+    &~~~~~~~~~~~~~~~~~~\leq~\Prob\left(\sup_{{\thetavec}: \big \lVert
+{\thetavec} - \thetavec^*
+\big \rVert \leq \epsilon_n}\left\lVert\frac{1}{n}\sum_{i=1}^n\x_i 
+    \left(g(\x_i, z_i, {\thetavec})-g(\x_i, z_i, {\thetavec}^*)\right)\right \rVert\geq \epsilon\right) + \Prob\left(
+\big \lVert
+\hat{\thetavec} - \thetavec^*
+\big \rVert > \epsilon_n
+\right) \\
+&~~~~~~~~~~~~~~~~~~\leq~ 
+\frac{1}{\epsilon}\E\left[\sup_{{\thetavec}: \big \lVert
+{\thetavec} - \thetavec^*
+\big \rVert \leq \epsilon_n}\left\lVert\frac{1}{n}\sum_{i=1}^n\x_i 
+    \left(g(\x_i, z_i, {\thetavec})-g(\x_i, z_i, {\thetavec}^*)\right)\right \rVert\right]
++ \Prob\left(
+\big \lVert
+\hat{\thetavec} - \thetavec^*
+\big \rVert > \epsilon_n
+\right) \\
+&~~~~~~~~~~~~~~~~~~\stackrel{\text{(a)}}{\leq}~ 
+\frac{1}{\epsilon}\E\left[\sup_{{\thetavec}: \big \lVert
+{\thetavec} - \thetavec^*
+\big \rVert \leq \epsilon_n}\big\lVert \x 
+    \left(g(\x, z, {\thetavec})-g(\x, z, {\thetavec}^*)\right)\big \rVert\right]
++ \Prob\left(
+\big \lVert
+\hat{\thetavec} - \thetavec^*
+\big \rVert > \epsilon_n
+\right), 
+\end{align}
+where (a) follows by triangular inequality and Jensen's inequality. 
+By the continuity of $g(\cdot)$ in $\thetavec$ as stated in the assumption, it follows that $\sup_{{\thetavec}: \big \lVert
+{\thetavec} - \thetavec^*
+\big \rVert \leq \epsilon_n}\big\lVert \x 
+    \left(g(\x, z, {\thetavec})-g(\x, z, {\thetavec}^*)\right)\big \rVert$ converges to zero when $n$ goes to infinity. 
+    Since $\,\E\big[\sup_{\thetavec \subset \Nscr}\lVert  \x g(\x, z; \thetavec) \rVert_2\big] \,<\, \infty$ and $\epsilon_n$ falls into $\Nscr$ eventually, by the dominated convergence theorem, we have that $\E\left[\sup_{{\thetavec}: \big \lVert
+{\thetavec} - \thetavec^*
+\big \rVert \leq \epsilon_n}\big\lVert \x 
+    \left(g(\x, z, {\thetavec})-g(\x, z, {\thetavec}^*)\right)\big \rVert\right]$ converges to zero. 
+    This concludes the proof for the first item. 
+
+    For the second item, we note that 
+    \begin{align*}
+        & \sqrt{n}\left(\hat{\betavec}^{\sf AARE} - \betavec^* \right)~=~ \ddot{\mathbf{\Omega}}^{-1} \cdot\frac{1}{\sqrt{n}}\sum_{i=1}^n\x_i \left(g(\x_i, z_i; \tilde{\thetavec}) - \x_i^{\top} \betavec_i\right) + o_{\text{P}}(1)\\&~~~~~~~~~~~~~~=~ \ddot{\mathbf{\Omega}}^{-1} \cdot\left[\frac{1}{\sqrt{n}}\sum_{i=1}^n\x_i \left(g(\x_i, z_i; {\thetavec}^*)
+        - \x_i^\top \betavec^*
+        \right)+ \frac{1}{n}\sum_{i=1}^n\x_i \nabla g(\x_i, z_i; \hat{\thetavec})^{\top}\times 
+        \sqrt{\frac{n}{m}} \times \sqrt{m}\big(
+    \hat{\thetavec} - \thetavec^*
+    \big)\right] + o_{\text{P}}(1),
+    \end{align*}
+    where $\tilde{\thetavec} \in [\thetavec^*, \hat{\thetavec}]$.
+    Using an argument similar to \eqref{eqn:chain-x-times-g}, we can show that  
+    $$\frac{1}{n}\sum_{i=1}^n\x_i \nabla g(\x_i, z_i; \hat{\thetavec})^{\top} \pconverge \E\left[\x \nabla g(\x, z;{\thetavec}^*)^{\top}  \right].$$
+    Therefore, the conclusion follows. 
+
+    For the third item, we first note that 
+    \begin{align*}
+        \Sigmavec &=
+\E
+\left[
+\left[(y - \psivec(\x, z)^{\top}\thetavec^*) + (\psivec(\x, z)^{\top} \thetavec^*- \x^{\top}\betavec)\right]^2 \x\x^{\top}
+\right]\\
+&\stackrel{\text{(b)}}{=}
+\E
+\left[(y - \psivec(\x, z)^{\top}\thetavec^*)^2 \x\x^{\top}
+\right] + \E
+\left[(\psivec(\x, z)^{\top} \thetavec^*- \x^{\top}\betavec)^2 \x\x^{\top}
+\right]\stackrel{\text{(c)}}{=}\sigma^2\E
+\left[\x\x^{\top}
+\right] + \E
+\left[(\psivec(\x, z)^{\top} \thetavec^*- \x^{\top}\betavec)^2 \x\x^{\top}
+\right],
+    \end{align*}
+where (b) follows because 
+$\E[y - \psivec(\x, z)^{\top} \thetavec^* \,|\, \x, z] = 0$ and (c) follows from the homoscedasticity assumption.
+Following standard analysis of M-estimators \citep{newey1994large}, under the current conditions, one can compute the  asymptotic variance of 
+$\hat{\thetavec}$ as 
+$\ddot{\bm{\Lambda}} = \bm{\Lambda}_1^{-1}\bm{\Lambda}_2  \bm{\Lambda}_1^{-1}$. 
+Here
+$$
+\bm{\Lambda}_1 ~=~ \E\Big[
+\nabla g(\x, z; \thetavec^*)\nabla g(\x, z; \thetavec^*)^{\top} + 
+\left(g(\x, z; \thetavec^*) - y \right)
+\nabla^2_{\thetavec} g(\x, z; \thetavec^*)
+\Big]~\stackrel{\text{(d)}}{=}~
+\E\left[
+\nabla_{\thetavec} g(\x, z; \thetavec^*)\nabla_{\thetavec} g(\x, z; \thetavec^*)^{\top}\right], 
+$$
+where (d) follows because $g(\x, z; \thetavec^*) = \E[y\,|\,\x, z]$, and 
+$$
+\bm{\Lambda}_2 ~=~ \E
+\left[
+\left(y - g(\x, z; \thetavec^*)\right)^2\nabla_{\thetavec} g(\x, z; \thetavec^*)\nabla_{\thetavec} g(\x, z; \thetavec^*)^{\top} 
+\right]~\stackrel{\text{e}}{=}~\sigma^2\E
+\left[
+\nabla_{\thetavec} g(\x, z; \thetavec^*)\nabla_{\thetavec} g(\x, z; \thetavec^*)^{\top}
+\right],
+$$
+where (e) follows from the homoscadesticity assumption. 
+Therefore, 
+$\ddot{\Lambdavec} =\sigma^2 \E\left[\nabla_{\thetavec} g(\x, z; \thetavec^*)\nabla_{\thetavec} g(\x, z; \thetavec^*)^{\top}\right]^{-1}$. 
+Then, it holds that 
+$$
+\Sigmavec ~=~
+\sigma^2\E
+\left[\x\x^{\top}
+\right] ~\succeq~ \ddot{\Gammavec}\ddot{\Lambdavec}\ddot{\Gammavec}^{\top}$$ using the same argument in Proposition  \ref{prop:weak-dom} (i.e., setting $\uvec = \x$ and $\wvec = \nabla_{\thetavec} g(\x, z; \thetavec^*)$). 
+Thus, the conclusion follows.
+\hfill $\blacksquare$
+\vspace{3mm}}
+
+
+\noindent
+\textbf{Proof of Lemma \ref{lem:unique-optimizer}.}
+We first show that an optimizer exists. 
+Assume that there exists $\{\betavec^{(\ell)}\}_{\ell=1}^{\infty}$ such that 
+$$\lim_{\ell \rightarrow \infty}\E_{\x}\Big[
+    {\sf KL}\big( \Prob(y\,|\, \x)\,\big\vert\,\sigma_{y}(\x, \betavec^{(\ell)}) \big)
+    \Big] ~=~ \inf_{\betavec \in \Real^{kd}}\E_{\x}\Big[
+    {\sf KL}\big( \Prob(y\,|\, \x)\,\big\vert\,\sigma_{y}(\x, \betavec) \big)
+    \Big], $$
+or equivalently 
+\begin{align}
+\label{eqn:optimality-sequence}
+    \lim_{\ell \rightarrow \infty}\E_{\x}\left[
+    \sum_{j\in \Kscr^+} \Prob\big(y = j| \x\big)\log\sigma_{j}(\x, \betavec^{(\ell)})
+    \right] ~=~\sup_{\betavec \in \Real^{k}}Q(\betavec)~=~ \sup_{\betavec \in \Real^{k}}\E_{\x}\left[
+    \sum_{j\in \Kscr^+} \Prob\big(y = j| \x\big)\log\sigma_{j}(\x, \betavec^{(\ell)})
+    \right],
+\end{align}
+If there is a subsequence of $\{\betavec^{(\ell)}\}_{\ell=1}^{\infty}$ that is bounded, by the continuity of $\E_{\x}\Big[
+{\sf KL}\big( \Prob(y\,|\, \x)\,\big\vert\,\sigma_{y}(\x, \betavec) \big)\Big]$, there must exist a limit of a subsequence of $\{\betavec^{(\ell)}\}_{\ell=1}^{\infty}$ such that the infimum is achieved. 
+This proves the existence. 
+
+Otherwise, let us assume that $\{\betavec^{(\ell)}\}_{\ell=1}^{\infty}$ is unbounded, so $\lim_{\ell \rightarrow\infty}\lVert \betavec^{(\ell)}\rVert_2 = \infty$. 
+We will show that this is impossible, by way of contradiction. 
+Since $\{\betavec^{(\ell)}/\lVert \betavec^{(\ell)} \rVert_2\}_{\ell=1}^{\infty}$ is a bounded sequence, by taking a subsequence if necessary, we can assume without loss of generality that $\lim_{\ell \rightarrow\infty}\betavec^{(\ell)}/\lVert \betavec^{(\ell)}\rVert_2 = \tilde{\betavec}$ with $\lVert \tilde{\betavec}\rVert_2 = 1$.
+Thus, 
+\begin{align}
+\label{eqn:bound-infty}
+\lim_{\ell \rightarrow\infty}\E_{\x}\left[\max_{j \in \Kscr}\big|(\betavec^{(\ell)})^{\top}\x_{(j)}\big|\right] &~\geq~ \frac{1}{k}\lim_{\ell \rightarrow\infty}\E_{\x}\left[\sum_{j\in \Kscr}\big|(\betavec^{(\ell)})^{\top}\x_{(j)}\big|\right]~=~ \frac{1}{k}\lim_{\ell \rightarrow\infty}\lVert \betavec^{(\ell)} \rVert_2\cdot\E_{\x}\left[\sum_{j\in \Kscr}\left|\frac{(\betavec^{(\ell)})^{\top}}{\lVert \betavec^{(\ell)} \rVert_2}\x_{(j)}\right|\right]
+    \nonumber\\&~\stackrel{\text{(a)}}{=}~\frac{1}{k}\E_{\x}\left[\sum_{j\in \Kscr}\left|\tilde{\betavec}^{\top}\x_{(j)}\right|\right] \cdot\lim_{\ell \rightarrow\infty}\lVert \betavec^{(\ell)} \rVert_2~=~\frac{1}{k}\E_{\x}\left[\sum_{j\in \Kscr}\left|\tilde{\betavec}^{\top}\x_{(j)}\right|\right] \cdot+\infty~\stackrel{\text{(b)}}{=}~+\infty,
+\end{align}
+where (a) follows from the bounded convergence theorem because by assumption $\x$ is bounded. 
+To see (b), suppose that $\E_{\x}\left[\sum_{j\in \Kscr}\left|\tilde{\betavec}^{\top}\x_{(j)}\right|\right] = 0$. Thus, $\tilde{\betavec}^{\top}\x_{(j)} = 0$ for all $j \in \Kscr$ almost everywhere. 
+Thus, if we let $\evec$ denote a vector of ones of dimension $k$, 
+we have $(\betavec\otimes\evec)\E_{\x}[\x\x^{\top}](\betavec\otimes\evec)^{\top} = 0$, which contradicts the assumption that $\E_{\x}[\x\x^{\top}]$ is positive definite. 
+
+We note that by the Taylor expansion, for any $u\in \Real$ and $v \in [0, k]$, 
+\begin{align}
+\label{eqn:taylor}
+    \log \frac{e^u}{v + e^u} ~=~ u - \log\left(v + e^u\right)~=~ u - 
+\left[
+\log(v+1) + \frac{u}{v+1} +  \frac{ve^{{w}}u^2}{2(e^w +v
+)^2}\right]
+~\stackrel{\text{(c)}}{\leq}~ \frac{ku}{k+1},
+\end{align}
+where $w\in [0, u]$ and (c) follows because $\frac{ve^{{w}}u^2}{2(e^w +v
+)^2} \geq 0$, $\log(v+1) \geq 0$ and $v\leq k$.   
+
+Next, fix $\ell = 1, \dots, \infty$ and $\x \in \Xscr$. 
+We assume that $\Tilde{j} \in \Kscr$ is such that $\Tilde{j} = \argmax_{j \in \Kscr}\big|(\betavec^{(\ell)})^{\top}\x_{(j)}\big|$.
+If $(\betavec^{(\ell)})^{\top}\x_{(\Tilde{j})} > 0$,
+it follows that 
+\begin{align*}
+    &\sum_{j\in \Kscr^+} \Prob\big(y = j| \x\big)\log\sigma_{j}(\x, \betavec^{(\ell)}) ~\leq~ \Prob\big(y = 0\,|\, \x\big)\log\sigma_{0}(\x, \betavec^{(\ell)})\\
+    &~~~~~~~~~~~~~~~~~~=~\Prob\big(y = 0\,|\, \x\big)\log \left(
+    \frac{e^{-(\betavec^{(\ell)})^{\top}\x_{(\Tilde{j})}}}{e^{-(\betavec^{(\ell)})^{\top}\x_{(\Tilde{j})}} + \sum_{j\in \Kscr}e^{-(\betavec^{(\ell)})^{\top}\x_{(\Tilde{j})}+(\betavec^{(\ell)})^{\top}\x_{(j)}}}
+    \right) ~\stackrel{\text{(d)}}{\leq}~ \frac{-k\big|(\betavec^{(\ell)})^{\top}\x_{(\Tilde{j})}\big|}{k+1},
+\end{align*}
+where (d) follows from \eqref{eqn:taylor} because $-(\betavec^{(\ell)})^{\top}\x_{(\Tilde{j})}+(\betavec^{(\ell)})^{\top}\x_{(j)} \leq 0$ and therefore
+$\sum_{j\in \Kscr}e^{-(\betavec^{(\ell)})^{\top}\x_{(\Tilde{j})}+(\betavec^{(\ell)})^{\top}\x_{(j)}} \in [0, k]$.
+Suppose $(\betavec^{(\ell)})^{\top}\x_{(j)} \leq 0$ for all $j \in \Kscr$. 
+Then, we have
+\begin{align*}
+    &\sum_{j\in \Kscr^+} \Prob\big(y = j\,|\, \x\big)\log\sigma_{j}(\x, \betavec^{(\ell)}) ~\leq~ \Prob\big(y = \Tilde{j}\,|\, \x\big)\log\sigma_{\Tilde{j}}(\x, \betavec^{(\ell)})\\
+    &~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~=~\Prob\big(y = \Tilde{j}\,|\, \x\big)\log \left(
+    \frac{e^{(\betavec^{(\ell)})^{\top}\x_{(\Tilde{j})}}}{1 + \sum_{j\in \Kscr}e^{(\betavec^{(\ell)})^{\top}\x_{({j})}}}
+    \right) ~\stackrel{\text{(e)}}{\leq}~ \frac{-k\big|(\betavec^{(\ell)})^{\top}\x_{(\Tilde{j})}\big|}{k+1},
+\end{align*}
+where (e) follows from \eqref{eqn:taylor}.
+Suppose $(\betavec^{(\ell)})^{\top}\x_{(\Tilde{j})} \leq 0$ but $(\betavec^{(\ell)})^{\top}\x_{({j}'')} > 0$ for some $j'' \in \Kscr$ and $(\betavec^{(\ell)})^{\top}\x_{({j}'')} \geq (\betavec^{(\ell)})^{\top}\x_{({j})}$ for all $j \in \Kscr$.
+In this case, 
+\begin{align*}
+    &~~~\sum_{j\in \Kscr^+} \Prob\big(y = j\,|\, \x\big)\log\sigma_{j}(\x, \betavec^{(\ell)}) ~\leq~ \Prob\big(y = \tilde{j}\,|\, \x\big)\log\sigma_{\Tilde{j}}(\x, \betavec^{(\ell)})\\
+    &~=~\Prob\big(y = \Tilde{j}\,|\, \x\big)\log \left(
+    \frac{e^{(\betavec^{(\ell)})^{\top}\x_{(\tilde{j})} - (\betavec^{(\ell)})^{\top}\x_{({j}'')}}}{e^{-(\betavec^{(\ell)})^{\top}\x_{({j}'')})^{\top}\x} + \sum_{j\in \Kscr}e^{-(\betavec^{(\ell)})^{\top}\x_{({j}'')}+(\betavec^{(\ell)})^{\top}\x_{({j})}}}
+    \right) ~\stackrel{\text{(f)}}{\leq}~ 
+    \frac{k\big((\betavec^{(\ell)})^{\top}\x_{(\tilde{j})} - (\betavec^{(\ell)})^{\top}\x_{({j}'')}x\big)}{k+1}\\&~\leq~
+    \frac{-k\big|(\betavec^{(\ell)}_{\Tilde{j}})^{\top}\x\big|}{k+1},
+\end{align*}
+where (f) follows from \eqref{eqn:taylor} again. 
+To summarize, taking the expectation, using \eqref{eqn:bound-infty}, we have 
+$$
+\lim_{\ell \rightarrow \infty}\E_{\x}\left[\sum_{j\in \Kscr^+} \Prob\big(y = j| \x\big)\log\sigma_{j}(\x, \betavec^{(\ell)})\right]~\leq~-\lim_{\ell \rightarrow \infty} 
+\E_{\x}\left[\frac{k\max_{j \in \Kscr}\big|(\betavec^{(\ell)})^{\top}\x_{({j})}\big|}{k+1}\right] = -\infty.
+$$
+This contradicts \eqref{eqn:optimality-sequence}. Therefore, $\{\betavec^{(\ell)}\}_{\ell=1}^{\infty}$ cannot be unbounded. This finishes the proof of existence. 
+
+Next, using Lemma \ref{lem:derivative}, we notice the Hessian of $\E_{\x}\left[
+    \sum_{j\in \Kscr^+} \Prob\big(y = j| \x\big)\log\sigma_{j}(\x; \betavec)
+    \right]$ is $-\widetilde{\Omegavec}(\betavec)$, where
+    $\widetilde{\Omegavec}(\betavec) ~:=~ \E_{\x}\left[\Avec(\x;\betavec) \right] \in \Real^{k \times k}$, which is analogous to $\Omegavec$ defined in  \eqref{eqn:Omega-Gamma}.
+Thus, take any $\qvec \in \Real^{k}$ such that $\lVert \qvec\rVert_2 = 1$.
+Thus, for any $\betavec \in \Real^{k}$
+\begin{align*}
+   &\qvec^{\top} \left(-\nabla^2_{\betavec}\E_{\x}\left[
+    \sum_{j\in \Kscr^+} \Prob\big(y = j| \x\big)\log\sigma_{j}(\x; \betavec)
+    \right]\right)\qvec\,=\,\E_{\x}\left[\qvec^{\top}
+    \Avec(\x; \betavec)\qvec^{\top}
+    \right]\stackrel{\text{(g)}}{\geq}
+\E_{\x}\left[\sigma_{0}(\x; \betavec) \min_{j\in \Kscr}\sigma_{j}(\x; \betavec)
+    \sum_{j\in \Kscr}(\x^{\top}\qvec)^2\right]\\&~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\stackrel{\text{(h)}}{\succsim}\sum_{j\in \Kscr}\E_{\x}\left[(\x^{\top}\qvec)^2
+    \right] \stackrel{\text{(i)}}{\geq}\, \lambda_{\min}\left(\E_{\x}[\x \x^{\top}]\right)k\lVert\qvec\rVert^2 = k\lambda_{\min}\left(\E_{\x}[\x \x^{\top}]\right),
+\end{align*}
+where (g) follows from Lemma \ref{lem:eigen}, (h) follows because $\x$ is bounded, and in (i), $\lambda_{\min}\left(\E_{\x}[\x \x^{\top}]\right)$ is the smallest eigenvalue of $\E_{\x}[\x \x^{\top}]$.
+Therefore, the function $\E_{\x}\left[
+    \sum_{j\in \Kscr^+} \Prob\big(y = j| \x\big)\log\sigma_{j}(\x; \betavec)
+    \right]$ is strictly concave in $\betavec$ and has a unique maximum. 
+    This concludes the proof. 
+\hfill $\blacksquare$
+
+\vspace{3mm}
+
+\noindent
+\textbf{Proof of Lemma \ref{lem:uniform-convergence}.}
+Our proof starts with the decomposition: 
+\begin{align}
+\label{eqn:decomposition}
+     \sup_{\betavec \in \Bscr(\betavec^*, \epsilon)}
+    \left|
+    \widehat{Q}(\hat{\thetavec};\betavec) - {Q}(\betavec)
+    \right| ~\leq~  \sup_{\betavec \in \Bscr(\betavec^*, \epsilon)}
+    \left|
+    \widehat{Q}(\hat{\thetavec};\betavec) -  \widehat{Q}({\theta}^*;\betavec)
+    \right| + \sup_{\betavec \in \Bscr(\betavec^*, \epsilon)}
+    \left|
+    \widehat{Q}({\theta}^*;\betavec) - {Q}(\betavec)
+    \right|.
+\end{align}
+Then, 
+\begin{align*}
+     \sup_{\betavec \in \Bscr(\betavec^*, \epsilon)}
+    \left|
+    \widehat{Q}(\hat{\thetavec};\betavec) -  \widehat{Q}({\theta}^*;\betavec)
+    \right| &= \sup_{\betavec \in \Bscr(\betavec^*, \epsilon)}\left|
+    \frac{1}{n}\sum_{i=1}^n\sum_{j\in \Kscr^+}g_j(\x_i, z_i; \hat{\thetavec})\log \sigma_j(\x; \betavec)
+    - \frac{1}{n}\sum_{i=1}^n\sum_{j\in \Kscr^+}g_j(\x_i, z_i; {\thetavec}^*)\log \sigma_j(\x; \betavec)
+    \right|\\
+    &\leq 
+    \left(\sup_{\x \in \Xscr,\, \betavec \in \Bscr(\betavec^*, \epsilon),\, j\in \Kscr^+}
+    \left|
+    \log\sigma_j(\x; \betavec)
+    \right|\right)\times
+    \sum_{j\in \Kscr^+}\frac{1}{n}\sum_{i=1}^n\left|
+    g_j(\x_i, z_i; \hat{\thetavec}) - g_j(\x_i, z_i; {\thetavec}^*)
+    \right|\\
+    &\stackrel{(a)}{=} 
+    C_1
+    \sum_{j\in \Kscr^+}\frac{1}{n}\sum_{i=1}^n\left|
+    g_j(\x_i, z_i; \hat{\thetavec}) - g_j(\x_i, z_i; {\thetavec}^*)
+    \right|,
+\end{align*}
+where in $(a)$ we simply define constant $C_1 = \sup_{\x \in \Xscr,\, \betavec \in \Bscr(\betavec^*, \epsilon),\, j\in \Kscr^+}
+\left|\log\sigma_j(\x; \betavec)\right| < \infty$ because $\Xscr$ is bounded. 
+Next, fix any $\epsilon' > 0$ and any $j \in \Kscr^+$. 
+
+Consider any sequence $\{ \tilde{\thetavec}_p\}_{p=1}^{\infty}$ with $\tilde{\thetavec}_p\rightarrow \thetavec^*$. By the continuity of $g_j(\x, z; {\thetavec})$ in ${\thetavec}$, and the bounded convergence theorem, it must be that 
+$$
+\E_{\x, z}
+\big[
+\left|
+g_j(\x, z; {\thetavec}_p) - g_j(\x, z; {\thetavec}^*)
+\right|
+\big]~\rightarrow~ 
+\E_{\x, z}
+\big[
+\left|
+g_j(\x, z; {\thetavec}^*) - g_j(\x, z; {\thetavec}^*)
+\right|
+\big] = 0. 
+$$
+In other words, the function $\E_{\x, z}
+\big[
+\left|
+g_j(\x, z; {\thetavec}) - g_j(\x, z; {\thetavec}^*)
+\right|
+\big]$ is continuous in $\thetavec$. 
+By the continuous mapping theorem, since $\hat{\thetavec} \pconverge \thetavec^*$, and the  Markov's inequality, we have 
+$$
+\Prob\left(
+\frac{1}{n}\sum_{i=1}^n\left|
+    g_j(\x_i, z_i; \hat{\thetavec}) - g_j(\x_i, z_i; {\thetavec}^*)
+    \right| \geq \epsilon' \,\bigg|\, \hat{\thetavec}
+\right)
+~\leq~ 
+\frac{1}{\epsilon'}
+\E_{\x, z}
+\left[
+\left|
+g_j(\x, z; \hat{\thetavec}) - g_j(\x, z; {\thetavec}^*)
+\right|\,\bigg|\, \hat{\thetavec}
+\right] \pconverge 0.
+$$
+
+Then we notice that $\Prob\left(
+\frac{1}{n}\sum_{i=1}^n\left|
+    g_j(\x_i, z_i; \hat{\thetavec}) - g_j(\x_i, z_i; {\thetavec}^*)
+    \right| \geq \epsilon' \,\bigg|\, \hat{\thetavec}
+\right) \leq 1$ so it is uniformly integrable. 
+Therefore,
+\begin{align*}
+    & \Prob\left(
+\frac{1}{n}\sum_{i=1}^n\left|
+    g_j(\x_i, z_i; \hat{\thetavec}) - g_j(\x_i, z_i; {\thetavec}^*)
+    \right| \geq \epsilon' 
+\right) ~=~\E\left[\Prob\left(
+\frac{1}{n}\sum_{i=1}^n\left|
+    g_j(\x_i, z_i; \hat{\thetavec}) - g_j(\x_i, z_i; {\thetavec}^*)
+    \right| \geq \epsilon' \,\bigg|\, \hat{\thetavec}
+\right)\right]
+\end{align*}
+and the right-hand side converges to zero. 
+Therefore, 
+\begin{align}
+\label{eqn:1st-term-convergence}
+    \sup_{\betavec \in \Bscr(\betavec^*, \epsilon)}
+    \left|
+    \widehat{Q}(\hat{\thetavec};\betavec) -  \widehat{Q}({\theta}^*;\betavec)
+    \right|~\pconverge~ 0.
+\end{align}
+We note that $ \widehat{Q}({\theta}^*;\betavec)$ converges to ${Q}(\betavec)$ for each $\betavec \in \Real^d$ by the law of large numbers. 
+Then since $\widehat{Q}({\theta}^*;\betavec)$ is concave in $\betavec$, by Theorem 2.7 in \cite{newey1994large}, it holds that on the compact set 
+$\Bscr(\betavec^*, \epsilon)$, 
+\begin{align}
+\label{eqn:2nd-term-convergence}
+    \sup_{\betavec \in \Bscr(\betavec^*, \epsilon)}
+    \left|
+    \widehat{Q}({\theta}^*;\betavec) - {Q}(\betavec)
+    \right| \pconverge 0.
+\end{align}
+Combining \eqref{eqn:decomposition}, \eqref{eqn:1st-term-convergence} and \eqref{eqn:2nd-term-convergence}, the conclusion follows. 
+\hfill $\blacksquare$
+\vspace{3mm}
+
+\noindent
+\textbf{Proof of Lemma \ref{lem:Omega}.}
+For any $\x \in \Xscr$ and $\betavec \in \Real^{d}$, we note that 
+$$
+\sum_{j\in \Kscr^+} g_j(\x, z;{\thetavec})
+\nabla^2_{\betavec}\log \sigma_j(\x; {\betavec})~=~
+\nabla^2_{\betavec}\left(\sum_{j\in \Kscr^+} 
+g_j(\x, z;{\thetavec})
+\right)\log \sigma_j(\x; {\betavec})
+~\stackrel{\text{(a)}}{=}~ -\Avec(\x; \betavec),$$
+where (a) follows from Lemma \ref{lem:derivative} because $\sum_{j\in \Kscr^+} g_j(\x, z;{\thetavec}) = 1$. 
+Note that $\Avec(\x_i;{\betavec})$ is continuous in ${\betavec}$.
+Also, by Lemma \ref{lem:eigen}, for any $\uvec \in \Real^{d}$  with $\Vert \uvec \rVert_2 = 1$, we have
+$$
+\uvec^{\top}\Avec(\x; \betavec)\uvec ~\leq~ \sigma_{0}(\x; \betavec)\max_{j\in \Kscr}\sigma_{j}(\x; \betavec)\sum_{j\in \Kscr}(\x_{(j)} \uvec)^2~\leq~ \sum_{j\in \Kscr}(\x_{(j)} \uvec)^2~\leq ~\lVert \x \rVert_2^2 \Vert \uvec \rVert_2^2 \,=\, \lVert \x \rVert_2^2.
+$$
+Therefore, $\E_{\x}\left[\sup_{\betavec\in \Real^{d}} \lVert - \Avec(\x; \betavec) \rVert_2\right] \leq \E_{\x}\left[\lVert \x \rVert_2^2\right] = \text{trace}(\E_{\x}[\x \x^{\top}]) < \infty$.
+By Theorem 4.3 of \cite{newey1994large} and the fact that $\tilde{\betavec} \pconverge \betavec^*$, the convergence result in the first display of the lemma follows. 
+
+Fix any $\x \in \Xscr$ and $\thetavec \in \Real^q$. 
+A direct computation implies that for any $j \in \Kscr^+$
+$$
+\nabla_{\betavec}\log \sigma_j(\x; {\betavec}^*) \nabla_{\thetavec}g_j(\x, z; {\thetavec})^{\top} ~=~
+\left(\ind_{\{j\neq 0\}}\x_j - \sum_{j' \in \Kscr}\sigma_{j'}(\x, \betavec^*)\x_{j'}\right)\nabla_{\thetavec}g_j(\x, z; {\thetavec})^{\top}. 
+$$
+Thus, due to the assumption that $\x$ is bounded, 
+$$
+\Big\lVert \nabla_{\betavec}\log \sigma_j(\x; {\betavec}^*) \nabla_{\thetavec}g_j(\x, z; {\thetavec})^{\top} \Big\rVert_2 ~\precsim~  \Big\lVert\nabla_{\thetavec}g_j(\x, z; {\thetavec})^{\top} \Big\rVert_2.
+$$
+Therefore, 
+\begin{align*}
+    \E_{\x,z} \left[\sup_{\thetavec \in \Nscr}
+\Big\lVert \nabla_{\betavec}\log \sigma_j(\x; {\betavec}^*) \nabla_{\thetavec}g_j(\x, z; {\thetavec})^{\top} \Big\rVert_2 \right]~\precsim~  
+\E_{\x,z}\left[\sup_{\thetavec \subset \Nscr}\lVert \nabla_{\thetavec} g_j(\x, z, \thetavec) \rVert_2\right] \,\stackrel{\text{(b)}}{<}\, \infty,
+\end{align*}
+where (b) follows from item $(iii)$ of Assumption \ref{assumption:regularity-normality}.
+The second result in the lemma thus again follows from Theorem 4.3 of \cite{newey1994large}.
+\hfill $\blacksquare$
+\vspace{3mm}
+
+\revise{
+\noindent \textbf{Proof of Lemma \ref{lem:lipschitz}.}
+        Note that  
+    $\partial \Lcal/\partial f_j = \sigma_j(\fvec) - \Indicator( y = j)$ and therefore for some $\fvec \in [\fvec, \fvec']$,
+    \begin{align*}
+        &|\Lcal(\fvec, y) - \Lcal(\fvec', y)|
+    ~\stackrel{\text{(a)}}{\leq}~ 
+    \left(
+    \sum_{j \in \Kscr}(\sigma_j(\fvec) - \Indicator( y = j))^2
+    \right)^{1/2}\cdot \lVert \fvec(\tilde{\x}) - \fvec'(\tilde{\x})  \rVert_2\\
+    &~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\stackrel{\text{(b)}}{\leq}~ 
+    \left[\Indicator( y \neq 0) + \left(
+    \sum_{j \in \Kscr}\sigma_j(\fvec)^2
+    \right)^{1/2}\right]\lVert \fvec - \fvec'  \rVert_2~\leq~ 2\lVert \fvec - \fvec'  \rVert_2,
+    \end{align*}
+    where (a) follows from Cauchy–Schwarz inequality and (b) follows from a triangular inequality. 
+    Note that this immediately implies that 
+    $$
+    |\Lcal(\fvec, y) - \Lcal(\fvec', y)| ~\leq~2 \lVert \fvec - \fvec'  \rVert_2 \leq 2\left(\lVert \fvec \rVert_2 + \lVert  \fvec'  \rVert_2\right) ~\leq~ 4\tilde{R}\sqrt{k}.
+    $$
+    This concludes the proof.
+    \hfill $\blacksquare$
+
+     \noindent \textbf{Proof of Lemma \ref{lem:local-rade}.}
+        We sketch the proof here. Since the set $\left\{\hvec \in \Fscr^*: \lVert \hvec\rVert_{L_2(\Prob)}\leq \delta \right\}$ is larger when $\delta$ increases,  $\overline{\sf Rad}(\delta, \Fscr^*)$ is non-decreasing. 
+        $\overline{\sf Rad}(\delta, \Fscr^*)/\delta$ is non-increasing because $\Fscr^*$ is star-shaped. 
+        Writing the critical inequality as $\frac{\overline{\sf Rad}(\delta, \Fscr^*)}{\delta}\leq  \frac{\delta}{\tilde{R}\sqrt{k}}$, we observe that the right-hand side is strictly increasing. Therefore, there infimum is well-defined and for any $\delta \geq \delta_m^*$, $\overline{\sf Rad}(\delta, \Fscr^*)\leq  \frac{\delta^2}{\tilde{R}\sqrt{k}}$. 
+        We next show that $\overline{\sf Rad}(\delta_m^*, \Fscr^*) = \frac{(\delta^*_m)^2}{\tilde{R}\sqrt{k}}$. 
+        First of all, we show that $\overline{\sf Rad}(\delta, \Fscr^*)$ is continuous if $\delta \neq 0$ 
+        Fix $\delta$. 
+        Without loss of generality, we assume that for each realization of $\epsvec$ and $\tilde{\x}$, the supremum in the defintion of $\overline{\sf Rad}(\delta, \Fscr^*)$ is achieved and denote it by $\bar{\hvec}$ (otherwise, we may introduce additive error which can be made arbitrarily small and it does not influence the conclusion).
+        Let $\alpha \in (0,1)$. 
+        Then,  
+        \begin{align*}
+                  0 \,\leq\, & \overline{\sf Rad}(\delta, \Fscr^*) - \overline{\sf Rad}(\alpha\delta, \Fscr^*)\,\stackrel{\text{(a)}}{\leq}\, \E_{\tilde{\x},\epsvec}\left[
+    \left|
+    \frac{1}{m}\sum_{i=1}^m\sum_{j \in \Kscr}\epsilon_{ij}\bar{h}_j(\tilde{\x}_{i,(j)})
+    \right| - 
+    \left|
+    \frac{1}{m}\sum_{i=1}^m\sum_{j \in \Kscr}\epsilon_{ij}\frac{\alpha\delta}{\alpha\delta\vee\lVert \bar{\hvec}\rVert_{L_2(\Prob)}}\bar{h}_j(\tilde{\x}_{i,(j)})
+    \right| 
+    \right]\\
+     \,\stackrel{\text{(b)}}{\leq}\, & (1 - \alpha)  \E_{\tilde{\x},\epsvec}\left[
+    \left|
+    \frac{1}{m}\sum_{i=1}^m\sum_{j \in \Kscr}\epsilon_{ij}\bar{h}_j(\tilde{\x}_{i,(j)})
+    \right| 
+    \right] = (1 - \alpha)  \overline{\sf Rad}(\delta, \Fscr^*).
+        \end{align*}
+    Here (a) follows because $\alpha\delta\lVert \bar{\hvec}\rVert_{L_2(\Prob)}/(\alpha\delta\vee\lVert \bar{\hvec}\rVert_{L_2(\Prob)})\leq \alpha\delta$ and (b) follows since $\alpha \delta \vee \lVert \bar{\hvec}\rVert_{L_2(\Prob)} \leq \delta$. 
+    Letting $\alpha \rightarrow 1$, this shows that $\overline{\sf Rad}(\delta, \Fscr^*)$  is left-continuous. 
+    Also, 
+    \begin{align*}
+      0 \,\leq\, & \frac{\overline{\sf Rad}(\delta, \Fscr^*)}{\delta} - \frac{\overline{\sf Rad}\left({\delta}/{\alpha}, \Fscr^*\right)}{{\delta}/{\alpha}} \,\leq\, \E_{\tilde{\x},\epsvec}\left[
+    \left|
+    \frac{1}{\delta m}\sum_{i=1}^m\sum_{j \in \Kscr}\epsilon_{ij}\bar{h}_j(\tilde{\x}_{i,(j)})
+    \right| - 
+    \left|
+    \frac{\alpha}{\delta m}\sum_{i=1}^m\sum_{j \in \Kscr}\epsilon_{ij}\bar{h}_j(\tilde{\x}_{i,(j)})
+    \right| 
+    \right]\\
+    \,=\,&\frac{1-\alpha}{\delta}\E_{\tilde{\x},\epsvec}\left[
+    \left|
+    \frac{1}{m}\sum_{i=1}^m\sum_{j \in \Kscr}\epsilon_{ij}\bar{h}_j(\tilde{\x}_{i,(j)})
+    \right|
+    \right]\,=\, (1-\alpha)\cdot\frac{\overline{\sf Rad}(\delta, \Fscr^*)}{\delta}. 
+    \end{align*}
+    Let $\alpha \rightarrow 1$, we observe that $\frac{\overline{\sf Rad}(\delta, \Fscr^*)}{\delta}$ is right-continuous and hence 
+    $\overline{\sf Rad}(\delta, \Fscr^*)$ is right-continuous. 
+    The continuity of $\overline{\sf Rad}(\delta, \Fscr^*)$ implies that the inequality must bind at $\delta^*_m$.
+    \hfill $\blacksquare$
+
+    \noindent \textbf{Proof of Lemma \ref{lem:strong-convexity}.}
+    We note that the derivative of $\Prob \Lcal_{\fvec}$ vanishes at $\fvec^*$ by optimality. Also it is easy to check the Hession of $\E_{y}\left[\Lcal(\fvec, y) | \tilde{\x}\right]$ satisfies that 
+    $\Big[\nabla^2 \E_{y}\left[\Lcal(\fvec, y) | \tilde{\x}\right] \Big]_{j, \ell} = \Indicator(j = \ell)\sigma_j(\fvec) - \sigma_j(\fvec)\sigma_\ell(\fvec)$. 
+    Therefore, 
+    $
+    \lambda_{\min}\left(\nabla^2 \E_{y}\left[\Lcal(\fvec, y) | \tilde{\x}\right]\right) \geq \sigma_0(\fvec)\min_{j \in \Kscr} \sigma_j(\fvec) \geq e^{\tilde{R}}(1 + ke^{\tilde{R}})^2.
+    $
+    By the Taylor expansion, the result holds. 
+    \hfill $\blacksquare$
+
+    \noindent \textbf{Proof of Lemma \ref{lem:local-complexity}.}
+    Given sample data $\{\tilde{\x}_i\}_{i=1}^{m}$, we let the localized empirical Rademacher complexity be 
+        $$
+    \widehat{\sf Rad}(\delta, \Fscr^*) ~:=~ \E_{\epsvec}\left[
+    \sup_{\hvec \in \Fscr^*: \lVert \hvec\rVert_{m}\leq \delta}\left|
+    \frac{1}{m}\sum_{i=1}^m\sum_{j \in \Kscr}\epsilon_{ij}h_j(\tilde{\x}_{i,(j)})
+    \right|
+    \right], 
+    $$
+    and we define the smallest solution to $\widehat{\sf Rad}(\delta, \Fscr^*) \leq \frac{\delta^2}{\tilde{R}\sqrt{k}}$ as $\hat{\delta}^*_m$. Since $\widehat{\sf Rad}(\delta, \Fscr^*)/\delta$ is clearly non-increasing, this solution is well-defined. 
+    Next, we have for any $\delta > 0$
+    \begin{align}
+    \label{eqn:empirical-rade}
+        & \widehat{\sf Rad}(\delta, \Fscr^*) ~=~ \sqrt{\frac{k}{m}}\E_{\epsvec}\left[
+    \sup_{\substack{\hvec \in \Fscr^*:\\ 
+    \frac{1}{mk}\sum_{i=1}^m\sum_{j \in \Kscr}h^2_j(\tilde{\x}_{i(j)})
+    \leq \delta^2/k
+    }}\left|
+    \sqrt{\frac{1}{mk}}\sum_{i=1}^m\sum_{j \in \Kscr}\epsilon_{ij}h_j(\tilde{\x}_{i,(j)})
+    \right|
+    \right]\\
+    &\stackrel{(a)}{\preceq }
+    \sqrt{\frac{k}{m}} \int_0^{2\frac{\delta}{\sqrt{k}}}\sqrt{\log(D(t, d^{\dag}))}dt \stackrel{(b)}{\leq} 
+    \sqrt{\frac{k}{m}} \int_0^{2\frac{\delta}{\sqrt{k}}}\sqrt{\log\left(N\left(\frac{t}{2}, d^{\dag}\right)\right)}dt \stackrel{(c)}{\leq} 
+    \sqrt{\frac{k}{m}} \int_0^{2\frac{\delta}{\sqrt{k}}}\sqrt{\tilde{d}\log\left(1 + \frac{8\delta}{t\sqrt{k}}\right)}dt \\
+    &\stackrel{(d)}{=} 8\delta\sqrt{\frac{\tilde{d}}{m}}\int_0^{\frac{1}{4}}\sqrt{\log\left(1 + \frac{1}{\tilde{t}}\right)}d\tilde{t} \preceq \delta\sqrt{\frac{\tilde{d}}{m}}.
+    \end{align}
+    Here we have define the defined the distance function $$d^{\dag}(\hvec, \hvec') := \left(
+    \frac{1}{mk}\sum_{i=1}^m\sum_{j \in \Kscr}\left(h_j(\tilde{\x}_{i(j)}) - h'_j(\tilde{\x}_{i(j)}) \right)
+    \right)^{\frac{1}{2}}$$
+    for $\hvec, \hvec' \in \Fscr^*$. We define $D(\cdot, \cdot)$ and $N(\cdot, \cdot)$ be the corresponding packing and covering number of the ball $\big\{\hvec \in \Fscr^*: \frac{1}{mk}\sum_{i=1}^m\sum_{j \in \Kscr}h^2_j(\tilde{\x}_{i(j)})^2
+    \leq \delta^2/k\big\}$ under this distance function. 
+    Here (a) follows from Corollary 2.2.8 in \cite{vaart2023empirical}, (b) follows from the fact that $N\left(\frac{t}{2}, d^{\dag}\right) \geq D\left({t}, d^{\dag}\right)$, (c) is a well-known result on the covering numbers of linear functions \cite[e.g., see Example 13.8][]{wainwright1945high}, and (d) follows from a change of variable argument. 
+
+    To connect this to $\delta^*_m$, we bound $\widetilde{Z}_m(r): = \sup_{\hvec \in \Fscr^*: \lVert h \rVert_{L_2(\Prob)}\leq r}\left|\lVert \hvec \rVert^2_m - \lVert \hvec \rVert^2_{L_2(\Prob)}   \right|$.
+    The arguments are largely parallel to that leading to \eqref{eqn:concentration-z}.
+    Assume that $r \geq \delta^*_m$. 
+    Using a similar argument to \eqref{eqn:Zm(r)}, we have 
+    \begin{align}
+    \label{eqn:tilde_Zm(r)}
+            \E\left[ \widetilde{Z}_m(r) \right] \stackrel{\text{(a)}}{\leq} 8\tilde{R}\sqrt{k}\cdot\overline{\sf Rad}(r, \Fscr^*) \leq 8 r\delta^*_m \leq 8r^2
+    \end{align}
+    where in (a) we have used the lipschitz condition that for all $\hvec, \hvec' \in \Fscr^*$
+    $$
+    \left|\sum_{j\in \Kscr}\left(h^2_j(\x_{(j)}) - (h'_j)^2(\x_{(j)})\right)\right|~\leq~ \left\lVert 
+    \hvec+\hvec'
+    \right\rVert_{2}\cdot \left\lVert 
+    \hvec-\hvec'
+    \right\rVert_{2} ~\leq 4\tilde{R}\sqrt{k}\left\lVert 
+  \hvec-\hvec'
+    \right\rVert_{2}, 
+    $$
+    since it is easy to check that $\left\lVert 
+    \hvec
+    \right\rVert_{2}, \left\lVert 
+    \hvec
+    \right\rVert_{2} \leq 2\tilde{R}\sqrt{k}$.
+    Furthermore, 
+    $
+    {\sf Var}\left(\lVert\hvec\rVert^2_2\right) \leq \Prob \lVert\hvec\rVert^4_2\leq 
+    4kR^2\lVert\hvec\rVert^2_{L_2(\Prob)}\leq 4kR^2r^2, 
+    $ because $\lVert \hvec \rVert^2_2 \leq 4kR^2$.
+    So, 
+     Then, 
+    \begin{align*}
+        &\E_{\x, \y}\left[\sup_{\substack{\hvec \in \Fscr^*: \\\lVert \hvec\rVert_{L_2(\Prob)} \leq r}} \Prob_m\left[
+        \left(\lVert \hvec \rVert^2_2 - \lVert \hvec \rVert^2_{L_2(\Prob)}\right)^2
+        \right]
+        \right]\\\leq~& \E_{\x, \y}\left[\sup_{\substack{\hvec \in \Fscr^*: \\\lVert \hvec\rVert_{L_2(\Prob)} \leq r}} \Prob_m\left[
+        \left(\lVert \hvec \rVert^2_2 - \lVert \hvec \rVert^2_{L_2(\Prob)}\right)^2
+        \right] - {\sf Var}\left(\lVert\hvec\rVert^2_2\right)
+        \right] + \sup_{\substack{\hvec \in \Fscr^*: \\\lVert \hvec\rVert_{L_2(\Prob)} \leq r}}{\sf Var}\left(\lVert\hvec\rVert^2_2\right)\\
+        \leq~& 2\E_{\x, \y,\epsvec}\left[\sup_{\substack{\hvec \in \Fscr^*: \\\lVert \hvec\rVert_{L_2(\Prob)} \leq r}}
+        \frac{1}{m}\left|\sum_{i=1}^m \epsilon_i \left(\lVert \hvec \rVert^2_2(\tilde{\x}_i) - \lVert \hvec \rVert^2_{L_2(\Prob)}\right)^2 \right|
+        \right] + 4Rk^2r^2\\
+        {\text{(b)}}{\leq}~&  256kR^2\sqrt{k}\E_{\x, \y,\epsvec}\left[\sup_{\substack{\hvec \in \Fscr^*: \\\lVert \hvec\rVert_{L_2(\Prob)} \leq r}}
+        \frac{1}{m}\left|\sum_{i=1}^m \epsilon_i \Big(\lVert \hvec \rVert^2_2(\tilde{\x}_i) - \lVert \hvec \rVert^2_{L_2(\Prob)} 
+        \Big) \right|
+        \right] + 4kR^2r^2\\
+        \leq~&
+       512kR^2 \E_{\x}\left[ \widetilde{Z}_m(r) \right]
+    +4kR^2r^2~\stackrel{\text{(c)}}{\leq}4100kR^2r^2,
+    \end{align*}
+    where (b) uses the bound $\lVert \hvec \rVert^2_2 \leq 4kR^2$ again and (c) follows from \eqref{eqn:tilde_Zm(r)}.
+
+    To summarize, using the Talagrand inequality, we have for any 
+    $u > 0$ and constants $c_8$ and $c_9$,
+    \begin{align*}
+        \Prob \left(\widetilde{Z}_m(r) \geq 8r\delta^*_m + u\right)~\leq~ c_8 e^{-\frac{c_9m u^2}{kR^2r^2 + kR^2u}}.
+    \end{align*}
+    to proceed, let us consider $r \geq 32\delta^*_m$ and set $u = r^2/4$, it holds that $\Prob \left(\widetilde{Z}_m(r) \leq \frac{r^2}{2}\right) \geq 1-  c_8e^{-\frac{c_{10}mr^2}{kR^2}}$.
+    Also, when this good event happens, 
+    \begin{align*}
+    & \lVert \hvec \rVert^2_m - \lVert \hvec \rVert^2_{L_2(\Prob)}\\
+    &~~~~~~~~~~~\leq~\Indicator\left(\lVert \hvec\rVert^2_{L_2(\Prob)}\leq r\right)\frac{r^2}{2} + \Indicator\left(\lVert \hvec\rVert^2_{L_2(\Prob)} > r\right)\frac{\lVert \hvec\rVert^2_{L_2(\Prob)}}{r^2}
+    \left|
+    \left\lVert \frac{r}{\lVert \hvec \rVert_{L_2(\Prob)}}\cdot\hvec \right\rVert^2_m - \left\lVert \frac{r}{\lVert \hvec \rVert_{L_2(\Prob)}}\cdot\hvec \right\rVert^2_{L_2(\Prob)}
+     \right|\\
+     &~~~~~~~~~~~\leq~
+     \Indicator\left(\lVert \hvec\rVert^2_{L_2(\Prob)}\leq r\right)\frac{r^2}{2} + \Indicator\left(\lVert \hvec\rVert^2_{L_2(\Prob)} > r\right)\frac{\lVert \hvec\rVert^2_{L_2(\Prob)}}{r^2}\cdot \frac{r^2}{2} ~\leq~\frac{1}{2}\left(
+    \lVert \hvec\rVert^2_{L_2(\Prob)} + r^2
+     \right),
+    \end{align*}
+    or equivalently, $\lVert \hvec \rVert^2_m \leq \frac{3}{2}\lVert\hvec \rVert^2_{L_2(\Prob)} +\frac{1}{2}r^2$. 
+    Then, we observe that 
+    $$
+    \omega(\delta)~:=~
+    \E_{\epsvec}\left[
+    \sup_{\substack{\hvec \in \Fscr^*:\\ \lVert \hvec\rVert_{L_2(\Prob)}\leq \delta}}\left|
+    \frac{1}{m}\sum_{i=1}^m\sum_{j \in \Kscr}\epsilon_{ij}h_j(\tilde{\x}_{i,(j)})
+    \right|
+    \right] ~\leq~  \widehat{\sf Rad}\left(\sqrt{\frac{3\delta^2}{2} + \frac{r^2}{2}}, \Fscr^*\right) ~\stackrel{\text{(d)}}{\leq}~
+    \sqrt{\left(\frac{3\delta^2}{2} + \frac{r^2}{2}\right)\cdot\frac{\tilde{d}}{m}},
+    $$
+    where (d) follows from \eqref{eqn:empirical-rade}, holds with probability at least $1-  c_8e^{-\frac{c_{10}mr^2}{kR^2}}$ for every $r \geq 32\delta^*_m$.
+    This implies 
+    $$
+    \Prob(\omega(\delta^*_m) \geq t) ~\leq~ c_8 e^{-\frac{c_{10}m\left(
+    2mt^2/\tilde{d} - 3(\delta^*_m)^2
+    \right)}{kR^2}},~~~\forall t ~\geq~ \delta^*_m\sqrt{\frac{1027\tilde{d}}{2m}}. 
+    $$
+    Then, 
+    \begin{align*}
+        & \overline{\sf Rad}(\delta^*_m, \Fscr^*) ~=~ \int_{0}^{\infty} \Prob(\omega(\delta^*_m) \geq t)dt ~\leq~ \delta^*_m\sqrt{\frac{1027\tilde{d}}{2m}} + c_8\int_{\delta^*_m\sqrt{\frac{1027\tilde{d}}{2m}}}^{\infty}e^{-\frac{c_{10}m\left(
+    2mt^2/\tilde{d} - 3(\delta^*_m)^2
+    \right)}{kR^2}} dt\\
+    & = \delta^*_m\sqrt{\frac{1027\tilde{d}}{2m}} + c_8e^{\frac{3c_{10}m(\delta^*_m)^2}{kR^2}}\cdot \sqrt{2\pi
+    \cdot 
+    \frac{k\tilde{d}R^2}{4c_{10} m^2}
+    }\cdot\Prob
+    \left(
+    Z \geq \delta^*_m\sqrt{\frac{1027\tilde{d}}{2m}}\,
+    \right)\\
+    & \stackrel{\text{(d)}}{\leq} \delta^*_m\sqrt{\frac{1027\tilde{d}}{2m}} + c_8e^{\frac{3c_{10}m(\delta^*_m)^2}{kR^2}}\cdot \sqrt{
+    \frac{\pi k\tilde{d}R^2}{2c_{10} m^2}
+    }\cdot 2e^{-\frac{1027c_{10}(\delta^*_m)^2}{kR^2}}~\leq~
+    \delta^*_m\sqrt{\frac{1027\tilde{d}}{2m}} + c_8 \sqrt{
+    \frac{\pi k\tilde{d}R^2}{2c_{10} m^2}
+    }\cdot 2e^{-\frac{1024c_{10}(\delta^*_m)^2}{kR^2}}\\
+    &\stackrel{\text{(e)}}{\leq} c_{11}\left(
+    \delta^*_m\sqrt{\frac{\tilde{d}}{m}} +\frac{R\sqrt{k\tilde{d}}}{m}
+    \right)
+    \end{align*}
+    where we introduce an auxiliary random variable $Z \sim N\left(0, \frac{k\tilde{d}R^2}{4c_{10} m^2}\right)$ and (d) follows from the sub-Gaussian tail inequality and (e) holds because $e^{-\frac{1024c_{10}(\delta^*_m)^2}{kR^2}} \leq 1$.
+    Using Lemma \ref{lem:local-rade}, we have 
+    $$(\delta^*_m)^2 \leq c_{11}\tilde{R}\sqrt{k}\left(
+    \delta^*_m\sqrt{\frac{d}{m}} +\frac{R\sqrt{k\tilde{d}}}{m}
+    \right)\leq \frac{(\delta^*)^2}{2} + \frac{2c_{11}^2R^2 k \tilde{d}}{m} + \frac{R^2k\sqrt{\tilde{d}}}{m},$$
+    which implies the desired conclusion. 
+    \hfill $\blacksquare$}
+\vspace{3mm}
+

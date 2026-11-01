@@ -1,9 +1,9 @@
 ---
 description: "Use when writing, modifying, or reviewing Python code or Jupyter notebooks. Enforces fail-fast behavior, strict expectations, and no silent bugs or fallbacks."
-applyTo: "code/**/*.py, code/**/*.ipynb"
+applyTo: "**/*.py, **/*.ipynb"
 paths:
-  - "code/**/*.py"
-  - "code/**/*.ipynb"
+  - "**/*.py"
+  - "**/*.ipynb"
 ---
 
 # Fail-Fast Coding Guidelines

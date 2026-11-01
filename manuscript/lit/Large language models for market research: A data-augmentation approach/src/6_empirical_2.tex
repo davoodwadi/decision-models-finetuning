@@ -1,0 +1,276 @@
+% SPLIT INTO TWO SECTIONS: 
+% 1) ROBUSTNESS TO OTHER DATA
+% 2) ROBUSTNESS TO OTHER METHODS
+
+\section{Additional Empirical Analysis}
+\label{sec:empirical-2}
+In this section, we present additional empirical studies. In \cref{sec:empirical-2-car}, we assess the robustness of our method on an alternative dataset. In \cref{sec:empirical-2-aae-ppi}, we provide a more detailed comparison between AAE and PPI-based methods. 
+% Finally, in \cref{sec:empirical-2-misspecification}, we explore that the performance of AAE under model misspecification.
+
+\subsection{Empirical Analysis on Other Data}
+\label{sec:empirical-2-car}
+
+This section presents an alternative empirical study on a real choice-based conjoint dataset for sports cars \citep{sccdata} as a robustness check for the results in \cref{sec:empirical-1}. 
+This dataset consists of responses from 200 participants, each expressing preferences for a series of hypothetical sports cars. Each respondent was shown ten sets of three sports cars, described by five attributes with multiple levels, as outlined in Table \ref{tab:attributes-2}.  Participants were asked to choose one of the three cars. 
+We randomly selected 120 respondents from the training set for each experiment, resulting in a dataset of 1,200 samples. The car attributes in these samples were converted to text and used to generate GPT datasets, following a similar procedure to \cref{subsec:data-generation}, details of which are discussed in \cref{app:empirical-dgp-car}. The remainder of the experimental setup is also consistent with the approach described in \cref{subsec:empirical-setup-1}. 
+
+
+
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.5}
+\centering
+{\footnotesize
+\caption{Attributes in the Sports Car Conjoint Analysis}
+\label{tab:attributes-2}
+\begin{tabular}{p{45mm}p{112mm}}\hline\hline
+\multicolumn{1}{l}{\textbf{Feature}}
+ &  
+ \multicolumn{1}{l}{\textbf{Levels and Description}}
+ \\\hline
+{Segment (Type of car model)}     & ``Basic", ``Fun", and ``Racer"                  
+\\\hline
+{Number of Seats} & 2, 4, and 5
+\\\hline
+{Type of transmission}  & ``Manual" and ``Automatic"
+\\\hline
+{Convertible Roofs}  & ``Yes" and ``No"
+\\\hline
+{Price} & Price in thousands \$, with three possible choices (30, 35, 40)
+\\\hline \hline
+\end{tabular}
+}
+\end{table}
+
+\cref{tab:bias-reduction-2} summarizes the change in MAPE of $\hat{\betavec}^{\sf A}$, $\hat{\betavec}^{\sf Naive}$, and $\hat{\betavec}^{\sf AAE}$ in comparison to $\hat{\betavec}^{\sf P}$. Similarly to the findings in \cref{sec:empirical-1}, AAE significantly reduces MAPE in all scenarios, achieving in general the best performance using \texttt{GPT-4} with CoT and \texttt{GPT-4o} with few-shot prompting, while the na\"ive or AI-only methods tend to elicit errors. Interestingly, AAE's performance shows less correlation with more advanced GPT or prompting techniques compared to the vaccine setting, which is expected given that sports car preferences are highly subjective. Despite being an older version, \texttt{GPT-3.5-Turbo-0613} performs well with AAE in this context. One can notice that \texttt{GPT-3.5-Turbo-0613} incurs a small estimation error with na\"ive augmentation, suggesting it may happen to have a close alignment with real human data, which in turn enhances AAE's effectiveness. Moreover, fine-tuning \texttt{GPT-4o} does not improve the performance of na\"ive augmentation. This again underscores that fine-tuning is not a universal solution to all problems.
+
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.3}
+\centering
+{\footnotesize
+\caption{Bias Reduction from $\hat{\betavec}^{\sf P}$ in Empirical Setting II(\%)}
+\label{tab:bias-reduction-2}
+\begin{tabular}{cccccccccc}\hline\hline
+& & \multicolumn{4}{c}{$m=50$} & \multicolumn{4}{c}{$m=100$} \\\hline
+\textbf{Model}  & \textbf{Prompt} & $\hat{\betavec}^{\sf A}$ & $\hat{\betavec}^{\sf Naive}$  & $\hat{\betavec}^{\sf AAE}$  & $p_{\max}$ & $\hat{\betavec}^{\sf A}$ & $\hat{\betavec}^{\sf Naive}$  & $\hat{\betavec}^{\sf AAE}$   & $p_{\max}$ \\\hline
+\multirow{2}{*}{\texttt{GPT-3.5-Turbo-0613}} & Basic & -17.27 & -34.20 & -37.81 & 0.105* & 15.09 & -1.15 & -11.02 & 4e-04 \\
+ & CoT & 148.81 & 119.98 & -34.33 & 3e-07 & 181.18 & 130.32 & -9.50 & 0.002 \\
+\multirow{2}{*}{\texttt{GPT-3.5-Turbo-0125}} & Basic & 29.70 & 5.58 & -30.22 & 2e-07 & 62.06 & 32.47 & -9.80 & 0.001 \\
+ & CoT & 129.80 & 112.47 & -35.35 & 9e-08 & 162.17 & 124.39 & -11.07 & 6e-04 \\
+\multirow{2}{*}{\texttt{GPT-4}} & Basic & -12.43 & -16.70 & -30.63 & 2e-04 & 19.94 & 10.17 & -8.62 & 2e-04 \\
+ & CoT & 173.34 & 132.71 & -38.32 & 2e-07 & 205.71 & 137.60 & -11.36 & 3e-04 \\
+\multirow{3}{*}{\texttt{GPT-4o}} & Basic & 421.27 & 292.59 & -25.68 & 6e-06 & 453.64 & 263.41 & -8.92 & 0.006 \\
+ & CoT & 304.98 & 229.80 & -28.65 & 4e-06 & 337.34 & 219.76 & -7.86 & 0.007 \\
+ & FS & 153.33 & 89.90 & -31.61 & 2e-07 & 185.69 & 98.61 & -8.45 & 0.007 \\
+\texttt{GPT-4o Fine-tuned} & Basic & 201.95 & 133.85 & -36.74 & 3e-07 & 234.32 & 132.10 & -12.85 & 6e-05 \\\hline
+& & \multicolumn{4}{c}{$m=150$} & \multicolumn{4}{c}{$m=200$} \\\hline
+\textbf{Model}  & \textbf{Prompt} & $\hat{\betavec}^{\sf A}$ & $\hat{\betavec}^{\sf Naive}$  & $\hat{\betavec}^{\sf AAE}$  & $p_{\max}$ & $\hat{\betavec}^{\sf A}$ & $\hat{\betavec}^{\sf Naive}$  & $\hat{\betavec}^{\sf AAE}$   & $p_{\max}$ \\\hline
+\multirow{2}{*}{\texttt{GPT-3.5-Turbo-0613}} & Basic & 28.53 & 8.57 & -6.83 & 4e-04 & 30.71 & 8.26 & -7.09 & 5e-05 \\
+ & CoT & 194.62 & 126.11 & -4.80 & 0.019 & 196.80 & 119.07 & -5.39 & 5e-04 \\
+\multirow{2}{*}{\texttt{GPT-3.5-Turbo-0125}} & Basic & 75.50 & 37.96 & -5.30 & 0.005 & 77.68 & 34.69 & -6.59 & 2e-04 \\
+ & CoT & 175.60 & 123.92 & -5.17 & 0.006 & 177.78 & 113.93 & -6.64 & 3e-04 \\
+\multirow{2}{*}{\texttt{GPT-4}} & Basic & 33.37 & 21.31 & -4.60 & 0.005 & 35.55 & 19.68 & -4.72 & 2e-04 \\
+ & CoT & 219.15 & 136.34 & -7.69 & 2e-04 & 221.32 & 121.56 & -6.62 & 7e-04 \\
+\multirow{3}{*}{\texttt{GPT-4o}} & Basic & 467.07 & 234.85 & -4.56 & 0.030 & 469.25 & 207.47 & -7.03 & 2e-04 \\
+ & CoT & 350.78 & 199.59 & -5.92 & 0.010 & 352.96 & 178.51 & -6.26 & 1e-04 \\
+ & FS & 199.13 & 96.48 & -2.84 & 0.155* & 201.31 & 84.70 & -4.38 & 0.019 \\
+\texttt{GPT-4o Fine-tuned} & Basic & 247.76 & 123.92 & -9.02 & 2e-04 & 249.93 & 110.3 & -6.99 & 4e-04
+\\\hline\hline
+\end{tabular} 
+\begin{minipage}{15.5cm}
+    \footnotesize
+    \vspace{3pt}
+    \begin{tabular}{p{1cm} p{14cm}}
+         \textbf{Notes}: & \setlength{\baselineskip}{1.2\baselineskip}For each estimator under each experimental condition, we perform 50 independent runs and report the average MAPE difference between the focal estimator and $\hat{\betavec}^{\sf P}$. In each condition, the estimators have access to a real dataset with $m$ samples and an auxiliary dataset containing $n = 500$ GPT-generated samples. The reported average MAPE difference thus represents the increase or decrease in MAPE resulting from incorporating these $n = 500$ AI-generated samples, relative to using only the $m$ human-labeled samples. For each experimental condition, we also report the maximum p-value from all pairwise t-tests comparing the MAPE of $\hat{\betavec}^{\sf AAE}$ with those of the other estimators under the column $p_{\max}$. The test shows that $\hat{\betavec}^{\sf AAE}$ outperforms other estimators at the 95\% significance level for all instances, except for the ones marked with a star. 
+    % This table presents the difference MAPE after augmented $n=500$ GPT-generated samples to a real set with $m$ samples with the AI-only estimator $\hat{\betavec}^{\sf A}$, na\"ive estimator $\hat{\betavec}^{\sf Naive}$ and the AAE estimator $\hat{\betavec}^{\sf AAE}$, respectively, averaged over 50 experimental runs in the second empirical setting. As in \cref{sec:empirical-1}, AAE significantly reduces error from the primary set, and outperforms the AI-only and na\"ive augmentation estimators. Pairwise t-tests show that $\hat{\betavec}^{\sf AAE}$ outperforms $\hat{\betavec}^{\sf P}$, $\hat{\betavec}^{\sf A}$, and $\hat{\betavec}^{\sf Naive}$ at the 95\% significance level for all instances, except for the ones marked with a star. The maximum p-value of the pairwise t-tests are shown under the column $p_{\max}$.
+    \end{tabular}
+  \end{minipage}}
+\end{table}
+
+
+\cref{tab:saving-2} shows the percentage of data that can be saved using AAE. Our results show data savings ranging from 5.1\% to 60.3\% across different models, prompts, and primary data sizes. When the primary set is small ($m=50$), AAE saves between 46.9\% and 60.3\% of data samples, regardless of the GPT model or prompt design. With a moderate primary set size ($m=100, 150$), savings range from 18.3\% to 40.2\%, again consistent across GPT models and prompts. These results further support the practical value of AAE in broad conjoint settings. 
+
+
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.3}
+\centering
+{\footnotesize
+\caption{Percentage of Saving in Data Size in Empirical Setting II(\%)}
+\label{tab:saving-2}
+\begin{tabular}{cccccc}\hline\hline
+Model    & Prompt & $m=50$          & $m=100$         & $m=150$         &$m=200$         \\\hline
+\multirow{2}{*}{\texttt{GPT-3.5-Turbo-0613}} & Basic & 59.39 (3.65) & 33.26 (5.47) & 30.81 (6.53) & 17.05 (10.32)* \\
+ & CoT & 55.04 (4.04) & 29.30 (5.50) & 26.05 (6.04) & 10.47 (10.76)* \\
+\multirow{2}{*}{\texttt{GPT-3.5-Turbo-0125}} & Basic & 52.96 (4.31) & 29.22 (7.26) & 26.29 (6.35) & 16.06 (10.71)* \\
+ & CoT & 56.44 (3.48) & 34.18 (4.88) & 25.91 (6.99) & 14.97 (9.83)* \\
+\multirow{2}{*}{\texttt{GPT-4}} & Basic & 48.99 (5.25) & 25.74 (7.29) & 24.37 (7.20) & 5.12 (12.09)* \\
+ & CoT & 60.29 (3.54) & 34.24 (5.26) & 34.83 (5.69) & 15.81 (8.67) \\
+\multirow{3}{*}{\texttt{GPT-4o}} & Basic & 46.90 (4.30) & 27.10 (7.07) & 23.71 (6.55) & 17.20 (9.25) \\
+ & CoT & 51.39 (3.93) & 24.86 (5.88) & 29.72 (5.46) & 14.20 (9.81)* \\
+ & FS & 58.18 (3.42) & 38.11 (5.10) & 40.23 (5.06) & 20.42 (8.60) \\
+\texttt{GPT-4o Fine-tuned} & Basic & 50.26 (4.93) & 27.01 (5.92) & 18.34 (6.31) & 5.56 (11.90)*      \\\hline\hline
+\end{tabular}}
+\begin{minipage}{15.5cm}
+\vspace{3pt}
+    \footnotesize
+    \begin{tabular}{p{1cm} p{13cm}}
+         \textbf{Notes}: & \setlength{\baselineskip}{1.2\baselineskip} 
+    This table presents the percentage of data saved using AAE with various GPT models, averaged over 50 experimental runs in the second empirical setting. The standard errors are shown in parentheses. One-sample t-tests show that the savings are all significant at the 95\% level except for the ones marked with a star.
+    \end{tabular}
+  \end{minipage}
+\end{table}
+
+
+
+\subsection{More Detailed Comparison with PPI-based Methods}
+\label{sec:empirical-2-aae-ppi}
+In this section, we present a more detailed comparison between AAE and the PPI-based methods. In addition to the analysis in \cref{sec:empirical-1} using the COVID-19 vaccine survey dataset, we evaluate both approaches on the U.S. private health insurance census dataset from the original PPI study \citep{angelopoulos2023prediction}. We further investigate their differences using a synthetic dataset designed to isolate specific performance characteristics.
+
+\subsubsection{Real Data Experiments on Private Healthcare Census Dataset.}
+\cref{tab:aae-ppi-census} summarizes the performance of AAE and PPI-based methods on the private health insurance census dataset used in \cite{angelopoulos2023prediction}. Since the PPI-based methods suffered from singularity issues under small primary dataset in the experiment settings in \cref{sec:empirical-1}, we tested larger primary data size $m$ ranging from $100$ to $1{,}000$ in this experiment for a more comprehensive comparison.
+
+
+Similar to the COVID-19 vaccine setting in \cref{sec:empirical-1}, AAE outperforms PPI-based methods. The performance gap is more pronounced in the vaccine setting. A key difference between the two datasets lies in feature dimensionality: the vaccine dataset includes $11$ features, while the census dataset contains only two. 
+
+As discussed earlier, the distinction between AAE and PPI-based methods is where the correction is applied—at the loss-function level (PPI) versus the mapping-function level (AAE). This implies that performance differences become more significant when the loss function captures less information embedded in the data-generating process, a scenario more likely with higher feature dimensionality. The results from the two datasets are consistent with this reasoning. To further investigate this effect, we conduct a synthetic data study examining how feature dimensionality impacts the relative performance of AAE and PPI-based methods.
+
+\begin{table}[!ht]
+\renewcommand{\arraystretch}{1.3}
+\centering
+{\footnotesize 
+\caption{Bias Reduction from $\hat{\betavec}^{\sf P}$ in the Private Healthcare Census Setting (\%)}
+\label{tab:aae-ppi-census}
+\begin{tabular}{ccccc}\hline\hline
+$m$  & $\hat{\betavec}^{\sf AAE}$    & $\hat{\betavec}^{\sf PPI}$    & $\hat{\betavec}^{\sf PPI++}$ & $p_{\max}$ \\\hline
+100  & -65.86 & -22.29 & -15.22 & 0.04       \\
+250  & -35.98 & -12.7  & -4.7   & 0.03       \\
+500  & -29.93 & -7.58  & -2.41  & 0.01       \\
+750  & -10.74 & -2.13  & -1.06  & 0.11*       \\
+1000 & -11.87 & -4.56  & -1.14  & 0.13*   \\\hline\hline
+\end{tabular}
+\begin{minipage}{15.5cm}
+\vspace{3pt}
+    \footnotesize 
+    \begin{tabular}{p{1cm} p{13cm}}
+         \textbf{Notes}: & \setlength{\baselineskip}{1.2\baselineskip} For each estimator under each experimental condition, we perform 50 independent runs and report the average MAPE difference between the focal estimator and $\hat{\betavec}^{\sf P}$. In each condition, the estimators have access to a real dataset with $m$ samples and an auxiliary dataset containing $n = 2{,}000$ auxiliary samples. The reported average MAPE difference thus represents the increase or decrease in MAPE resulting from incorporating these $n = 2{,}000$ auxiliary samples, relative to using only the $m$ real samples. Data features are normalized before applying the methods. For each experimental condition, we also report the maximum p-value from all pairwise t-tests comparing the MAPE of $\hat{\betavec}^{\sf AAE}$ with those of the other estimators under the column $p_{\max}$. The test shows that $\hat{\betavec}^{\sf AAE}$ outperforms other estimators at the 90\% significance level for all instances, except for the ones marked with a star.      
+    % This table reports the MAPE for AAE, the human-data-only estimator, PPI, and PPI++, obtained by augmenting $m$ real data points with $n = 2,000$ auxiliary data points using the census dataset. Results are averaged over 50 experimental runs. Data features are normalized before applying the methods. One-sample t-tests indicate that AAE outperforms the other methods at the 90\% confidence level, except for those marked with a star.
+    \end{tabular}
+  \end{minipage}}
+\end{table}
+
+
+
+
+
+
+
+
+    
+\subsubsection{Synthetic Data Experiment}
+\label{sec:empirical-2-aae-ppi-synthetic}
+\begin{table}[!ht]
+\renewcommand{\arraystretch}{1.3}
+\centering
+{\footnotesize
+\caption{Bias Reduction from $\hat{\betavec}^{\sf P}$ under various dimensionality $d$(\%)}
+\label{tab:aae-ppi-synthetic}
+\begin{tabular}{cccccc}
+\hline\hline
+& $\hat{\betavec}^{\sf AAE}$ & $\hat{\betavec}^{\sf PPI}$ & $\hat{\betavec}^{\sf PPI++}$ & $p_{\max}$ \\\hline
+$d=2$ & -17.12 & -14.01 & -17.40 & 0.53* \\
+$d=4$ & -19.78 & -12.35 & -16.27 & 0.06 \\
+$d=6$ & -61.41 & -29.39 & -34.64 & 3E-08 \\
+$d=8$ & -145.71 & -5.95 & -66.36 & 2E-08 \\
+$d=10$ & -171.98 & -80.86 & -115.00 & 5E-06    \\\hline\hline
+\end{tabular}
+\begin{minipage}{15.5cm}
+\vspace{3pt}
+    \footnotesize
+    \begin{tabular}{p{1cm} p{13cm}}
+         \textbf{Notes}: & \setlength{\baselineskip}{1.2\baselineskip} 
+    % This table reports the MAPE for AAE, the human-data-only estimator, PPI, and PPI++, obtained by augmenting $m=100$ real data points with $n = 1,200$ auxiliary data points using the synthetic dataset with various feature dimension $d$. Results are averaged over 50 experimental runs. 
+    For each estimator under each experimental condition, we perform 50 independent runs and report the average MAPE difference between the focal estimator and $\hat{\betavec}^{\sf P}$. In each condition, the estimators have access to a real dataset with $m=100$ samples and an auxiliary dataset containing $n = 1{,}000$ auxiliary samples. The reported average MAPE difference thus represents the increase or decrease in MAPE resulting from incorporating these $n = 1{,}200$ auxiliary samples, relative to using only the $m$ real samples. For each experimental condition, we also report the maximum p-value from all pairwise t-tests comparing the MAPE of $\hat{\betavec}^{\sf AAE}$ with those of the other estimators under the column $p_{\max}$. The test shows that $\hat{\betavec}^{\sf AAE}$ outperforms other estimators at the 95\% significance level for all instances, except for the ones marked with a star.      
+    \end{tabular}
+  \end{minipage}}
+\end{table}
+
+% \begin{table}[!ht]
+% \renewcommand{\arraystretch}{1.3}
+% \centering
+% {\footnotesize 
+% \caption{MAPE under various $d$ values using different methods(\%)}
+% \label{tab:aae-ppi-synthetic}
+% \begin{tabular}{c|ccccc}
+% \hline\hline
+% \multicolumn{1}{l|}{} & \multicolumn{5}{c}{MAPE(\%)}           \\
+% Method               & $d=2$ & $d=4$ & $d=6$ & $d=8$ & $d=10$ \\\hline
+% Human-data only      & 0.51  & 0.48  & 0.94  & 2.51  & 2.66   \\
+% AAE                  & 0.34  & 0.28  & 0.32  & 0.97  & 0.86   \\
+% PPI                  & 0.36  & 0.36  & 0.64  & 2.29  & 1.80   \\
+% PPI++                & 0.33  & 0.32  & 0.59  & 1.78  & 1.47  \\\hline\hline
+% \end{tabular}}
+% \begin{minipage}{15.5cm}
+% \vspace{3pt}
+%     \footnotesize
+%     \begin{tabular}{p{1cm} p{13cm}}
+%          \textbf{Notes}: & \setlength{\baselineskip}{1.2\baselineskip} 
+%     This table reports the MAPE for AAE, the human-data-only estimator, PPI, and PPI++, obtained by augmenting $m=100$ real data points with $n = 1,200$ auxiliary data points using the synthetic dataset with various feature dimension $d$. Results are averaged over 50 experimental runs. 
+%     \end{tabular}
+%   \end{minipage}
+% \end{table}
+
+
+We conduct a simulated study to compare AAE and PPI-based methods as the number of features varies. We generated synthetic datasets with varying number of feature $d$. Details of the synthetic data generation procedure and the experimental setups can be found in \cref{app:empirical-aae-ppi-synthetic}. \cref{tab:aae-ppi-synthetic} summarizes the model performances using these datasets. The results in \cref{tab:aae-ppi-synthetic} support our previous intuition: when the number of features $d$ is small (i.e., $\x$ is low-dimensional), the loss function of the outcomes retains much of the information about the mapping function, and the two methods perform similarly. However, as the dimensionality of $\x$ increases, AAE significantly outperforms PPI-based methods. These findings are consistent with our results from the previous section.
+
+
+% \subsection{Impact of Model Misspecification and Nonparametric Estimates}
+% \label{sec:empirical-2-misspecification}
+
+
+% Since our AAE estimator critically relies on the first-stage estimation of $g(\cdot)$, whose form is usually unclear in practice, we further investigate the impact of model misspecification and non-parametric first stage estimates. To this end, we construct a ground truth model based on a nonparametric tree structure that cannot be well-approximated by standard parametric first-stage estimators, thereby inducing model misspecification (see \cref{app:empirical-2-misspecification} for details). Using this ground truth model, we evaluate the performance of AAE with different first-stage estimators across various primary set sizes $m$---we use the logistic regression model and neural networks of different numbers of hidden layers in our first-stage estimation, capturing varying levels of representational capacity.
+
+% % Neural networks are typically regarded as nonparametric models in the statistics and ML literature, of different numbers of hidden layers to capture varying levels of representational capacity.
+
+% \begin{table}[!t]
+% \renewcommand{\arraystretch}{1.3}
+% \centering
+% \caption{Bias Reduction of AAE from $\hat{\betavec}^{\sf P}$ using different first-stage estimators(\%)}
+% \label{tab:misspecification}
+% {\footnotesize 
+% % \begin{tabular}{c|cccc}\hline\hline
+% %                 & \multicolumn{4}{c}{MAPE(\%)}          \\
+% % First-stage estimator    & $d=10$ & $d=20$ & $d=30$  & $d=40$    \\\hline
+% % Human data only & 6.84  & 3.84  & 261.18 & 4914.61  \\
+% % Logistic Regression      & 2.99  & 1.72  & 2.77   & 2.10     \\
+% % NN with single hidden layer  & 1.30  & 1.07  & 1.50   & 1.25     \\
+% % NN with two hidden layers    & 1.07  & 1.00  & 1.19   & 1.17     \\\hline\hline
+% % \end{tabular}
+% \begin{tabular}{cccc}\hline\hline
+% $m$ & Logistic Regression  & NN with single hidden layer & NN with two hidden layers \\\hline
+% 50 & -26612.90 & -26792.41 & -26825.15 \\
+% 100 & -386.35 & -551.31 & -574.82 \\
+% 150 & -251.16 & -389.32 & -406.86 \\
+% 200 & -113.72 & -236.97 & -255.02\\\hline\hline
+% \end{tabular}
+
+% \begin{minipage}{15.5cm}
+% \vspace{3pt}
+%     \footnotesize
+%     \begin{tabular}{p{1cm} p{13cm}}
+%          \textbf{Notes}: & \setlength{\baselineskip}{1.2\baselineskip} 
+%     This table reports the bias reduction of AAE with various first-stage estimators, obtained by augmenting $m$ real data points with $n = 1,000$ auxiliary data points. Results are averaged over 50 experimental runs. The large bias reduction at $m=50$ arises from the non-convergence of the human-data-only estimator when trained on small datasets.
+%     \end{tabular}
+%   \end{minipage}}
+% \end{table}
+
+% As shown in \cref{tab:misspecification}, estimation error increases with a simpler first-stage model, indicating that model misspecification does affect the empirical performance of AAE. Nevertheless, the overall impact remains moderate compared with using human data only, and can be mitigated by employing more flexible first-stage estimators, such as neural networks with increasing complexities--which effectively bring us to a setting with nonparametric first-stage estimates. 
+
+% Based on our empirical and numerical findings, we offer two practical recommendations:
+% (1) when data are limited, a shallow neural network seem to guard against model misspecification and 
+% may serve as an effective choice; and
+% (2) when sufficient data are available, one can split the sample and use cross-validation in the first stage to select the optimal model.
+% That said, we also wish to clarify the boundaries of our current study. Our discussion and methodological design remain limited when confronted with challenges such as model misspecification and high dimensionality. 
+% In such scenarios, using non-parametric first-stage estimates--such as large and dense neural networks can be a promising approach.
+% However, in the nonparametric setting, the slower convergence rate—stemming from challenges such as overfitting and the need for regularization—introduces additional practical difficulties.
+% We leave the exploration towards these issues to the future research.
+
+% \color{black}

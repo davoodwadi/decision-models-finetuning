@@ -1,0 +1,185 @@
+\section{Supplemental Materials for the Empirical Studies}
+\label[app]{app:empirical}
+In this section, we present supplemental materials for the empirical studies in \cref{sec:empirical-1,sec:empirical-2}.
+\subsection{Efficient Frontier Diagram of Results in \texorpdfstring{\cref{sec:empirical-1-economic-value}}{}}
+Additional to the results in \cref{sec:empirical-1-economic-value}, we calculate the efficient frontier between estimation accuracy and recruitment costs using our methods compared to human-only data. For this analysis, we assume that recruiting each human subject costs $50$ USD, while querying the LLM incurs no cost. \cref{fig:efficient-frontier} illustrates how AAE extends the efficient frontier for conjoint market research. The yellow line represents the parameter estimation accuracy relative to the total costs of hiring human subjects, indicating the current trade-off between costs and accuracy for traditional conjoint analysis. The blue line shows the accuracy achieved with AAE, where AI-generated labels supplement the corresponding human data, significantly pushing the frontier outward. Additionally, the green line represents the accuracy of na\"ive augmentation with AI data. As observed, na\"ive utilization of AI data does not enhance efficiency. This figure further underscores the practical value of AAE, especially when the sample size is small. We note that, although the sample size may not be small at the population level, market research often focuses on responses from specific demographic groups, where sample sizes are typically smaller. This increases the value of our estimators significantly.
+
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[width=0.6\textwidth]{fig/efficient-frontier.pdf}
+    \caption{Conjoint estimation accuracy vs. market research costs}
+    \label{fig:efficient-frontier}
+    \begin{minipage}{\textwidth}
+    \footnotesize
+    \begin{tabular}{p{1cm} p{15cm}}
+         \hspace{-1mm}\textbf{Notes}: &  \setlength{\baselineskip}{1.2\baselineskip} The plot shows the parameter estimation accuracy (1 - MAPE) relative to the total costs of hiring human subjects with the traditional market research estimator $\hat{\bm{\beta}}^{\sf P}$, the na\"ive estimator $\hat{\bm{\beta}}^{\sf P}$, and the AAE estimator $\hat{\bm{\beta}}^{\sf AAE}$. The average accuracy and error bars, which show the standard deviations,  are computed over 50 random experimental runs with the same setup in \cref{subsec:empirical-setup-1}.
+\end{tabular} \end{minipage}
+\end{figure}    
+
+\subsection{Conjoint Data Generation using GPT for the Sports Car Dataset}
+\label[app]{app:empirical-dgp-car}
+In the following, we illustrate the conjoint data generation procedure with the sports car conjoint setting. The models and prompting follow the same setup as in \cref{subsec:data-generation}. In particular, we show how the previously established conjoint data generation framework can be applied in other settings. 
+
+\subsubsection{Basic Prompting.}
+In this part, we present an example of basic prompting following the three-step framework for the sports car data:
+
+\vspace{10pt}
+\begin{mdframed}
+{\footnotesize
+\textit{Input (I)}: You should act like a random person purchasing a sports car.\\
+\noindent \textit{Input (II)}: There are three options for you:\\
+A: Type of car model: Basic. Number of seats: 2. Type of transmission: Manual. Convertible roofs: Yes. Price: \$30k\\
+B: Type of car model: Basic. Number of seats: 4. Type of transmission: Manual. Convertible roofs: Yes. Price: \$40k \\
+C: Type of car model: Basic. Number of seats: 4. Type of transmission: Auto. Convertible roofs: Yes. Price: \$35k \\
+\noindent\textit{Input (III)}:  Which option would you choose as a random person? Your response should be a single letter A, B, or C.\\
+\noindent\textit{Output}: B
+}
+\end{mdframed}
+\vspace{10pt}
+
+\subsubsection{CoT Prompting.}
+In CoT prompting, we allow GPT to compare the features of cars systematically before reaching a final decision in part \textit{(III)}. An example of the CoT-based conversation is provided below. As illustrated, GPT demonstrates more personal insight when selecting sports cars compared to the vaccine context, with less clearly defined preference rankings involved in comparing each feature.
+
+\vspace{15pt}
+
+\begin{mdframed}
+{\footnotesize
+\textit{Input}: Compare the number of seats of A, B, and C, which one would you prefer?\\
+\textit{Output}: Well, I think I'd like option B. You know, the idea of cruising around in a sports car sounds fantastic, but practically speaking, having four seats could be a real benefit. I mean, the chances of me going to a sports event or on a road trip with friends are high. So, the extra seats could come handy then. Plus, it's not that much costly either. Only \$40k, right? I think it's worth the price.
+\\
+\textit{Input}: Compare the type of transmission of A, B, and C, which one would you prefer?\\
+\textit{Output}: To be honest, I've always enjoyed the feeling of control I get with a manual transmission. It makes driving more engaging for me. So, I'm leaning more towards options A or B. But if I consider the number of seats as well...you know, having room for more friends... I'd have to say option B is looking like a better fit for me.\\
+\textit{Input}: Compare the roof of A, B, and C, which one would you prefer?\\
+\textit{Output}: All the cars A, B, and C have convertible roofs, which is fantastic. I love the idea of feeling the wind in my hair while cruising down the highway on a sunny day. So, considering the other factors, I'm still leaning toward option B. Hard to beat the full experience it offers - a manual transmission, room for friends, and a convertible roof!\\
+\textit{Input}: Compare the price of A, B, and C, which one would you prefer?\\
+\textit{Output}: Option A is the least expensive at \$30k, which is quite tempting. But, I think I'd still stick with option B. It might be \$10k more, but it also offers two extra seats and the joy of manual driving, which fit my preferences better. I see it as an investment in fun experiences with friends and personal enjoyment when driving. It's looking like a worthwhile expenditure.\\
+\textit{Input}: Based on all the previous reasonings, which option would you choose?\\
+\textit{Output}: Based on all the comparisons around the number of seats, transmission type, roof, and price, I would choose Option B. It might be a bit more expensive, but it fits my needs in terms of the extra seating, manual transmission, and the awesome convertible roof.\\
+\textit{Input}: Return the choice in the previous answer as a single letter A, B, or C.\\
+\textit{Output}: B
+}
+\end{mdframed}
+
+
+\subsection{Synthetic Data Generation in \texorpdfstring{\cref{sec:empirical-2-aae-ppi-synthetic}}{}}
+\label[app]{app:empirical-aae-ppi-synthetic}
+We first generate a MNL ground truth model with $d \in \{2,4,6,8,10\}$ feature variables (not including the intercept) and $k=1$ option. The ground truth parameter $\bm{\beta}^*$ is randomly generated standard multivariate normal distribution. We randomly generate a dataset with $1,200$ data points based on the MNL ground truth model. For each real data sample $(\x_i, y_i)$, we generate the auxiliary label by adding a random perturbation to the real label. Specifically, $z_i = y_i$ with probability 0.9 and $z_i = 1 - y_i$ with probability 0.1. 
+
+% \subsection{Synthetic Data Generation in \texorpdfstring{\cref{sec:empirical-2-misspecification}}{}}
+% \label[app]{app:empirical-2-misspecification}
+% We first generate a non-parametric ground truth model with $d \in \{10,20,30,40\}$ binary feature variables (not including the intercept) and $k=1$ option. We generated a total of $\sqrt{d}$ clusters. Each cluster is centered at $\mathbf{w}$, where $\mathbf{w}$ is randomly sampled from the uniform distribution over $\{-1,0,1\}^d$. Each cluster correspond to a choice from $\{0,1\}$. For each $\x$, we compute $\x^{\sf diff} = \x_{(1)} - \x_{(2)}$ and find its closest cluster center $\mathbf{w}$ with respect to the $l-1$ norm. The choice $y$ given $\x$ is assigned as the choice corresponding to this cluster. We generate a data set with $1,200$ data points by randomly sampling from the ground truth model. For each real data sample $(\x_i, y_i)$, we generate the auxiliary label by adding a random perturbation to the real label. Specifically, $z_i = y_i$ with probability 0.7 and $z_i = 1 - y_i$ with probability 0.3. 
+% \color{black}
+\subsection{Empirical Results Evaluated by the MSE Metric}
+\label[app]{app:empirical-mse}
+
+
+\begin{table}[!ht]
+\renewcommand{\arraystretch}{1.3}
+\centering
+{\footnotesize
+\caption{Bias Reduction with MSE in Empirical Setting I}
+\label{tab:bias-reduction-mse}
+\begin{tabular}{cccccccccc}\hline\hline
+& & \multicolumn{4}{c}{$m=50$} & \multicolumn{4}{c}{$m=100$} \\\hline
+\textbf{Model}  & \textbf{Prompt} & $\hat{\betavec}^{\sf A}$ & $\hat{\betavec}^{\sf Naive}$  & $\hat{\betavec}^{\sf AAE}$  & $p_{\max}$ & $\hat{\betavec}^{\sf A}$& $\hat{\betavec}^{\sf Naive}$  & $\hat{\betavec}^{\sf AAE}$   & $p_{\max}$ \\\hline
+\multirow{2}{*}{\texttt{GPT-3.5-Turbo-0613}} & Basic & -8.15 & -15.15 & -18.18 & 3e-10 & 3.05 & -4.65 & -6.88 & 2e-06 \\
+ & COT & 36.84 & 28.92 & -19.14 & 9e-11 & 48.04 & 33.88 & -7.86 & 1e-09 \\
+\multirow{2}{*}{\texttt{GPT-3.5-Turbo-0125}} & Basic & -13.62 & -14.86 & -17.85 & 5e-10 & -2.42 & -4.00 & -6.81 & 1e-07 \\
+ & COT & 18.62 & 10.52 & -19.25 & 1e-10 & 29.82 & 16.76 & -7.69 & 1e-08 \\
+\multirow{2}{*}{\texttt{GPT-4}} & Basic & 42.76 & 37.78 & -20.24 & 2e-11 & 53.96 & 42.71 & -8.43 & 2e-10 \\
+ & COT & 49.96 & 40.15 & -20.05 & 4e-11 & 61.15 & 44.53 & -8.21 & 5e-10 \\
+\multirow{3}{*}{\texttt{GPT-4o}} & Basic & 40.16 & 33.81 & -19.94 & 3e-11 & 51.35 & 39.53 & -8.13 & 3e-10 \\
+ & COT & 41.53 & 32.26 & -20.13 & 3e-11 & 52.73 & 37.12 & -8.03 & 8e-10 \\
+ & FS & 44.72 & 37.47 & -20.37 & 8e-12 & 55.92 & 43.50 & -8.38 & 4e-10 \\
+\texttt{GPT-4o Fine-tuned} & Basic & 36.81 & 31.37 & -20.81 & 4e-12 & 48.01 & 35.79 & -9.44 & 5e-12 \\\hline
+& & \multicolumn{4}{c}{$m=150$} & \multicolumn{4}{c}{$m=200$} \\\hline
+\textbf{Model}  & \textbf{Prompt} & $\hat{\betavec}^{\sf A}$& $\hat{\betavec}^{\sf Naive}$  & $\hat{\betavec}^{\sf AAE}$   & $p_{\max}$ & $\hat{\betavec}^{\sf A}$& $\hat{\betavec}^{\sf Naive}$  & $\hat{\betavec}^{\sf AAE}$   & $p_{\max}$ \\\hline
+\multirow{2}{*}{\texttt{GPT-3.5-Turbo-0613}} & Basic & 9.17 & -1.52 & -1.22 & 0.816* & 10.13 & -1.07 & -0.18 & 0.999* \\
+ & COT & 54.16 & 32.80 & -2.23 & 8e-04 & 55.12 & 28.44 & -0.92 & 0.015 \\
+\multirow{2}{*}{\texttt{GPT-3.5-Turbo-0125}} & Basic & 3.70 & 0.53 & -1.23 & 0.035 & 4.66 & 1.78 & -0.12 & 0.401* \\
+ & COT & 35.95 & 18.67 & -1.96 & 0.003 & 36.91 & 17.67 & -0.92 & 0.022 \\
+\multirow{2}{*}{\texttt{GPT-4}} & Basic & 60.08 & 45.44 & -2.96 & 4e-05 & 61.05 & 41.60 & -1.91 & 7e-06 \\
+ & COT & 67.28 & 45.76 & -2.66 & 1e-04 & 68.24 & 40.20 & -1.50 & 3e-04 \\
+\multirow{3}{*}{\texttt{GPT-4o}} & Basic & 57.48 & 41.23 & -2.61 & 2e-04 & 58.44 & 37.61 & -1.31 & 3e-04 \\
+ & COT & 58.86 & 37.42 & -2.59 & 2e-04 & 59.82 & 32.62 & -1.42 & 8e-04 \\
+ & FS & 62.04 & 45.43 & -3.12 & 1e-05 & 63.00 & 41.61 & -1.71 & 2e-05 \\
+\texttt{GPT-4o Fine-tuned} & Basic & 54.13 & 38.74 & -4.20 & 2e-08 & 55.09 & 34.00 & -2.73 & 5e-10
+\\\hline\hline
+\end{tabular} 
+\begin{minipage}{15.5cm}
+    \footnotesize
+    \vspace{3pt}
+    \begin{tabular}{p{1cm} p{14cm}}
+         \textbf{Notes}: & \setlength{\baselineskip}{1.2\baselineskip} 
+    This table presents the change in the MSE after augmented $n=1,000$ GPT-generated samples to a real set with $m$ samples with the AI-only estimator $\hat{\betavec}^{\sf A}$, na\"ive estimator $\hat{\betavec}^{\sf Naive}$ and the AAE estimator $\hat{\betavec}^{\sf AAE}$, respectively, averaged over 50 experimental runs. As in \cref{sec:empirical-1}, AAE significantly reduces error from the primary set, and outperforms the AI-only and na\"ive augmentation estimators. Pairwise t-tests show that $\hat{\betavec}^{\sf AAE}$ outperforms $\hat{\betavec}^{\sf P}$, $\hat{\betavec}^{\sf A}$, and $\hat{\betavec}^{\sf Naive}$ at the 95\% significance level for all instances, except for the ones marked with a star. The maximum p-value of the pairwise t-tests are shown under the column $p_{\max}$.
+    \end{tabular}
+  \end{minipage}
+}
+\end{table}
+In this section, we present a robustness check for the results in \cref{sec:empirical-1} with an alternative evaluation metric, i.e., the Mean Squared Error (MSE). The empirical setups are the same as \cref{sec:empirical-1}. 
+In particular, to assess the performance of the estimators, we calculated the MSE aggregated across all features as:
+\begin{equation*}
+    {\sf MSE}^l ~=~ \frac{1}{d}\sum_{j=1}^d (\hat{\beta}^l_j - \beta^*_j)^2 \,,~~~ \forall l \,\in\, \{{\sf P}, {\sf A}, {\sf Naive}, {\sf AAE}\}\,.
+\end{equation*}
+For each combination of $(m, n)$, we conducted 50 independent experimental runs and averaged the MSE as the final performance indicator. In the subsequent discussion, as in the main text, we use ${\sf MSE}^{\sf P}$ as the benchmark, and report the change in MSE to compare different estimators. For example, if ${\sf MSE}^{\sf AAE} - {\sf MSE}^{\sf P}$ is a negative number, the experiment then suggests that the AAE outperforms the primary-data-only estimator. 
+
+\cref{tab:bias-reduction-mse} summarizes the change in MSE of $\hat{\betavec}^{\sf A}$, $\hat{\betavec}^{\sf Naive}$, and $\hat{\betavec}^{\sf AAE}$, using $\hat{\betavec}^{\sf P}$ as the benchmark. Similarly to the findings in \cref{sec:empirical-1}, AAE significantly reduces MSE in all scenarios, achieving the best performance using fine-tuned \texttt{GPT-4o}, while the AI-only or na\"ive method tends to elicit more errors.
+In general, AAE's performance improves with higher versions of GPT and more advanced prompting methods. Na\"ive or AI-only methods do not exhibit a consistent correlation with higher versions of GPT and could induce more errors with more sophisticated prompting. Moreover, fine-tuning \texttt{GPT-4o} does not improve the performance of na\"ive or AI-only methods. 
+
+
+
+We evaluated the percentage of data saved using AAE with various GPT models based on the MSE reduction. Specifically, similar to the main text, for a given MSE reduction achieved by applying AAE to a real dataset of size $n_1$, we calculated the amount of real data samples, $n_2$, required to achieve the same error reduction without AI augmentation. The percentage of data saved is then estimated as $((n_2 - n_1)/n_2) \times 100\%$. \cref{tab:saving-mse} summarizes the percentage of data that can be saved using AAE. Results show our method saves up to 77.7\% of data across different models, prompts, and primary data sizes. When the primary set is small ($m=50$), AAE saves between 67.7\% and 77.7\% of data samples, regardless of the GPT model or prompt design. With a moderate primary set size ($m=100, 150$), savings range from 12.8\% to 54.5\%, again consistent across GPT models and prompts. These results verifies the robustness of our findings in \cref{sec:empirical-1}.
+
+
+\begin{table}[!h]
+\renewcommand{\arraystretch}{1.3}
+\centering
+{\footnotesize
+\caption{Percentage of Saving in Data Size Evaluated by MSE in Empirical Setting I (\%)}
+\label{tab:saving-mse}
+\begin{tabular}{cccccc}\hline\hline
+Model    & Prompt & $m=50$          & $m=100$         & $m=150$         &$m=200$         \\\hline
+\multirow{2}{*}{GPT-3.5-Turbo-0613} & Basic & 69.13 (0.47) & 37.53 (1.32) & 12.79 (1.68) & -17.93 (2.47)* \\
+ & COT & 73.58 (1.54) & 45.95 (2.64) & 25.21 (3.24) & -5.31 (4.47)* \\
+\multirow{2}{*}{GPT-3.5-Turbo-0125} & Basic & 67.72 (0.64) & 36.97 (1.26) & 12.91 (1.59) & -18.98 (2.57)* \\
+ & COT & 74.25 (1.12) & 44.75 (1.94) & 22.71 (2.49) & -3.78 (3.38)* \\
+\multirow{2}{*}{GPT-4} & Basic & 77.33 (1.60) & 49.29 (2.85) & 33.31 (3.29) & 10.44 (3.96) \\
+ & COT & 76.36 (1.84) & 47.92 (3.27) & 29.47 (3.27) & 3.60 (4.32)* \\
+\multirow{3}{*}{GPT-4o} & Basic & 76.21 (1.76) & 47.07 (3.12) & 28.60 (3.51) & 0.58 (5.12)* \\
+ & COT & 76.71 (1.53) & 46.94 (2.74) & 29.92 (2.78) & 3.15 (4.13)* \\
+ & FS & 77.15 (1.69) & 48.78 (3.26) & 34.86 (3.24) & 6.80 (5.02) \\
+GPT-4o Fine-tuned & Basic & 77.70 (1.87) & 54.49 (3.48) & 43.56 (3.07) & 18.71 (4.87)     \\\hline\hline
+\end{tabular}}
+\begin{minipage}{15.5cm}
+\vspace{3pt}
+    \footnotesize
+    \begin{tabular}{p{1cm} p{14cm}}
+         \textbf{Notes}: & \setlength{\baselineskip}{1.2\baselineskip} 
+    This table presents the percentage of data saved using AAE with various GPT models, averaged over 50 experimental runs in the first empirical setting. The standard errors are shown in parentheses. One sample t-tests show that the savings are all significant at the 90\% level except for the ones marked with a star.
+    \end{tabular}
+  \end{minipage}
+\end{table}
+
+
+% \begin{table}[ht]
+% \renewcommand{\arraystretch}{1.3}
+% \centering
+% {\footnotesize
+% \caption{Percentage of saving in data size in empirical setting II(\%)}
+% \label{tab:saving-2}
+% \begin{tabular}{cccccc}\hline\hline
+% ~~~~~~~~~~~~~~~~~~~~~~Model~~~~~~~~~~~~~~~~~~~~~~                               & ~~~Prompt~~~ & ~~~$m=50$~~~          & ~~~$m=100$~~~         & ~~~$m=150$~~~         &~~~$m=200$~~~         \\\hline
+% \multirow{2}{*}{GPT-3.5-Turbo-0613} & Basic & 60.08 & 38.94 & 35.00 & 18.60 \\
+%  & CoT & 55.27 & 36.57 & 28.71 & 15.00 \\\hline
+% \multirow{2}{*}{GPT-3.5-Turbo-0125} & Basic & 49.01 & 37.05 & 30.92 & 17.58 \\
+%  & CoT & 56.78 & 39.00 & 30.35 & 17.67 \\\hline
+% \multirow{2}{*}{GPT-4} & Basic & 49.41 & 35.11 & 27.76 & 13.49 \\
+%  & CoT & 61.88 & 39.45 & 36.45 & 17.64 \\\hline
+% \multirow{3}{*}{GPT-4o} & Basic & 44.09 & 35.61 & 27.58 & 18.49 \\
+%  & CoT & 47.40 & 33.79 & 33.38 & 16.89 \\
+%  & FS & 58.68 & 41.57 & 38.58 & 18.40 \\\hline
+% GPT-4o Fine-tuned & Basic & 50.67 & 34.81 & 21.82 & 12.71\\\hline\hline
+% \end{tabular}
+% }
+% \end{table}

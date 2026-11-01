@@ -1,0 +1,82 @@
+\newcites{appendix}{Online Appendix References}
+\newtheorem{thm}{Theorem}[section]
+\newtheorem{cor}[thm]{Corollary}
+\newtheorem{lem}[thm]{Lemma}
+\newtheorem{prop}[thm]{Proposition}
+\newtheorem{assm}[thm]{Assumption}
+\newtheorem{defn}[thm]{Definition}
+\newtheorem{rem}[thm]{Remark}
+\newtheorem{cond}{Condition}
+\newtheorem{examp}[thm]{Example}
+\newtheorem{stmt}{Statement}
+
+
+\makeatletter
+\def\moverlay{\mathpalette\mov@rlay}
+\def\mov@rlay#1#2{\leavevmode\vtop{%
+   \baselineskip\z@skip \lineskiplimit-\maxdimen
+   \ialign{\hfil$\m@th#1##$\hfil\cr#2\crcr}}}
+\newcommand{\charfusion}[3][\mathord]{
+    #1{\ifx#1\mathop\vphantom{#2}\fi
+        \mathpalette\mov@rlay{#2\cr#3}
+      }
+    \ifx#1\mathop\expandafter\displaylimits\fi}
+\makeatother
+
+\newcommand{\Integer}{\mathbb{Z}}
+\newcommand{\ind}{\mathbbm{1}}
+\newcommand{\Real}{\mathbb{R}}
+\newcommand{\x}{\mathbf{x}}
+\newcommand{\y}{\mathbf{y}}
+\newcommand{\thetavec}
+{\bm{\theta}}
+\newcommand{\Sigmavec}
+{\bm{\Sigma}}
+\newcommand{\betavec}{\bm{\beta}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\Dscr}{\mathcal{D}}
+\newcommand{\Lcal}{\mathcal{L}}
+\newcommand{\Kscr}{\mathcal{K}}
+\newcommand{\Fscr}{\mathscr{F}}
+\newcommand{\fvec}{\mathbf{f}} 
+\newcommand{\bvec}{\mathbf{b}}
+\newcommand{\avec}{\mathbf{a}}
+\newcommand{\hvec}{\mathbf{h}} 
+\newcommand{\Nscr}{\mathcal{N}}
+\newcommand{\Xscr}{\mathcal{X}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\event}
+{\mathcal{E}}
+\newcommand{\pconverge}{\overset{\text{\upshape{P}}}{\rightarrow}}
+\newcommand{\Indicator}{
+ \mathds{1}}
+\newcommand{\pvec}{\mathbf{p}}
+\newcommand{\evec}
+{\mathbf{u}}
+\newcommand{\wvec}
+{\mathbf{w}}
+\newcommand{\qvec}{\mathbf{q}}
+\newcommand{\alphavec}{\bm{\alpha}}
+\newcommand{\rvec}{\mathbf{r}}
+\newcommand{\uvec}{\mathbf{u}}
+\newcommand{\Avec}{\mathbf{A}}
+\newcommand{\Bvec}{\mathbf{B}}
+\newcommand{\Jvec}{\mathbf{J}}
+\newcommand{\Ivec}{\mathbf{I}}
+\newcommand{\Bscr}{\mathcal{B}}
+\newcommand{\gvec}{\mathbf{g}}
+\newcommand{\Omegavec}{\bm{\Omega}}
+\newcommand{\Lambdavec}{\bm{\Lambda}}
+\newcommand{\epsvec}{\bm{\epsilon}} 
+\newcommand{\psivec}{\bm{\psi}}
+\newcommand{\Gammavec}{\bm{\Gamma}}
+\newcommand{\gammavec}{\bm{\gamma}}
+\newcommand{\sigmavec}{\bm{\sigma}}
+% \newcommand{\Sigmavec}{\bm{\Sigma}}
+\newcommand{\Ovec}{\bm{0}}
+
+
+\newcommand{\revise}[1]{{\color{black}#1}}
+
+\newcommand{\mx}[1]{{\color{magenta}#1}}
+\newcommand{\heng}[1]{{\color{black}#1}}

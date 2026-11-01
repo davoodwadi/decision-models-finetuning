@@ -1,0 +1,13 @@
+\section{General Discussion}
+\label{sec:conclusion}
+
+This paper presents a new approach for incorporating LLM-generated data into conjoint analysis, addressing the growing need for scalable and cost-effective methods in market research. While LLMs can mimic human-like responses, our study underscores the persistent errors and limitations inherent in directly using these AI-generated responses. Through our proposed data augmentation framework, which combines LLM-generated labels with real data, we demonstrate that it is possible to extract valuable insights from AI-generated data while mitigating errors that can distort market research outcomes.
+Our theoretical framework, inspired by transfer learning and knowledge distillation, establishes a method to transfer the valuable but imperfect knowledge embedded in LLMs into a simpler, aligned model. This approach is validated empirically, where we show that our estimator not only reduces errors but also achieves significant data savings. Importantly, our findings highlight that while state-of-the-art LLMs, such as GPT-4, can improve the quality of AI-generated labels, their usefulness ultimately depends on how we integrate them with real data.
+
+Looking ahead, our method opens the door for more effective use of LLMs in market research and beyond. As LLM technology advances, this framework can serve as a foundation for further innovations in data augmentation, helping researchers and practitioners balance the trade-offs between AI-generated and human-generated data. Future work may explore how this approach can be extended to other domains where real data is scarce, unlocking new applications for AI in understanding human preferences and behaviors. Future work could explore additional ways to enhance the usability of LLMs in combination with our methods. For instance, a promising research direction is examining the impact of incorporating different personas into LLM queries to generate data that more closely resembles a specific set of users. \revise{Finally, the framework extends well beyond the specific model and data-generation process considered here. For example, Appendix \ref{app:regression} discusses a continuous target in a regression setting. Additional extensions—such as accommodating general loss functions rather than just the KL-divergence or square loss—represent promising directions for future research.}
+
+
+
+
+% while our paper focuses on conjoint analysis, the underlying theory applies more broadly to other knowledge distillation tasks involving LLMs, such as transferring knowledge from a teacher model to a student model. This opens up promising opportunities to generalize our ideas to other contexts and explore their statistical properties.
+
