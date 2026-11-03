@@ -23,11 +23,61 @@ PERSONA_NAMES = {
     "US_REG": "Region",
     "US_ETHN1": "Ancestry",
     "RACE": "Race",
+    "HHSIZE": "How many people, including yourself, live in your household?",
 }
 
 DATASET_PERSONA_COLS = {
-    "issp": [c for c in PERSONA_NAMES if c != "RACE"],
+    "issp": [c for c in PERSONA_NAMES if c not in {"RACE", "HHSIZE"}],
+    "twin2k": [
+        "c_alphan",
+        "US_REG",
+        "SEX",
+        "AGE",
+        "EDULEVEL",
+        "RACE",
+        "MARITAL",
+        "RELIGGRP",
+        "ATTEND",
+        "US_PRTY",
+        "US_INC",
+        "PARTY_LR",
+        "HHSIZE",
+        "MAINSTAT",
+    ],
 }
+
+TWIN2K_QID_TO_PERSONA = {
+    "QID11": "US_REG",
+    "QID12": "SEX",
+    "QID13": "AGE",
+    "QID14": "EDULEVEL",
+    "QID15": "RACE",
+    "QID17": "MARITAL",
+    "QID18": "RELIGGRP",
+    "QID19": "ATTEND",
+    "QID20": "US_PRTY",
+    "QID21": "US_INC",
+    "QID22": "PARTY_LR",
+    "QID23": "HHSIZE",
+    "QID24": "MAINSTAT",
+}
+
+US_ETHN1_LEVELS = [
+    "Algeria", "American Indian", "American only", "Arabic", "Argentina", "Australia", "Austria",
+    "Bangladesh", "Belgium", "Belize", "Bolivia", "Brazil", "Canada", "Canada (French)", "Chile",
+    "China", "Colombia", "Costa Rica", "Cuba", "Czechoslovakia", "Democratic Republic of the Congo",
+    "Denmark", "Dominican Republic", "Ecuador", "Egypt", "El Salvador", "England and Wales",
+    "Ethiopia", "Finland", "France", "French Guiana", "Germany", "Greece", "Guatemala", "Guyana",
+    "Haiti", "Honduras", "Hungary", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel",
+    "Italy", "Jamaica", "Japan", "Jordan", "Kenya", "Lithuania", "Mexico",
+    "Netherlands (Dutch / Holland)", "New Zealand", "Nicaragua", "Nigeria", "Norway", "Other",
+    "Other African", "Other Asian", "Other Caribbean", "Other Central American", "Other European",
+    "Other Middle Eastern", "Other North American", "Other Oceanean", "Other South American",
+    "Other Spanish", "Pakistan", "Panama", "Peru", "Philippines", "Poland", "Portugal",
+    "Puerto Rico", "Romania", "Russia (USSR)", "Samoa", "Saudi Arabia", "Scotland", "South Africa",
+    "South Korea", "Spain", "Sudan", "Suriname", "Sweden", "Switzerland", "Syria", "Tanzania",
+    "Thailand", "Turkey", "Uganda", "Uruguay", "Venezuela", "Vietnam", "Yemen", "Yugoslavia",
+]
 
 GLOBAL_PERSONA_LEVELS = {
     "c_alphan": ["United States"],
@@ -105,6 +155,29 @@ GLOBAL_PERSONA_LEVELS = {
         "Very conservative",
         "Other",
     ],
+    "HHSIZE": ["1", "2", "3", "4", "More than 4"],
+    "MAINSTAT": [
+        "Full-time employment",
+        "Part-time employment",
+        "Self-employed",
+        "In paid work",
+        "Unemployed",
+        "Home-maker",
+        "Student",
+        "Retired",
+        "Permanently sick or disabled",
+        "Other",
+    ],
+    "VOTE_LE": ["Yes", "No"],
+    "URBRURAL": [
+        "A big city",
+        "The suburbs or outskirts of a big city",
+        "A town or a small city",
+        "A country village",
+        "A farm or home in the country",
+    ],
+    "UNION": ["Yes", "No"],
+    "US_ETHN1": US_ETHN1_LEVELS,
 }
 
 PERSONA_MAPS = {
@@ -402,6 +475,53 @@ PERSONA_MAPS = {
             7: "Very conservative",
         },
     },
+    "HHSIZE": {
+        "twin2k": {
+            "1": "1",
+            "2": "2",
+            "3": "3",
+            "4": "4",
+            "More than 4": "More than 4",
+        },
+    },
+    "MAINSTAT": {
+        "issp": {
+            "In paid work": "In paid work",
+            "Unemployed and looking for a job": "Unemployed",
+            "Domestic work": "Home-maker",
+            "In education": "Student",
+            "Retired": "Retired",
+            "Permanently sick or disabled": "Permanently sick or disabled",
+            "Other": "Other",
+        },
+        "twin2k": {
+            "Full-time employment": "Full-time employment",
+            "Part-time employment": "Part-time employment",
+            "Self-employed": "Self-employed",
+            "Unemployed": "Unemployed",
+            "Home-maker": "Home-maker",
+            "Student": "Student",
+            "Retired": "Retired",
+        },
+    },
+    "VOTE_LE": {
+        "issp": {"Yes": "Yes", "No": "No"},
+    },
+    "URBRURAL": {
+        "issp": {
+            "A big city": "A big city",
+            "The suburbs or outskirts of a big city": "The suburbs or outskirts of a big city",
+            "A town or a small city": "A town or a small city",
+            "A country village": "A country village",
+            "A farm or home in the country": "A farm or home in the country",
+        },
+    },
+    "UNION": {
+        "issp": {"Yes": "Yes", "No": "No"},
+    },
+    "US_ETHN1": {
+        "issp": {v: v for v in US_ETHN1_LEVELS},
+    },
 }
 
 
@@ -437,20 +557,25 @@ def map_persona_series(series: pd.Series, attr: str, dataset: str) -> pd.Series:
 def apply_persona_mapping(df: pd.DataFrame, dataset: str) -> pd.DataFrame:
     """Validate dataset persona columns and map all configured persona attributes into global levels."""
     expected_cols = DATASET_PERSONA_COLS[dataset]
+    df = df.copy()
     if dataset == "issp":
         persona_cols = list(df.columns[1:df.columns.get_loc("v")])
         if persona_cols != expected_cols:
             raise ValueError(f"{dataset}: persona columns mismatch: {persona_cols} != {expected_cols}")
+    elif dataset == "twin2k":
+        if "c_alphan" not in df.columns:
+            df["c_alphan"] = "United States"
+        for qid, attr in TWIN2K_QID_TO_PERSONA.items():
+            if attr not in df.columns:
+                if qid not in df.columns:
+                    raise ValueError(f"twin2k: missing column {qid} for persona attribute {attr}")
+                df[attr] = df[qid]
     else:
         missing = [c for c in expected_cols if c not in df.columns]
         if missing:
             raise ValueError(f"{dataset}: missing expected persona columns {missing}")
 
-    df = df.copy()
     for col in expected_cols:
-        if (col == "AGE" and dataset in {"issp", "covid", "grummon"}) or (
-            col in PERSONA_MAPS and dataset in PERSONA_MAPS[col]
-        ):
-            df[col] = map_persona_series(df[col], col, dataset)
+        df[col] = map_persona_series(df[col], col, dataset)
     return df
 
