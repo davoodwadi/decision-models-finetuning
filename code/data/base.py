@@ -297,13 +297,18 @@ def make_grouped_view(group_records, rng=None, persona_names=ALL_PERSONA_NAMES):
     return {"state": state, "questions": questions}
 
 
+def _record_chars(r):
+    """Estimated formatted character length including Kev chat-template framing per question and per option."""
+    return 32 + len(r["question"]) + sum(24 + len(str(o)) for o in r["option_texts"])
+
+
 def group_train_records(records, *, max_questions=8, max_chars=2400, rng=None):
     """Group training records by persona state into length-matched multi-question chunks.
 
     - Groups records sharing `tuple(sorted(r["personas"].items()))`.
-    - Shuffles within each persona state (if `rng` is given), then sorts by question+options character length
+    - Shuffles within each persona state (if `rng` is given), then sorts by formatted question+options length
       so questions packed in the same group have minimal branch padding.
-    - Splits each persona's questions into chunks bounded by `max_questions` and `max_chars` (bounding peak VRAM).
+    - Splits each persona's questions into chunks bounded by `max_questions` and padded `max_chars` (bounding peak VRAM).
     """
     if max_questions < 1:
         raise ValueError(f"max_questions must be >= 1, got {max_questions}")
@@ -320,15 +325,15 @@ def group_train_records(records, *, max_questions=8, max_chars=2400, rng=None):
         state_recs = list(state_recs)
         if rng is not None and len(state_recs) > 1:
             rng.shuffle(state_recs)
-        state_recs.sort(key=lambda r: len(r["question"]) + sum(len(str(o)) for o in r["option_texts"]))
-        cur, cur_chars = [], 0
+        state_recs.sort(key=_record_chars)
+        cur = []
         for r in state_recs:
-            q_chars = len(r["question"]) + sum(len(str(o)) for o in r["option_texts"])
-            if cur and (len(cur) >= max_questions or cur_chars + q_chars > max_chars):
+            q_chars = _record_chars(r)
+            # Since state_recs is sorted ascending by q_chars, adding r pads all (len(cur) + 1) branches to q_chars
+            if cur and (len(cur) >= max_questions or (len(cur) + 1) * q_chars > max_chars):
                 groups.append(cur)
-                cur, cur_chars = [], 0
+                cur = []
             cur.append(r)
-            cur_chars += q_chars
         if cur:
             groups.append(cur)
 
