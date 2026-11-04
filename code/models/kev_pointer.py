@@ -18,7 +18,13 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "kev"))
 from kev.checkpoint import Checkpoint, LoadOptions, write_meta          # noqa: E402
 from kev.checkpoint import load as load_checkpoint                       # noqa: E402
-from kev.model import MAX_STATE, DecisionModel, encode, load_tokenizer  # noqa: E402
+from kev.model import (                                                 # noqa: E402
+    SERVE_MAX_BRANCH,
+    SERVE_MAX_STATE,
+    DecisionModel,
+    encode,
+    load_tokenizer,
+)
 
 from models.base import SurveyModel, options_and_targets                 # noqa: E402
 
@@ -39,18 +45,27 @@ class KevEncoder:
 
     def prepare(self, view):
         record, questions = options_and_targets(view)
-        return encode(self.tok, record, option_isolation=self.option_isolation), questions
+        return (
+            encode(
+                self.tok,
+                record,
+                max_state=SERVE_MAX_STATE,
+                max_branch=SERVE_MAX_BRANCH,
+                strict=True,
+                option_isolation=self.option_isolation,
+            ),
+            questions,
+        )
 
     def preview(self, view):
         """The encoded record decoded back to text, for reading: special tokens included, each special token except
         <|box_end|> on a new line (display only: Kev reads no such line breaks)."""
         enc, _ = self.prepare(view)
-        cut = f", CUT to {MAX_STATE}" if enc["state_truncated"] else ""
         text = self.tok.decode(enc["ids"])
         for token in ("<|fim_prefix|>", "<|fim_middle|>", "<|fim_suffix|>"):   # state, question, decide: own lines
             text = text.replace(token, f"\n{token}\n")
         text = text.replace("<|box_start|>", "\n<|box_start|>")                 # one option per line
-        header = f"{len(enc['ids'])} tokens; state {enc['state_tokens']} of at most {MAX_STATE}{cut}"
+        header = f"{len(enc['ids'])} tokens; state {enc['state_tokens']} tokens (no truncation, strict=True)"
         return header, text.strip("\n").replace("\n\n", "\n")
 
 
@@ -108,8 +123,8 @@ class KevPointerModel(SurveyModel):
         tok, net = load_checkpoint(run, device, LoadOptions(dtype=dtype, temperature=1.0))
         return cls(net, tok, Checkpoint(run).meta, "loaded")
 
-    def forward(self, batch):
-        return self.net.forward_batch(batch)
+    def forward(self, batch, shared_prefix=False):
+        return self.net.forward_batch(batch, shared_prefix=shared_prefix)
 
     def decoder(self):
         return self.net.lm
