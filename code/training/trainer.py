@@ -1,7 +1,10 @@
 import contextlib
+import dataclasses
 import gc
+import hashlib
 import json
 import math
+import pickle
 import random
 import shutil
 import sys
@@ -12,14 +15,18 @@ import pandas as pd
 import torch
 
 from data.base import (
+    DEFAULT_CACHE_DIR,
     CudaGraphs,
     _record_chars,
     evaluate_model,
     group_train_records,
     make_grouped_view,
+    release_cuda_graphs,
 )
 from models.kev_pointer import Checkpoint, KevPointerModel, LoadOptions
 from training.plotter import TrainingPlotter
+
+EVAL0_CACHE_VERSION = 2
 
 
 def free_gpu():
@@ -45,11 +52,25 @@ def save_checkpoint(model, save_dir, name, extra):
     tmp.rename(folder)
 
 
+def update_checkpoint_meta(model, save_dir, name, extra):
+    """Update `head.pt` and `metrics.json` in `save_dir / name` without rewriting adapter/tokenizer files."""
+    folder = Path(save_dir) / name
+    head = {k: v.detach().cpu() for k, v in model.net.head.state_dict().items()}
+    meta = dataclasses.replace(model.meta, head=head, temperature=1.0, extra={**model.meta.extra, **extra})
+    tmp_head = folder / "head.pt.tmp"
+    torch.save(meta.to_dict(), tmp_head)
+    tmp_head.replace(folder / "head.pt")
+    tmp_metrics = folder / "metrics.json.tmp"
+    tmp_metrics.write_text(json.dumps(extra, indent=2) + "\n")
+    tmp_metrics.replace(folder / "metrics.json")
+
+
 def load_checkpoint(
     ckpt_dir,
     device="cuda",
     *,
     trainable=False,
+    lora_rank=None,
     weights_dtype="bf16",
     gradient_checkpointing=False,
 ):
@@ -58,7 +79,9 @@ def load_checkpoint(
         raise FileNotFoundError(f"Checkpoint not found: {ckpt_dir / 'head.pt'}")
     free_gpu()
     if trainable:
-        m = KevPointerModel.build(str(ckpt_dir), device=device, weights_dtype=weights_dtype)
+        m = KevPointerModel.build(
+            str(ckpt_dir), device=device, lora_rank=lora_rank, weights_dtype=weights_dtype
+        )
         m.net.head.temperature = 1.0
         if gradient_checkpointing:
             m.enable_checkpointing()
@@ -71,12 +94,13 @@ def load_checkpoint(
 
 
 def normalize_eval_sets(eval_records):
-    """Normalize `eval_records` into a list of grouped bundle dicts and verify exactly one has `valid=True`."""
+    """Normalize `eval_records` into shallow-copied grouped bundle dicts and verify exactly one has `valid=True`."""
     if isinstance(eval_records, dict) and "records" in eval_records:
-        eval_records["valid"] = True
-        eval_sets = [eval_records]
+        copied = dict(eval_records)
+        copied["valid"] = True
+        eval_sets = [copied]
     elif isinstance(eval_records, (list, tuple)):
-        eval_sets = list(eval_records)
+        eval_sets = [dict(s) if isinstance(s, dict) else s for s in eval_records]
     else:
         raise ValueError("eval_records must be a grouped evaluation dict or a list of grouped evaluation dicts")
 
@@ -112,7 +136,7 @@ class GroupedTrainer:
         *,
         model=None,
         base_model=None,
-        lora_rank=64,
+        lora_rank=None,
         init_from=None,
         device="cuda",
         weights_dtype="fp32",
@@ -128,8 +152,8 @@ class GroupedTrainer:
         max_questions_per_group=64,
         max_chars_per_group=20_000,
         eval_batch_size=128,
-        log_every=20,
         val_every=300,
+        eval_at_start=True,
         samples_per_epoch=None,
         seed=0,
         resume=False,
@@ -156,8 +180,8 @@ class GroupedTrainer:
         self.max_questions_per_group = max_questions_per_group
         self.max_chars_per_group = max_chars_per_group
         self.eval_batch_size = eval_batch_size
-        self.log_every = log_every
         self.val_every = val_every
+        self.eval_at_start = bool(eval_at_start)
         self.samples_per_epoch = samples_per_epoch
         self.seed = seed
         self.resume = bool(resume)
@@ -170,21 +194,29 @@ class GroupedTrainer:
         # Load or configure model (fail-fast if `init_from` checkpoint path is missing)
         if model is None:
             free_gpu()
+            torch.manual_seed(self.seed)
             if self.resume:
                 self.init_from = str(self.save_dir / "last")
                 self.model = load_checkpoint(
                     self.save_dir / "last",
                     device=self.device,
                     trainable=True,
+                    lora_rank=None,
                     weights_dtype=self.weights_dtype,
                     gradient_checkpointing=self.gradient_checkpointing,
                 )
+                if lora_rank is not None and self.model.meta.lora != lora_rank:
+                    raise ValueError(
+                        f"Cannot resume {self.save_dir.name}: checkpoint has lora_rank={self.model.meta.lora}, "
+                        f"got lora_rank={lora_rank}"
+                    )
             elif init_from is not None:
                 self.init_from = str(init_from)
                 self.model = load_checkpoint(
                     init_from,
                     device=self.device,
                     trainable=True,
+                    lora_rank=lora_rank,
                     weights_dtype=self.weights_dtype,
                     gradient_checkpointing=self.gradient_checkpointing,
                 )
@@ -199,12 +231,22 @@ class GroupedTrainer:
             else:
                 raise ValueError("Provide either `model`, `base_model`, or `init_from`")
         else:
+            if lora_rank is not None and model.meta.lora != lora_rank:
+                raise ValueError(
+                    f"Provided model has lora_rank={model.meta.lora}, which does not match lora_rank={lora_rank}"
+                )
             self.model = model
-            self.init_from = str(init_from or base_model or self.model.meta.base)
+            if init_from is not None:
+                self.init_from = str(init_from)
+            elif base_model is not None:
+                self.init_from = str(base_model)
+            else:
+                self.init_from = str(self.model.meta.base)
             self.model.net.head.temperature = 1.0
             if self.gradient_checkpointing:
                 self.model.enable_checkpointing()
 
+        self.lora_rank = self.model.meta.lora
         self._model_base = self.model.meta.base
         self._model_mode = self.model.mode
         self._custom_plotter = plotter
@@ -219,30 +261,47 @@ class GroupedTrainer:
 
         self._recompute_schedule()
 
+    def _epoch_groups_for(self, epoch_idx):
+        epoch_rng = random.Random(f"{self.seed}:epoch:{epoch_idx}")
+        sampled = (
+            epoch_rng.sample(self.train_records, self.n_per_epoch)
+            if self.samples_per_epoch is not None
+            else self.train_records
+        )
+        return group_train_records(
+            sampled,
+            max_questions=self.max_questions_per_group,
+            max_chars=self.max_chars_per_group,
+            rng=epoch_rng,
+        )
+
     def _recompute_schedule(self):
         """Compute group counts, steps_per_epoch, total_steps, and warmup pct_start."""
         self.effective_groups_bs = self.batch_size * self.grad_accum_steps
         self.n_per_epoch = (
             min(self.samples_per_epoch, len(self.train_records))
-            if self.samples_per_epoch
+            if self.samples_per_epoch is not None
             else len(self.train_records)
         )
-        probe_records = (
-            random.Random(self.seed).sample(self.train_records, self.n_per_epoch)
-            if self.samples_per_epoch
-            else self.train_records
-        )
-        probe_groups = group_train_records(
-            probe_records,
-            max_questions=self.max_questions_per_group,
-            max_chars=self.max_chars_per_group,
-            rng=None,
-        )
-        self.groups_per_epoch = len(probe_groups)
+        if self.samples_per_epoch is None:
+            probe_groups = group_train_records(
+                self.train_records,
+                max_questions=self.max_questions_per_group,
+                max_chars=self.max_chars_per_group,
+                rng=None,
+            )
+            self.groups_per_epoch = len(probe_groups)
+            self.steps_per_epoch = math.ceil(self.groups_per_epoch / self.effective_groups_bs)
+            self.total_steps = self.epochs * self.steps_per_epoch
+            del probe_groups
+        else:
+            epoch_group_counts = [len(self._epoch_groups_for(e)) for e in range(self.epochs)]
+            self.groups_per_epoch = epoch_group_counts[0]
+            self.steps_per_epoch = math.ceil(self.groups_per_epoch / self.effective_groups_bs)
+            self.total_steps = sum(
+                math.ceil(c / self.effective_groups_bs) for c in epoch_group_counts
+            )
         self.mean_questions_per_group = self.n_per_epoch / max(1, self.groups_per_epoch)
-        self.steps_per_epoch = math.ceil(self.groups_per_epoch / self.effective_groups_bs)
-        self.total_steps = self.epochs * self.steps_per_epoch
-        del probe_records, probe_groups
 
         if self._explicit_pct_start is not None:
             self.pct_start = float(self._explicit_pct_start)
@@ -256,7 +315,6 @@ class GroupedTrainer:
             if self._custom_plotter is not None
             else TrainingPlotter(
                 self.total_steps,
-                self.log_every,
                 self.eval_sets,
                 self.val_name,
                 run_name=self.save_dir.name,
@@ -265,6 +323,8 @@ class GroupedTrainer:
 
     def set_grouping(self, max_questions_per_group, max_chars_per_group, grad_accum_steps=None):
         """Update grouping parameters (e.g., after running `probe_vram`) and recompute schedule."""
+        if self.resume:
+            raise ValueError("Cannot call set_grouping() when resume=True; grouping must match the saved run")
         self.max_questions_per_group = max_questions_per_group
         self.max_chars_per_group = max_chars_per_group
         if grad_accum_steps is not None:
@@ -272,10 +332,44 @@ class GroupedTrainer:
         self._recompute_schedule()
         return self.describe()
 
+    def _run_signature(self):
+        return {
+            "base": self._model_base,
+            "lora_rank": self.lora_rank,
+            "weights_dtype": self.weights_dtype,
+            "epochs": self.epochs,
+            "lr": self.lr,
+            "weight_decay": self.weight_decay,
+            "pct_start": round(self.pct_start, 8),
+            "batch_size": self.batch_size,
+            "grad_accum_steps": self.grad_accum_steps,
+            "max_questions_per_group": self.max_questions_per_group,
+            "max_chars_per_group": self.max_chars_per_group,
+            "samples_per_epoch": self.samples_per_epoch,
+            "n_train_records": len(self.train_records),
+            "seed": self.seed,
+            "total_steps": self.total_steps,
+        }
+
+    def _verify_resume_signature(self, st):
+        saved = st["signature"]
+        current = self._run_signature()
+        mismatches = [
+            f"{k}: saved={saved[k]!r} != current={current[k]!r}"
+            for k in current
+            if saved[k] != current[k]
+        ]
+        if mismatches:
+            raise ValueError(
+                f"Cannot resume {self.save_dir.name}: configuration does not match saved checkpoint: "
+                + "; ".join(mismatches)
+            )
+
     def describe(self):
         return {
             "run_name": self.save_dir.name,
             "base": self._model_base,
+            "lora_rank": self.lora_rank,
             "mode": self.model.mode if self.model is not None else f"{self._model_mode} (freed)",
             "weights_dtype": self.weights_dtype,
             "use_bf16": self.use_bf16,
@@ -327,8 +421,8 @@ class GroupedTrainer:
                 logits_batch = self.model.forward([enc for enc, _ in prepared], shared_prefix=True)
 
             losses = []
-            for (_, targets), record_logits in zip(prepared, logits_batch):
-                for z, q in zip(record_logits, targets):
+            for (_, targets), record_logits in zip(prepared, logits_batch, strict=True):
+                for z, q in zip(record_logits, targets, strict=True):
                     t = q["target"].to(self.device)
                     logp = torch.log_softmax(z.float(), dim=-1)
                     losses.append(-(t * logp).sum())
@@ -348,11 +442,89 @@ class GroupedTrainer:
         opt.zero_grad(set_to_none=True)
         return step_kls
 
+    def _model_eval0_digest(self):
+        meta = self.model.meta
+        h = hashlib.sha256()
+        h.update(
+            f"v={EVAL0_CACHE_VERSION}|init={self.init_from}|base={meta.base}|rev={meta.base_revision}|"
+            f"lora={meta.lora}|hdim={meta.head_dim}|temp={self.model.net.head.temperature}|"
+            f"iso={meta.option_isolation}|wdtype={self.weights_dtype}|bf16={self.use_bf16}|"
+            f"ebs={self.eval_batch_size}".encode()
+        )
+        for p in self.model.trainable_parameters():
+            h.update(p.detach().cpu().float().numpy().tobytes())
+        return h.hexdigest()[:12]
+
+    @staticmethod
+    def _eval_set_digest(s):
+        h = hashlib.sha256()
+        eval_fn_name = s["eval_fn"].__name__ if s["eval_fn"] is not None else ""
+        h.update(
+            f"name={s['name']}|fn={eval_fn_name}|views={len(s['packed_views'])}|recs={len(s['records'])}".encode()
+        )
+        for v in s["packed_views"]:
+            h.update(json.dumps(v, sort_keys=True).encode())
+        for r in s["records"]:
+            arm = r["arm"] if "arm" in r else ""
+            caseid = r["CASEID"] if "CASEID" in r else ""
+            h.update(f"{r['qid']}|{r['type']}|{arm}|{caseid}|".encode())
+            h.update(r["human_dist"].tobytes())
+        return h.hexdigest()[:12]
+
+    def evaluate_step0(self):
+        """Evaluate step-0 baseline using `.cache/` per `(model, dtype, eval_set)` so repeated runs start immediately."""
+        model_digest = self._model_eval0_digest()
+        summaries = {}
+        extra_dfs = {}
+        uncached = []
+        for s in self.eval_sets:
+            eval_digest = self._eval_set_digest(s)
+            cache_path = DEFAULT_CACHE_DIR / f"eval0_v{EVAL0_CACHE_VERSION}_{s['name']}_{model_digest}_{eval_digest}.pkl"
+            if cache_path.exists():
+                cached = pickle.loads(cache_path.read_bytes())
+                summaries[s["name"]] = cached["summary"]
+                extra_dfs[s["name"]] = cached["extra_df"]
+                s["last_extra_df"] = cached["extra_df"]
+            else:
+                uncached.append((s, cache_path))
+
+        if uncached:
+            was_training = self.model.training
+            self.model.eval()
+            with self._autocast():
+                self.model.net.graphs = CudaGraphs(self.model.net.lm, self.model.net.pad_id)
+                try:
+                    for idx, (s, cache_path) in enumerate(uncached, start=1):
+                        name = s["name"]
+                        self.plotter.update_status(
+                            0, epoch=0, status=f"eval step 0 ({idx}/{len(uncached)}): {name}..."
+                        )
+                        summary, _ = evaluate_model(
+                            self.model, s, batch_size=self.eval_batch_size, show_progress=False
+                        )
+                        extra_df = s["last_extra_df"]
+                        summaries[name] = summary
+                        extra_dfs[name] = extra_df
+                        DEFAULT_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+                        tmp_path = cache_path.with_suffix(".tmp")
+                        tmp_path.write_bytes(
+                            pickle.dumps({"summary": summary, "extra_df": extra_df}, protocol=pickle.HIGHEST_PROTOCOL)
+                        )
+                        tmp_path.replace(cache_path)
+                finally:
+                    release_cuda_graphs(self.model)
+                    if was_training:
+                        self.model.train()
+                    free_gpu()
+
+        return summaries, extra_dfs
+
     def evaluate(self, cur_epoch=0):
         """Run all evaluation sets sharing a single `CudaGraphs` instance and free its buffers on exit."""
         summaries = {}
         extra_dfs = {}
         was_training = self.model.training
+        self.model.eval()
         with self._autocast():
             self.model.net.graphs = CudaGraphs(self.model.net.lm, self.model.net.pad_id)
             try:
@@ -365,21 +537,14 @@ class GroupedTrainer:
                     summaries[name] = summary
                     extra_dfs[name] = s["last_extra_df"]
             finally:
-                self.model.net.graphs = None
+                release_cuda_graphs(self.model)
                 if was_training:
                     self.model.train()
                 free_gpu()
         return summaries, extra_dfs
 
-    def validate_and_save(self, epoch_idx, next_start, n_epoch_groups, epoch_rng_state):
-        summaries, extra_dfs = self.evaluate(cur_epoch=epoch_idx + 1)
-        val_summary = summaries[self.val_name]
-        val_ce = float(val_summary["ce"])
-        val_kl = float(val_summary["dist_kl"])
-        self.plotter.log_eval(self.step, summaries, extra_dfs, epoch=epoch_idx + 1)
-
-        train_kl = float(self.plotter.history["window_kl"][-1])
-        extra = {
+    def _build_extra(self, epoch_idx, train_kl, val_ce=None, val_kl=None, summaries=None):
+        return {
             "init_from": self.init_from,
             "step": self.step,
             "epoch": epoch_idx + 1,
@@ -387,7 +552,11 @@ class GroupedTrainer:
             "train_kl": train_kl,
             "val_ce": val_ce,
             "val_dist_kl": val_kl,
-            "eval_metrics": {name: {k: float(v) for k, v in s.items()} for name, s in summaries.items()},
+            "eval_metrics": (
+                {name: {k: float(v) for k, v in s.items()} for name, s in summaries.items()}
+                if summaries is not None
+                else None
+            ),
             "settings": {
                 "lr": self.lr,
                 "weight_decay": self.weight_decay,
@@ -405,71 +574,75 @@ class GroupedTrainer:
                 "seed": self.seed,
             },
         }
-        if val_kl < self.best_val_kl:
-            self.best_val_kl = val_kl
-            save_checkpoint(self.model, self.save_dir, "best", extra=extra)
-        save_checkpoint(self.model, self.save_dir, "last", extra=extra)
 
+    def _save_trainer_state(
+        self,
+        epoch_idx,
+        next_start,
+        n_epoch_groups,
+        *,
+        eval_pending=False,
+        pending_train_kl=None,
+    ):
         at_epoch_end = next_start >= n_epoch_groups
+        tmp_state = self.state_path.with_suffix(".tmp")
         torch.save(
             {
+                "init_from": self.init_from,
                 "step": self.step,
                 "epoch": epoch_idx + 1 if at_epoch_end else epoch_idx,
                 "next_start": 0 if at_epoch_end else next_start,
                 "best_val_kl": self.best_val_kl,
+                "eval_pending": bool(eval_pending),
+                "pending_epoch_idx": epoch_idx,
+                "pending_next_start": next_start,
+                "pending_n_epoch_groups": n_epoch_groups,
+                "pending_train_kl": pending_train_kl,
                 "rng_state": self.rng.getstate(),
-                "epoch_rng_state": None if at_epoch_end else epoch_rng_state,
+                "torch_rng_state": torch.get_rng_state(),
+                "cuda_rng_state": torch.cuda.get_rng_state(),
+                "signature": self._run_signature(),
                 "optimizer": self.optimizer.state_dict(),
                 "scheduler": self.scheduler.state_dict(),
                 **self.plotter.state_dict(),
             },
-            self.state_path,
+            tmp_state,
         )
+        tmp_state.replace(self.state_path)
+
+    def _complete_eval_and_save(self, epoch_idx, next_start, n_epoch_groups, train_kl):
+        summaries, extra_dfs = self.evaluate(cur_epoch=epoch_idx + 1)
+        val_summary = summaries[self.val_name]
+        val_ce = float(val_summary["ce"])
+        val_kl = float(val_summary["dist_kl"])
+        self.plotter.log_eval(self.step, summaries, extra_dfs, epoch=epoch_idx + 1)
+
+        extra = self._build_extra(epoch_idx, train_kl, val_ce=val_ce, val_kl=val_kl, summaries=summaries)
+        if val_kl < self.best_val_kl:
+            self.best_val_kl = val_kl
+            save_checkpoint(self.model, self.save_dir, "best", extra=extra)
+        update_checkpoint_meta(self.model, self.save_dir, "last", extra=extra)
+        self._save_trainer_state(epoch_idx, next_start, n_epoch_groups, eval_pending=False)
         self.plotter.update_status(self.step, epoch=epoch_idx + 1, status="training", lr=self.current_lr)
 
-    def _prepare_epoch(
-        self,
-        epoch_idx,
-        *,
-        resume_rng_state=None,
-        epoch_rng_state_saved=None,
-        epoch_groups_saved=None,
-    ):
-        if epoch_idx == self.start_epoch and (epoch_rng_state_saved is not None or epoch_groups_saved is not None):
-            if epoch_rng_state_saved is not None:
-                epoch_rng_state = epoch_rng_state_saved
-                self.rng.setstate(epoch_rng_state)
-                sampled = (
-                    self.rng.sample(self.train_records, self.n_per_epoch)
-                    if self.samples_per_epoch
-                    else self.train_records
-                )
-                epoch_groups = group_train_records(
-                    sampled,
-                    max_questions=self.max_questions_per_group,
-                    max_chars=self.max_chars_per_group,
-                    rng=self.rng,
-                )
-            else:
-                epoch_rng_state = None
-                epoch_groups = epoch_groups_saved
-            self.rng.setstate(resume_rng_state)
-            first_start = self.resume_start_idx
-        else:
-            epoch_rng_state = self.rng.getstate()
-            sampled = (
-                self.rng.sample(self.train_records, self.n_per_epoch)
-                if self.samples_per_epoch
-                else self.train_records
-            )
-            epoch_groups = group_train_records(
-                sampled,
-                max_questions=self.max_questions_per_group,
-                max_chars=self.max_chars_per_group,
-                rng=self.rng,
-            )
-            first_start = 0
-        return epoch_groups, epoch_rng_state, first_start
+    def validate_and_save(self, epoch_idx, next_start, n_epoch_groups):
+        train_kl = float(self.plotter.history["step_kl"][-1])
+        # Save `last/` once and record `eval_pending=True` before evaluation so progress is never lost
+        pre_extra = self._build_extra(epoch_idx, train_kl)
+        save_checkpoint(self.model, self.save_dir, "last", extra=pre_extra)
+        self._save_trainer_state(
+            epoch_idx,
+            next_start,
+            n_epoch_groups,
+            eval_pending=True,
+            pending_train_kl=train_kl,
+        )
+        self._complete_eval_and_save(epoch_idx, next_start, n_epoch_groups, train_kl)
+
+    def _prepare_epoch(self, epoch_idx):
+        epoch_groups = self._epoch_groups_for(epoch_idx)
+        first_start = self.resume_start_idx if epoch_idx == self.start_epoch else 0
+        return epoch_groups, first_start
 
     def cleanup(self, free_model=False):
         """Free optimizer, scheduler, gradients, CudaGraphs, and cached GPU blocks."""
@@ -480,8 +653,7 @@ class GroupedTrainer:
         if self.model is not None:
             for p in self.model.trainable_parameters():
                 p.grad = None
-            if self.model.net.graphs is not None:
-                self.model.net.graphs = None
+            release_cuda_graphs(self.model)
             if free_model:
                 self.model = None
         _, _, tb = sys.exc_info()
@@ -495,8 +667,7 @@ class GroupedTrainer:
         if self.model is None:
             raise ValueError("self.model is None; re-instantiate GroupedTrainer before calling train()")
 
-        if self.model.net.graphs is not None:
-            self.model.net.graphs = None
+        release_cuda_graphs(self.model)
         free_gpu()
 
         self.plotter = (
@@ -504,7 +675,6 @@ class GroupedTrainer:
             if self._custom_plotter is not None
             else TrainingPlotter(
                 self.total_steps,
-                self.log_every,
                 self.eval_sets,
                 self.val_name,
                 run_name=self.save_dir.name,
@@ -514,6 +684,8 @@ class GroupedTrainer:
 
         try:
             self.rng = random.Random(self.seed)
+            torch.manual_seed(self.seed)
+            torch.cuda.manual_seed_all(self.seed)
             self.optimizer = torch.optim.AdamW(
                 self.model.trainable_parameters(), lr=self.lr, weight_decay=self.weight_decay
             )
@@ -523,16 +695,31 @@ class GroupedTrainer:
 
             if self.resume:
                 st = torch.load(self.state_path, map_location="cpu", weights_only=False)
+                self._verify_resume_signature(st)
+                self.init_from = st["init_from"]
                 self.step = st["step"]
                 self.start_epoch = st["epoch"]
                 self.resume_start_idx = st["next_start"]
                 self.best_val_kl = st["best_val_kl"]
-                resume_rng_state = st["rng_state"]
-                epoch_rng_state_saved = st["epoch_rng_state"] if "epoch_rng_state" in st else None
-                epoch_groups_saved = st["epoch_records"] if "epoch_records" in st else None
+                self.rng.setstate(st["rng_state"])
+                torch.set_rng_state(st["torch_rng_state"])
+                torch.cuda.set_rng_state(st["cuda_rng_state"])
                 self.optimizer.load_state_dict(st["optimizer"])
                 self.scheduler.load_state_dict(st["scheduler"])
                 self.plotter.load_state_dict(st, step=self.step)
+                if st["eval_pending"]:
+                    self.plotter.update_status(
+                        self.step,
+                        epoch=st["pending_epoch_idx"] + 1,
+                        status="completing interrupted eval...",
+                        lr=self.current_lr,
+                    )
+                    self._complete_eval_and_save(
+                        st["pending_epoch_idx"],
+                        st["pending_next_start"],
+                        st["pending_n_epoch_groups"],
+                        st["pending_train_kl"],
+                    )
                 self.plotter.update_status(
                     self.step, epoch=self.start_epoch + 1, status="resumed", lr=self.current_lr
                 )
@@ -544,12 +731,12 @@ class GroupedTrainer:
                 self.step = 0
                 self.start_epoch = 0
                 self.resume_start_idx = 0
-                resume_rng_state = None
-                epoch_rng_state_saved = None
-                epoch_groups_saved = None
-                summaries_0, extra_dfs_0 = self.evaluate(cur_epoch=0)
-                self.best_val_kl = float(summaries_0[self.val_name]["dist_kl"])
-                self.plotter.log_eval(0, summaries_0, extra_dfs_0, epoch=0)
+                if self.eval_at_start:
+                    summaries_0, extra_dfs_0 = self.evaluate_step0()
+                    self.best_val_kl = float(summaries_0[self.val_name]["dist_kl"])
+                    self.plotter.log_eval(0, summaries_0, extra_dfs_0, epoch=0)
+                else:
+                    self.best_val_kl = float("inf")
                 self.plotter.update_status(0, epoch=1, status="starting epoch 1...")
 
             if self.gradient_checkpointing:
@@ -558,14 +745,8 @@ class GroupedTrainer:
 
             ran_steps = False
             n_epoch_groups = 0
-            epoch_rng_state = None
             for e in range(self.start_epoch, self.epochs):
-                epoch_groups, epoch_rng_state, first_start = self._prepare_epoch(
-                    e,
-                    resume_rng_state=resume_rng_state,
-                    epoch_rng_state_saved=epoch_rng_state_saved,
-                    epoch_groups_saved=epoch_groups_saved,
-                )
+                epoch_groups, first_start = self._prepare_epoch(e)
                 n_epoch_groups = len(epoch_groups)
 
                 for start in range(first_start, n_epoch_groups, self.effective_groups_bs):
@@ -576,14 +757,10 @@ class GroupedTrainer:
                     self.plotter.log_step(self.step, step_kls, epoch=e + 1, lr=self.current_lr)
 
                     if self.step % self.val_every == 0:
-                        self.validate_and_save(
-                            e, start + self.effective_groups_bs, n_epoch_groups, epoch_rng_state
-                        )
+                        self.validate_and_save(e, start + self.effective_groups_bs, n_epoch_groups)
 
             if ran_steps and self.step % self.val_every != 0:
-                self.validate_and_save(
-                    self.epochs - 1, n_epoch_groups, n_epoch_groups, epoch_rng_state
-                )
+                self.validate_and_save(self.epochs - 1, n_epoch_groups, n_epoch_groups)
             self.plotter.update_status(self.step, epoch=self.epochs, status="completed")
 
         finally:
@@ -599,10 +776,16 @@ class GroupedTrainer:
         total_vram_gb = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)
         print(f"GPU: {torch.cuda.get_device_name(0)} ({total_vram_gb:.1f} GiB total)")
 
+        probe_records = (
+            random.Random(f"{self.seed}:epoch:0").sample(self.train_records, self.n_per_epoch)
+            if self.samples_per_epoch is not None
+            else self.train_records
+        )
+
         rows = []
         for mq, mc in grid:
             groups = group_train_records(
-                self.train_records, max_questions=mq, max_chars=mc, rng=None
+                probe_records, max_questions=mq, max_chars=mc, rng=None
             )
             by_padded_chars = sorted(
                 groups,
@@ -628,27 +811,28 @@ class GroupedTrainer:
                     worst_g = g
                     worst_shape = (q, Ls, Lb)
 
-            worst_macro = [worst_g] * self.batch_size
+            # Use 2 micro-batches when grad_accum_steps > 1 so micro-batch 2 runs while p.grad from micro-batch 1 is allocated
+            worst_macro = [worst_g] * (self.batch_size * min(2, self.grad_accum_steps))
             opt = torch.optim.AdamW(self.model.trainable_parameters(), lr=0.0, weight_decay=0.0)
             sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda _: 1.0)
             if self.gradient_checkpointing:
                 self.model.enable_checkpointing()
             self.model.train()
-            if self.model.net.graphs is not None:
-                self.model.net.graphs = None
+            release_cuda_graphs(self.model)
             free_gpu()
             torch.cuda.reset_peak_memory_stats()
 
             try:
-                for s in range(2):
-                    self.train_one_step(
-                        worst_macro,
-                        optimizer=opt,
-                        scheduler=sched,
-                        step=s,
-                        total_steps=10,
-                        rng=random.Random(0),
-                    )
+                with torch.random.fork_rng(devices=[self.device]):
+                    for s in range(2):
+                        self.train_one_step(
+                            worst_macro,
+                            optimizer=opt,
+                            scheduler=sched,
+                            step=s,
+                            total_steps=10,
+                            rng=random.Random(0),
+                        )
                 peak_alloc_gb = torch.cuda.max_memory_allocated() / (1024 ** 3)
                 peak_res_gb = torch.cuda.max_memory_reserved() / (1024 ** 3)
                 status = "OK"
@@ -671,7 +855,7 @@ class GroupedTrainer:
                 "max_questions": mq,
                 "max_chars": mc,
                 "groups_per_epoch": len(groups),
-                "mean_q_per_group": round(len(self.train_records) / len(groups), 2),
+                "mean_q_per_group": round(len(probe_records) / len(groups), 2),
                 "steps_per_epoch": steps_per_epoch,
                 f"total_steps_{self.epochs}ep": self.epochs * steps_per_epoch,
                 "worst_(Q, Ls, Lb)": f"({q}, {Ls}, {Lb})",

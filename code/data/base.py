@@ -248,6 +248,8 @@ def make_view(rec, rng=None, persona_names=ALL_PERSONA_NAMES):
     state_lines = [f"{persona_names[c]}: {v}" for c, v in items]
 
     if q_type == "score":
+        if len(option_texts) != len(human_dist):
+            raise ValueError(f"{qid}: option_texts ({len(option_texts)}) != human_dist ({len(human_dist)})")
         criteria = option_texts
         target = {str(i): float(p) for i, p in enumerate(human_dist)}
     elif q_type == "choice":
@@ -255,7 +257,9 @@ def make_view(rec, rng=None, persona_names=ALL_PERSONA_NAMES):
             criteria = dict(zip(option_texts, option_descs, strict=True))
         else:
             criteria = {text: None for text in option_texts}
-        target = {text: float(p) for text, p in zip(option_texts, human_dist)}
+        if len(criteria) != len(option_texts):
+            raise ValueError(f"{qid}: duplicate option_texts in choice question: {option_texts!r}")
+        target = {text: float(p) for text, p in zip(option_texts, human_dist, strict=True)}
     else:
         raise ValueError(f"{qid}: unexpected question type {q_type!r}")
 
@@ -387,6 +391,7 @@ def group_records_by_state(records, view_fn=make_view, eval_fn=None, name=None, 
         "packed_views": packed_views,
         "unpack_idx": unpack_idx,
         "encs": None,
+        "encs_key": None,
         "last_stats": None,
         "eval_fn": eval_fn,
         "last_extra_df": None,
@@ -485,24 +490,49 @@ def predict_probs(model, records, batch_size=64, show_progress=True, view_fn=mak
     return (preds, stats) if return_stats else preds
 
 
+def release_cuda_graphs(model):
+    """Break closure reference cycles inside `CudaGraphs` and release `model.net.graphs`."""
+    graphs = model.net.graphs
+    if graphs is not None:
+        graphs.pending.clear()
+        graphs.graphs.clear()
+        graphs.failed.clear()
+        graphs.eager_runs.clear()
+        model.net.graphs = None
+
+
 @torch.no_grad()
-def predict_probs_grouped(model, grouped_records, batch_size=128, show_progress=True, return_stats=False):
+def predict_probs_grouped(
+    model,
+    grouped_records,
+    batch_size=128,
+    show_progress=True,
+    return_stats=False,
+    capture_graphs=None,
+):
     """Shared-state inference using the pre-grouped evaluation bundle from `group_records_by_state()`.
 
-    - Tokenizes `packed_views` once on the first call and caches `grouped_records["encs"]` in memory and `.cache/`.
+    - Tokenizes `packed_views` once per `(tokenizer, option_isolation)` and caches `grouped_records["encs"]` in memory and `.cache/`.
     - Frees temporary `CudaGraphs` buffers and private pools after evaluation on trainable models so training does not OOM.
     - Unpacks predictions back into the flat `records` order so `evaluate_records()` works unchanged.
     """
     t0 = time.perf_counter()
     was_training = model.training
     model.eval()
-    label = grouped_records.get("name") or "eval"
+    label = grouped_records["name"]
+    if not label:
+        raise ValueError("grouped_records['name'] must be a non-empty string")
 
     t_prep0 = time.perf_counter()
-    if grouped_records["encs"] is None:
-        packed_views = grouped_records["packed_views"]
+    packed_views = grouped_records["packed_views"]
+    encs_key = (model.tok.name_or_path, model.encoder.option_isolation, len(packed_views))
+    if (
+        grouped_records["encs"] is None
+        or "encs_key" not in grouped_records
+        or grouped_records["encs_key"] != encs_key
+    ):
         h = hashlib.sha256()
-        h.update(f"tok={getattr(model.tok, 'name_or_path', '')}|iso={model.encoder.option_isolation}|n={len(packed_views)}".encode())
+        h.update(f"tok={model.tok.name_or_path}|iso={model.encoder.option_isolation}|n={len(packed_views)}".encode())
         for v in packed_views:
             h.update(json.dumps(v, sort_keys=True).encode())
         cache_path = DEFAULT_CACHE_DIR / f"encs_{label}_{h.hexdigest()[:12]}.pkl"
@@ -513,11 +543,14 @@ def predict_probs_grouped(model, grouped_records, batch_size=128, show_progress=
             grouped_records["encs"] = [model.prepare(v)[0] for v in views_iter]
             DEFAULT_CACHE_DIR.mkdir(parents=True, exist_ok=True)
             cache_path.write_bytes(pickle.dumps(grouped_records["encs"], protocol=pickle.HIGHEST_PROTOCOL))
+        grouped_records["encs_key"] = encs_key
     encs = grouped_records["encs"]
     t_prep = time.perf_counter() - t_prep0
 
     created_graphs = model.net.graphs is None
     is_trainable = any(p.requires_grad for p in model.net.parameters())
+    if capture_graphs is None:
+        capture_graphs = not is_trainable
     if created_graphs:
         model.net.graphs = CudaGraphs(model.net.lm, model.net.pad_id)
 
@@ -531,13 +564,13 @@ def predict_probs_grouped(model, grouped_records, batch_size=128, show_progress=
         for start in iterator:
             b_encs = encs[start:start + batch_size]
             probs_batch, _ = model.net.probs_batch(b_encs, [None] * len(b_encs), [False] * len(b_encs))
-            if model.net.graphs.capture_due(False):
+            if capture_graphs and model.net.graphs.capture_due(False):
                 model.net.graphs.capture_pending()
             packed_probs.extend([[p.float().numpy() for p in q_list] for q_list in probs_batch])
         torch.cuda.synchronize()
     finally:
         if created_graphs and is_trainable:
-            model.net.graphs = None
+            release_cuda_graphs(model)
             gc.collect()
             torch.cuda.empty_cache()
         if was_training:

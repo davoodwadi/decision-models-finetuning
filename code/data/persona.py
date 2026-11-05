@@ -44,7 +44,37 @@ DATASET_PERSONA_COLS = {
         "HHSIZE",
         "MAINSTAT",
     ],
+    "covid": [
+        "c_alphan",
+        "SEX",
+        "AGE",
+        "EDULEVEL",
+        "RELIGGRP",
+        "PARTY_LR",
+        "US_PRTY",
+        "US_INC",
+        "RACE",
+    ],
 }
+
+COVID_COL_TO_PERSONA = {
+    "gender": "SEX",
+    "age": "AGE",
+    "education": "EDULEVEL",
+    "relig": "RELIGGRP",
+    "ideology": "PARTY_LR",
+    "party3": "US_PRTY",
+    "income": "US_INC",
+}
+
+COVID_RACE_COLS = [
+    ("race_1", "American Indian"),
+    ("race_2", "Asian"),
+    ("race_3", "Black or African American"),
+    ("race_4", "Hispanic"),
+    ("race_5", "White"),
+    ("race_6", "Other"),
+]
 
 TWIN2K_QID_TO_PERSONA = {
     "QID11": "US_REG",
@@ -398,9 +428,10 @@ PERSONA_MAPS = {
             "Republican": "Republican",
         },
         "covid": {
-            "Democrat": "Democrat",
-            "Republican": "Republican",
-            "Independent": "Independent",
+            1: "Republican",
+            2: "Democrat",
+            3: "Independent",
+            4: "Something else",
         },
     },
     "US_INC": {
@@ -570,6 +601,25 @@ def apply_persona_mapping(df: pd.DataFrame, dataset: str) -> pd.DataFrame:
                 if qid not in df.columns:
                     raise ValueError(f"twin2k: missing column {qid} for persona attribute {attr}")
                 df[attr] = df[qid]
+    elif dataset == "covid":
+        if "c_alphan" not in df.columns:
+            df["c_alphan"] = "United States"
+        for src_col, attr in COVID_COL_TO_PERSONA.items():
+            if attr not in df.columns:
+                if src_col not in df.columns:
+                    raise ValueError(f"covid: missing column {src_col} for persona attribute {attr}")
+                df[attr] = df[src_col]
+        if "RACE" not in df.columns:
+            missing_race = [col for col, _ in COVID_RACE_COLS if col not in df.columns]
+            if missing_race:
+                raise ValueError(f"covid: missing race columns {missing_race}")
+            raw_races = []
+            for _, r in df.iterrows():
+                checked = [label for col, label in COVID_RACE_COLS if r[col] == 1]
+                if not checked:
+                    raise ValueError("covid: respondent has no race indicator checked in race_1..race_6")
+                raw_races.append(checked[0] if len(checked) == 1 else "Other")
+            df["RACE"] = pd.Series(raw_races, index=df.index, dtype=object)
     else:
         missing = [c for c in expected_cols if c not in df.columns]
         if missing:

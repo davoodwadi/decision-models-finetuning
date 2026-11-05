@@ -5,6 +5,7 @@ from training.trainer import (
     load_checkpoint,
     normalize_eval_sets,
     save_checkpoint,
+    update_checkpoint_meta,
 )
 
 __all__ = [
@@ -15,4 +16,5 @@ __all__ = [
     "load_checkpoint",
     "normalize_eval_sets",
     "save_checkpoint",
+    "update_checkpoint_meta",
 ]

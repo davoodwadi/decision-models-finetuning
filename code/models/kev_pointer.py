@@ -95,19 +95,36 @@ class KevPointerModel(SurveyModel):
         net.lm.config.use_cache = False                  # no generation: the cache only costs memory
         # a full-weight checkpoint (one of our full_finetune runs): continue from its backbone, not the plain base
         continued = full_finetune and checkpoint.meta.weights == "full"
-        if lora_rank and checkpoint.meta.weights == "lora":
+        if lora_rank and checkpoint.meta.weights == "lora" and lora_rank != checkpoint.meta.lora:
             if lora_rank < checkpoint.meta.lora:
                 raise ValueError(f"lora_rank {lora_rank} < checkpoint lora {checkpoint.meta.lora}")
+            for field_name in checkpoint.COMPAT_FIELDS:
+                if field_name == "lora":
+                    continue
+                theirs, mine = getattr(checkpoint.meta, field_name), getattr(meta, field_name)
+                if theirs != mine and not (field_name == "base_revision" and None in (theirs, mine)):
+                    raise ValueError(f"--init_from {checkpoint.path}: {field_name} is {theirs!r} there and {mine!r} here")
             from peft import load_peft_weights
             src, r0 = load_peft_weights(checkpoint.path, device="cpu"), checkpoint.meta.lora
+            seen = set()
             with torch.no_grad():
                 for name, param in net.lm.named_parameters():
                     key = name.replace(".default.", ".")
                     if "lora_A" in key:
                         param[:r0].copy_(src[key].to(param.device, param.dtype))
+                        seen.add(key)
                     elif "lora_B" in key:
                         param.zero_()
                         param[:, :r0].copy_(src[key].to(param.device, param.dtype))
+                        seen.add(key)
+                    elif key in src:
+                        param.copy_(src[key].to(param.device, param.dtype))
+                        seen.add(key)
+            unexpected = sorted(set(src) - seen)
+            if unexpected:
+                raise ValueError(
+                    f"--init_from {checkpoint.path}: unmatched adapter keys during rank expansion: {unexpected[:3]}"
+                )
             net.head.load_state_dict(meta.head)
         elif full_finetune and not continued:
             net.head.load_state_dict(meta.head)          # released head only; the backbone starts as the plain base
@@ -140,7 +157,7 @@ class KevPointerModel(SurveyModel):
         folder.mkdir(parents=True, exist_ok=True)
         self.net.lm.save_pretrained(folder)
         head = {k: v.detach().cpu() for k, v in self.net.head.state_dict().items()}
-        write_meta(folder, dataclasses.replace(self.meta, head=head, temperature=1.0, extra=extra))
+        write_meta(folder, dataclasses.replace(self.meta, head=head, temperature=1.0, extra={**self.meta.extra, **extra}))
         self.tok.save_pretrained(folder)
 
     def describe(self):

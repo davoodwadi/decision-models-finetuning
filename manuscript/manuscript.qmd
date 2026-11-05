@@ -16,14 +16,6 @@ affiliations:
         city: Montreal
         region: Quebec
         country: Canada
-abstract: |
-  Researchers increasingly use foundation models to simulate human survey responses across consumer segments, a practice known as silicon sampling. Standard silicon sampling relies on generative large language models (LLMs) that produce text one token at a time, requiring hundreds of repeated draws to estimate a response distribution. Decision models offer a direct alternative for silicon sampling because they take a respondent persona and a structured Likert or multiple-choice question and predict the full probability distribution over answer options in a single forward pass. However, both generative LLMs and off-the-shelf decision models are trained to maximize accuracy on objective tasks with a single correct answer, such as coding and mathematics, which makes them ill-suited for predicting the dispersed response distributions of heterogeneous human populations. In this paper, we fine-tune three open-weight decision models (Kev 0.8B, Kev 4B, and Kev 9B) to minimize the Kullback-Leibler (KL) divergence against empirical human response distributions from 10 waves of the US International Social Survey Programme ($14,356$ respondents and $767,484$ responses across 616 questions). We show that training on this single survey dataset substantially improves distributional predictions on unseen data across three progressively challenging settings, namely unseen questions from the same survey program, unseen questions and demographic personas from the US General Social Survey (SubPOP), and an unseen marketing domain from a randomized clinical trial on front-of-package nutrition labels ($5,636$ US shoppers across 6 labeling conditions and 21 choice and Likert items). Notably, a small fine-tuned decision model (Kev 0.8B FT) outperforms larger off-the-shelf baselines on unseen public opinion questions, and fine-tuning improves distributional accuracy even on nutrition-specific shopper personas never observed during training.
-keywords:
-  - Decision models
-  - Silicon sampling
-  - Human behavior simulation
-  - Survey distributions
-  - Marketing research
 format:
   pdf:
     documentclass: article
@@ -86,6 +78,10 @@ bibliography:
   - refs/ai-marketing.bib
   - refs/silicon-sampling.bib
 ---
+
+**Abstract**
+
+**Keywords:** Decision models, Silicon sampling, Human behavior simulation, Survey distributions, Marketing research
 
 # Introduction {#sec-intro}
 
