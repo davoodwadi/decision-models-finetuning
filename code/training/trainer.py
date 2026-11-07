@@ -16,7 +16,6 @@ import torch
 
 from data.base import (
     DEFAULT_CACHE_DIR,
-    CudaGraphs,
     _record_chars,
     evaluate_model,
     group_train_records,
@@ -141,6 +140,7 @@ class GroupedTrainer:
         device="cuda",
         weights_dtype="fp32",
         use_bf16=False,
+        eval_bf16=None,
         gradient_checkpointing=False,
         epochs=5,
         lr=5e-5,
@@ -167,8 +167,13 @@ class GroupedTrainer:
         self.eval_sets, self.val_name = normalize_eval_sets(eval_records)
         self.save_dir = Path(save_dir)
         self.device = device
+        if str(self.device).startswith("cuda"):
+            torch.backends.cuda.matmul.allow_tf32 = True
+            torch.backends.cudnn.allow_tf32 = True
         self.weights_dtype = weights_dtype
         self.use_bf16 = bool(use_bf16)
+        # eval autocast: None follows use_bf16; True runs eval under bf16 autocast even when training is fp32
+        self.eval_bf16 = self.use_bf16 if eval_bf16 is None else bool(eval_bf16)
         self.gradient_checkpointing = bool(gradient_checkpointing)
         self.epochs = epochs
         self.lr = lr
@@ -373,6 +378,7 @@ class GroupedTrainer:
             "mode": self.model.mode if self.model is not None else f"{self._model_mode} (freed)",
             "weights_dtype": self.weights_dtype,
             "use_bf16": self.use_bf16,
+            "eval_bf16": self.eval_bf16,
             "gradient_checkpointing": self.gradient_checkpointing,
             "max_questions_per_group": self.max_questions_per_group,
             "max_chars_per_group": self.max_chars_per_group,
@@ -388,6 +394,11 @@ class GroupedTrainer:
 
     def _autocast(self):
         if self.use_bf16:
+            return torch.autocast("cuda", dtype=torch.bfloat16)
+        return contextlib.nullcontext()
+
+    def _eval_autocast(self):
+        if self.eval_bf16:
             return torch.autocast("cuda", dtype=torch.bfloat16)
         return contextlib.nullcontext()
 
@@ -445,12 +456,14 @@ class GroupedTrainer:
     def _model_eval0_digest(self):
         meta = self.model.meta
         h = hashlib.sha256()
-        h.update(
+        key = (
             f"v={EVAL0_CACHE_VERSION}|init={self.init_from}|base={meta.base}|rev={meta.base_revision}|"
             f"lora={meta.lora}|hdim={meta.head_dim}|temp={self.model.net.head.temperature}|"
-            f"iso={meta.option_isolation}|wdtype={self.weights_dtype}|bf16={self.use_bf16}|"
-            f"ebs={self.eval_batch_size}".encode()
+            f"iso={meta.option_isolation}|wdtype={self.weights_dtype}|bf16={self.use_bf16}"
         )
+        if self.eval_bf16 != self.use_bf16:   # only then, so existing step-0 caches stay valid
+            key += f"|evalbf16={self.eval_bf16}"
+        h.update(key.encode())
         for p in self.model.trainable_parameters():
             h.update(p.detach().cpu().float().numpy().tobytes())
         return h.hexdigest()[:12]
@@ -491,8 +504,7 @@ class GroupedTrainer:
         if uncached:
             was_training = self.model.training
             self.model.eval()
-            with self._autocast():
-                self.model.net.graphs = CudaGraphs(self.model.net.lm, self.model.net.pad_id)
+            with self._eval_autocast():
                 try:
                     for idx, (s, cache_path) in enumerate(uncached, start=1):
                         name = s["name"]
@@ -520,13 +532,12 @@ class GroupedTrainer:
         return summaries, extra_dfs
 
     def evaluate(self, cur_epoch=0):
-        """Run all evaluation sets sharing a single `CudaGraphs` instance and free its buffers on exit."""
+        """Run all evaluation sets using shared-prefix batching and free temporary GPU buffers on exit."""
         summaries = {}
         extra_dfs = {}
         was_training = self.model.training
         self.model.eval()
-        with self._autocast():
-            self.model.net.graphs = CudaGraphs(self.model.net.lm, self.model.net.pad_id)
+        with self._eval_autocast():
             try:
                 for idx, s in enumerate(self.eval_sets, start=1):
                     name = s["name"]
@@ -568,6 +579,7 @@ class GroupedTrainer:
                 "max_chars_per_group": self.max_chars_per_group,
                 "weights_dtype": self.weights_dtype,
                 "use_bf16": self.use_bf16,
+                "eval_bf16": self.eval_bf16,
                 "gradient_checkpointing": self.gradient_checkpointing,
                 "epochs": self.epochs,
                 "samples_per_epoch": self.samples_per_epoch,
@@ -683,6 +695,9 @@ class GroupedTrainer:
         self.plotter.init_display(force=True)
 
         try:
+            if str(self.device).startswith("cuda"):
+                torch.backends.cuda.matmul.allow_tf32 = True
+                torch.backends.cudnn.allow_tf32 = True
             self.rng = random.Random(self.seed)
             torch.manual_seed(self.seed)
             torch.cuda.manual_seed_all(self.seed)

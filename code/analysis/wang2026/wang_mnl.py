@@ -333,6 +333,7 @@ def plot_wang_error_comparison(
     palette: str = "nature",
     persona_filter: str | None = None,
     sort_by: str = "MSE vs. Full Human",
+    benchmark_title: str = "COVID-19 Vaccine Conjoint (Wang et al., 2026)",
 ) -> plt.Figure:
     """Plot a two-panel horizontal bar chart of MAPE (%) and MSE vs. Full Human beta* sorted from best to worst on MSE."""
     pal = set_academic_palette(palette)
@@ -365,9 +366,9 @@ def plot_wang_error_comparison(
     # Human -> navy, Fine-tuned Kev -> viridian, Base Kev -> terracotta, other models -> deterministic palette mapping
     other_palette = [pal[3], pal[4], pal[5], NEUTRALS["baseline"]]
     other_keys = sorted({
-        m.replace("Random Persona", "").replace("Respondent Persona", "").split(", n=")[0].strip()
+        m.replace("Random Persona", "").replace("Respondent Persona", "").split(", n=")[0].split(", N=")[0].strip()
         for m in comparison_metrics_df.index.astype(str)
-        if "human" not in m.lower() and "kev-9b" not in m.lower()
+        if "human" not in m.lower() and "kev-" not in m.lower()
     })
     other_color_map = {k: other_palette[i % len(other_palette)] for i, k in enumerate(other_keys)}
 
@@ -376,12 +377,12 @@ def plot_wang_error_comparison(
         lower = name.lower()
         if "human" in lower:
             bar_colors.append(MODEL_PALETTES[palette]["human"])
-        elif any(tag in lower for tag in ("ft", "fine-tuned", "finetuned", "issp", "twin2k", "/best")):
+        elif any(tag in lower for tag in ("ft", "fine-tuned", "finetuned", "issp", "twin2k", "/best", "/last")):
             bar_colors.append(MODEL_PALETTES[palette]["fine_tuned"])
-        elif "kev-9b" in lower:
+        elif "kev-" in lower:
             bar_colors.append(MODEL_PALETTES[palette]["off_the_shelf"])
         else:
-            key = name.replace("Random Persona", "").replace("Respondent Persona", "").split(", n=")[0].strip()
+            key = name.replace("Random Persona", "").replace("Respondent Persona", "").split(", n=")[0].split(", N=")[0].strip()
             bar_colors.append(other_color_map[key])
 
     fig_height = max(3.4, 0.72 * len(models) + 1.3)
@@ -419,9 +420,9 @@ def plot_wang_error_comparison(
             )
 
     heading = (
-        f"COVID-19 Vaccine Conjoint (Wang et al., 2026): {persona_filter} — Parameter Recovery Error"
+        f"{benchmark_title}: {persona_filter} — Parameter Recovery Error"
         if persona_filter is not None
-        else "COVID-19 Vaccine Conjoint (Wang et al., 2026): Parameter Recovery Error"
+        else f"{benchmark_title}: Parameter Recovery Error"
     )
     fig.suptitle(
         heading,

@@ -547,26 +547,66 @@ def predict_probs_grouped(
     encs = grouped_records["encs"]
     t_prep = time.perf_counter() - t_prep0
 
-    created_graphs = model.net.graphs is None
     is_trainable = any(p.requires_grad for p in model.net.parameters())
     if capture_graphs is None:
         capture_graphs = not is_trainable
-    if created_graphs:
+    created_graphs = False
+    if capture_graphs and model.net.graphs is None:
         model.net.graphs = CudaGraphs(model.net.lm, model.net.pad_id)
+        created_graphs = True
 
     torch.cuda.synchronize()
     t_gpu0 = time.perf_counter()
-    packed_probs = []
     try:
-        iterator = range(0, len(encs), batch_size)
-        if show_progress:
-            iterator = tqdm(iterator, desc=f"Evaluating {label} (shared-state)", unit="batch", leave=False)
-        for start in iterator:
-            b_encs = encs[start:start + batch_size]
-            probs_batch, _ = model.net.probs_batch(b_encs, [None] * len(b_encs), [False] * len(b_encs))
-            if capture_graphs and model.net.graphs.capture_due(False):
-                model.net.graphs.capture_pending()
-            packed_probs.extend([[p.float().numpy() for p in q_list] for q_list in probs_batch])
+        if not capture_graphs:
+            def _sort_key(i):
+                e = encs[i]
+                s_len = e["state_tokens"]
+                dec = e["decide_idx"]
+                max_br = max(b - a for a, b in zip([s_len - 1, *dec[:-1]], dec))
+                return (max_br, s_len)
+
+            order = sorted(range(len(encs)), key=_sort_key)
+            batches = []
+            cur = []
+            cur_branches = 0
+            for idx in order:
+                n_q = len(encs[idx]["decide_idx"])
+                if cur and (len(cur) >= batch_size or cur_branches + n_q > batch_size):
+                    batches.append(cur)
+                    cur = []
+                    cur_branches = 0
+                cur.append(idx)
+                cur_branches += n_q
+            if cur:
+                batches.append(cur)
+
+            packed_probs = [None] * len(encs)
+            batch_iter = tqdm(batches, desc=f"Evaluating {label} (shared-prefix)", unit="batch", leave=False) if show_progress else batches
+            for batch_indices in batch_iter:
+                b_encs = [encs[i] for i in batch_indices]
+                logits_batch = model.forward(b_encs, shared_prefix=True)
+                flat_probs = [torch.softmax(z.float(), dim=-1) for q_logits in logits_batch for z in q_logits]
+                cpu_flat = torch.cat(flat_probs).cpu().numpy()
+                pos = 0
+                for orig_idx, q_logits in zip(batch_indices, logits_batch, strict=True):
+                    q_preds = []
+                    for z in q_logits:
+                        k = z.shape[-1]
+                        q_preds.append(cpu_flat[pos : pos + k])
+                        pos += k
+                    packed_probs[orig_idx] = q_preds
+        else:
+            packed_probs = []
+            iterator = range(0, len(encs), batch_size)
+            if show_progress:
+                iterator = tqdm(iterator, desc=f"Evaluating {label} (shared-state)", unit="batch", leave=False)
+            for start in iterator:
+                b_encs = encs[start:start + batch_size]
+                probs_batch, _ = model.net.probs_batch(b_encs, [None] * len(b_encs), [False] * len(b_encs))
+                if model.net.graphs.capture_due(False):
+                    model.net.graphs.capture_pending()
+                packed_probs.extend([[p.float().numpy() for p in q_list] for q_list in probs_batch])
         torch.cuda.synchronize()
     finally:
         if created_graphs and is_trainable:
