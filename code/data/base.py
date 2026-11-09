@@ -1,6 +1,7 @@
 """Shared dataset-agnostic abstractions for building persona records, Kev prompt views, state-grouped evaluation bundles, and model evaluation."""
 
 from collections import defaultdict
+import contextlib
 import gc
 import hashlib
 import itertools
@@ -8,11 +9,13 @@ import json
 import pickle
 import sys
 import time
+import types
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import torch
+import torch.nn.functional as F
 from tqdm.auto import tqdm
 
 from data.persona import PERSONA_MAPS, PERSONA_NAMES
@@ -24,6 +27,13 @@ DEFAULT_CACHE_DIR = CODE_DIR / ".cache"
 if str(CODE_DIR / "kev") not in sys.path:
     sys.path.insert(0, str(CODE_DIR / "kev"))
 from kev.cuda_graphs import CudaGraphs
+from kev.fused_qwen35 import (
+    _fix_nb,
+    attention_forward,
+    decoder_forward,
+    deltanet_forward,
+    mlp_forward,
+)
 
 EXTRA_PERSONA_NAMES = {
     "HISPANIC": "Hispanic or Latino",
@@ -306,6 +316,61 @@ def _record_chars(r):
     return 32 + len(r["question"]) + sum(24 + len(str(o)) for o in r["option_texts"])
 
 
+def _question_spec_chars(q_spec):
+    """Estimated formatted character length of a single question entry inside a Kev view."""
+    crit = q_spec["criteria"]
+    if isinstance(crit, dict):
+        opt_chars = sum(24 + len(str(o)) + (len(str(d)) + 2 if d is not None else 0) for o, d in crit.items())
+    else:
+        opt_chars = sum(24 + len(str(o)) for o in crit)
+    return 32 + len(q_spec["instructions"]) + opt_chars
+
+
+def group_eval_views(packed_views, *, max_questions=512, max_chars=180_000):
+    """Group state-packed evaluation views into length-sorted batches bounded by `max_questions` and padded `max_chars`."""
+    if max_questions < 1:
+        raise ValueError(f"max_questions must be >= 1, got {max_questions}")
+    if max_chars < 1:
+        raise ValueError(f"max_chars must be >= 1, got {max_chars}")
+
+    stats = []
+    for i, v in enumerate(packed_views):
+        qs = v["questions"]
+        if not qs:
+            raise ValueError(f"packed_views[{i}] has no questions")
+        s_chars = 16 + len(v["state"])
+        max_q_chars = max(_question_spec_chars(q) for q in qs.values())
+        stats.append((i, len(qs), s_chars, max_q_chars))
+
+    stats.sort(key=lambda x: (x[3], x[2]))
+    batches = []
+    cur = []
+    cur_q = 0
+    cur_max_s = 0
+    cur_max_q = 0
+    for idx, n_q, s_chars, max_q_chars in stats:
+        next_q = cur_q + n_q
+        next_max_s = max(cur_max_s, s_chars)
+        next_max_q = max(cur_max_q, max_q_chars)
+        next_chars = (len(cur) + 1) * next_max_s + next_q * next_max_q
+        if cur and (next_q > max_questions or next_chars > max_chars):
+            batches.append(cur)
+            cur = []
+            cur_q = 0
+            cur_max_s = 0
+            cur_max_q = 0
+            next_q = n_q
+            next_max_s = s_chars
+            next_max_q = max_q_chars
+        cur.append(idx)
+        cur_q = next_q
+        cur_max_s = next_max_s
+        cur_max_q = next_max_q
+    if cur:
+        batches.append(cur)
+    return batches
+
+
 def group_train_records(records, *, max_questions=8, max_chars=2400, rng=None):
     """Group training records by persona state into length-matched multi-question chunks.
 
@@ -501,19 +566,134 @@ def release_cuda_graphs(model):
         model.net.graphs = None
 
 
+def _effective_weight(mod, dtype):
+    if hasattr(mod, "base_layer"):
+        w = mod.base_layer.weight.to(dtype)
+        for adapter in mod.active_adapters:
+            if adapter in mod.lora_A:
+                w = w + mod.get_delta_weight(adapter).to(dtype)
+        return w.contiguous()
+    return mod.weight.to(dtype).contiguous()
+
+
+def _concat_weights(dtype, *mods):
+    return torch.cat([_effective_weight(m, dtype) for m in mods], 0).contiguous()
+
+
+@contextlib.contextmanager
+def fused_eval_context(model, eval_dtype=None):
+    """Temporarily bind `kev.fused_qwen35` kernels + `CudaGraphs` for fast evaluation, offloading original weights to CPU RAM."""
+    lm = model.net.lm
+    base = lm.get_base_model() if hasattr(lm, "get_base_model") else lm
+    dev = base.embed_tokens.weight.device
+    orig_emb_dtype = base.embed_tokens.weight.dtype
+    target_dtype = eval_dtype if eval_dtype is not None else orig_emb_dtype
+    can_fuse = all(hasattr(layer.mlp, "gate_proj") for layer in base.layers)
+
+    saved_dicts = []
+    saved_weights = []
+    offloaded_params = []
+    cpu_rng = torch.get_rng_state()
+    cuda_rng = torch.cuda.get_rng_state(dev)
+
+    def _swap_weight_dtype(mod):
+        if mod.weight.dtype != target_dtype:
+            orig_w = mod.weight
+            cpu_t = orig_w.data.cpu()
+            new_w = torch.nn.Parameter(orig_w.data.to(target_dtype), requires_grad=False)
+            orig_w.data = torch.empty(0, dtype=orig_w.dtype, device=dev)
+            saved_weights.append((mod, orig_w, cpu_t))
+            mod.weight = new_w
+
+    def _offload_proj(proj):
+        wp = proj.base_layer.weight if hasattr(proj, "base_layer") else proj.weight
+        offloaded_params.append((wp, wp.data.cpu()))
+        wp.data = torch.empty(0, dtype=wp.dtype, device=dev)
+
+    try:
+        _swap_weight_dtype(base.embed_tokens)
+        _swap_weight_dtype(base.norm)
+        if can_fuse:
+            _fix_nb()
+            for layer in base.layers:
+                mlp = layer.mlp
+                down_mod = mlp.down_proj
+                if layer.block_type == "linear_attention":
+                    m = layer.linear_attn
+                    out_mod = m.out_proj
+                    for obj in (layer, m, mlp, out_mod, down_mod):
+                        saved_dicts.append((obj, dict(obj.__dict__)))
+                    _swap_weight_dtype(m.norm)
+                    m.in_proj = _concat_weights(target_dtype, m.in_proj_qkv, m.in_proj_z, m.in_proj_b, m.in_proj_a)
+                    m.splits = [m.conv_dim, m.value_dim, m.num_v_heads, m.num_v_heads]
+                    m.conv_weight = m.conv1d.weight.squeeze(1).to(target_dtype).contiguous()
+                    out_w = _effective_weight(out_mod, target_dtype)
+                    out_mod.forward = lambda x, w=out_w: F.linear(x, w)
+                    m.forward = types.MethodType(deltanet_forward, m)
+                    for proj in (m.in_proj_qkv, m.in_proj_z, m.in_proj_b, m.in_proj_a, out_mod):
+                        _offload_proj(proj)
+                else:
+                    m = layer.self_attn
+                    out_mod = m.o_proj
+                    for obj in (layer, m, mlp, out_mod, down_mod):
+                        saved_dicts.append((obj, dict(obj.__dict__)))
+                    q_out = m.q_proj.base_layer.out_features if hasattr(m.q_proj, "base_layer") else m.q_proj.out_features
+                    k_out = m.k_proj.base_layer.out_features if hasattr(m.k_proj, "base_layer") else m.k_proj.out_features
+                    v_out = m.v_proj.base_layer.out_features if hasattr(m.v_proj, "base_layer") else m.v_proj.out_features
+                    m.qkv = _concat_weights(target_dtype, m.q_proj, m.k_proj, m.v_proj)
+                    m.splits = [q_out, k_out, v_out]
+                    m.q_norm_weight = 1.0 + m.q_norm.weight.float()
+                    m.k_norm_weight = 1.0 + m.k_norm.weight.float()
+                    out_w = _effective_weight(out_mod, target_dtype)
+                    out_mod.forward = lambda x, w=out_w: F.linear(x, w)
+                    m.forward = types.MethodType(attention_forward, m)
+                    for proj in (m.q_proj, m.k_proj, m.v_proj, out_mod):
+                        _offload_proj(proj)
+                mlp.gate_up = _concat_weights(target_dtype, mlp.gate_proj, mlp.up_proj)
+                down_w = _effective_weight(down_mod, target_dtype)
+                down_mod.forward = lambda x, w=down_w: F.linear(x, w)
+                mlp.forward = types.MethodType(mlp_forward, mlp)
+                for proj in (mlp.gate_proj, mlp.up_proj, down_mod):
+                    _offload_proj(proj)
+                layer.input_norm_weight = 1.0 + layer.input_layernorm.weight.float()
+                layer.post_norm_weight = 1.0 + layer.post_attention_layernorm.weight.float()
+                layer.forward = types.MethodType(decoder_forward, layer)
+        model.net.graphs = CudaGraphs(model.net.lm, model.net.pad_id)
+        yield
+    finally:
+        release_cuda_graphs(model)
+        for obj, orig_dict in saved_dicts:
+            obj.__dict__.clear()
+            obj.__dict__.update(orig_dict)
+            if "forward" in obj.__dict__ and isinstance(obj.__dict__["forward"], types.MethodType) and obj.__dict__["forward"].__func__ is type(obj).forward:
+                del obj.__dict__["forward"]
+        for mod, orig_w, cpu_t in saved_weights:
+            orig_w.data = cpu_t.to(device=dev)
+            mod.weight = orig_w
+        for wp, cpu_t in offloaded_params:
+            wp.data = cpu_t.to(device=dev)
+        torch.set_rng_state(cpu_rng)
+        torch.cuda.set_rng_state(cuda_rng, dev)
+        gc.collect()
+        torch.cuda.empty_cache()
+
+
 @torch.no_grad()
 def predict_probs_grouped(
     model,
     grouped_records,
-    batch_size=128,
+    *,
+    max_questions=512,
+    max_chars=180_000,
     show_progress=True,
     return_stats=False,
-    capture_graphs=None,
+    capture_graphs=True,
 ):
     """Shared-state inference using the pre-grouped evaluation bundle from `group_records_by_state()`.
 
     - Tokenizes `packed_views` once per `(tokenizer, option_isolation)` and caches `grouped_records["encs"]` in memory and `.cache/`.
-    - Frees temporary `CudaGraphs` buffers and private pools after evaluation on trainable models so training does not OOM.
+    - Packs states into length-sorted batches bounded by `max_questions` and padded `max_chars`.
+    - Uses `fused_eval_context` + `CudaGraphs` for fast length-bucketed evaluation and frees temporary buffers on exit.
     - Unpacks predictions back into the flat `records` order so `evaluate_records()` works unchanged.
     """
     t0 = time.perf_counter()
@@ -545,74 +725,29 @@ def predict_probs_grouped(
             cache_path.write_bytes(pickle.dumps(grouped_records["encs"], protocol=pickle.HIGHEST_PROTOCOL))
         grouped_records["encs_key"] = encs_key
     encs = grouped_records["encs"]
+    batches = group_eval_views(packed_views, max_questions=max_questions, max_chars=max_chars)
     t_prep = time.perf_counter() - t_prep0
 
-    is_trainable = any(p.requires_grad for p in model.net.parameters())
-    if capture_graphs is None:
-        capture_graphs = not is_trainable
-    created_graphs = False
-    if capture_graphs and model.net.graphs is None:
-        model.net.graphs = CudaGraphs(model.net.lm, model.net.pad_id)
-        created_graphs = True
+    outer_graphs = model.net.graphs is not None
+    ctx = contextlib.nullcontext() if outer_graphs else fused_eval_context(
+        model, eval_dtype=torch.bfloat16 if torch.is_autocast_enabled("cuda") else None
+    )
 
     torch.cuda.synchronize()
     t_gpu0 = time.perf_counter()
     try:
-        if not capture_graphs:
-            def _sort_key(i):
-                e = encs[i]
-                s_len = e["state_tokens"]
-                dec = e["decide_idx"]
-                max_br = max(b - a for a, b in zip([s_len - 1, *dec[:-1]], dec))
-                return (max_br, s_len)
-
-            order = sorted(range(len(encs)), key=_sort_key)
-            batches = []
-            cur = []
-            cur_branches = 0
-            for idx in order:
-                n_q = len(encs[idx]["decide_idx"])
-                if cur and (len(cur) >= batch_size or cur_branches + n_q > batch_size):
-                    batches.append(cur)
-                    cur = []
-                    cur_branches = 0
-                cur.append(idx)
-                cur_branches += n_q
-            if cur:
-                batches.append(cur)
-
+        with ctx:
             packed_probs = [None] * len(encs)
-            batch_iter = tqdm(batches, desc=f"Evaluating {label} (shared-prefix)", unit="batch", leave=False) if show_progress else batches
+            batch_iter = tqdm(batches, desc=f"Evaluating {label} (shared-state)", unit="batch", leave=False) if show_progress else batches
             for batch_indices in batch_iter:
                 b_encs = [encs[i] for i in batch_indices]
-                logits_batch = model.forward(b_encs, shared_prefix=True)
-                flat_probs = [torch.softmax(z.float(), dim=-1) for q_logits in logits_batch for z in q_logits]
-                cpu_flat = torch.cat(flat_probs).cpu().numpy()
-                pos = 0
-                for orig_idx, q_logits in zip(batch_indices, logits_batch, strict=True):
-                    q_preds = []
-                    for z in q_logits:
-                        k = z.shape[-1]
-                        q_preds.append(cpu_flat[pos : pos + k])
-                        pos += k
-                    packed_probs[orig_idx] = q_preds
-        else:
-            packed_probs = []
-            iterator = range(0, len(encs), batch_size)
-            if show_progress:
-                iterator = tqdm(iterator, desc=f"Evaluating {label} (shared-state)", unit="batch", leave=False)
-            for start in iterator:
-                b_encs = encs[start:start + batch_size]
                 probs_batch, _ = model.net.probs_batch(b_encs, [None] * len(b_encs), [False] * len(b_encs))
-                if model.net.graphs.capture_due(False):
+                if capture_graphs and model.net.graphs.capture_due(False):
                     model.net.graphs.capture_pending()
-                packed_probs.extend([[p.float().numpy() for p in q_list] for q_list in probs_batch])
+                for orig_idx, q_list in zip(batch_indices, probs_batch, strict=True):
+                    packed_probs[orig_idx] = [p.float().numpy() for p in q_list]
         torch.cuda.synchronize()
     finally:
-        if created_graphs and is_trainable:
-            release_cuda_graphs(model)
-            gc.collect()
-            torch.cuda.empty_cache()
         if was_training:
             model.train()
     t_gpu = time.perf_counter() - t_gpu0
@@ -628,6 +763,7 @@ def predict_probs_grouped(
         "mode": "shared-state",
         "n_records": len(grouped_records["records"]),
         "n_views_run": len(encs),
+        "n_batches": len(batches),
         "prep_sec": t_prep,
         "gpu_sec": t_gpu,
         "total_sec": time.perf_counter() - t0,
@@ -670,12 +806,27 @@ def evaluate_records(records, preds, show_progress=False):
     return pd.DataFrame(rows)
 
 
-def evaluate_model(model, eval_data, batch_size=64, show_progress=True, view_fn=make_view, return_details=False):
+def evaluate_model(
+    model,
+    eval_data,
+    *,
+    max_questions=512,
+    max_chars=180_000,
+    batch_size=64,
+    show_progress=True,
+    view_fn=make_view,
+    return_details=False,
+):
     """Unified evaluation entry point accepting either flat `records` (list) or `grouped_records` (dict)."""
     if isinstance(eval_data, dict):
         records = eval_data["records"]
         preds, stats = predict_probs_grouped(
-            model, eval_data, batch_size=batch_size, show_progress=show_progress, return_stats=True
+            model,
+            eval_data,
+            max_questions=max_questions,
+            max_chars=max_chars,
+            show_progress=show_progress,
+            return_stats=True,
         )
         eval_fn = eval_data["eval_fn"]
     else:

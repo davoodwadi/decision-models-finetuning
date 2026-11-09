@@ -51,6 +51,7 @@ class TrainingPlotter:
         self.history = {
             "step": [],
             "step_kl": [],
+            "lr": [],
             "val_step": [],
             "eval_kls": {sp["name"]: [] for sp in self.eval_specs},
         }
@@ -59,6 +60,7 @@ class TrainingPlotter:
         self.status_handle = None
         self.fig = None
         self.ax_train = None
+        self.ax_lr = None
         self.ax_evals = {}
         self.ax_ols = {}
         self.handle = None
@@ -72,8 +74,10 @@ class TrainingPlotter:
         self.start_time = time.perf_counter()
         self.train_start_time = None
         self.train_start_step = 0
-        self.status_handle = display(HTML(""), display_id=True)
-        n_plots = 1 + len(self.eval_specs) + len(self.ols_names)
+        self.status_handle = display(
+            HTML(f"<div style='font-family: monospace;'>{self.run_name}: starting…</div>"), display_id=True
+        )
+        n_plots = 2 + len(self.eval_specs) + len(self.ols_names)
         self.fig, axes = plt.subplots(n_plots, 1, figsize=(10, 3.4 * n_plots))
         if n_plots == 1:
             axes = [axes]
@@ -81,8 +85,12 @@ class TrainingPlotter:
         self.ax_evals = {
             sp["name"]: axes[1 + i] for i, sp in enumerate(self.eval_specs)
         }
+        for ax in self.ax_evals.values():
+            ax.sharex(self.ax_train)
+        self.ax_lr = axes[1 + len(self.eval_specs)]
+        self.ax_lr.sharex(self.ax_train)
         self.ax_ols = {
-            name: axes[1 + len(self.eval_specs) + j] for j, name in enumerate(self.ols_names)
+            name: axes[2 + len(self.eval_specs) + j] for j, name in enumerate(self.ols_names)
         }
         self.handle = display(self.fig, display_id=True)
         plt.close(self.fig)
@@ -104,6 +112,8 @@ class TrainingPlotter:
     def load_state_dict(self, state, step):
         self.init_display()
         self.history = state["history"]
+        if "lr" not in self.history:
+            self.history["lr"] = [np.nan] * len(self.history["step"])
         self.val_rows = state["val_rows"]
         self.latest_ols_df = state["latest_ols_df"]
         self.latest_ols_summary = state["latest_ols_summary"]
@@ -156,6 +166,7 @@ class TrainingPlotter:
         step_kl = sum(step_kls) / len(step_kls)
         self.history["step"].append(step)
         self.history["step_kl"].append(step_kl)
+        self.history["lr"].append(float(lr) if lr is not None else np.nan)
         self.redraw(step, eval_updated=False)
         self.update_status(step, epoch=epoch, status="training", lr=lr)
         return step_kl
@@ -171,6 +182,13 @@ class TrainingPlotter:
         }
         for sp in self.eval_specs:
             name = sp["name"]
+            if name not in eval_summaries:
+                self.history["eval_kls"][name].append(np.nan)
+                row[f"{name}_kl"] = np.nan
+                if sp["has_ols"]:
+                    for k in ("OLS MAPE (%)", "OLS MAE", "OLS MSE", "Spearman rho"):
+                        row[f"{name}_{k}"] = np.nan
+                continue
             s = eval_summaries[name]
             kl = float(s["dist_kl"])
             self.history["eval_kls"][name].append(kl)
@@ -193,7 +211,7 @@ class TrainingPlotter:
             return
         df = pd.DataFrame(self.val_rows)
         val_col = f"{self.val_name}_kl"
-        best_idx = df[val_col].idxmin()
+        best_idx = df[val_col].idxmin() if df[val_col].notna().any() else None
         fmt = {c: "{:.4f}" for c in df.columns if c not in ("epoch", "step")}
         for c in df.columns:
             if "MAPE" in c:
@@ -203,7 +221,7 @@ class TrainingPlotter:
             .apply(
                 lambda r: [
                     "background-color: #d4edda; color: #155724; font-weight: bold"
-                    if r.name == best_idx else ""
+                    if best_idx is not None and r.name == best_idx else ""
                     for _ in r
                 ],
                 axis=1,
@@ -236,6 +254,29 @@ class TrainingPlotter:
         self.ax_train.set_title(f"Training KL — step {step}/{self.total_steps}")
         self.ax_train.set_xlabel("Step")
 
+        self.ax_lr.clear()
+        lr_pts = [
+            (st, lr_val)
+            for st, lr_val in zip(self.history["step"], self.history["lr"])
+            if math.isfinite(lr_val)
+        ]
+        if lr_pts:
+            lr_xs, lr_ys = zip(*lr_pts)
+            self.ax_lr.plot(
+                lr_xs,
+                lr_ys,
+                color="tab:red",
+                linewidth=1.8,
+                label=f"lr (cur={lr_ys[-1]:.2e})",
+            )
+            self.ax_lr.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+            self.ax_lr.legend(loc="upper right")
+            self.ax_lr.set_title(f"Learning Rate — {lr_ys[-1]:.2e}")
+        else:
+            self.ax_lr.set_title("Learning Rate")
+        self.ax_lr.set_ylabel("Learning Rate")
+        self.ax_lr.set_xlabel("Step")
+
         if eval_updated:
             for i, sp in enumerate(self.eval_specs):
                 name = sp["name"]
@@ -243,15 +284,21 @@ class TrainingPlotter:
                 ax.clear()
                 kls = self.history["eval_kls"][name]
                 color = self.PALETTE[i % len(self.PALETTE)]
-                if kls:
-                    best_kl = min(kls)
+                pts = [
+                    (st, kl)
+                    for st, kl in zip(self.history["val_step"], kls)
+                    if math.isfinite(kl)
+                ]
+                if pts:
+                    xs, ys = zip(*pts)
+                    best_kl = min(ys)
                     ax.plot(
-                        self.history["val_step"],
-                        kls,
+                        xs,
+                        ys,
                         color=color,
                         marker="o",
                         linewidth=2,
-                        label=f"{name} KL (best={best_kl:.4f} bits, last={kls[-1]:.4f})",
+                        label=f"{name} KL (best={best_kl:.4f} bits, last={ys[-1]:.4f})",
                     )
                     ax.set_yscale("log")
                     ax.legend(loc="upper right")
@@ -265,16 +312,21 @@ class TrainingPlotter:
                 ax.clear()
                 if name in self.latest_ols_df:
                     bdf = self.latest_ols_df[name]
+                    s = self.latest_ols_summary[name]
+                    ols_step = [
+                        st
+                        for st, kl in zip(self.history["val_step"], self.history["eval_kls"][name])
+                        if math.isfinite(kl)
+                    ][-1]
                     arms = list(bdf.index)
                     x = np.arange(len(arms))
                     width = 0.36
                     ax.bar(x - width / 2, bdf["human"].values, width, label="Human RCT", color="tab:gray")
-                    ax.bar(x + width / 2, bdf["model"].values, width, label=f"Model (step {step})", color="tab:green")
+                    ax.bar(x + width / 2, bdf["model"].values, width, label=f"Model (step {ols_step})", color="tab:green")
                     ax.axhline(0.0, color="black", linewidth=0.8, linestyle="--")
                     ax.set_xticks(x)
                     ax.set_xticklabels(arms, rotation=15, ha="right")
                     ax.set_ylabel("OLS Treatment Effect (vs. Positive)")
-                    s = self.latest_ols_summary[name]
                     mape = s["OLS MAPE (%)"]
                     mae = s["OLS MAE"]
                     rho = s["Spearman rho"]
