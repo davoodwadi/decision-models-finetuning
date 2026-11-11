@@ -117,6 +117,6 @@ def evaluate_grummon_ols(eval_data, preds):
         "human": hb,
         "model": mb,
         "abs_diff": (mb - hb).abs(),
-    })
+    }).sort_values("human", ascending=False)
     return ols_metrics, beta_df
 

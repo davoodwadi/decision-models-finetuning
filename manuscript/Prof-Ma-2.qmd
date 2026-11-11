@@ -1,0 +1,32 @@
+Hello Prof. Ma,
+
+I hope you are doing great.
+
+First, thank you for sending the two Marketing Science papers. It me helped a lot to position our manuscript for potential MS publication.
+
+Here's what these two papers do:
+
+1. They both sample LLM responses from proprietary LLMs (GPT) to replicate human regression coefficients/treatment effects based on existing open-access human experiments.
+2. Both papers position the problem as "LLMs are not good at predicting human responses."
+3. Both of their solutions (contribution) is to do some post-inference calibration on GPT responses to make it more similar to humans. In other words, they proposed to take the off-the-shelf GPT, make predictions, and then calibrate those predictions to approximate human samples.
+
+We can aggressively position our work against these two papers. 
+First, the problem we are trying to solve is already established by these two recent papers.
+Second, our solution is far superior to theirs on different levels:
+
+1. We actually train a model to simulate humans. We don't introduce yet another post-inference calibration method. That would be a genuine contribution.
+2. We use open-weight models, which are cheaper.
+3. We use decision models, which are faster and more suited for likert/choice tasks.
+4. We can benchmark our method on the same dataset as Wang et al. (2026) and show that our open-weight fine-tuned model outperforms proprietary models (e.g., Gemini or GPT) at a fraction of the cost/time.
+
+I have already collected and preprocessed the dataset that Wang et al. used. It's a [COVID dataset](https://jamanetwork.com/journals/jamanetworkopen/fullarticle/2771872). 
+My initial analysis shows that Kev 9B fine-tuned substantially outperforms Gemini 3.5 Flash Lite in reducing the MSE of the betas estimated from human sample. 
+I think this would be our main study.
+
+For Study 2, I plan to use the [Grummon (2025)](https://jamanetwork.com/journals/jamanetworkopen/article-abstract/2840300) nutrition label experiment to add to external validity and position it towards marketing.
+
+Please let me know what your thoughts are. 
+
+Thanks!  
+Davood.
+

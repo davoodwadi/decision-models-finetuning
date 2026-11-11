@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.11.9">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>plan-scratchpad</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="plan-scratchpad_files/libs/clipboard/clipboard.min.js"></script>
+<script src="plan-scratchpad_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="plan-scratchpad_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="plan-scratchpad_files/libs/quarto-html/scrollable-regions/scrollable-regions.js" type="module"></script>
+<script src="plan-scratchpad_files/libs/quarto-html/popper.min.js"></script>
+<script src="plan-scratchpad_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="plan-scratchpad_files/libs/quarto-html/anchor.min.js"></script>
+<link href="plan-scratchpad_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="plan-scratchpad_files/libs/quarto-html/quarto-syntax-highlighting-63b5708e65d6cd79cd7618c58d0c21e7.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="plan-scratchpad_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="plan-scratchpad_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="plan-scratchpad_files/libs/bootstrap/bootstrap-943e08653f4bd8ac7ab9292bfc489267.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="fullcontent quarto-light"><a id="quarto-skip-link" class="visually-hidden-focusable" href="#quarto-document-content">Skip to main content</a>
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content" tabindex="-1">
+
+
+
+
+<section id="reviewer-proof-positioning-strategy-for-marketing-science-manuscript.qmd" class="level1">
+<h1>Reviewer-proof positioning strategy for Marketing Science (<code>manuscript.qmd</code>)</h1>
+<section id="core-thesis-and-diplomatic-framing" class="level2">
+<h2 class="anchored" data-anchor-id="core-thesis-and-diplomatic-framing">Core thesis and diplomatic framing</h2>
+<p><strong>Honoring their foundational contributions while answering their calls for future work.</strong> Because <span class="citation" data-cites="wang2026large">@wang2026large</span> and <span class="citation" data-cites="leng2026reducing">@leng2026reducing</span> are both published in Marketing Science and their authors are highly likely reviewers, our positioning must simultaneously validate their core insights and establish our paper as the natural next step that they themselves called for. Both papers establish the foundational principle that raw generative LLM outputs are systematically miscalibrated and that silicon sampling must be treated as a statistical calibration problem rather than a naive one-shot prompting exercise <span class="citation" data-cites="leng2026reducing wang2026large">[@leng2026reducing; @wang2026large]</span>. When the underlying LLM is treated as a fixed black-box text generator, <span class="citation" data-cites="wang2026large">@wang2026large</span> show how to correct downstream conjoint estimates using a primary target-domain human sample (AAE), and <span class="citation" data-cites="leng2026reducing">@leng2026reducing</span> show how to calibrate the synthetic measurement variable itself by optimizing simplex weights over prompt, persona, and checkpoint ensembles against aggregate human benchmarks (HuMCal). Our paper answers the exact future work directions highlighted at the end of both studies, namely how to fix the upstream foundation model and its persona conditioning so that silicon sampling achieves calibrated respondent-level probability predictions and accurate econometric recovery even in zero-shot settings where target human calibration data are unavailable.</p>
+</section>
+<section id="building-on-the-stated-limitations-and-future-work-of-wang-et-al.-2026" class="level2">
+<h2 class="anchored" data-anchor-id="building-on-the-stated-limitations-and-future-work-of-wang-et-al.-2026">Building on the stated limitations and future work of Wang et al.&nbsp;(2026)</h2>
+<p><strong>Answering their call for scarce-data domains and rich respondent personas.</strong> In their general discussion (Section 7), <span class="citation" data-cites="wang2026large">@wang2026large</span> explicitly call for two directions of future work: extending LLM-assisted preference estimation to domains where real target data are scarce, and examining the impact of incorporating detailed personas into queries so that simulated data more closely resemble specific user populations (as their baseline experiments relied on a generic random-person prompt). We directly execute both directions on their exact <span class="citation" data-cites="kreps2020factors">@kreps2020factors</span> COVID-19 vaccine conjoint benchmark (evaluating both their random-persona prompt and actual 8-attribute respondent personas) as well as on the 6-arm nutrition labeling trial of <span class="citation" data-cites="grummon2025nutrition">@grummon2025nutrition</span> (conditioning on 10 shopper attributes).</p>
+<p><strong>Explaining why generative fine-tuning fell short in Wang et al.&nbsp;(2026) and why decision-model training succeeds.</strong> In Sections 5.2 and 6.1, <span class="citation" data-cites="wang2026large">@wang2026large</span> test fine-tuning <code>GPT-4o</code> on 50 target-domain conjoint demonstrations and find that standalone estimation from the fine-tuned model (<span class="math inline">\(\hat{\boldsymbol{\beta}}^{\sf A}\)</span>) still increases MAPE by <span class="math inline">\(4.83\%\)</span> to <span class="math inline">\(17.85\%\)</span> on the vaccine dataset and by <span class="math inline">\(201.95\%\)</span> to <span class="math inline">\(249.93\%\)</span> on the sports car dataset relative to human data alone. Rather than dismissing their finding, we explain its exact mechanism and resolve it. Autoregressive fine-tuning forces a causal language model to emit discrete one-hot letter tokens (<code>A</code>, <code>B</code>, or <code>C</code>), which collapses within-respondent choice uncertainty and cannot learn calibrated probabilities from 50 task examples. When we instead replace autoregressive token generation with a single-pass decision head and train on <span class="math inline">\(1,881,950\)</span> respondent-question records from general social and behavioral surveys (US ISSP and Twin-2K-500), minimizing respondent-level cross-entropy is mathematically equivalent by the law of total expectation to minimizing the conditional Kullback-Leibler divergence <span class="math inline">\(D_{\mathrm{KL}}(P_{\mathrm{human}}(Y_q \mid \mathbf{s}) \,\|\, P_{\mathrm{model}}(Y_q \mid \mathbf{s}; \theta))\)</span>. Without seeing a single vaccine or conjoint example during training, <code>Kev 9B FT</code> reduces standalone zero-shot MNL MSE by <span class="math inline">\(76\%\)</span> to <span class="math inline">\(78\%\)</span> over off-the-shelf <code>Kev 9B</code> and by orders of magnitude over generative LLMs (<span class="math inline">\(\mathrm{MSE} = 0.0205\)</span>, <span class="math inline">\(\mathrm{MAPE} = 51.8\%\)</span> under random personas; <span class="math inline">\(\mathrm{MSE} = 0.0239\)</span>, <span class="math inline">\(\mathrm{MAPE} = 56.6\%\)</span> under respondent personas).</p>
+<p><strong>Overcoming safety-filter sample truncation.</strong> In Section 5.1, <span class="citation" data-cites="wang2026large">@wang2026large</span> note that they had to exclude all human respondents who opted out of COVID-19 vaccines (Option C) because public generative LLMs such as ChatGPT and Gemini refuse to choose vaccine opt-out options due to safety guardrails. Because a decision model scores the supplied options directly in representation space without open-ended text generation, it produces zero safety refusals across all <span class="math inline">\(9,855\)</span> choice sets and allows estimation on the full, untruncated respondent population.</p>
+<p><strong>Upstream synergy with AAE.</strong> <span class="citation" data-cites="wang2026large">@wang2026large</span> prove theoretically (their Theorem 2 and Appendix D) and show empirically that AAE achieves its largest error reductions when paired with a more informative, better-aligned upstream AI generator. Thus, our fine-tuned decision model is completely synergistic with AAE: it enables standalone zero-shot econometric estimation when primary target data cannot be collected (<span class="math inline">\(m = 0\)</span>), and it provides a substantially better-calibrated, continuous probability surrogate to feed into AAE when primary target data are available (<span class="math inline">\(m &gt; 0\)</span>).</p>
+</section>
+<section id="building-on-the-stated-limitations-and-future-work-of-leng-sang-and-agarwal-2026" class="level2">
+<h2 class="anchored" data-anchor-id="building-on-the-stated-limitations-and-future-work-of-leng-sang-and-agarwal-2026">Building on the stated limitations and future work of Leng, Sang, and Agarwal (2026)</h2>
+<p><strong>Answering their call on subgroup scaling and bias-variance trade-offs.</strong> <span class="citation" data-cites="leng2026reducing">@leng2026reducing</span> make the important contribution of calibrating the synthetic response distribution itself via convex simplex weighting (<span class="math inline">\(\mathbf{w} \in \Delta^{G-1}\)</span>) over <span class="math inline">\(G\)</span> elicitation variants (coarse demographic personas, prompt templates, or checkpoints). In Section 2.2.4.1 and Section 5, they explicitly highlight an open methodological trade-off: while adding more subgroup variants can reduce approximation error, estimating more simplex weights from limited calibration data increases estimation variance, and systematic guidance on subgroup construction remains an open problem. Our respondent-level decision-model training resolves this exact trade-off. Instead of fitting a separate simplex weight for each discrete subgroup cell against an aggregate marginal, we condition a shared decision model on combinatorial multi-attribute persona vectors <span class="math inline">\(\mathbf{s}_i\)</span> (17 harmonized attributes) and train on individual microdata. This amortizes calibration across attributes in representation space, scaling effortlessly to thousands of unique individual respondent profiles where each combinatorial demographic cell has sample size one.</p>
+<p><strong>Escaping the convex hull when all candidate checkpoints share structural bias.</strong> Because HuMCal forms a convex combination <span class="math inline">\(\sum_{g=1}^G w_g \mathbf{Z}^L_{q,g}\)</span>, its predictions lie within the convex hull of the candidate LLM outputs. When all off-the-shelf candidate models share a common distortion, such as over-rational choice concentration on product trade-offs <span class="citation" data-cites="wang2026large">[@wang2026large]</span> or probability compression on subjective scales <span class="citation" data-cites="gao2026choicesfewerdecisionsordinalscale">[@gao2026choicesfewerdecisionsordinalscale]</span>, reweighting those candidates cannot move outside their convex hull. By updating the internal representations and option-scoring projections of the decision model on human microdata, our approach produces calibrated conditional distributions at unit temperature (<span class="math inline">\(T = 1\)</span>) that cannot be reached by any convex combination of off-the-shelf models.</p>
+<p><strong>Answering their call for out-of-sample transfer and structural econometric inference.</strong> In Section 5, <span class="citation" data-cites="leng2026reducing">@leng2026reducing</span> note that cross-domain transfer of simplex weights depends empirically on the stability of subgroup bias across domains, and they recommend validating transfer on a labeled target sample whenever domain shift is large. Furthermore, their empirical applications focus on descriptive aggregate agreement (brand co-purchase concordance and 1-Wasserstein distance on marginal Pew opinion distributions). We extend calibration from descriptive aggregate matching to downstream structural and causal econometric inference, showing that a decision model trained once on general social surveys (ISSP and Twin-2K-500) transfers zero-shot across completely distinct task paradigms to recover MNL part-worth utilities in conjoint analysis <span class="citation" data-cites="wang2026large">[@wang2026large]</span> and participant-level OLS treatment effects in a randomized clinical trial <span class="citation" data-cites="grummon2025nutrition">[@grummon2025nutrition]</span>, even when conditioning on consumer nutrition attributes never seen during training.</p>
+<p><strong>Upstream synergy with HuMCal.</strong> In Section 2.3 (Proposition A-7), <span class="citation" data-cites="leng2026reducing">@leng2026reducing</span> prove that HuMCal is compatible with model updates and that replacing candidate checkpoints with better-aligned models weakly reduces optimal calibration loss. Our respondent-level fine-tuned decision model directly fulfills Proposition A-7 by providing calibrated checkpoint candidates that dramatically lower baseline discrepancy before any post-hoc weighting is even applied.</p>
+</section>
+<section id="section-by-section-assessment-of-manuscript.qmd-and-proposed-updates" class="level2">
+<h2 class="anchored" data-anchor-id="section-by-section-assessment-of-manuscript.qmd-and-proposed-updates">Section-by-section assessment of <code>manuscript.qmd</code> and proposed updates</h2>
+<p><strong>Overview of what to update in <code>manuscript.qmd</code>.</strong> The current manuscript already has a strong narrative arc, so we do not need to restructure the paper. Instead, we should make targeted updates in two existing sections (Section 1 Introduction and Section 2 Related work) and build the positioning into three <code>[TODO]</code> sections as we draft them (Section 4.2 Out-of-domain benchmarks, Section 5.2 Conjoint MNL results, and Section 6 Discussion). Below is the exact plan and draft text for each location.</p>
+<section id="section-1-sec-intro-paragraph-1-what-to-change-and-why" class="level3">
+<h3 class="anchored" data-anchor-id="section-1-sec-intro-paragraph-1-what-to-change-and-why">1. Section 1 (<code>#sec-intro</code>, paragraph 1): what to change and why</h3>
+<p><strong>Diagnosis of current <code>manuscript.qmd</code> text.</strong> The final sentence of paragraph 1 currently states that recent studies conclude raw LLM outputs cannot directly replace human data and instead collect primary human responses in the target domain to train post-hoc estimators <span class="citation" data-cites="wang2026large leng2026reducing">[@wang2026large; @leng2026reducing]</span>. If Leng et al.&nbsp;review the paper, they may object that HuMCal is designed to transfer source-learned weights across related domains without always collecting fresh target data, and if Wang et al.&nbsp;review the paper, we miss the opportunity to note in the opening paragraph that they already tested autoregressive fine-tuning (<code>GPT-4o</code>) and explicitly called for persona-conditioned and scarce-data solutions as future work.</p>
+<p><strong>Proposed replacement for <code>#sec-intro</code>, paragraph 1.</strong> Simulating consumer choices, attitudes, and survey responses with foundation models, commonly referred to as silicon sampling, has attracted growing interest in marketing, public opinion, and behavioral research <span class="citation" data-cites="argyle2023out horton2023large brand2023using goli2024frontiers sarstedt2024using leng2026reducing wang2026large">[@argyle2023out; @horton2023large; @brand2023using; @goli2024frontiers; @sarstedt2024using; @leng2026reducing; @wang2026large]</span>. In marketing applications, the primary goal is often downstream econometric inference, such as estimating part-worth utilities in conjoint analysis or causal treatment effects in randomized experiments. Currently, researchers rely on generative large language models (LLMs) that produce text one token at a time. However, recent studies in marketing science establish that naively replacing human respondents with generative LLM outputs introduces severe bias in preference measurement and downstream regressions <span class="citation" data-cites="goli2024frontiers leng2026reducing wang2026large">[@goli2024frontiers; @leng2026reducing; @wang2026large]</span>. Because generative LLMs are post-trained for deterministic reasoning and safety compliance, scaling up model size, enabling chain-of-thought (<code>CoT</code>) reasoning, or fine-tuning autoregressive models on small task demonstrations makes their choices overly rational <span class="citation" data-cites="wang2026large">[@wang2026large]</span>. This collapses human choice diversity, triggers safety refusals on sensitive options (e.g., opting out of vaccination in <span class="citation" data-cites="wang2026large">@wang2026large</span>), and worsens regression parameter recovery. Furthermore, estimating choice shares from text generation requires costly Monte Carlo sampling <span class="citation" data-cites="wadi2025monte zahradnickova2026ai">[@wadi2025monte; @zahradnickova2026ai]</span>. Recognizing that silicon sampling must be treated as a calibration problem rather than a one-shot prompting exercise <span class="citation" data-cites="leng2026reducing">[@leng2026reducing]</span>, pioneering studies develop post-hoc statistical methods that use human benchmark data to debias regression estimates <span class="citation" data-cites="wang2026large">[@wang2026large]</span> or optimally weight ensembles of prompts, personas, and model checkpoints <span class="citation" data-cites="leng2026reducing">[@leng2026reducing]</span>. At the same time, both studies highlight critical open directions for future research, namely how to incorporate rich individual-level personas, improve the upstream alignment of the foundation model itself, and extend LLM-based inference to settings where target-domain human calibration data are scarce or unavailable <span class="citation" data-cites="wang2026large leng2026reducing">[@wang2026large; @leng2026reducing]</span>.</p>
+</section>
+<section id="section-2-sec-related-subsection-2.1-paragraph-2-what-to-change-and-why" class="level3">
+<h3 class="anchored" data-anchor-id="section-2-sec-related-subsection-2.1-paragraph-2-what-to-change-and-why">2. Section 2 (<code>#sec-related</code>, subsection 2.1, paragraph 2): what to change and why</h3>
+<p><strong>Diagnosis of current <code>manuscript.qmd</code> text.</strong> Currently, paragraph 2 of Section 2.1 (<code>#sec-related</code>) devotes only two sentences to <span class="citation" data-cites="wang2026large">@wang2026large</span> and one sentence to <span class="citation" data-cites="leng2026reducing">@leng2026reducing</span>. Because both papers are published in Marketing Science and represent the closest methodological comparators, a 3-sentence summary is too brief. Expanding this passage into two focused paragraphs lets us credit their theoretical and empirical contributions, cite their exact stated limitations and future research calls, explain why our decision-model microdata training succeeds where <code>GPT-4o</code> fine-tuning in <span class="citation" data-cites="wang2026large">@wang2026large</span> fell short, and frame our model as the upstream solution they called for.</p>
+<p><strong>Proposed replacement for <code>#sec-related</code>, subsection 2.1, paragraph 2 (expanding into two paragraphs).</strong> To address these discrepancies when the language model is treated as a black-box generator, recent marketing studies develop principled post-hoc calibration and data-augmentation frameworks that leverage human benchmark data. Building on prediction-powered inference <span class="citation" data-cites="angelopoulos2023prediction angelopoulos2023ppi">[@angelopoulos2023prediction; @angelopoulos2023ppi]</span>, <span class="citation" data-cites="wang2026large">@wang2026large</span> propose an AI-augmented estimator (AAE) for choice-based conjoint analysis. Using a primary sample of human conjoint responses alongside a larger auxiliary sample of LLM choices, AAE trains a correction network over product features and AI choices to achieve consistent, asymptotically normal parameter estimates and substantial survey data savings. Importantly, <span class="citation" data-cites="wang2026large">@wang2026large</span> show that even when <code>GPT-4o</code> is fine-tuned on 50 target-domain conjoint demonstrations, standalone AI estimation still increases parameter error relative to the primary human sample because discrete token generation collapses choice uncertainty. They further demonstrate that downstream augmentation improves as the upstream AI generator becomes more informative, and they explicitly call for future research into incorporating multi-attribute respondent personas and extending AI-assisted estimation to domains where primary target data are scarce. Complementing downstream parameter correction, <span class="citation" data-cites="leng2026reducing">@leng2026reducing</span> propose Human Mimicry Calibration (HuMCal), which calibrates the LLM measurement variable directly before downstream analysis. HuMCal solves a convex simplex optimization to learn nonnegative weights over a candidate set of LLM elicitation variants (e.g., demographic personas, prompt templates, or model checkpoints) against an aggregate human benchmark, guaranteeing in-sample baseline safety over fixed weighting rules and demonstrating positive empirical transfer across related time periods, regions, industries, and public opinion question clusters. In outlining directions for future research, <span class="citation" data-cites="leng2026reducing">@leng2026reducing</span> note the bias-variance trade-off that arises when estimating simplex weights over a growing number of discrete subgroup variants, the need for reliable transfer when target calibration benchmarks are unavailable, and the benefit of upgrading the underlying model checkpoints (which their Proposition A-7 shows weakly improves calibration loss).</p>
+<p>Our work builds directly on the insights of <span class="citation" data-cites="wang2026large">@wang2026large</span> and <span class="citation" data-cites="leng2026reducing">@leng2026reducing</span> and addresses the future research directions identified by both studies. Whereas AAE and HuMCal calibrate frozen LLM outputs downstream using target-domain or aggregate human benchmarks, we resolve the calibration problem upstream by changing both the model architecture and the training objective. In natural language processing, recent studies fine-tune causal language models on aggregated group survey distributions <span class="citation" data-cites="suh-etal-2025-language huang-etal-2026-distribution ku2026siliconsamplingcrosssurveytransfer">[@suh-etal-2025-language; @huang-etal-2026-distribution; @ku2026siliconsamplingcrosssurveytransfer]</span>. We advance beyond both black-box post-hoc calibration and group-level language model fine-tuning in three ways. First, we shift from autoregressive text generation to single-pass decision models that directly output exact probability distributions over supplied options without Monte Carlo sampling overhead or safety refusals (allowing us, for example, to retain the vaccine opt-out respondents that <span class="citation" data-cites="wang2026large">@wang2026large</span> had to exclude due to commercial LLM safety filters). Second, instead of estimating separate weights over a small grid of coarse subgroups <span class="citation" data-cites="leng2026reducing">[@leng2026reducing]</span> or fine-tuning on a small task-specific demonstration set <span class="citation" data-cites="wang2026large">[@wang2026large]</span>, we train on <span class="math inline">\(1.88\)</span> million respondent-level microdata records from general surveys across 17 harmonized attributes. This amortizes calibration across combinatorial respondent personas in representation space and answers <span class="citation" data-cites="wang2026large">@wang2026large</span>’s call for granular persona conditioning. Third, we demonstrate that upstream respondent-level training transfers zero-shot to unseen conjoint MNL <span class="citation" data-cites="wang2026large">[@wang2026large]</span> and randomized trial OLS <span class="citation" data-cites="grummon2025nutrition">[@grummon2025nutrition]</span> regressions when no target-domain human data are available, while providing a strictly better-calibrated upstream probability generator to pair with AAE or HuMCal whenever target human benchmarks are collected.</p>
+</section>
+<section id="section-4.2-sec-experiments-todo-out-of-domain-benchmarks-and-section-5.2-sec-results-todo-conjoint-mnl-points-to-weave-in-when-drafting" class="level3">
+<h3 class="anchored" data-anchor-id="section-4.2-sec-experiments-todo-out-of-domain-benchmarks-and-section-5.2-sec-results-todo-conjoint-mnl-points-to-weave-in-when-drafting">3. Section 4.2 (<code>#sec-experiments</code>, <code>[TODO]</code> out-of-domain benchmarks) and Section 5.2 (<code>#sec-results</code>, <code>[TODO]</code> conjoint MNL): points to weave in when drafting</h3>
+<p><strong>Answering Wang et al.&nbsp;(2026) on persona conditioning and vaccine opt-outs.</strong> When we flesh out the <code>[TODO]</code> blocks in Section 4.2 and Section 5.2, we should explicitly highlight two design features that build on <span class="citation" data-cites="wang2026large">@wang2026large</span>. First, <span class="citation" data-cites="wang2026large">@wang2026large</span> noted in Section 5.1 that they had to drop respondents who consistently chose the no-vaccine outside option (<code>Option C</code>) because commercial LLMs such as ChatGPT and Gemini refused to opt out of COVID-19 vaccination due to safety filters. We show that our generative Gemini baselines exhibit the exact same pathology (refusing up to <span class="math inline">\(66.3\%\)</span> of choice tasks under respondent personas), whereas decision models (<code>Kev 9B</code> and <code>Kev 9B FT</code>) evaluate all <span class="math inline">\(9,855\)</span> choice tasks with zero refusals on the full <span class="citation" data-cites="kreps2020factors">@kreps2020factors</span> sample. Second, we directly test <span class="citation" data-cites="wang2026large">@wang2026large</span>’s Section 7 future-work hypothesis by comparing their random-persona prompt against actual 8-attribute respondent personas (sex, age, education, religion, political ideology, political party, income, and race), showing that <code>Kev 9B FT</code> achieves strong zero-shot MNL parameter recovery under both specifications (<span class="math inline">\(\mathrm{MSE} = 0.0205\)</span> and <span class="math inline">\(0.0239\)</span>).</p>
+</section>
+<section id="section-6-sec-discussion-todo-discussion-and-conclusion-points-to-weave-in-when-drafting" class="level3">
+<h3 class="anchored" data-anchor-id="section-6-sec-discussion-todo-discussion-and-conclusion-points-to-weave-in-when-drafting">4. Section 6 (<code>#sec-discussion</code>, <code>[TODO]</code> discussion and conclusion): points to weave in when drafting</h3>
+<p><strong>Upstream versus downstream calibration as a unified toolkit for marketing science.</strong> In the Discussion section, we should include a dedicated subsection or paragraph synthesizing our upstream approach with the downstream frameworks of <span class="citation" data-cites="wang2026large">@wang2026large</span> and <span class="citation" data-cites="leng2026reducing">@leng2026reducing</span>. Specifically, we can organize the researcher’s workflow by data availability. In zero-shot pre-launch prototyping, exploratory survey design, or policy pre-testing where no target-domain human responses exist (<span class="math inline">\(m = 0\)</span>), post-hoc estimators cannot be estimated, and our microdata-trained decision model provides calibrated respondent-level choice probabilities that can be plugged directly into MNL and OLS regressions. Conversely, when researchers subsequently collect a primary target-domain human sample (<span class="math inline">\(m &gt; 0\)</span>) or an aggregate calibration benchmark, upstream decision-model training and downstream statistical calibration are complementary rather than competing: plugging continuous, refusal-free choice probabilities from <code>Kev 9B FT</code> into AAE <span class="citation" data-cites="wang2026large">[@wang2026large]</span> or HuMCal <span class="citation" data-cites="leng2026reducing">[@leng2026reducing]</span> directly satisfies the theoretical conditions for reduced estimation error in <span class="citation" data-cites="wang2026large">@wang2026large</span> (Theorem 2) and <span class="citation" data-cites="leng2026reducing">@leng2026reducing</span> (Proposition A-7).</p>
+</section>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+      window.quartoDecorateExternalLinks = function (root) {
+     var links = (root || window.document).querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+          if (!link.classList.contains('no-external-icon')) {
+          }
+        }
+      }
+      };
+      window.quartoDecorateExternalLinks(window.document);
+    // Esc closes the popup (WCAG 1.4.13) and focus leaving both trigger and
+    // popup closes it (WCAG 2.4.11); tippy handles neither for interactive popups.
+    const hideOnEscAndFocusOut = {
+      name: 'hideOnEscAndFocusOut',
+      defaultValue: true,
+      fn(instance) {
+        const dismiss = () => {
+          // A show scheduled by the trigger delay would otherwise reopen it
+          instance.clearDelayTimeouts();
+          instance.hide();
+        };
+        const onKeyDown = (event) => {
+          if (event.key !== 'Escape') {
+            return;
+          }
+          // Keep Esc from also reaching page handlers (e.g. reveal.js overview),
+          // except an open reveal.js slide menu, which Esc should close too.
+          // The menu handles keys only when its keyboard option is on.
+          const menuHandlesEsc = window.Reveal?.getPlugin?.('menu')?.isOpen() &&
+            window.Reveal.getConfig().menu?.keyboard !== false;
+          if (!menuHandlesEsc) {
+            event.stopPropagation();
+          }
+          if (instance.popper.contains(window.document.activeElement)) {
+            // Disabled while refocusing so the focus trigger does not reopen it
+            instance.disable();
+            instance.reference.focus();
+            instance.enable();
+          }
+          dismiss();
+        };
+        const onFocusOut = (event) => {
+          const target = event.relatedTarget;
+          if (target && !instance.reference.contains(target) &&
+              !instance.popper.contains(target)) {
+            dismiss();
+          }
+        };
+        // On the trigger too: a click trigger (code-annotations: select) has no
+        // blur handling. Attached for the instance's lifetime so leaving the
+        // trigger also cancels a show still pending on the trigger delay.
+        instance.reference.addEventListener('focusout', onFocusOut);
+        return {
+          onShow() {
+            window.document.addEventListener('keydown', onKeyDown, true);
+            instance.popper.addEventListener('focusout', onFocusOut);
+          },
+          onHide() {
+            window.document.removeEventListener('keydown', onKeyDown, true);
+            instance.popper.removeEventListener('focusout', onFocusOut);
+          },
+          onDestroy() {
+            instance.reference.removeEventListener('focusout', onFocusOut);
+          },
+        };
+      },
+    };
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+        plugins: [hideOnEscAndFocusOut],
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          // Each band is positioned against its own containing block, which is
+          // not the offsetParent of the lines, so place it from client rects.
+          const placeBand = (band, firstEl, lastEl, codeBlock) => {
+            const container = band.offsetParent;
+            if (container === null) {
+              return;
+            }
+            const containerRect = container.getBoundingClientRect();
+            // Reveal.js scales slides with a transform, so convert client
+            // pixels back to the CSS pixels of the container.
+            const scale = containerRect.height / container.offsetHeight || 1;
+            const firstRect = firstEl.getBoundingClientRect();
+            const lastRect = lastEl.getBoundingClientRect();
+            const top = (firstRect.top - containerRect.top) / scale - container.clientTop + container.scrollTop;
+            const height = (lastRect.bottom - firstRect.top) / scale;
+            band.style.top = top - 2 + "px";
+            band.style.height = height + 4 + "px";
+            if (codeBlock) {
+              // Without the copy button wrapper, the containing block is wider
+              // than the code block, so span the code block explicitly.
+              const blockRect = codeBlock.getBoundingClientRect();
+              band.style.left = (blockRect.left - containerRect.left) / scale - container.clientLeft + container.scrollLeft + "px";
+              band.style.width = blockRect.width / scale + "px";
+            }
+          };
+          if (lineIds.length > 0) {
+            const el = window.document.getElementById(lineIds[0]);
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const parent = el.parentElement.parentElement;
+            // cook up a div (if necessary) and position it
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            placeBand(div, el, lastEl, parent.closest("div.sourceCode") || parent);
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            placeBand(gutterDiv, el, lastEl);
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+  <script type="application/javascript">
+  window.quartoScrollableRegionsLabels = {"code":"Scrollable code","output":"Scrollable output"};
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

@@ -1,3 +1,5 @@
+from training.iid_trainer import IIDTrainer
+from training.marginal_trainer import MarginalGroupedTrainer
 from training.plotter import TrainingPlotter, fmt_time
 from training.trainer import (
     GroupedTrainer,
@@ -10,6 +12,8 @@ from training.trainer import (
 
 __all__ = [
     "GroupedTrainer",
+    "IIDTrainer",
+    "MarginalGroupedTrainer",
     "TrainingPlotter",
     "fmt_time",
     "free_gpu",

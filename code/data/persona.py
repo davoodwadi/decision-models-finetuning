@@ -24,10 +24,11 @@ PERSONA_NAMES = {
     "US_ETHN1": "Ancestry",
     "RACE": "Race",
     "HHSIZE": "How many people, including yourself, live in your household?",
+    "VOTE_FREQ": "Votes in national elections",
 }
 
 DATASET_PERSONA_COLS = {
-    "issp": [c for c in PERSONA_NAMES if c not in {"RACE", "HHSIZE"}],
+    "issp": [c for c in PERSONA_NAMES if c not in {"RACE", "HHSIZE", "VOTE_FREQ"}],
     "twin2k": [
         "c_alphan",
         "US_REG",
@@ -54,6 +55,24 @@ DATASET_PERSONA_COLS = {
         "US_PRTY",
         "US_INC",
         "RACE",
+    ],
+    "wvs": [
+        "c_alphan",
+        "SEX",
+        "AGE",
+        "US_REG",
+        "EDULEVEL",
+        "RACE",
+        "MARITAL",
+        "RELIGGRP",
+        "HHSIZE",
+        "MAINSTAT",
+        "URBRURAL",
+        "US_PRTY",
+        "ATTEND",
+        "UNION",
+        "PARTY_LR",
+        "VOTE_FREQ",
     ],
 }
 
@@ -92,6 +111,25 @@ TWIN2K_QID_TO_PERSONA = {
     "QID24": "MAINSTAT",
 }
 
+WVS_COL_TO_PERSONA = {
+    "B_COUNTRY": "c_alphan",
+    "Q260": "SEX",
+    "Q262": "AGE",
+    "N_REGION_ISO": "US_REG",
+    "Q275": "EDULEVEL",
+    "Q290": "RACE",
+    "Q273": "MARITAL",
+    "Q289": "RELIGGRP",
+    "Q270": "HHSIZE",
+    "Q279": "MAINSTAT",
+    "H_URBRURAL": "URBRURAL",
+    "Q223": "US_PRTY",
+    "Q171": "ATTEND",
+    "Q97": "UNION",
+    "Q240": "PARTY_LR",
+    "Q222": "VOTE_FREQ",
+}
+
 US_ETHN1_LEVELS = [
     "Algeria", "American Indian", "American only", "Arabic", "Argentina", "Australia", "Austria",
     "Bangladesh", "Belgium", "Belize", "Bolivia", "Brazil", "Canada", "Canada (French)", "Chile",
@@ -109,6 +147,12 @@ US_ETHN1_LEVELS = [
     "Thailand", "Turkey", "Uganda", "Uruguay", "Venezuela", "Vietnam", "Yemen", "Yugoslavia",
 ]
 
+LEFT_RIGHT_LEVELS = [   # WVS Q240 left-right self-placement; each label says what its number means
+    "1 (left) on a 1-10 left-right scale",
+    *[f"{i} on a 1-10 left-right scale" for i in range(2, 10)],
+    "10 (right) on a 1-10 left-right scale",
+]
+
 GLOBAL_PERSONA_LEVELS = {
     "c_alphan": ["United States"],
     "SEX": ["Male", "Female"],
@@ -120,7 +164,7 @@ GLOBAL_PERSONA_LEVELS = {
         "Associate's degree",
         "College graduate/some postgrad",
     ],
-    "RACE": ["White", "Black", "Asian", "Hispanic", "Other"],
+    "RACE": ["White", "Black", "Asian", "Hispanic", "Other", "Other, Non-Hispanic", "Two plus, non-Hispanic"],
     "MARITAL": [
         "Married",
         "Living with a partner",
@@ -157,6 +201,8 @@ GLOBAL_PERSONA_LEVELS = {
         "Independent",
         "Something else",
         "Other candidate",
+        "Libertarian",
+        "Green",
     ],
     "US_INC": [
         "Less than $30,000",
@@ -184,6 +230,7 @@ GLOBAL_PERSONA_LEVELS = {
         "Conservative",
         "Very conservative",
         "Other",
+        *LEFT_RIGHT_LEVELS,
     ],
     "HHSIZE": ["1", "2", "3", "4", "More than 4"],
     "MAINSTAT": [
@@ -199,14 +246,17 @@ GLOBAL_PERSONA_LEVELS = {
         "Other",
     ],
     "VOTE_LE": ["Yes", "No"],
+    "VOTE_FREQ": ["Always", "Usually", "Never"],
     "URBRURAL": [
         "A big city",
         "The suburbs or outskirts of a big city",
         "A town or a small city",
         "A country village",
         "A farm or home in the country",
+        "Urban",
+        "Rural",
     ],
-    "UNION": ["Yes", "No"],
+    "UNION": ["Yes", "No", "Active member", "Inactive member"],
     "US_ETHN1": US_ETHN1_LEVELS,
 }
 
@@ -217,6 +267,7 @@ PERSONA_MAPS = {
         "subpop": {"United States": "United States"},
         "covid": {"United States": "United States"},
         "grummon": {"United States": "United States"},
+        "wvs": {"United States": "United States"},
     },
     "SEX": {
         "issp": {"Male": "Male", "Female": "Female"},
@@ -224,6 +275,7 @@ PERSONA_MAPS = {
         "subpop": {"Male": "Male", "Female": "Female"},
         "covid": {1: "Male", 2: "Female", 3: None},
         "grummon": {1.0: "Female", 2.0: "Male", 3.0: None, 4.0: None},
+        "wvs": {"Male": "Male", "Female": "Female"},
     },
     "AGE": {
         "twin2k": {
@@ -252,6 +304,58 @@ PERSONA_MAPS = {
         "subpop": {
             "Northeast": "Northeast",
             "South": "South",
+        },
+        "wvs": {  # state -> US Census Bureau region
+            "US-AL Alabama": "South",
+            "US-AR Arkansas": "South",
+            "US-AZ Arizona": "West",
+            "US-CA California": "West",
+            "US-CO Colorado": "West",
+            "US-CT Connecticut": "Northeast",
+            "US-DC District of Columbia": "South",
+            "US-DE Delaware": "South",
+            "US-FL Florida": "South",
+            "US-GA Georgia": "South",
+            "US-HI Hawaii": "West",
+            "US-IA Iowa": "Midwest",
+            "US-ID Idaho": "West",
+            "US-IL Illinois": "Midwest",
+            "US-IN Indiana": "Midwest",
+            "US-KS Kansas": "Midwest",
+            "US-KY Kentucky": "South",
+            "US-LA Louisiana": "South",
+            "US-MA Massachusetts": "Northeast",
+            "US-MD Maryland": "South",
+            "US-ME Maine": "Northeast",
+            "US-MI Michigan": "Midwest",
+            "US-MN Minnesota": "Midwest",
+            "US-MO Missouri": "Midwest",
+            "US-MS Mississippi": "South",
+            "US-MT Montana": "West",
+            "US-NC North Carolina": "South",
+            "US-ND North Dakota": "Midwest",
+            "US-NE Nebraska": "Midwest",
+            "US-NH New Hampshire": "Northeast",
+            "US-NJ New Jersey": "Northeast",
+            "US-NM New Mexico": "West",
+            "US-NV Nevada": "West",
+            "US-NY New York": "Northeast",
+            "US-OH Ohio": "Midwest",
+            "US-OK Oklahoma": "South",
+            "US-OR Oregon": "West",
+            "US-PA Pennsylvania": "Northeast",
+            "US-RI Rhode Island": "Northeast",
+            "US-SC South Carolina": "South",
+            "US-SD South Dakota": "Midwest",
+            "US-TN Tennessee": "South",
+            "US-TX Texas": "South",
+            "US-UT Utah": "West",
+            "US-VA Virginia": "South",
+            "US-VT Vermont": "Northeast",
+            "US-WA Washington": "West",
+            "US-WI Wisconsin": "Midwest",
+            "US-WV West Virginia": "South",
+            "US-WY Wyoming": "West",
         },
     },
     "EDULEVEL": {
@@ -291,6 +395,17 @@ PERSONA_MAPS = {
             5.0: "College graduate/some postgrad",
             6.0: "College graduate/some postgrad",
         },
+        "wvs": {  # ISCED 2011
+            "Early childhood education (ISCED 0) / no education": "Less than high school",
+            "Primary education (ISCED 1)": "Less than high school",
+            "Lower secondary education (ISCED 2)": "Less than high school",
+            "Upper secondary education (ISCED 3)": "High school or some college",
+            "Post-secondary non-tertiary education (ISCED 4)": "High school or some college",
+            "Short-cycle tertiary education (ISCED 5)": "Associate's degree",
+            "Bachelor or equivalent (ISCED 6)": "College graduate/some postgrad",
+            "Master or equivalent (ISCED 7)": "College graduate/some postgrad",
+            "Doctoral or equivalent (ISCED 8)": "College graduate/some postgrad",
+        },
     },
     "RACE": {
         "twin2k": {
@@ -323,6 +438,13 @@ PERSONA_MAPS = {
             "Native Hawaiian or Pacific Islander": "Other",
             "Other or multi-racial": "Other",
         },
+        "wvs": {  # WVS US has no Asian group (Asians are in "Other, Non-Hispanic"): its own levels, so "Other" keeps its meaning across datasets
+            "US: White, non-Hispanic": "White",
+            "US: Black, Non-Hispanic": "Black",
+            "US: Hispanic": "Hispanic",
+            "US: Other, Non-Hispanic": "Other, Non-Hispanic",
+            "US: Two plus, non-Hispanic": "Two plus, non-Hispanic",
+        },
     },
     "MARITAL": {
         "issp": {
@@ -339,6 +461,14 @@ PERSONA_MAPS = {
             "Separated": "Separated",
             "Widowed": "Widowed",
             "Never been married": "Never been married",
+        },
+        "wvs": {
+            "Married": "Married",
+            "Living together as married": "Living with a partner",
+            "Divorced": "Divorced",
+            "Separated": "Separated",
+            "Widowed": "Widowed",
+            "Single": "Never been married",
         },
     },
     "RELIGGRP": {
@@ -390,6 +520,18 @@ PERSONA_MAPS = {
             11: "Other",
             12: "Nothing in particular",
         },
+        "wvs": {
+            "Do not belong to a denomination": "Nothing in particular",
+            "Roman Catholic": "Catholic",
+            "Protestant": "Protestant",
+            "Orthodox (Russian/Greek/etc.)": "Orthodox",
+            "Other Christian (Evangelical/Pentecostal/Fee church/etc.)": "Other Christian",
+            "Jew": "Jewish",
+            "Muslim": "Muslim",
+            "Hindu": "Hindu",
+            "Buddhist": "Buddhist",
+            "Other": "Other",
+        },
     },
     "ATTEND": {
         "issp": {
@@ -409,6 +551,15 @@ PERSONA_MAPS = {
             "A few times a year": "A few times a year",
             "Seldom": "Seldom",
             "Never": "Never",
+        },
+        "wvs": {  # Q171
+            "More than once a week": "More than once a week",
+            "Once a week": "Once a week",
+            "Once a month": "Once or twice a month",
+            "Only on special holy days": "A few times a year",
+            "Once a year": "Seldom",
+            "Less often": "Seldom",
+            "Never, practically never": "Never",
         },
     },
     "US_PRTY": {
@@ -432,6 +583,13 @@ PERSONA_MAPS = {
             2: "Democrat",
             3: "Independent",
             4: "Something else",
+        },
+        "wvs": {  # Q223: party the respondent would vote for in a national election tomorrow
+            "USA: Democratic Party": "Democrat",
+            "USA: Republican Party": "Republican",
+            "USA: Libertarian": "Libertarian",
+            "USA: Green Party of the United States": "Green",
+            "Other": "Other candidate",
         },
     },
     "US_INC": {
@@ -505,6 +663,7 @@ PERSONA_MAPS = {
             6: "Conservative",
             7: "Very conservative",
         },
+        "wvs": dict(zip(["Left", *[str(i) for i in range(2, 10)], "Right"], LEFT_RIGHT_LEVELS, strict=True)),   # Q240
     },
     "HHSIZE": {
         "twin2k": {
@@ -514,6 +673,7 @@ PERSONA_MAPS = {
             "4": "4",
             "More than 4": "More than 4",
         },
+        "wvs": {"1": "1", "2": "2", "3": "3", "4": "4", "5": "More than 4", "6": "More than 4"},
     },
     "MAINSTAT": {
         "issp": {
@@ -534,9 +694,22 @@ PERSONA_MAPS = {
             "Student": "Student",
             "Retired": "Retired",
         },
+        "wvs": {
+            "Full time (30 hours a week or more)": "Full-time employment",
+            "Part time (less than 30 hours a week)": "Part-time employment",
+            "Self employed": "Self-employed",
+            "Retired/pensioned": "Retired",
+            "Housewife not otherwise employed": "Home-maker",
+            "Student": "Student",
+            "Unemployed": "Unemployed",
+            "Other": "Other",
+        },
     },
     "VOTE_LE": {
         "issp": {"Yes": "Yes", "No": "No"},
+    },
+    "VOTE_FREQ": {
+        "wvs": {"Always": "Always", "Usually": "Usually", "Never": "Never", "Not allowed to vote": None},   # Q222
     },
     "URBRURAL": {
         "issp": {
@@ -546,9 +719,11 @@ PERSONA_MAPS = {
             "A country village": "A country village",
             "A farm or home in the country": "A farm or home in the country",
         },
+        "wvs": {"Urban": "Urban", "Rural": "Rural"},
     },
     "UNION": {
         "issp": {"Yes": "Yes", "No": "No"},
+        "wvs": {"Not a member": "No", "Inactive member": "Inactive member", "Active member": "Active member"},   # Q97
     },
     "US_ETHN1": {
         "issp": {v: v for v in US_ETHN1_LEVELS},
@@ -567,7 +742,7 @@ def bucket_age_series(series: pd.Series, dataset: str) -> pd.Series:
 
 def map_persona_series(series: pd.Series, attr: str, dataset: str) -> pd.Series:
     """Map a dataset persona column into its canonical global levels with fail-fast validation."""
-    if attr == "AGE" and dataset in {"issp", "covid", "grummon"}:
+    if attr == "AGE" and dataset in {"issp", "covid", "grummon", "wvs"}:
         return bucket_age_series(series, dataset=dataset)
 
     mapping = PERSONA_MAPS[attr][dataset]
@@ -620,6 +795,11 @@ def apply_persona_mapping(df: pd.DataFrame, dataset: str) -> pd.DataFrame:
                     raise ValueError("covid: respondent has no race indicator checked in race_1..race_6")
                 raw_races.append(checked[0] if len(checked) == 1 else "Other")
             df["RACE"] = pd.Series(raw_races, index=df.index, dtype=object)
+    elif dataset == "wvs":
+        for src_col, attr in WVS_COL_TO_PERSONA.items():
+            if src_col not in df.columns:
+                raise ValueError(f"wvs: missing column {src_col} for persona attribute {attr}")
+            df[attr] = df[src_col]
     else:
         missing = [c for c in expected_cols if c not in df.columns]
         if missing:

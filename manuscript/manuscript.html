@@ -144,128 +144,440 @@ window.Quarto = {
 
 
 <p><strong>Abstract</strong></p>
-<p><strong>Keywords:</strong> Decision models, Silicon sampling, Human behavior simulation, Survey distributions, Marketing research</p>
+<p>[TODO: Abstract]</p>
+<p><strong>Keywords.</strong> Decision models, Silicon sampling, Econometric inference, Conjoint analysis, Marketing research</p>
 <section id="sec-intro" class="level1">
 <h1>Introduction</h1>
-<p>Simulating human attitudes, preferences, and survey responses with foundation models, a paradigm known as silicon sampling, has attracted growing interest in marketing, public opinion, and behavioral research <span class="citation" data-cites="argyle2023out horton2023large brand2023using goli2024frontiers sarstedt2024using pmlr-v202-santurkar23a durmus2024towards zahradnickova2026ai">(<a href="#ref-argyle2023out" role="doc-biblioref">Argyle et al. 2023</a>; <a href="#ref-brand2023using" role="doc-biblioref">Brand et al. 2023</a>; <a href="#ref-durmus2024towards" role="doc-biblioref">Durmus et al. 2024</a>; <a href="#ref-goli2024frontiers" role="doc-biblioref">Goli and Singh 2024</a>; <a href="#ref-horton2023large" role="doc-biblioref">Horton et al. 2023</a>; <a href="#ref-pmlr-v202-santurkar23a" role="doc-biblioref">Santurkar et al. 2023</a>; <a href="#ref-sarstedt2024using" role="doc-biblioref">Sarstedt et al. 2024</a>; <a href="#ref-zahradnickova2026ai" role="doc-biblioref">Zahradnickova et al. 2026</a>)</span>. In typical marketing applications, demographic marginals are already known from census records or panel quotas, and the researcher’s goal is to predict the distribution of answers to Likert and multiple-choice questions conditional on a target consumer persona. Currently, researchers rely on generative large language models (LLMs) to perform silicon sampling. Because generative LLMs produce free-form text one token at a time, estimating a subpopulation response distribution requires prompting the model hundreds of times via Monte Carlo sampling <span class="citation" data-cites="wadi2025monte zahradnickova2026ai">(<a href="#ref-wadi2025monte" role="doc-biblioref">Wadi and Fredette 2025</a>; <a href="#ref-zahradnickova2026ai" role="doc-biblioref">Zahradnickova et al. 2026</a>)</span> or applying post-hoc sample calibration and statistical data augmentation to combine biased LLM outputs with human benchmark data <span class="citation" data-cites="leng2026reducing wang2026large">(<a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>; <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>. This repeated text generation is slow, expensive with commercial APIs, sensitive to decoding temperature and prompt wording, and prone to mode collapse or refusals <span class="citation" data-cites="pmlr-v202-santurkar23a bhatia2025value liu2025badworktimecrosscultural zahradnickova2026ai">(<a href="#ref-bhatia2025value" role="doc-biblioref"><span class="nocase">Bhatia et al.</span> 2025</a>; <a href="#ref-liu2025badworktimecrosscultural" role="doc-biblioref">Liu et al. 2025</a>; <a href="#ref-pmlr-v202-santurkar23a" role="doc-biblioref">Santurkar et al. 2023</a>; <a href="#ref-zahradnickova2026ai" role="doc-biblioref">Zahradnickova et al. 2026</a>)</span>.</p>
-<p>Decision models, recently introduced as System One architectures <span class="citation" data-cites="palmer2026kev deusser2026evaluatingbenchmarkingmodeljev geuter2026releasinginnerjevsimple li2026llmasjevllmsjevstyledecision">(<a href="#ref-deusser2026evaluatingbenchmarkingmodeljev" role="doc-biblioref">Deußer et al. 2026</a>; <a href="#ref-geuter2026releasinginnerjevsimple" role="doc-biblioref">Geuter et al. 2026</a>; <a href="#ref-li2026llmasjevllmsjevstyledecision" role="doc-biblioref">Y. Li and Wagle 2026</a>; <a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>, offer a direct alternative for silicon sampling. Instead of generating text tokens, a decision model takes a context state (e.g., a respondent persona) and a structured question, such as an ordinal Likert scale (<code>score</code>) or a categorical multiple-choice item (<code>choice</code>), and predicts a probability distribution over the supplied answer options in a single prefill forward pass. Because a decision model outputs a normalized probability distribution over the valid answer options directly, it eliminates the need for Monte Carlo text sampling.</p>
-<p>Despite this architectural advantage, both generative LLMs and off-the-shelf decision models share a fundamental training mismatch when applied to silicon sampling. Both model families are trained to maximize accuracy on objective tasks that have a single ground-truth answer, such as mathematics, code verification, factual question answering, and deterministic routing <span class="citation" data-cites="palmer2026kev geuter2026releasinginnerjevsimple gao2026choicesfewerdecisionsordinalscale">(<a href="#ref-gao2026choicesfewerdecisionsordinalscale" role="doc-biblioref">Gao et al. 2026</a>; <a href="#ref-geuter2026releasinginnerjevsimple" role="doc-biblioref">Geuter et al. 2026</a>; <a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>. Specifically, standard training pairs each prompt with a single integer class label and optimizes cross-entropy loss to push all probability mass onto that one winning option. This objective is poorly suited for tasks that require predicting a human response distribution. As shown in <a href="#fig-gender-mixed" class="quarto-xref">Figure&nbsp;1</a> across representative five-point Likert questions from our US survey data, human respondents who share a demographic attribute such as sex never agree unanimously (e.g., on how partners share household work, <code>2022:v45</code>, both male respondents with <span class="math inline">\(n = 274\)</span> and female respondents with <span class="math inline">\(n = 236\)</span> spread their answers across all five rating levels). A model trained to concentrate probability mass on a single correct answer treats genuine within-group behavioral variation as classification error and cannot recover the true response distribution of a consumer segment.</p>
-<div id="fig-gender-mixed" class="quarto-float quarto-figure quarto-figure-center anchored">
-<figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-gender-mixed-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="figures/gender_mixed_distributions.png" class="img-fluid figure-img" style="width:80.0%">
-</div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-gender-mixed-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;1: Empirical US human response distributions by sex across four representative five-point Likert questions in the ISSP training split. Dashed lines indicate a uniform <span class="math inline">\(20\%\)</span> share across the five options.
-</figcaption>
-</figure>
-</div>
-<p>To address this training mismatch, we fine-tune decision models directly on empirical human response distributions and test whether training on a single survey dataset improves silicon sampling on unseen data. We train three open-weight pointer-head decision models of increasing size, namely Kev 0.8B, Kev 4B, and Kev 9B <span class="citation" data-cites="palmer2026kev">(<a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>, which are built on Qwen 3.5 backbones <span class="citation" data-cites="qwen3.5">(<a href="#ref-qwen3.5" role="doc-biblioref">Qwen Team 2026</a>)</span>, to minimize the Kullback-Leibler (KL) divergence between predicted option distributions and empirical human response shares across 10 waves of the US International Social Survey Programme (ISSP 2015 to 2024; <span class="math inline">\(14,356\)</span> respondents and <span class="math inline">\(767,484\)</span> responses across 616 general social attitude questions). We then evaluate off-the-shelf and fine-tuned decision models across three progressively challenging out-of-sample settings without any post-hoc temperature tuning. First, we evaluate generalization to unseen questions using 72 held-out US ISSP questions (<span class="math inline">\(3,199\)</span> subpopulation-question distributions). Second, we evaluate generalization to unseen questions and demographic personas on the external SubPOP benchmark <span class="citation" data-cites="suh-etal-2025-language">(<a href="#ref-suh-etal-2025-language" role="doc-biblioref">Suh et al. 2025</a>)</span>, which comprises 133 US General Social Survey questions across 22 single-attribute subpopulations (<span class="math inline">\(2,926\)</span> target distributions). Third, to evaluate generalization to an entirely new marketing domain and unseen consumer personas, we test our models on data from a randomized clinical trial of front-of-package nutrition labels and simulated food and beverage purchases <span class="citation" data-cites="grummon2025nutrition">(<span class="math inline">\(5,636\)</span> US grocery shoppers randomized across 6 labeling conditions and 21 choice and Likert questions; <a href="#ref-grummon2025nutrition" role="doc-biblioref">Grummon et al. 2025</a>)</span>. Across all three benchmarks and all three model scales, training decision models on a single social survey dataset consistently improves distributional predictions on new questions, new personas, and a new marketing domain.</p>
+<p>Simulating consumer choices, attitudes, and survey responses with foundation models, commonly referred to as silicon sampling, has attracted growing interest in marketing, public opinion, and behavioral research <span class="citation" data-cites="argyle2023out horton2023large brand2023using goli2024frontiers sarstedt2024using leng2026reducing wang2026large">(<a href="#ref-argyle2023out" role="doc-biblioref">Argyle et al. 2023</a>; <a href="#ref-brand2023using" role="doc-biblioref">Brand et al. 2023</a>; <a href="#ref-goli2024frontiers" role="doc-biblioref">Goli and Singh 2024</a>; <a href="#ref-horton2023large" role="doc-biblioref">Horton et al. 2023</a>; <a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>; <a href="#ref-sarstedt2024using" role="doc-biblioref">Sarstedt et al. 2024</a>; <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>. In marketing applications, the primary goal is often downstream econometric inference, such as estimating part-worth utilities in conjoint analysis or causal treatment effects in randomized experiments. Currently, researchers rely on generative large language models (LLMs) that produce text one token at a time. However, recent studies in marketing science establish that naively replacing human respondents with generative LLM outputs introduces severe bias in preference measurement and downstream regressions <span class="citation" data-cites="goli2024frontiers leng2026reducing wang2026large">(<a href="#ref-goli2024frontiers" role="doc-biblioref">Goli and Singh 2024</a>; <a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>; <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>. Because generative LLMs are post-trained for deterministic reasoning and safety compliance, scaling up model size, enabling chain-of-thought (<code>CoT</code>) reasoning, or fine-tuning autoregressive models on small task demonstrations makes their choices overly rational <span class="citation" data-cites="wang2026large">(<a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>. This collapses human choice diversity, triggers safety refusals on sensitive options (e.g., opting out of vaccination in <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span>), and worsens regression parameter recovery. Furthermore, estimating choice shares from text generation requires costly Monte Carlo sampling <span class="citation" data-cites="wadi2025monte zahradnickova2026ai">(<a href="#ref-wadi2025monte" role="doc-biblioref">Wadi and Fredette 2025</a>; <a href="#ref-zahradnickova2026ai" role="doc-biblioref">Zahradnickova et al. 2026</a>)</span>. Recognizing that silicon sampling must be treated as a calibration problem rather than a one-shot prompting exercise <span class="citation" data-cites="leng2026reducing">(<a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>)</span>, pioneering studies develop post-hoc statistical methods that use human benchmark data to debias regression estimates <span class="citation" data-cites="wang2026large">(<a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span> or optimally weight ensembles of prompts, personas, and model checkpoints <span class="citation" data-cites="leng2026reducing">(<a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>)</span>. At the same time, both studies highlight critical open directions for future research, namely how to incorporate rich individual-level personas, improve the upstream alignment of the foundation model itself, and extend LLM-based inference to settings where target-domain human calibration data are scarce or unavailable <span class="citation" data-cites="wang2026large leng2026reducing">(<a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>; <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>.</p>
+<p>Decision models, also known as System One architectures <span class="citation" data-cites="palmer2026kev deusser2026evaluatingbenchmarkingmodeljev geuter2026releasinginnerjevsimple li2026llmasjevllmsjevstyledecision">(<a href="#ref-deusser2026evaluatingbenchmarkingmodeljev" role="doc-biblioref">Deußer et al. 2026</a>; <a href="#ref-geuter2026releasinginnerjevsimple" role="doc-biblioref">Geuter et al. 2026</a>; <a href="#ref-li2026llmasjevllmsjevstyledecision" role="doc-biblioref">Y. Li and Wagle 2026</a>; <a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>, offer a direct alternative for silicon sampling. Instead of generating text tokens, a decision model takes a respondent persona and a structured question (e.g., a categorical choice task or an ordinal Likert scale) and outputs a normalized probability distribution over the supplied options in a single prefill forward pass. Because the model scores each option directly from its contextualized representation and restricts probability mass strictly to the valid options, it eliminates text-generation variance, Monte Carlo sampling overhead, and safety refusals. Moreover, its continuous choice probabilities can be directly plugged into maximum likelihood and ordinary least squares regressions.</p>
+<p>Despite this architectural advantage, off-the-shelf decision models, similar to generative LLMs, suffer from a fundamental mismatch between their training objective and the goal of silicon sampling. Both model families are trained to maximize single-answer accuracy on objective benchmarks such as mathematics, code verification, and factual question answering <span class="citation" data-cites="palmer2026kev geuter2026releasinginnerjevsimple gao2026choicesfewerdecisionsordinalscale">(<a href="#ref-gao2026choicesfewerdecisionsordinalscale" role="doc-biblioref">Gao et al. 2026</a>; <a href="#ref-geuter2026releasinginnerjevsimple" role="doc-biblioref">Geuter et al. 2026</a>; <a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>. Standard training pairs each prompt with a single class label and minimizes cross-entropy loss to push all probability mass onto that one winning option. In consumer and social surveys, however, respondents who share a demographic profile never agree unanimously, and instead spread their choices across options. A model trained to concentrate probability mass on a single answer treats genuine within-group behavioral variation as classification error, producing overconfident probabilities and biased downstream regression estimates.</p>
+<p>To resolve this training mismatch, we fine-tune open-weight decision models <span class="citation" data-cites="palmer2026kev">(<a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>, built on Qwen 3.5 backbones <span class="citation" data-cites="qwen3.5">(<a href="#ref-qwen3.5" role="doc-biblioref">Qwen Team 2026</a>)</span>, directly on respondent-level survey microdata and test whether this training transfers zero-shot to downstream econometric inference. Our training corpus combines 10 waves of the US International Social Survey Programme (ISSP 2015 to 2024; <span class="math inline">\(14,356\)</span> respondents and 616 questions) with the Twin-2K-500 US panel <span class="citation" data-cites="toubia2025database">(<a href="#ref-toubia2025database" role="doc-biblioref">Toubia et al. 2025</a>; <span class="math inline">\(2,058\)</span> respondents and 974 questions)</span>, totaling <span class="math inline">\(1,881,950\)</span> individual respondent-question observations across 1,572 training questions and 17 harmonized demographic and attitudinal attributes. Using grouped shared-prefix training, we encode each respondent’s multi-attribute persona once and minimize cross-entropy loss across their packed individual responses. This trains the decision model to predict calibrated conditional choice distributions at unit temperature (<span class="math inline">\(T = 1\)</span>), requiring no post-hoc temperature tuning and no target-domain human calibration data.</p>
+<p>We evaluate off-the-shelf and fine-tuned decision models across held-out survey microdata and two out-of-domain marketing regression benchmarks. First, on <span class="math inline">\(13,183\)</span> respondent-question records from 18 held-out ISSP and Twin-2K-500 validation questions, fine-tuning reduces respondent-level cross-entropy by <span class="math inline">\(27.5\%\)</span> (from <span class="math inline">\(2.398\)</span> to <span class="math inline">\(1.738\)</span> bits for Kev 9B). Second, we follow the empirical benchmark and Multinomial Logit (MNL) evaluation protocol of <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span> on the <span class="citation" data-cites="kreps2020factors">Kreps et al. (<a href="#ref-kreps2020factors" role="doc-biblioref">2020</a>)</span> COVID-19 vaccine conjoint dataset (<span class="math inline">\(N = 1,971\)</span> respondents and <span class="math inline">\(9,855\)</span> choice sets across <span class="math inline">\(d = 11\)</span> attribute levels). We evaluate parameter recovery (<code>MAPE</code> and <code>MSE</code> against full-sample human <span class="math inline">\(\boldsymbol{\beta}^*\)</span>) on a <span class="math inline">\(1,000\)</span>-choice-set subsample under both <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span>’s random-persona prompt and actual respondent personas. Consistent with <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span>, generative LLMs (<code>Gemini 3.5 Flash-Lite</code> and <code>Gemini 4 Argon</code>) exhibit severe estimation error (<span class="math inline">\(\mathrm{MSE} = 0.59\)</span> to <span class="math inline">\(26.22\)</span>, <span class="math inline">\(\mathrm{MAPE} = 203.6\%\)</span> to <span class="math inline">\(1507.7\%\)</span>) that worsens at higher thinking budgets and is compounded by safety refusals. Off-the-shelf <code>Kev 9B</code> (<span class="math inline">\(\mathrm{MSE} = 0.0932\)</span> to <span class="math inline">\(0.0982\)</span>) already outperforms the generative LLMs by an order of magnitude. Fine-tuned <code>Kev 9B FT</code> reduces MNL MSE by a further <span class="math inline">\(76\%\)</span> to <span class="math inline">\(78\%\)</span>, reaching <span class="math inline">\(\mathrm{MSE} = 0.0205\)</span> (<span class="math inline">\(\mathrm{MAPE} = 51.8\%\)</span>) under random personas and <span class="math inline">\(\mathrm{MSE} = 0.0239\)</span> (<span class="math inline">\(\mathrm{MAPE} = 56.6\%\)</span>) under respondent personas, approaching the finite-sample error of the 200-respondent human subsample itself (<span class="math inline">\(\mathrm{MSE} = 0.0065\)</span>, <span class="math inline">\(\mathrm{MAPE} = 22.1\%\)</span>). Third, we test zero-shot generalization to a randomized clinical trial of front-of-package nutrition labels <span class="citation" data-cites="grummon2025nutrition">(<a href="#ref-grummon2025nutrition" role="doc-biblioref">Grummon et al. 2025</a>; <span class="math inline">\(N = 5,633\)</span> US grocery shoppers and <span class="math inline">\(33,798\)</span> product healthfulness choices across 6 labeling arms)</span>. Fine-tuning substantially reduces respondent-level choice cross-entropy and accurately recovers the causal treatment-arm effects in participant-level OLS regressions, even when conditioning on consumer nutrition attributes never seen during training.</p>
 </section>
 <section id="sec-related" class="level1">
 <h1>Related work</h1>
-<section id="silicon-sampling-with-generative-llms" class="level2">
-<h2 class="anchored" data-anchor-id="silicon-sampling-with-generative-llms">Silicon sampling with generative LLMs</h2>
-<p>Early work in silicon sampling prompted generative LLMs with demographic backstories to simulate human responses in political, economic, and marketing surveys <span class="citation" data-cites="argyle2023out horton2023large brand2023using goli2024frontiers sarstedt2024using pmlr-v202-santurkar23a durmus2024towards">(<a href="#ref-argyle2023out" role="doc-biblioref">Argyle et al. 2023</a>; <a href="#ref-brand2023using" role="doc-biblioref">Brand et al. 2023</a>; <a href="#ref-durmus2024towards" role="doc-biblioref">Durmus et al. 2024</a>; <a href="#ref-goli2024frontiers" role="doc-biblioref">Goli and Singh 2024</a>; <a href="#ref-horton2023large" role="doc-biblioref">Horton et al. 2023</a>; <a href="#ref-pmlr-v202-santurkar23a" role="doc-biblioref">Santurkar et al. 2023</a>; <a href="#ref-sarstedt2024using" role="doc-biblioref">Sarstedt et al. 2024</a>)</span>. Although generative LLMs often capture the direction of average preferences, prior studies document systematic discrepancies between LLM-generated samples and human populations, including mode collapse onto a single option, flattened within-group variance, demographic stereotyping, and sensitivity to prompt formatting <span class="citation" data-cites="pmlr-v202-santurkar23a shu-etal-2024-dont koo2024benchmarking kabir-etal-2025-break deas-mckeown-2025-artificial jung-etal-2026-psychometric">(<a href="#ref-deas-mckeown-2025-artificial" role="doc-biblioref">Deas and McKeown 2025</a>; <a href="#ref-jung-etal-2026-psychometric" role="doc-biblioref">Jung et al. 2026</a>; <a href="#ref-kabir-etal-2025-break" role="doc-biblioref">Kabir et al. 2025</a>; <a href="#ref-koo2024benchmarking" role="doc-biblioref">Koo et al. 2024</a>; <a href="#ref-pmlr-v202-santurkar23a" role="doc-biblioref">Santurkar et al. 2023</a>; <a href="#ref-shu-etal-2024-dont" role="doc-biblioref">Shu et al. 2024</a>)</span>. Even when generative LLMs are provided with census reference distributions in context or conditioned on real respondent profiles, repeated Monte Carlo text draws still fail to match empirical response distributions on Likert scales <span class="citation" data-cites="wadi2025monte zahradnickova2026ai">(<a href="#ref-wadi2025monte" role="doc-biblioref">Wadi and Fredette 2025</a>; <a href="#ref-zahradnickova2026ai" role="doc-biblioref">Zahradnickova et al. 2026</a>)</span>.</p>
-<p>To mitigate these biases in marketing applications, recent studies have proposed post-hoc statistical corrections that combine LLM outputs with human benchmark data. In conjoint analysis, <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span> develop a statistical data-augmentation estimator that blends LLM-generated choices with human survey data to reduce estimation error, showing that naive substitution of human data with raw LLM responses introduces substantial bias. Similarly, <span class="citation" data-cites="leng2026reducing">Leng et al. (<a href="#ref-leng2026reducing" role="doc-biblioref">2026</a>)</span> propose Human Mimicry Calibration (HuMCal), a post-hoc method that learns optimal weights to combine LLM outputs across prompts, personas, or checkpoints using aggregate human calibration benchmarks. A complementary line of work in natural language processing directly fine-tunes causal language models on aggregated survey distributions to improve subpopulation alignment <span class="citation" data-cites="suh-etal-2025-language huang-etal-2026-distribution ku2026siliconsamplingcrosssurveytransfer">(<a href="#ref-huang-etal-2026-distribution" role="doc-biblioref">Huang et al. 2026</a>; <a href="#ref-ku2026siliconsamplingcrosssurveytransfer" role="doc-biblioref">Ku et al. 2026</a>; <a href="#ref-suh-etal-2025-language" role="doc-biblioref">Suh et al. 2025</a>)</span>. Our work complements these approaches by shifting from autoregressive text generation to decision models that directly output probability distributions over survey options, and by demonstrating that distributional fine-tuning on one general survey transfers zero-shot to unseen personas and an unseen consumer nutrition experiment without requiring target-domain calibration data.</p>
+<section id="silicon-sampling-and-econometric-inference-with-generative-llms" class="level2">
+<h2 class="anchored" data-anchor-id="silicon-sampling-and-econometric-inference-with-generative-llms">Silicon sampling and econometric inference with generative LLMs</h2>
+<p>Early work in silicon sampling prompted generative LLMs with demographic backstories to simulate human responses in political, economic, and marketing surveys <span class="citation" data-cites="argyle2023out horton2023large brand2023using goli2024frontiers sarstedt2024using pmlr-v202-santurkar23a durmus2024towards">(<a href="#ref-argyle2023out" role="doc-biblioref">Argyle et al. 2023</a>; <a href="#ref-brand2023using" role="doc-biblioref">Brand et al. 2023</a>; <a href="#ref-durmus2024towards" role="doc-biblioref">Durmus et al. 2024</a>; <a href="#ref-goli2024frontiers" role="doc-biblioref">Goli and Singh 2024</a>; <a href="#ref-horton2023large" role="doc-biblioref">Horton et al. 2023</a>; <a href="#ref-pmlr-v202-santurkar23a" role="doc-biblioref">Santurkar et al. 2023</a>; <a href="#ref-sarstedt2024using" role="doc-biblioref">Sarstedt et al. 2024</a>)</span>. Although generative LLMs often capture the direction of average preferences, prior studies document systematic discrepancies between LLM samples and human populations. Common failure modes include mode collapse onto a single option, flattened within-group variance, demographic stereotyping, and sensitivity to prompt formatting <span class="citation" data-cites="pmlr-v202-santurkar23a shu-etal-2024-dont koo2024benchmarking kabir-etal-2025-break deas-mckeown-2025-artificial jung-etal-2026-psychometric wadi2025monte zahradnickova2026ai">(<a href="#ref-deas-mckeown-2025-artificial" role="doc-biblioref">Deas and McKeown 2025</a>; <a href="#ref-jung-etal-2026-psychometric" role="doc-biblioref">Jung et al. 2026</a>; <a href="#ref-kabir-etal-2025-break" role="doc-biblioref">Kabir et al. 2025</a>; <a href="#ref-koo2024benchmarking" role="doc-biblioref">Koo et al. 2024</a>; <a href="#ref-pmlr-v202-santurkar23a" role="doc-biblioref">Santurkar et al. 2023</a>; <a href="#ref-shu-etal-2024-dont" role="doc-biblioref">Shu et al. 2024</a>; <a href="#ref-wadi2025monte" role="doc-biblioref">Wadi and Fredette 2025</a>; <a href="#ref-zahradnickova2026ai" role="doc-biblioref">Zahradnickova et al. 2026</a>)</span>. In marketing applications, these distortions cause severe parameter bias when LLM responses are used for downstream econometric estimation <span class="citation" data-cites="goli2024frontiers leng2026reducing wang2026large">(<a href="#ref-goli2024frontiers" role="doc-biblioref">Goli and Singh 2024</a>; <a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>; <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>. In choice-based conjoint analysis, <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span> show that relying solely on AI choices or naively pooling them with human data biases Multinomial Logit (MNL) part-worth estimates. They also show that more capable LLMs and chain-of-thought (<code>CoT</code>) prompting worsen estimation error by making choices overly rational.</p>
+<p>To address these discrepancies when the language model is treated as a black-box generator, recent marketing studies develop principled post-hoc calibration and data-augmentation frameworks that leverage human benchmark data. Building on prediction-powered inference <span class="citation" data-cites="angelopoulos2023prediction angelopoulos2023ppi">(<a href="#ref-angelopoulos2023prediction" role="doc-biblioref">Angelopoulos, Bates, et al. 2023</a>; <a href="#ref-angelopoulos2023ppi" role="doc-biblioref">Angelopoulos, Duchi, et al. 2023</a>)</span>, <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span> propose an AI-augmented estimator (AAE) for choice-based conjoint analysis. Using a primary sample of human conjoint responses alongside a larger auxiliary sample of LLM choices, AAE trains a correction network over product features and AI choices to achieve consistent, asymptotically normal parameter estimates and substantial survey data savings. Importantly, <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span> show that even when <code>GPT-4o</code> is fine-tuned on 50 target-domain conjoint demonstrations, standalone AI estimation still increases parameter error relative to the primary human sample because discrete token generation collapses choice uncertainty. They further demonstrate that downstream augmentation improves as the upstream AI generator becomes more informative, and they explicitly call for future research into incorporating multi-attribute respondent personas and extending AI-assisted estimation to domains where primary target data are scarce. Complementing downstream parameter correction, <span class="citation" data-cites="leng2026reducing">Leng et al. (<a href="#ref-leng2026reducing" role="doc-biblioref">2026</a>)</span> propose Human Mimicry Calibration (HuMCal), which calibrates the LLM measurement variable directly before downstream analysis. HuMCal solves a convex simplex optimization to learn nonnegative weights over a candidate set of LLM elicitation variants (e.g., demographic personas, prompt templates, or model checkpoints) against an aggregate human benchmark, guaranteeing in-sample baseline safety over fixed weighting rules and demonstrating positive empirical transfer across related time periods, regions, industries, and public opinion question clusters. In outlining directions for future research, <span class="citation" data-cites="leng2026reducing">Leng et al. (<a href="#ref-leng2026reducing" role="doc-biblioref">2026</a>)</span> note the bias-variance trade-off that arises when estimating simplex weights over a growing number of discrete subgroup variants, the need for reliable transfer when target calibration benchmarks are unavailable, and the benefit of upgrading the underlying model checkpoints (which their Proposition A-7 shows weakly improves calibration loss).</p>
+<p>Our work builds directly on the insights of <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span> and <span class="citation" data-cites="leng2026reducing">Leng et al. (<a href="#ref-leng2026reducing" role="doc-biblioref">2026</a>)</span> and addresses the future research directions identified by both studies. Whereas AAE and HuMCal calibrate frozen LLM outputs downstream using target-domain or aggregate human benchmarks, we resolve the calibration problem upstream by changing both the model architecture and the training objective. In natural language processing, recent studies fine-tune causal language models on aggregated group survey distributions <span class="citation" data-cites="suh-etal-2025-language huang-etal-2026-distribution ku2026siliconsamplingcrosssurveytransfer">(<a href="#ref-huang-etal-2026-distribution" role="doc-biblioref">Huang et al. 2026</a>; <a href="#ref-ku2026siliconsamplingcrosssurveytransfer" role="doc-biblioref">Ku et al. 2026</a>; <a href="#ref-suh-etal-2025-language" role="doc-biblioref">Suh et al. 2025</a>)</span>. We advance beyond both black-box post-hoc calibration and group-level language model fine-tuning in three ways. First, we shift from autoregressive text generation to single-pass decision models that directly output exact probability distributions over supplied options without Monte Carlo sampling overhead or safety refusals (allowing us, for example, to retain the vaccine opt-out respondents that <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span> had to exclude due to commercial LLM safety filters). Second, instead of estimating separate weights over a small grid of coarse subgroups <span class="citation" data-cites="leng2026reducing">(<a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>)</span> or fine-tuning on a small task-specific demonstration set <span class="citation" data-cites="wang2026large">(<a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>, we train on <span class="math inline">\(1.88\)</span> million respondent-level microdata records from general surveys across 17 harmonized attributes. This amortizes calibration across combinatorial respondent personas in representation space and answers <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span>’s call for granular persona conditioning. Third, we demonstrate that upstream respondent-level training transfers zero-shot to unseen conjoint MNL <span class="citation" data-cites="wang2026large">(<a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span> and randomized trial OLS <span class="citation" data-cites="grummon2025nutrition">(<a href="#ref-grummon2025nutrition" role="doc-biblioref">Grummon et al. 2025</a>)</span> regressions when no target-domain human data are available, while providing a strictly better-calibrated upstream probability generator to pair with AAE or HuMCal whenever target human benchmarks are collected.</p>
 </section>
 <section id="decision-models-and-direct-probability-readouts" class="level2">
 <h2 class="anchored" data-anchor-id="decision-models-and-direct-probability-readouts">Decision models and direct probability readouts</h2>
-<p>To avoid the cost and sampling variance of free-text generation, several studies extract next-token probabilities over option labels from causal LLMs <span class="citation" data-cites="kadavath2022language kuribayashi-etal-2024-psychometric bentegeac2025token wadi2026every">(<a href="#ref-bentegeac2025token" role="doc-biblioref">Bentegeac et al. 2025</a>; <a href="#ref-kadavath2022language" role="doc-biblioref"><span class="nocase">Kadavath et al.</span> 2022</a>; <a href="#ref-kuribayashi-etal-2024-psychometric" role="doc-biblioref">Kuribayashi et al. 2024</a>; <a href="#ref-wadi2026every" role="doc-biblioref">Wadi et al. 2026</a>)</span>. Decision models formalize and extend this approach into a dedicated single-pass architecture <span class="citation" data-cites="palmer2026kev deusser2026evaluatingbenchmarkingmodeljev geuter2026releasinginnerjevsimple li2026llmasjevllmsjevstyledecision asseri2026calibratedwhompersonalanguage li2026kitescalingjevpopulation">(<a href="#ref-asseri2026calibratedwhompersonalanguage" role="doc-biblioref">Asseri and Asseri 2026</a>; <a href="#ref-deusser2026evaluatingbenchmarkingmodeljev" role="doc-biblioref">Deußer et al. 2026</a>; <a href="#ref-geuter2026releasinginnerjevsimple" role="doc-biblioref">Geuter et al. 2026</a>; <a href="#ref-li2026kitescalingjevpopulation" role="doc-biblioref">H. Li 2026</a>; <a href="#ref-li2026llmasjevllmsjevstyledecision" role="doc-biblioref">Y. Li and Wagle 2026</a>; <a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>. Built on pretrained language model backbones <span class="citation" data-cites="qwen3.5">(<a href="#ref-qwen3.5" role="doc-biblioref">Qwen Team 2026</a>)</span>, decision models compile a context state and typed questions (<code>score</code> for ordered rating scales and <code>choice</code> for categorical options) into a structured prompt and compute option probabilities in one prefill pass. Open decision models such as Kev <span class="citation" data-cites="palmer2026kev">(<a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span> attach a lightweight pointer head that scores the final-layer hidden state at each option’s closing token against the hidden state at the question’s closing token. Unlike vocabulary-letter readouts that map options to arbitrary token symbols (e.g., “A”, “B”, “C”) and remain susceptible to token-frequency priors, a pointer head scores each option directly from its contextualized text representation and restricts probability mass strictly to the supplied options. However, because existing decision models are trained on single-label objective benchmarks, they exhibit severe scale compression on ordinal tasks <span class="citation" data-cites="gao2026choicesfewerdecisionsordinalscale">(<a href="#ref-gao2026choicesfewerdecisionsordinalscale" role="doc-biblioref">Gao et al. 2026</a>)</span>, motivating our distributional training framework.</p>
+<p>To avoid the cost and sampling variance of free-text generation, several studies extract next-token probabilities over option labels from causal LLMs <span class="citation" data-cites="kadavath2022language kuribayashi-etal-2024-psychometric bentegeac2025token wadi2026every">(<a href="#ref-bentegeac2025token" role="doc-biblioref">Bentegeac et al. 2025</a>; <a href="#ref-kadavath2022language" role="doc-biblioref"><span class="nocase">Kadavath et al.</span> 2022</a>; <a href="#ref-kuribayashi-etal-2024-psychometric" role="doc-biblioref">Kuribayashi et al. 2024</a>; <a href="#ref-wadi2026every" role="doc-biblioref">Wadi et al. 2026</a>)</span>. Decision models extend this idea into a dedicated single-pass architecture <span class="citation" data-cites="palmer2026kev deusser2026evaluatingbenchmarkingmodeljev geuter2026releasinginnerjevsimple li2026llmasjevllmsjevstyledecision asseri2026calibratedwhompersonalanguage li2026kitescalingjevpopulation">(<a href="#ref-asseri2026calibratedwhompersonalanguage" role="doc-biblioref">Asseri and Asseri 2026</a>; <a href="#ref-deusser2026evaluatingbenchmarkingmodeljev" role="doc-biblioref">Deußer et al. 2026</a>; <a href="#ref-geuter2026releasinginnerjevsimple" role="doc-biblioref">Geuter et al. 2026</a>; <a href="#ref-li2026kitescalingjevpopulation" role="doc-biblioref">H. Li 2026</a>; <a href="#ref-li2026llmasjevllmsjevstyledecision" role="doc-biblioref">Y. Li and Wagle 2026</a>; <a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>. Built on pretrained language model backbones <span class="citation" data-cites="qwen3.5">(<a href="#ref-qwen3.5" role="doc-biblioref">Qwen Team 2026</a>)</span>, decision models compile a context state and typed questions (<code>score</code> for ordered rating scales and <code>choice</code> for categorical options) into a structured prompt. They then compute option probabilities in one prefill pass. Vocabulary-letter readouts map options to arbitrary token symbols (e.g., “A”, “B”, and “C”) and remain susceptible to token-frequency priors. By contrast, a decision model scores each option directly from its contextualized text representation and restricts probability mass strictly to the supplied options <span class="citation" data-cites="palmer2026kev">(<a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>. However, existing decision models are trained on single-label objective benchmarks. As a result, they exhibit severe probability compression on subjective and ordinal tasks <span class="citation" data-cites="gao2026choicesfewerdecisionsordinalscale">(<a href="#ref-gao2026choicesfewerdecisionsordinalscale" role="doc-biblioref">Gao et al. 2026</a>)</span>, which motivates our respondent-level training framework.</p>
 </section>
 </section>
 <section id="sec-methodology" class="level1">
 <h1>Methodology</h1>
-<section id="predicting-subpopulation-response-distributions" class="level2">
-<h2 class="anchored" data-anchor-id="predicting-subpopulation-response-distributions">Predicting subpopulation response distributions</h2>
-<p>Consider a survey dataset of human respondents indexed by <span class="math inline">\(i \in \{1, \dots, N\}\)</span>. Each respondent is characterized by demographic and background attributes <span class="math inline">\(\mathbf{a}_i\)</span> (e.g., sex, age, education, income, and political party) and answers to survey questions <span class="math inline">\(q \in \mathcal{Q}\)</span>. Each question <span class="math inline">\(q\)</span> presents <span class="math inline">\(K_q\)</span> discrete answer options <span class="math inline">\(\mathcal{Y}_q = \{y_1, \dots, y_{K_q}\}\)</span>. For ordinal Likert (<code>score</code>) items, the options are ordered from lowest to highest as <span class="math inline">\(y_1 \prec y_2 \prec \dots \prec y_{K_q}\)</span>.</p>
-<p>A persona <span class="math inline">\(\boldsymbol{\lambda}\)</span> specifies a subset of attribute-value pairs (e.g., “Country: United States; Political party: Republican”). Let <span class="math inline">\(\mathcal{I}(\boldsymbol{\lambda}, q)\)</span> denote the set of human respondents matching persona <span class="math inline">\(\boldsymbol{\lambda}\)</span> who answered question <span class="math inline">\(q\)</span>, with sample size <span class="math inline">\(n_{\boldsymbol{\lambda}, q} = |\mathcal{I}(\boldsymbol{\lambda}, q)|\)</span>. The empirical human response distribution over the <span class="math inline">\(K_q\)</span> options is: <span id="eq-human-pmf"><span class="math display">\[
-P_{\mathrm{human}}(Y_{q, \boldsymbol{\lambda}} = y_k) = \frac{1}{n_{\boldsymbol{\lambda}, q}} \sum_{i \in \mathcal{I}(\boldsymbol{\lambda}, q)} \mathbb{I}(y_{i, q} = y_k), \quad k \in \{1, \dots, K_q\}.
-\tag{1}\]</span></span></p>
-<p>In a pointer-head decision model <span class="citation" data-cites="palmer2026kev">(<a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>, the persona <span class="math inline">\(\boldsymbol{\lambda}\)</span>, question text <span class="math inline">\(q\)</span>, and option texts <span class="math inline">\(\mathcal{Y}_q\)</span> are formatted into a single prompt and processed in one causal forward pass. Let <span class="math inline">\(\mathbf{h}_{\mathrm{q}} \in \mathbb{R}^{d_{\mathrm{model}}}\)</span> denote the final-layer hidden state at the closing token of the question, and let <span class="math inline">\(\mathbf{h}_{\mathrm{opt}, k} \in \mathbb{R}^{d_{\mathrm{model}}}\)</span> denote the final-layer hidden state at the closing token of option <span class="math inline">\(k\)</span>. Using learned linear projections <span class="math inline">\(\mathbf{W}_q, \mathbf{W}_k \in \mathbb{R}^{d_{\mathrm{head}} \times d_{\mathrm{model}}}\)</span>, the pointer head computes a score <span class="math inline">\(z_{q, \boldsymbol{\lambda}, k}\)</span> for each option <span class="math inline">\(k\)</span>: <span id="eq-pointer-head"><span class="math display">\[
-z_{q, \boldsymbol{\lambda}, k} = \frac{(\mathbf{W}_q \mathbf{h}_{\mathrm{q}})^\top (\mathbf{W}_k \mathbf{h}_{\mathrm{opt}, k})}{\sqrt{d_{\mathrm{head}}}}.
-\tag{2}\]</span></span> Applying a softmax function over the <span class="math inline">\(K_q\)</span> option scores yields the predicted response distribution in a single pass: <span id="eq-model-pmf"><span class="math display">\[
-P_{\mathrm{model}}(Y_{q, \boldsymbol{\lambda}} = y_k) = \frac{\exp(z_{q, \boldsymbol{\lambda}, k} / T)}{\sum_{j=1}^{K_q} \exp(z_{q, \boldsymbol{\lambda}, j} / T)},
-\tag{3}\]</span></span> where <span class="math inline">\(T\)</span> is the readout temperature (<span class="math inline">\(T = 1\)</span> for all fine-tuned models, with no post-hoc temperature fitting).</p>
+<section id="predicting-respondent-level-choice-probabilities" class="level2">
+<h2 class="anchored" data-anchor-id="predicting-respondent-level-choice-probabilities">Predicting respondent-level choice probabilities</h2>
+<p>Consider a survey or experimental dataset of human respondents indexed by <span class="math inline">\(i \in \{1, \dots, N\}\)</span>. Each respondent has a multi-attribute persona state <span class="math inline">\(\mathbf{s}_i\)</span> (e.g., sex, age, education, income, political party, and race) and answers a set of questions <span class="math inline">\(\mathcal{Q}_i\)</span>. Each question <span class="math inline">\(q \in \mathcal{Q}_i\)</span> presents <span class="math inline">\(K_q\)</span> discrete answer options <span class="math inline">\(\mathcal{Y}_q = \{y_1, \dots, y_{K_q}\}\)</span>. For categorical <code>choice</code> items, the options are unordered alternatives that may include attribute descriptions. For ordinal <code>score</code> items, the options are ordered rating levels <span class="math inline">\(y_1 \prec y_2 \prec \dots \prec y_{K_q}\)</span>. Let <span class="math inline">\(\mathbf{y}_{i,q} = (y_{i,q,1}, \dots, y_{i,q,K_q}) \in \{0, 1\}^{K_q}\)</span> denote respondent <span class="math inline">\(i\)</span>’s observed one-hot choice vector on question <span class="math inline">\(q\)</span>, where <span class="math inline">\(y_{i,q,k} = 1\)</span> if respondent <span class="math inline">\(i\)</span> selected option <span class="math inline">\(y_k\)</span> and <span class="math inline">\(0\)</span> otherwise.</p>
+<p>In a decision model <span class="citation" data-cites="palmer2026kev">(<a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>, the persona state <span class="math inline">\(\mathbf{s}_i\)</span>, question text <span class="math inline">\(q\)</span>, and options <span class="math inline">\(\mathcal{Y}_q\)</span> are formatted into a structured prompt and processed in one causal forward pass. Let <span class="math inline">\(\mathbf{h}_{i,q} \in \mathbb{R}^{d_{\mathrm{model}}}\)</span> denote the final-layer hidden state at the closing token of question <span class="math inline">\(q\)</span>. Let <span class="math inline">\(\mathbf{h}_{i,q,k} \in \mathbb{R}^{d_{\mathrm{model}}}\)</span> denote the final-layer hidden state at the closing token of option <span class="math inline">\(k\)</span>. Using learned linear projections <span class="math inline">\(\mathbf{W}_q, \mathbf{W}_k \in \mathbb{R}^{d_{\mathrm{head}} \times d_{\mathrm{model}}}\)</span>, the decision head computes a score <span class="math inline">\(z_{i,q,k}\)</span> for each option <span class="math inline">\(k\)</span>: <span id="eq-pointer-head"><span class="math display">\[
+z_{i,q,k} = \frac{(\mathbf{W}_q \mathbf{h}_{i,q})^\top (\mathbf{W}_k \mathbf{h}_{i,q,k})}{\sqrt{d_{\mathrm{head}}}}.
+\tag{1}\]</span></span> Applying a softmax function over the <span class="math inline">\(K_q\)</span> option scores yields the predicted choice distribution in a single pass: <span id="eq-model-pmf"><span class="math display">\[
+P_{\mathrm{model}}(Y_{i,q} = y_k \mid \mathbf{s}_i) = \frac{\exp(z_{i,q,k} / T)}{\sum_{j=1}^{K_q} \exp(z_{i,q,j} / T)},
+\tag{2}\]</span></span> where <span class="math inline">\(T\)</span> is the readout temperature (<span class="math inline">\(T = 1\)</span> for all fine-tuned models, with no post-hoc temperature fitting).</p>
 </section>
-<section id="distributional-training-and-evaluation-metrics" class="level2">
-<h2 class="anchored" data-anchor-id="distributional-training-and-evaluation-metrics">Distributional training and evaluation metrics</h2>
-<p>To train a decision model to approximate human subpopulation distributions rather than single-label classifications, we minimize the Kullback-Leibler (KL) divergence between the empirical human distribution <span class="math inline">\(P_{\mathrm{human}}\)</span> and the model’s predicted distribution <span class="math inline">\(P_{\mathrm{model}}\)</span> (measured in bits): <span id="eq-kl"><span class="math display">\[
-D_{\mathrm{KL}}(P_{\mathrm{human}} \,\|\, P_{\mathrm{model}}) = \sum_{k=1}^{K_q} P_{\mathrm{human}}(y_k) \log_2 \frac{P_{\mathrm{human}}(y_k)}{P_{\mathrm{model}}(y_k)}.
-\tag{4}\]</span></span> During training, we optimize model parameters <span class="math inline">\(\theta\)</span> via soft cross-entropy loss against the empirical subpopulation shares: <span id="eq-soft-ce"><span class="math display">\[
-\mathcal{L}(\theta) = -\sum_{k=1}^{K_q} P_{\mathrm{human}}(Y_{q, \boldsymbol{\lambda}} = y_k) \log P_{\mathrm{model}}(Y_{q, \boldsymbol{\lambda}} = y_k; \theta),
-\tag{5}\]</span></span> which is equivalent to minimizing <span class="math inline">\(D_{\mathrm{KL}}(P_{\mathrm{human}} \,\|\, P_{\mathrm{model}})\)</span> up to a positive scaling constant and the fixed entropy of the human target distribution. Because <span class="math inline">\(D_{\mathrm{KL}}\)</span> subtracts the entropy of <span class="math inline">\(P_{\mathrm{human}}\)</span> from the cross-entropy, questions on which human respondents naturally disagree achieve <span class="math inline">\(D_{\mathrm{KL}} = 0\)</span> when the model matches that spread.</p>
-<p>We use <span class="math inline">\(D_{\mathrm{KL}}\)</span> as our primary evaluation metric across all choice and Likert questions. Because <span class="math inline">\(D_{\mathrm{KL}}\)</span> treats categories as unordered, we also report the normalized 1-Wasserstein distance (<span class="math inline">\(W_1\)</span>, or Earth Mover’s distance) on ordinal Likert (<code>score</code>) items <span class="citation" data-cites="villani2008optimal batterton2017likert wadi2026every">(<a href="#ref-batterton2017likert" role="doc-biblioref">Batterton and Hale 2017</a>; <a href="#ref-villani2008optimal" role="doc-biblioref"><span class="nocase">Villani et al.</span> 2008</a>; <a href="#ref-wadi2026every" role="doc-biblioref">Wadi et al. 2026</a>)</span>: <span id="eq-wasserstein"><span class="math display">\[
-W_1(P_{\mathrm{human}}, P_{\mathrm{model}}) = \frac{1}{K_q - 1} \sum_{k=1}^{K_q - 1} \left| \sum_{j=1}^{k} P_{\mathrm{human}}(y_j) - \sum_{j=1}^{k} P_{\mathrm{model}}(y_j) \right| \in [0, 1],
-\tag{6}\]</span></span> which measures the minimum fraction of the rating scale across which probability mass must be moved to transform <span class="math inline">\(P_{\mathrm{model}}\)</span> into <span class="math inline">\(P_{\mathrm{human}}\)</span>.</p>
+<section id="respondent-level-training-and-grouped-shared-prefix-packing" class="level2">
+<h2 class="anchored" data-anchor-id="respondent-level-training-and-grouped-shared-prefix-packing">Respondent-level training and grouped shared-prefix packing</h2>
+<p>To train a decision model to approximate human choice behavior conditional on a persona, we optimize model parameters <span class="math inline">\(\theta\)</span> directly on individual respondent-question observations <span class="math inline">\((i, q)\)</span>. Specifically, we minimize respondent-level cross-entropy loss (measured in bits) against the observed one-hot response <span class="math inline">\(\mathbf{y}_{i,q}\)</span>: <span id="eq-resp-ce"><span class="math display">\[
+\mathcal{L}_{i,q}(\theta) = -\sum_{k=1}^{K_q} y_{i,q,k} \log_2 P_{\mathrm{model}}(Y_{i,q} = y_k \mid \mathbf{s}_i; \theta).
+\tag{3}\]</span></span> By the law of total expectation, averaging <span class="math inline">\(\mathcal{L}_{i,q}(\theta)\)</span> across all respondents who share persona state <span class="math inline">\(\mathbf{s}\)</span> equals the cross-entropy between the empirical conditional human distribution <span class="math inline">\(P_{\mathrm{human}}(Y_q \mid \mathbf{s})\)</span> and <span class="math inline">\(P_{\mathrm{model}}(Y_q \mid \mathbf{s}; \theta)\)</span>. Minimizing <a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;3</a> is therefore equivalent to minimizing the Kullback-Leibler (KL) divergence <span class="math inline">\(D_{\mathrm{KL}}(P_{\mathrm{human}}(Y_q \mid \mathbf{s}) \,\|\, P_{\mathrm{model}}(Y_q \mid \mathbf{s}; \theta))\)</span> up to the fixed entropy of the human responses. Questions on which respondents with the same persona naturally disagree are thus learned as spread probability distributions rather than single-class labels.</p>
+<p>In respondent-level survey data, each participant <span class="math inline">\(i\)</span> typically answers dozens of questions <span class="math inline">\(\mathcal{Q}_i\)</span> while sharing the same persona state <span class="math inline">\(\mathbf{s}_i\)</span>. Encoding <span class="math inline">\(\mathbf{s}_i\)</span> separately for every question is computationally redundant. To accelerate training and evaluation, we use grouped shared-prefix packing. We partition each respondent’s questions into groups of up to <span class="math inline">\(M_{\max}\)</span> questions (bounded by a maximum character budget <span class="math inline">\(C_{\max}\)</span>). The model encodes the persona prefix <span class="math inline">\(\mathbf{s}_i\)</span> once and scores all questions in the group against the cached state prefix in parallel. During training, we randomly permute the order of demographic attributes in <span class="math inline">\(\mathbf{s}_i\)</span> for each group so that the model is invariant to attribute ordering.</p>
+</section>
+<section id="downstream-econometric-estimation-from-model-predictions" class="level2">
+<h2 class="anchored" data-anchor-id="downstream-econometric-estimation-from-model-predictions">Downstream econometric estimation from model predictions</h2>
+<p>To evaluate whether decision models can replace human respondents in applied marketing research, we feed the models’ predicted choice probabilities directly into the econometric regressions of two out-of-domain studies.</p>
+<section id="multinomial-logit-mnl-in-conjoint-analysis" class="level3">
+<h3 class="anchored" data-anchor-id="multinomial-logit-mnl-in-conjoint-analysis">Multinomial logit (MNL) in conjoint analysis</h3>
+<p>We follow the choice-based conjoint setup and evaluation protocol of <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span>. Each respondent <span class="math inline">\(i\)</span> evaluates <span class="math inline">\(t \in \{1, \dots, 5\}\)</span> paired choice tasks. Each task presents two hypothetical product profiles (Option A and Option B) with binary attribute vectors <span class="math inline">\(\mathbf{x}_{i,t,A}, \mathbf{x}_{i,t,B} \in \{0, 1\}^d\)</span>, alongside an outside no-choice option (Option C) whose utility is normalized to zero. Under the standard MNL specification <span class="citation" data-cites="wang2026large">(<a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>, the choice probabilities for part-worth parameter vector <span class="math inline">\(\boldsymbol{\beta} \in \mathbb{R}^d\)</span> are: <span id="eq-mnl-probs"><span class="math display">\[
+P_A(\mathbf{x}_{i,t}; \boldsymbol{\beta}) = \frac{\exp(\mathbf{x}_{i,t,A}^\top \boldsymbol{\beta})}{1 + \exp(\mathbf{x}_{i,t,A}^\top \boldsymbol{\beta}) + \exp(\mathbf{x}_{i,t,B}^\top \boldsymbol{\beta})}, \qquad P_B(\mathbf{x}_{i,t}; \boldsymbol{\beta}) = \frac{\exp(\mathbf{x}_{i,t,B}^\top \boldsymbol{\beta})}{1 + \exp(\mathbf{x}_{i,t,A}^\top \boldsymbol{\beta}) + \exp(\mathbf{x}_{i,t,B}^\top \boldsymbol{\beta})},
+\tag{4}\]</span></span> and <span class="math inline">\(P_C(\mathbf{x}_{i,t}; \boldsymbol{\beta}) = 1 - P_A(\mathbf{x}_{i,t}; \boldsymbol{\beta}) - P_B(\mathbf{x}_{i,t}; \boldsymbol{\beta})\)</span>. Given observed or predicted choice shares <span class="math inline">\((p_{i,t,A}, p_{i,t,B}, p_{i,t,C})\)</span> across <span class="math inline">\(n\)</span> choice sets, we estimate <span class="math inline">\(\hat{\boldsymbol{\beta}}\)</span> by minimizing the negative log-likelihood via Newton-CG: <span id="eq-mnl-mle"><span class="math display">\[
+\hat{\boldsymbol{\beta}} = \arg\min_{\boldsymbol{\beta} \in \mathbb{R}^d} -\frac{1}{n} \sum_{(i,t)} \Big[ p_{i,t,A} \log P_A(\mathbf{x}_{i,t}; \boldsymbol{\beta}) + p_{i,t,B} \log P_B(\mathbf{x}_{i,t}; \boldsymbol{\beta}) + p_{i,t,C} \log P_C(\mathbf{x}_{i,t}; \boldsymbol{\beta}) \Big].
+\tag{5}\]</span></span> For human respondents and generative LLMs, <span class="math inline">\((p_{i,t,A}, p_{i,t,B}, p_{i,t,C})\)</span> is a one-hot choice vector. For decision models, we use the continuous choice probabilities output by <a href="#eq-model-pmf" class="quarto-xref">Equation&nbsp;2</a>. Following <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span>, let <span class="math inline">\(\boldsymbol{\beta}^*\)</span> denote the ground-truth MNL parameter vector estimated on the full human dataset. We evaluate parameter recovery using Mean Absolute Percentage Error (<span class="math inline">\(\mathrm{MAPE}\)</span>) and Mean Squared Error (<span class="math inline">\(\mathrm{MSE}\)</span>) across the <span class="math inline">\(d\)</span> attributes: <span id="eq-wang-metrics"><span class="math display">\[
+\mathrm{MAPE}(\hat{\boldsymbol{\beta}}, \boldsymbol{\beta}^*) = \frac{1}{d} \sum_{j=1}^{d} \frac{|\hat{\beta}_j - \beta^*_j|}{|\beta^*_j|} \times 100\%, \qquad \mathrm{MSE}(\hat{\boldsymbol{\beta}}, \boldsymbol{\beta}^*) = \frac{1}{d} \sum_{j=1}^{d} (\hat{\beta}_j - \beta^*_j)^2.
+\tag{6}\]</span></span></p>
+</section>
+<section id="participant-level-ols-in-randomized-clinical-trials" class="level3">
+<h3 class="anchored" data-anchor-id="participant-level-ols-in-randomized-clinical-trials">Participant-level OLS in randomized clinical trials</h3>
+<p>In our second econometric study, we evaluate causal treatment-effect recovery in the front-of-package nutrition labeling randomized clinical trial of <span class="citation" data-cites="grummon2025nutrition">Grummon et al. (<a href="#ref-grummon2025nutrition" role="doc-biblioref">2025</a>)</span>. Each shopper <span class="math inline">\(i\)</span> is randomized to one of six labeling arms <span class="math inline">\(a_i\)</span> (the reference <code>Positive</code> arm or one of five treatment arms) and completes six 3-option product healthfulness choice tasks <span class="math inline">\(q \in \{1, \dots, 6\}\)</span>. In each task, option <span class="math inline">\(y_1\)</span> is the objectively healthier food or beverage product. For each shopper <span class="math inline">\(i\)</span>, we compute the mean probability of selecting the healthier product across the six categories, <span class="math inline">\(\bar{p}_i = \frac{1}{6} \sum_{q=1}^6 P(Y_{i,q} = y_1 \mid \mathbf{s}_i, a_i)\)</span>. Following <span class="citation" data-cites="grummon2025nutrition">Grummon et al. (<a href="#ref-grummon2025nutrition" role="doc-biblioref">2025</a>)</span>, we estimate the five treatment-arm effects <span class="math inline">\(\hat{\boldsymbol{\beta}} \in \mathbb{R}^5\)</span> relative to the <code>Positive</code> reference arm via ordinary least squares (OLS) with HC1 heteroskedasticity-robust standard errors. We compare the model-estimated treatment effects <span class="math inline">\(\hat{\boldsymbol{\beta}}\)</span> against the human RCT treatment effects <span class="math inline">\(\boldsymbol{\beta}^*\)</span> using <span class="math inline">\(\mathrm{OLS\ MAPE}\)</span>, <span class="math inline">\(\mathrm{OLS\ MSE}\)</span>, <span class="math inline">\(\mathrm{OLS\ MAE}\)</span>, and Spearman rank correlation <span class="math inline">\(\rho\)</span>.</p>
+</section>
 </section>
 </section>
 <section id="sec-experiments" class="level1">
 <h1>Experimental setup</h1>
-<section id="training-dataset-and-question-split-us-issp" class="level2">
-<h2 class="anchored" data-anchor-id="training-dataset-and-question-split-us-issp">Training dataset and question split (US ISSP)</h2>
+<section id="harmonized-respondent-level-training-corpus-us-issp-and-twin-2k-500" class="level2">
+<h2 class="anchored" data-anchor-id="harmonized-respondent-level-training-corpus-us-issp-and-twin-2k-500">Harmonized respondent-level training corpus (US ISSP and Twin-2K-500)</h2>
+<p><strong>Survey microdata sources.</strong> To train a general-purpose respondent-conditioned decision model without relying on target-domain marketing data, we construct a harmonized microdata corpus from two public US individual-level survey sources (<a href="#tbl-datasets" class="quarto-xref">Table&nbsp;1</a>). The first source comprises <span class="math inline">\(10\)</span> consecutive US waves of the International Social Survey Programme (<code>US ISSP</code>, 2015 to 2024; <a href="#apptbl-issp-waves" class="quarto-xref">Table W1</a>), spanning diverse thematic modules on work orientations, the role of government, social networks, religion, social inequality, the environment, health and health care, family and gender roles, national identity, and digital societies. Across these <span class="math inline">\(10\)</span> waves, we extract <span class="math inline">\(767,484\)</span> individual responses from <span class="math inline">\(14,356\)</span> unique US respondents across <span class="math inline">\(616\)</span> survey questions (<span class="math inline">\(474\)</span> ordinal Likert <code>score</code> items and <span class="math inline">\(142\)</span> unordered categorical <code>choice</code> items, with a mean of <span class="math inline">\(53.5\)</span> answered questions per respondent). The second source is the <code>Twin-2K-500</code> digital twin benchmark <span class="citation" data-cites="toubia2025database">(<a href="#ref-toubia2025database" role="doc-biblioref">Toubia et al. 2025</a>)</span>, from which we extract <span class="math inline">\(1,127,649\)</span> individual responses across <span class="math inline">\(2,058\)</span> US participants and <span class="math inline">\(974\)</span> psychological, economic, and behavioral questions (<span class="math inline">\(287\)</span> ordinal Likert <code>score</code> items and <span class="math inline">\(687\)</span> categorical <code>choice</code> items, with a mean of <span class="math inline">\(547.9\)</span> answered questions per respondent). Combined across both sources, the full survey corpus contains <span class="math inline">\(1,895,133\)</span> respondent-question observations from <span class="math inline">\(16,414\)</span> unique US respondents (<span class="math inline">\(16,338\)</span> distinct persona configurations) across <span class="math inline">\(1,590\)</span> questions.</p>
+<p><strong>Question-level training and validation split.</strong> To evaluate respondent-level distributional calibration on unseen survey questions prior to out-of-domain econometric testing, we partition the survey corpus at the question level (<a href="#tbl-datasets" class="quarto-xref">Table&nbsp;1</a>). The training split contains <span class="math inline">\(1,881,950\)</span> respondent-question observations across <span class="math inline">\(1,572\)</span> questions (<span class="math inline">\(757\)</span> Likert <code>score</code> items and <span class="math inline">\(815\)</span> categorical <code>choice</code> items) from all <span class="math inline">\(16,414\)</span> respondents (<span class="math inline">\(760,473\)</span> observations across <span class="math inline">\(612\)</span> questions from <code>US ISSP</code> and <span class="math inline">\(1,121,477\)</span> observations across <span class="math inline">\(960\)</span> questions from <code>Twin-2K-500</code>). The held-out validation split comprises <span class="math inline">\(13,183\)</span> respondent-question observations across <span class="math inline">\(18\)</span> completely unseen questions from <span class="math inline">\(3,885\)</span> respondents, consisting of <span class="math inline">\(4\)</span> ordinal Likert <code>score</code> questions from the 2020 <code>US ISSP</code> wave (<span class="math inline">\(7,011\)</span> observations across <span class="math inline">\(1,827\)</span> respondents) and <span class="math inline">\(14\)</span> categorical <code>choice</code> questions from <code>Twin-2K-500</code> (<span class="math inline">\(6,172\)</span> observations across <span class="math inline">\(2,058\)</span> respondents). Because the split is performed strictly by question, none of the validation items or their question stems appear in the training set.</p>
+<p><strong>Harmonized persona attributes.</strong> Each respondent <span class="math inline">\(i\)</span> in the training and validation corpus is represented by a structured persona vector <span class="math inline">\(\mathbf{s}_i\)</span> drawn from <span class="math inline">\(17\)</span> harmonized demographic and attitudinal attributes (<a href="#apptbl-attributes" class="quarto-xref">Table W2</a>). Of these <span class="math inline">\(17\)</span> attributes, <span class="math inline">\(11\)</span> are shared across both <code>US ISSP</code> and <code>Twin-2K-500</code>, namely sex, age, education, religion, attendance of religious services, political ideology, marital status, main activity, political party, household income, and US census region. Four additional attributes are recorded exclusively in <code>US ISSP</code> (voting participation in the last general election, urban-rural place of living, trade union membership, and ancestry), and two attributes are recorded exclusively in <code>Twin-2K-500</code> (race and household size). Because the <span class="math inline">\(16,414\)</span> respondents span <span class="math inline">\(16,338\)</span> distinct persona configurations (nearly one respondent per cell), discrete subgroup reweighting <span class="citation" data-cites="leng2026reducing">(<a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>)</span> cannot be applied at the individual level; instead, conditioning a shared decision model on the factorized attribute text amortizes calibration across combinatorial profiles. When a given attribute is unrecorded or missing for respondent <span class="math inline">\(i\)</span>, that attribute line is omitted from the conditioning prompt so that the decision model learns to marginalize consistently over partially observed respondent profiles.</p>
 <div id="tbl-datasets" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-datasets-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table&nbsp;1: Summary of the 10-wave US ISSP respondent-level dataset across training, validation, and held-out test splits.
+Table&nbsp;1: Summary of the respondent-level training corpus, held-out validation split, and out-of-domain marketing evaluation benchmarks.
 </figcaption>
 <div aria-describedby="tbl-datasets-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table">
 <colgroup>
-<col style="width: 11%">
-<col style="width: 11%">
-<col style="width: 15%">
-<col style="width: 15%">
-<col style="width: 15%">
-<col style="width: 15%">
-<col style="width: 15%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
 </colgroup>
 <thead>
 <tr class="header">
-<th>Split</th>
-<th>Dataset</th>
+<th style="text-align: left;">Split</th>
+<th style="text-align: left;">Dataset</th>
+<th style="text-align: right;">Attributes</th>
 <th style="text-align: right;">Questions</th>
 <th style="text-align: right;">Likert (<code>score</code>)</th>
-<th style="text-align: right;">Choice (<code>choice</code>)</th>
-<th style="text-align: right;">Unique respondents</th>
-<th style="text-align: right;">Unique responses</th>
+<th style="text-align: right;">Categorical (<code>choice</code>)</th>
+<th style="text-align: right;">Respondents</th>
+<th style="text-align: right;">Observations</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td>Training</td>
-<td>ISSP US (2015 to 2024)</td>
-<td style="text-align: right;">494</td>
-<td style="text-align: right;">370</td>
-<td style="text-align: right;">124</td>
+<td style="text-align: left;">Training</td>
+<td style="text-align: left;">US ISSP (2015 to 2024)</td>
+<td style="text-align: right;">15</td>
+<td style="text-align: right;">612</td>
+<td style="text-align: right;">470</td>
+<td style="text-align: right;">142</td>
 <td style="text-align: right;">14,356</td>
-<td style="text-align: right;">610,291</td>
+<td style="text-align: right;">760,473</td>
 </tr>
 <tr class="even">
-<td>Validation</td>
-<td>ISSP US (2015 to 2024)</td>
-<td style="text-align: right;">50</td>
-<td style="text-align: right;">43</td>
-<td style="text-align: right;">7</td>
-<td style="text-align: right;">14,305</td>
-<td style="text-align: right;">64,201</td>
+<td style="text-align: left;">Training</td>
+<td style="text-align: left;">Twin-2K-500</td>
+<td style="text-align: right;">13</td>
+<td style="text-align: right;">960</td>
+<td style="text-align: right;">287</td>
+<td style="text-align: right;">673</td>
+<td style="text-align: right;">2,058</td>
+<td style="text-align: right;">1,121,477</td>
 </tr>
 <tr class="odd">
-<td>Held-out test</td>
-<td>ISSP US (2015 to 2024)</td>
-<td style="text-align: right;">72</td>
-<td style="text-align: right;">61</td>
-<td style="text-align: right;">11</td>
-<td style="text-align: right;">14,334</td>
-<td style="text-align: right;">92,992</td>
+<td style="text-align: left;">Training</td>
+<td style="text-align: left;">Combined</td>
+<td style="text-align: right;">17</td>
+<td style="text-align: right;">1,572</td>
+<td style="text-align: right;">757</td>
+<td style="text-align: right;">815</td>
+<td style="text-align: right;">16,414</td>
+<td style="text-align: right;">1,881,950</td>
 </tr>
 <tr class="even">
-<td>Total</td>
-<td>ISSP US (2015 to 2024)</td>
+<td style="text-align: left;">Validation</td>
+<td style="text-align: left;">US ISSP (2015 to 2024)</td>
+<td style="text-align: right;">15</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1,827</td>
+<td style="text-align: right;">7,011</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Validation</td>
+<td style="text-align: left;">Twin-2K-500</td>
+<td style="text-align: right;">13</td>
+<td style="text-align: right;">14</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">14</td>
+<td style="text-align: right;">2,058</td>
+<td style="text-align: right;">6,172</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Validation</td>
+<td style="text-align: left;">Combined</td>
+<td style="text-align: right;">17</td>
+<td style="text-align: right;">18</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">14</td>
+<td style="text-align: right;">3,885</td>
+<td style="text-align: right;">13,183</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Out-of-domain test</td>
+<td style="text-align: left;">COVID-19 vaccine conjoint (full / eval subsample)</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">5 / 5</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">5 / 5</td>
+<td style="text-align: right;">1,971 / 200</td>
+<td style="text-align: right;">9,855 / 1,000</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Out-of-domain test</td>
+<td style="text-align: left;">Nutrition labeling RCT (6 arms x 6 categories)</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">36</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">36</td>
+<td style="text-align: right;">5,633</td>
+<td style="text-align: right;">33,798</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+</section>
+<section id="out-of-domain-marketing-evaluation-benchmarks" class="level2">
+<h2 class="anchored" data-anchor-id="out-of-domain-marketing-evaluation-benchmarks">Out-of-domain marketing evaluation benchmarks</h2>
+<p><strong>Choice-based conjoint analysis of COVID-19 vaccine preferences.</strong> Our first out-of-domain marketing evaluation tests structural part-worth utility recovery on the choice-based conjoint dataset of <span class="citation" data-cites="kreps2020factors">Kreps et al. (<a href="#ref-kreps2020factors" role="doc-biblioref">2020</a>)</span>, following the benchmark setup of <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span> (<a href="#tbl-datasets" class="quarto-xref">Table&nbsp;1</a>). In this study, <span class="math inline">\(1,971\)</span> US respondents each evaluate <span class="math inline">\(5\)</span> discrete choice sets (<span class="math inline">\(9,855\)</span> total choice observations). In each choice set, the respondent chooses between two hypothetical COVID-19 vaccine profiles (<code>Vaccine A</code> and <code>Vaccine B</code>) or selects the no-vaccine opt-out alternative (<code>Neither</code>). Each vaccine profile is randomized across <span class="math inline">\(7\)</span> attributes represented by <span class="math inline">\(d = 11\)</span> non-reference binary indicator levels: efficacy (<span class="math inline">\(70\%\)</span> and <span class="math inline">\(90\%\)</span> relative to a <span class="math inline">\(50\%\)</span> baseline), protection duration (<span class="math inline">\(5\)</span> years relative to <span class="math inline">\(1\)</span> year), incidence of major side effects (<span class="math inline">\(1\)</span> in <span class="math inline">\(1,000,000\)</span> relative to <span class="math inline">\(1\)</span> in <span class="math inline">\(10,000\)</span>), incidence of minor side effects (<span class="math inline">\(1\)</span> in <span class="math inline">\(30\)</span> relative to <span class="math inline">\(1\)</span> in <span class="math inline">\(10\)</span>), regulatory authorization (full FDA approval relative to an emergency use authorization), country of origin (China and the United Kingdom relative to the United States), and institutional endorsement (President Trump, the Centers for Disease Control and Prevention, and the World Health Organization relative to Vice President Biden). Following <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span>, the multinomial logit (MNL) parameter vector <span class="math inline">\(\boldsymbol{\beta}^* \in \mathbb{R}^{11}\)</span> estimated on the full <span class="math inline">\(9,855\)</span>-observation human dataset serves as the ground-truth benchmark, and model predictions are evaluated on the held-out subsample of <span class="math inline">\(200\)</span> respondents (<span class="math inline">\(n = 1,000\)</span> choice sets). We evaluate each model under both the unconditioned random-persona prompt of <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span> and respondent-level persona conditioning using the <span class="math inline">\(8\)</span> demographic and political attributes recorded per participant (sex, age, education, race, household income, religion, political party, and political ideology), all <span class="math inline">\(8\)</span> of which are included among the <span class="math inline">\(17\)</span> training attributes (<a href="#apptbl-attributes" class="quarto-xref">Table W2</a>). This comparison directly tests the future research direction proposed by <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span> on incorporating participant-specific personas into conjoint queries, while retaining all respondents who selected the no-vaccine opt-out (<code>Neither</code>), whom <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span> had to exclude due to commercial generative LLM safety refusals.</p>
+<p><strong>Randomized clinical trial of front-of-package nutrition labeling.</strong> Our second out-of-domain evaluation tests causal treatment-effect recovery on the front-of-package nutrition labeling randomized clinical trial of <span class="citation" data-cites="grummon2025nutrition">Grummon et al. (<a href="#ref-grummon2025nutrition" role="doc-biblioref">2025</a>)</span> (<a href="#tbl-datasets" class="quarto-xref">Table&nbsp;1</a>). In this experiment, <span class="math inline">\(N = 5,633\)</span> US grocery shoppers are randomly assigned to one of <span class="math inline">\(6\)</span> between-subjects labeling arms (<code>Positive</code>, <code>Control</code>, <code>Spectrum</code>, <code>Nutrient warning</code>, <code>High-in GI</code>, and <code>Traffic light</code>) and complete <span class="math inline">\(6\)</span> three-option product healthfulness choice tasks across distinct food and beverage categories, yielding <span class="math inline">\(36\)</span> arm-by-category question cells and <span class="math inline">\(33,798\)</span> individual product choices. Each shopper profile includes <span class="math inline">\(10\)</span> demographic and behavioral attributes (<a href="#apptbl-attributes" class="quarto-xref">Table W2</a>). Notably, whereas <span class="math inline">\(5\)</span> of these shopper attributes overlap with the survey training corpus (sex, age, education, household income, and race), the remaining <span class="math inline">\(5\)</span> attributes are completely unseen during training (Hispanic or Latino ethnicity, SNAP or Food Stamps participation, Nutrition Facts label usage frequency, share of groceries purchased online, and objective nutrition literacy score). This partial covariate overlap allows us to test whether respondent-level fine-tuning generalizes not only to unseen choice tasks and experimental arms, but also to respondent profiles containing novel domain-specific behavioral covariates.</p>
+</section>
+<section id="models-and-training-configuration" class="level2">
+<h2 class="anchored" data-anchor-id="models-and-training-configuration">Models and training configuration</h2>
+<p><strong>Off-the-shelf and respondent-fine-tuned decision models.</strong> We evaluate the <code>Kev</code> family of pretrained decision models <span class="citation" data-cites="palmer2026kev gao2026choicesfewerdecisionsordinalscale">(<a href="#ref-gao2026choicesfewerdecisionsordinalscale" role="doc-biblioref">Gao et al. 2026</a>; <a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span> across three parameter scales (<code>Kev 0.8B</code>, <code>Kev 4B</code>, and <code>Kev 9B</code>), comparing each off-the-shelf base checkpoint against its respondent-level fine-tuned counterpart (<code>Kev 0.8B FT</code>, <code>Kev 4B FT</code>, and <code>Kev 9B FT</code>). Each base model is adapted on the <span class="math inline">\(1,881,950\)</span> training observations in <code>bfloat16</code> precision using Low-Rank Adaptation (<code>LoRA</code>, rank <span class="math inline">\(r = 64\)</span>, <span class="math inline">\(\alpha = 128\)</span>) applied to all attention and feed-forward linear projections and the output scoring head. To amortize encoding of the respondent persona prefix across multiple answered items, we pack all training questions for a given respondent into shared-prefix token groups and optimize respondent-level cross-entropy (<a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;3</a>) using AdamW with a peak learning rate of <span class="math inline">\(5 \times 10^{-5}\)</span>, weight decay of <span class="math inline">\(0.01\)</span>, a linear warmup of <span class="math inline">\(2,000\)</span> steps followed by a cosine decay schedule, gradient clipping at <span class="math inline">\(1.0\)</span>, and gradient accumulation over <span class="math inline">\(12\)</span> packed respondent groups per step. Models are evaluated every <span class="math inline">\(100\)</span> optimizer steps on the <span class="math inline">\(13,183\)</span> held-out validation observations across the <span class="math inline">\(18\)</span> unseen <code>US ISSP</code> and <code>Twin-2K-500</code> survey questions, and the checkpoint achieving the lowest validation cross-entropy is selected for out-of-domain evaluation. At inference time, both off-the-shelf and fine-tuned decision models produce complete option probability distributions in a single forward pass at unit temperature (<span class="math inline">\(T = 1.0\)</span>) without any target-domain demonstrations or post-hoc temperature tuning.</p>
+<p><strong>Generative LLM and human subsample baselines.</strong> On the COVID-19 vaccine conjoint benchmark <span class="citation" data-cites="kreps2020factors wang2026large">(<a href="#ref-kreps2020factors" role="doc-biblioref">Kreps et al. 2020</a>; <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>, we additionally compare the decision models against two benchmarks. First, we report the human subsample baseline, which estimates the MNL model directly on the empirical choices of the <span class="math inline">\(200\)</span> held-out human respondents (<span class="math inline">\(n = 1,000\)</span> choice sets) relative to the full-sample parameter vector <span class="math inline">\(\boldsymbol{\beta}^*\)</span> (<span class="math inline">\(1,971\)</span> respondents, <span class="math inline">\(9,855\)</span> choice sets). Second, we evaluate frontier and high-efficiency autoregressive generative LLMs (<code>Gemini 4 Argon</code> and <code>Gemini 3.5 Flash-Lite</code>) across discrete reasoning token budgets (<code>minimal</code>, <code>low</code>, <code>medium</code>, and <code>high</code>, plus <code>none</code> for <code>Gemini 3.5 Flash-Lite</code>) under both the unconditioned random-persona prompt and the <span class="math inline">\(8\)</span>-attribute respondent personas.</p>
+</section>
+</section>
+<section id="sec-results" class="level1">
+<h1>Results</h1>
+<section id="validation-on-held-out-survey-microdata" class="level2">
+<h2 class="anchored" data-anchor-id="validation-on-held-out-survey-microdata">Validation on held-out survey microdata</h2>
+<p><strong>Distributional calibration on unseen survey questions.</strong> Before examining out-of-domain econometric estimation, we evaluate whether respondent-level fine-tuning improves conditional response distribution recovery on the <span class="math inline">\(13,183\)</span> held-out survey validation observations across <span class="math inline">\(18\)</span> unseen <code>US ISSP</code> and <code>Twin-2K-500</code> questions (<a href="#tbl-validation" class="quarto-xref">Table&nbsp;2</a> and <a href="#fig-validation-curves" class="quarto-xref">Figure&nbsp;1</a>). Prior to fine-tuning, the off-the-shelf decision models exhibit high respondent-level cross-entropy on the held-out survey questions (<code>2.4262</code> nats for <code>Kev 0.8B</code>, <code>2.3586</code> nats for <code>Kev 4B</code>, and <code>2.3983</code> nats for <code>Kev 9B</code>), with negligible advantage from increasing model scale alone. Fine-tuning on the <span class="math inline">\(1,881,950\)</span> survey training records reduces held-out validation cross-entropy by <span class="math inline">\(26.0\%\)</span> to <span class="math inline">\(27.5\%\)</span> across all three model scales, reaching minima of <code>1.7963</code> nats on <code>Kev 0.8B</code> (at <span class="math inline">\(0.34\)</span> epochs), <code>1.7431</code> nats on <code>Kev 4B</code> (at <span class="math inline">\(0.67\)</span> epochs), and <code>1.7377</code> nats on <code>Kev 9B</code> (at <span class="math inline">\(0.60\)</span> epochs). As shown in Panel A of <a href="#fig-validation-curves" class="quarto-xref">Figure&nbsp;1</a>, the largest reduction in cross-entropy occurs during the initial <span class="math inline">\(0.10\)</span> epochs of training as the decision head adapts from generic pretraining to human survey response scales, followed by steady refinement through mid-epoch as the model learns demographic and attitudinal conditioning across respondent personas.</p>
+<p><strong>Zero-shot out-of-domain transfer during training.</strong> To verify that minimizing cross-entropy on general social and behavioral surveys translates into genuine out-of-domain calibration rather than memorization of survey-specific phrasing, we simultaneously track zero-shot choice cross-entropy on all <span class="math inline">\(33,798\)</span> product healthfulness choices (<span class="math inline">\(N = 5,633\)</span> shoppers across <span class="math inline">\(36\)</span> arm-by-category tasks) in the front-of-package nutrition labeling randomized clinical trial of <span class="citation" data-cites="grummon2025nutrition">Grummon et al. (<a href="#ref-grummon2025nutrition" role="doc-biblioref">2025</a>)</span> (<a href="#tbl-validation" class="quarto-xref">Table&nbsp;2</a> and Panel B of <a href="#fig-validation-curves" class="quarto-xref">Figure&nbsp;1</a>). Even though no food, beverage, or nutrition labeling items appear anywhere in the training corpus, zero-shot out-of-domain cross-entropy on the nutrition trial declines monotonically alongside held-out survey validation loss during Epoch 1, dropping by <span class="math inline">\(17.5\%\)</span> on <code>Kev 0.8B</code> (<code>2.0224</code> to <code>1.6686</code> nats), <span class="math inline">\(31.5\%\)</span> on <code>Kev 4B</code> (<code>2.1745</code> to <code>1.4899</code> nats), and <span class="math inline">\(25.9\%\)</span> on <code>Kev 9B</code> (<code>1.8494</code> to <code>1.3710</code> nats). Furthermore, whereas the off-the-shelf models show weak and non-monotonic scaling on the held-out survey validation set, respondent-level fine-tuning unlocks a clear scaling hierarchy on out-of-domain marketing transfer, with <code>Kev 9B FT</code> achieving substantially lower out-of-domain choice cross-entropy (<code>1.3710</code> nats) than both <code>Kev 4B FT</code> (<code>1.4899</code> nats) and <code>Kev 0.8B FT</code> (<code>1.6686</code> nats).</p>
+<div id="tbl-validation" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-validation-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;2: Respondent-level cross-entropy (in nats) on the held-out survey validation split (13,183 observations across 18 unseen US ISSP and Twin-2K-500 questions) and zero-shot out-of-domain choice cross-entropy on the front-of-package nutrition labeling randomized clinical trial (33,798 choices across 5,633 shoppers) before and after respondent-level fine-tuning.
+</figcaption>
+<div aria-describedby="tbl-validation-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table">
+<colgroup>
+<col style="width: 5%">
+<col style="width: 8%">
+<col style="width: 11%">
+<col style="width: 14%">
+<col style="width: 10%">
+<col style="width: 11%">
+<col style="width: 15%">
+<col style="width: 14%">
+<col style="width: 8%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Model</th>
+<th style="text-align: right;">Base valid CE</th>
+<th style="text-align: right;">FT valid CE (best)</th>
+<th style="text-align: right;">FT valid CE (end Ep. 1)</th>
+<th style="text-align: right;">Valid CE change</th>
+<th style="text-align: right;">Best ckpt (epoch)</th>
+<th style="text-align: right;">Out-of-domain RCT Base CE</th>
+<th style="text-align: right;">Out-of-domain RCT FT CE</th>
+<th style="text-align: right;">RCT CE change</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Kev 0.8B</td>
+<td style="text-align: right;">2.4262</td>
+<td style="text-align: right;">1.7963</td>
+<td style="text-align: right;">1.8141</td>
+<td style="text-align: right;">-26.0%</td>
+<td style="text-align: right;">0.34</td>
+<td style="text-align: right;">2.0224</td>
+<td style="text-align: right;">1.6686</td>
+<td style="text-align: right;">-17.5%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Kev 4B</td>
+<td style="text-align: right;">2.3586</td>
+<td style="text-align: right;">1.7431</td>
+<td style="text-align: right;">1.7604</td>
+<td style="text-align: right;">-26.1%</td>
+<td style="text-align: right;">0.67</td>
+<td style="text-align: right;">2.1745</td>
+<td style="text-align: right;">1.4899</td>
+<td style="text-align: right;">-31.5%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Kev 9B</td>
+<td style="text-align: right;">2.3983</td>
+<td style="text-align: right;">1.7377</td>
+<td style="text-align: right;">1.7589</td>
+<td style="text-align: right;">-27.5%</td>
+<td style="text-align: right;">0.60</td>
+<td style="text-align: right;">1.8494</td>
+<td style="text-align: right;">1.3710</td>
+<td style="text-align: right;">-25.9%</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<div id="fig-validation-curves" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-validation-curves-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<embed src="figures/validation_trajectories.pdf" class="img-fluid" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-validation-curves-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: Epoch 1 respondent-level cross-entropy trajectories across model scales (<code>Kev 0.8B</code>, <code>Kev 4B</code>, and <code>Kev 9B</code>) on the held-out survey validation split (Panel A; 18 unseen questions, <span class="math inline">\(n = 13,183\)</span>) and zero-shot transfer to the front-of-package nutrition labeling randomized clinical trial (Panel B; 36 tasks, <span class="math inline">\(n = 33,798\)</span>). Circles in Panel A indicate the selected best validation checkpoint for each model.
+</figcaption>
+</figure>
+</div>
+</section>
+<section id="multinomial-logit-estimation-in-conjoint-analysis" class="level2">
+<h2 class="anchored" data-anchor-id="multinomial-logit-estimation-in-conjoint-analysis">Multinomial logit estimation in conjoint analysis</h2>
+<p>[TODO: Results, table, and figures comparing MNL part-worth recovery (MAPE and MSE against full-sample human beta*) across the human subsample baseline, generative LLMs across reasoning budgets, off-the-shelf Kev 9B, and fine-tuned Kev 9B FT under random and respondent personas on the <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span> COVID-19 vaccine conjoint benchmark.]</p>
+</section>
+<section id="causal-treatment-effect-recovery-in-the-nutrition-labeling-randomized-trial" class="level2">
+<h2 class="anchored" data-anchor-id="causal-treatment-effect-recovery-in-the-nutrition-labeling-randomized-trial">Causal treatment-effect recovery in the nutrition labeling randomized trial</h2>
+<p><span class="citation" data-cites="grummon2025nutrition">(TODO: Results, tables, and figures for respondent-level choice cross-entropy, participant-level OLS treatment-effect recovery, and generalization across seen versus unseen shopper attributes on the <a href="#ref-grummon2025nutrition" role="doc-biblioref">Grummon et al. 2025</a> front-of-package nutrition labeling randomized clinical trial.)</span></p>
+</section>
+</section>
+<section id="sec-discussion" class="level1">
+<h1>Discussion and conclusion</h1>
+<p>[TODO: Discussion of implications for silicon sampling and econometric inference in marketing research, limitations, and conclusion.]</p>
+</section>
+<section id="web-appendix" class="level1">
+<h1>Web Appendix</h1>
+<div id="apptbl-issp-waves" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-apptbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-apptbl" id="apptbl-issp-waves-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table W1: Summary of the 10 US waves of the International Social Survey Programme (ISSP 2015 to 2024).
+</figcaption>
+<div aria-describedby="apptbl-issp-waves-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table">
+<colgroup>
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Wave</th>
+<th style="text-align: left;">Thematic module</th>
+<th style="text-align: right;">Questions</th>
+<th style="text-align: right;">Likert (<code>score</code>)</th>
+<th style="text-align: right;">Categorical (<code>choice</code>)</th>
+<th style="text-align: right;">Respondents</th>
+<th style="text-align: right;">Mean Qs / respondent</th>
+<th style="text-align: right;">Responses</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">2015</td>
+<td style="text-align: left;">Work orientations IV</td>
+<td style="text-align: right;">82</td>
+<td style="text-align: right;">68</td>
+<td style="text-align: right;">14</td>
+<td style="text-align: right;">1,474</td>
+<td style="text-align: right;">49.1</td>
+<td style="text-align: right;">72,416</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">2016</td>
+<td style="text-align: left;">Role of government V</td>
+<td style="text-align: right;">60</td>
+<td style="text-align: right;">52</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">1,384</td>
+<td style="text-align: right;">58.6</td>
+<td style="text-align: right;">81,043</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">2017</td>
+<td style="text-align: left;">Social networks and social resources</td>
+<td style="text-align: right;">60</td>
+<td style="text-align: right;">32</td>
+<td style="text-align: right;">28</td>
+<td style="text-align: right;">1,173</td>
+<td style="text-align: right;">59.2</td>
+<td style="text-align: right;">69,500</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">2018</td>
+<td style="text-align: left;">Religion IV</td>
+<td style="text-align: right;">62</td>
+<td style="text-align: right;">50</td>
+<td style="text-align: right;">12</td>
+<td style="text-align: right;">1,175</td>
+<td style="text-align: right;">60.2</td>
+<td style="text-align: right;">70,719</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">2019</td>
+<td style="text-align: left;">Social inequality V</td>
+<td style="text-align: right;">49</td>
+<td style="text-align: right;">44</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">1,852</td>
+<td style="text-align: right;">45.9</td>
+<td style="text-align: right;">84,963</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">2020</td>
+<td style="text-align: left;">Environment IV</td>
+<td style="text-align: right;">55</td>
+<td style="text-align: right;">45</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">1,847</td>
+<td style="text-align: right;">52.3</td>
+<td style="text-align: right;">96,598</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">2021</td>
+<td style="text-align: left;">Health and health care II</td>
+<td style="text-align: right;">58</td>
+<td style="text-align: right;">50</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">1,146</td>
+<td style="text-align: right;">54.8</td>
+<td style="text-align: right;">62,793</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">2022</td>
+<td style="text-align: left;">Family and changing gender roles V</td>
+<td style="text-align: right;">55</td>
+<td style="text-align: right;">32</td>
+<td style="text-align: right;">23</td>
+<td style="text-align: right;">1,126</td>
+<td style="text-align: right;">45.6</td>
+<td style="text-align: right;">51,303</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">2023</td>
+<td style="text-align: left;">National identity and citizenship</td>
+<td style="text-align: right;">60</td>
+<td style="text-align: right;">56</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">1,589</td>
+<td style="text-align: right;">56.3</td>
+<td style="text-align: right;">89,391</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">2024</td>
+<td style="text-align: left;">Digital societies</td>
+<td style="text-align: right;">75</td>
+<td style="text-align: right;">45</td>
+<td style="text-align: right;">30</td>
+<td style="text-align: right;">1,590</td>
+<td style="text-align: right;">55.8</td>
+<td style="text-align: right;">88,758</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Total</td>
+<td style="text-align: left;">All 10 US waves (2015 to 2024)</td>
 <td style="text-align: right;">616</td>
 <td style="text-align: right;">474</td>
 <td style="text-align: right;">142</td>
 <td style="text-align: right;">14,356</td>
+<td style="text-align: right;">53.5</td>
 <td style="text-align: right;">767,484</td>
 </tr>
 </tbody>
@@ -273,519 +585,159 @@ Table&nbsp;1: Summary of the 10-wave US ISSP respondent-level dataset across tra
 </div>
 </figure>
 </div>
-<p>We build our training dataset from 10 waves of US respondent-level microdata from the International Social Survey Programme (ISSP 2015 to 2024, covering work orientations, role of government, social networks, religion, social inequality, environment, health care, family and gender roles, national identity, and digital societies). As summarized in <a href="#tbl-datasets" class="quarto-xref">Table&nbsp;1</a>, the dataset contains <span class="math inline">\(14,356\)</span> unique US respondents and <span class="math inline">\(767,484\)</span> individual responses across 616 questions (474 ordinal <code>score</code> items and 142 categorical <code>choice</code> items), along with 15 harmonized respondent attributes, namely sex, age, education, religion, religious service attendance, political ideology, political party, past voting turnout, urban or rural residence, marital status, employment status, union membership, subjective social status, census region, ancestry, and household income.</p>
-<p>To evaluate generalization to unseen questions without item leakage, we partition the 616 US questions into 494 training questions (<span class="math inline">\(80.2\%\)</span>), 50 validation questions (<span class="math inline">\(8.1\%\)</span>), and 72 held-out test questions (<span class="math inline">\(11.7\%\)</span>). All cross-wave recurring questions are placed strictly in the training split so that every validation and test question is unseen during training. From the respondent-level training data, we construct empirical subpopulation distributions by conditioning on single demographic attributes (<span class="math inline">\(k = 1\)</span>, <span class="math inline">\(21,252\)</span> records with <span class="math inline">\(n \ge 100\)</span>) and pairs of attributes (<span class="math inline">\(k = 2\)</span>, <span class="math inline">\(137,331\)</span> records with <span class="math inline">\(n \ge 100\)</span>), supplemented by respondent-level profiles.</p>
-</section>
-<section id="out-of-sample-evaluation-benchmarks" class="level2">
-<h2 class="anchored" data-anchor-id="out-of-sample-evaluation-benchmarks">Out-of-sample evaluation benchmarks</h2>
-<p>We evaluate our models across three benchmarks that test generalization across unseen questions, unseen personas, and an unseen marketing domain.</p>
-<p>Our first benchmark evaluates unseen questions on the 72 held-out US ISSP test items (61 Likert <code>score</code> items and 11 <code>choice</code> items). Conditioning on each single demographic attribute with at least <span class="math inline">\(n = 100\)</span> respondents yields <span class="math inline">\(3,199\)</span> unseen subpopulation-question distributions (<span class="math inline">\(2,772\)</span> <code>score</code> records and <span class="math inline">\(427\)</span> <code>choice</code> records).</p>
-<p>Our second benchmark evaluates unseen questions and personas on the SubPOP evaluation split <span class="citation" data-cites="suh-etal-2025-language">(<a href="#ref-suh-etal-2025-language" role="doc-biblioref">Suh et al. 2025</a>)</span>, derived from the US General Social Survey (GSS). It contains 133 survey questions (64 Likert <code>score</code> items and 69 categorical <code>choice</code> items) evaluated across 22 single-attribute US demographic groups spanning region, education, income, political ideology, political party, race, religion, and sex, totaling <span class="math inline">\(2,926\)</span> subpopulation-question target distributions. None of the GSS questions or SubPOP’s demographic category definitions were used during training.</p>
-<p>Our third benchmark evaluates an unseen marketing domain and unseen consumer personas, testing whether a decision model trained only on general social surveys can generalize to an applied consumer behavior experiment. We use respondent-level data from <span class="citation" data-cites="grummon2025nutrition">Grummon et al. (<a href="#ref-grummon2025nutrition" role="doc-biblioref">2025</a>)</span>, a randomized clinical trial of <span class="math inline">\(N = 5,636\)</span> US primary grocery shoppers randomized to 1 of 6 front-of-package (FOP) nutrition labeling systems, namely Positive labels, Nutrition Info labels, Positive plus Nutrition Info labels, High In warning labels, Positive plus High In labels, and Spectrum (1-to-5 star) labels. Shoppers completed 21 survey items comprising 6 three-option product healthfulness choice tasks (identifying the healthier item between paired beverages, breads, cereals, soups, snacks, and frozen meals displaying arm-specific FOP labels), 2 binary choice items on noticing and using the labels during simulated shopping, and 13 five-point Likert rating scales measuring perceived label helpfulness, understandability, trust, policy support, negative emotions (worried, scared, guilty, ashamed, and sad), health elaboration, and online store realism. We evaluate models both at the trial-arm level (<span class="math inline">\(6 \text{ arms} \times 21 \text{ items} = 126\)</span> distributions) and at the single-attribute subpopulation level across 10 shopper attributes (<span class="math inline">\(5,060\)</span> subpopulation-arm-question distributions across 42 persona levels with <span class="math inline">\(n \ge 30\)</span>). Crucially, while 4 of the 10 shopper attributes overlap with demographic variables in ISSP (sex, age, education, and household income), the remaining 6 attributes are unseen during training, including race, Hispanic ethnicity, Supplemental Nutrition Assistance Program (SNAP) participation, Nutrition Facts panel usage frequency, share of groceries purchased online, and objective nutrition literacy score.</p>
-</section>
-<section id="models-compared" class="level2">
-<h2 class="anchored" data-anchor-id="models-compared">Models compared</h2>
-<p>We compare three sizes of the open-weight Kev pointer-head decision model family <span class="citation" data-cites="palmer2026kev">(<a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>, namely Kev 0.8B (built on Qwen 3.5 0.8B), Kev 4B (built on Qwen 3.5 4B), and Kev 9B (built on Qwen 3.5 9B). For each model size, we compare the released off-the-shelf baseline model (<code>kev 0.8</code>, <code>kev 4B</code>, and <code>kev 9B</code>, evaluated at their released calibration temperatures) against our model fine-tuned on the US ISSP training split (<code>kev 0.8 FT</code>, <code>kev 4B FT</code>, and <code>kev 9B FT</code>, trained with rank-64 LoRA adapters and pointer heads and evaluated at <span class="math inline">\(T = 1.0\)</span> without post-hoc temperature tuning). As a naive reference point, we also report a <code>Uniform</code> baseline that assigns equal probability <span class="math inline">\(1 / K_q\)</span> to each answer option.</p>
-</section>
-</section>
-<section id="sec-results" class="level1">
-<h1>Results</h1>
-<section id="generalization-to-unseen-questions-issp-test-set" class="level2">
-<h2 class="anchored" data-anchor-id="generalization-to-unseen-questions-issp-test-set">Generalization to unseen questions (ISSP test set)</h2>
-<div id="tbl-issp-test" class="quarto-float quarto-figure quarto-figure-center anchored">
-<figure class="quarto-float quarto-float-tbl figure">
-<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-issp-test-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table&nbsp;2: Distributional prediction error on the held-out US ISSP test set (<span class="math inline">\(3,199\)</span> subpopulation-question records across 72 unseen questions, <span class="math inline">\(n \ge 100\)</span>). KL divergence is measured in bits; <span class="math inline">\(W_1\)</span> is normalized by the scale range.
+<div id="apptbl-attributes" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-apptbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-apptbl" id="apptbl-attributes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table W2: Harmonized respondent persona attributes, category levels, and dataset inclusion across training and evaluation benchmarks.
 </figcaption>
-<div aria-describedby="tbl-issp-test-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div aria-describedby="apptbl-attributes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table">
 <colgroup>
-<col style="width: 9%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
 </colgroup>
 <thead>
 <tr class="header">
-<th>Metric</th>
-<th style="text-align: right;">Uniform</th>
-<th style="text-align: right;">kev 0.8</th>
-<th style="text-align: right;">kev 0.8 FT</th>
-<th style="text-align: right;">kev 4B</th>
-<th style="text-align: right;">kev 4B FT</th>
-<th style="text-align: right;">kev 9B</th>
-<th style="text-align: right;">kev 9B FT</th>
+<th style="text-align: left;">Prompt attribute</th>
+<th style="text-align: left;">Harmonized levels</th>
+<th style="text-align: left;">Datasets</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td>All questions <span class="math inline">\(D_{\mathrm{KL}}\)</span> (<span class="math inline">\(\downarrow\)</span>)</td>
-<td style="text-align: right;">0.4797</td>
-<td style="text-align: right;">0.5124</td>
-<td style="text-align: right;">0.1828</td>
-<td style="text-align: right;">0.3287</td>
-<td style="text-align: right;">0.1152</td>
-<td style="text-align: right;">0.3728</td>
-<td style="text-align: right;">0.1081</td>
+<td style="text-align: left;">Sex</td>
+<td style="text-align: left;">2 (Male, Female)</td>
+<td style="text-align: left;">ISSP, Twin-2K, Conjoint, Nutrition RCT</td>
 </tr>
 <tr class="even">
-<td>Likert (<code>score</code>) <span class="math inline">\(D_{\mathrm{KL}}\)</span> (<span class="math inline">\(\downarrow\)</span>)</td>
-<td style="text-align: right;">0.4133</td>
-<td style="text-align: right;">0.4222</td>
-<td style="text-align: right;">0.1838</td>
-<td style="text-align: right;">0.2851</td>
-<td style="text-align: right;">0.1170</td>
-<td style="text-align: right;">0.3381</td>
-<td style="text-align: right;">0.1059</td>
+<td style="text-align: left;">Age</td>
+<td style="text-align: left;">4 (18-29, 30-49, 50-64, 65+)</td>
+<td style="text-align: left;">ISSP, Twin-2K, Conjoint, Nutrition RCT</td>
 </tr>
 <tr class="odd">
-<td>Choice (<code>choice</code>) <span class="math inline">\(D_{\mathrm{KL}}\)</span> (<span class="math inline">\(\downarrow\)</span>)</td>
-<td style="text-align: right;">0.9105</td>
-<td style="text-align: right;">1.0978</td>
-<td style="text-align: right;">0.1761</td>
-<td style="text-align: right;">0.6115</td>
-<td style="text-align: right;">0.1035</td>
-<td style="text-align: right;">0.5982</td>
-<td style="text-align: right;">0.1222</td>
+<td style="text-align: left;">Education</td>
+<td style="text-align: left;">4 (Less than high school, High school or some college, Associate’s degree, College graduate/some postgrad)</td>
+<td style="text-align: left;">ISSP, Twin-2K, Conjoint, Nutrition RCT</td>
 </tr>
 <tr class="even">
-<td>Likert (<code>score</code>) <span class="math inline">\(W_1\)</span> (<span class="math inline">\(\downarrow\)</span>)</td>
-<td style="text-align: right;">0.1729</td>
-<td style="text-align: right;">0.1492</td>
-<td style="text-align: right;">0.1096</td>
-<td style="text-align: right;">0.1130</td>
-<td style="text-align: right;">0.0779</td>
-<td style="text-align: right;">0.1240</td>
-<td style="text-align: right;">0.0750</td>
+<td style="text-align: left;">Religion</td>
+<td style="text-align: left;">12 (Protestant, Catholic, Orthodox, …, Other)</td>
+<td style="text-align: left;">ISSP, Twin-2K, Conjoint</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Attendance of religious services</td>
+<td style="text-align: left;">6 (More than once a week, Once a week, Once or twice a month, A few times a year, Seldom, Never)</td>
+<td style="text-align: left;">ISSP, Twin-2K</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Political ideology</td>
+<td style="text-align: left;">8 (Very liberal, Liberal, Somewhat liberal, …, Other)</td>
+<td style="text-align: left;">ISSP, Twin-2K, Conjoint</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Voted in the last general election</td>
+<td style="text-align: left;">2 (Yes, No)</td>
+<td style="text-align: left;">ISSP</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Place of living</td>
+<td style="text-align: left;">5 (A big city, The suburbs or outskirts of a big city, A town or a small city, A country village, A farm or home in the country)</td>
+<td style="text-align: left;">ISSP</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Marital status</td>
+<td style="text-align: left;">6 (Married, Living with a partner, Divorced, Separated, Widowed, Never been married)</td>
+<td style="text-align: left;">ISSP, Twin-2K</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Main activity</td>
+<td style="text-align: left;">10 (Full-time employment, Part-time employment, Self-employed, …, Other)</td>
+<td style="text-align: left;">ISSP, Twin-2K</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Trade union membership</td>
+<td style="text-align: left;">2 (Yes, No)</td>
+<td style="text-align: left;">ISSP</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Political party</td>
+<td style="text-align: left;">5 (Democrat, Republican, Independent, Something else, Other candidate)</td>
+<td style="text-align: left;">ISSP, Twin-2K, Conjoint</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Income</td>
+<td style="text-align: left;">15 (Less than $30,000, $30,000 - $50,000, $50,000 - $75,000, …, $35,000 - $49,999)</td>
+<td style="text-align: left;">ISSP, Twin-2K, Conjoint, Nutrition RCT</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Region</td>
+<td style="text-align: left;">4 (Northeast, Midwest, South, West)</td>
+<td style="text-align: left;">ISSP, Twin-2K</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Ancestry</td>
+<td style="text-align: left;">96 (Algeria, American Indian, American only, …, Yugoslavia)</td>
+<td style="text-align: left;">ISSP</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Race</td>
+<td style="text-align: left;">5 (White, Black, Asian, Hispanic, Other)</td>
+<td style="text-align: left;">Twin-2K, Conjoint, Nutrition RCT</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">How many people, including yourself, live in your household?</td>
+<td style="text-align: left;">5 (1, 2, 3, 4, More than 4)</td>
+<td style="text-align: left;">Twin-2K</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Hispanic or Latino</td>
+<td style="text-align: left;">2 (No, Yes)</td>
+<td style="text-align: left;">Nutrition RCT</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">SNAP / Food Stamps recipient</td>
+<td style="text-align: left;">3 (Don’t know, No, Yes)</td>
+<td style="text-align: left;">Nutrition RCT</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Nutrition Facts label usage</td>
+<td style="text-align: left;">5 (Always, Most of the time, Never, Rarely, Sometimes)</td>
+<td style="text-align: left;">Nutrition RCT</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Share of groceries bought online</td>
+<td style="text-align: left;">4 (25-49%, 50-74%, 75% or more, Less than 25%)</td>
+<td style="text-align: left;">Nutrition RCT</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Nutrition literacy score</td>
+<td style="text-align: left;">5 (0 out of 4, 1 out of 4, 2 out of 4, 3 out of 4, 4 out of 4)</td>
+<td style="text-align: left;">Nutrition RCT</td>
 </tr>
 </tbody>
 </table>
 </div>
 </figure>
 </div>
-<p><a href="#tbl-issp-test" class="quarto-xref">Table&nbsp;2</a> reports distributional prediction performance on the 72 held-out US ISSP test questions. Off the shelf, the smallest baseline decision model (<code>kev 0.8</code>) performs worse than a uniform distribution (<span class="math inline">\(\mathrm{KL} = 0.5124\)</span> versus <span class="math inline">\(0.4797\)</span> bits), particularly on categorical <code>choice</code> questions (<span class="math inline">\(\mathrm{KL} = 1.0978\)</span> bits), because single-label pretraining causes the model to place excessive probability mass on a single option. Larger off-the-shelf models perform better (<code>kev 4B</code> at <span class="math inline">\(0.3287\)</span> bits and <code>kev 9B</code> at <span class="math inline">\(0.3728\)</span> bits), but still exhibit substantial divergence from empirical human distributions.</p>
-<p>Fine-tuning on the ISSP training split yields large, consistent improvements across every model scale and question type. Mean KL divergence across all test records drops by <span class="math inline">\(64.3\%\)</span> for Kev 0.8B (<span class="math inline">\(0.5124\)</span> to <span class="math inline">\(0.1828\)</span> bits), by <span class="math inline">\(65.0\%\)</span> for Kev 4B (<span class="math inline">\(0.3287\)</span> to <span class="math inline">\(0.1152\)</span> bits), and by <span class="math inline">\(71.0\%\)</span> for Kev 9B (<span class="math inline">\(0.3728\)</span> to <span class="math inline">\(0.1081\)</span> bits). On ordinal Likert (<code>score</code>) items, normalized 1-Wasserstein transport error <span class="math inline">\(W_1\)</span> similarly declines from <span class="math inline">\(0.1492\)</span> to <span class="math inline">\(0.1096\)</span> for Kev 0.8B, from <span class="math inline">\(0.1130\)</span> to <span class="math inline">\(0.0779\)</span> for Kev 4B, and from <span class="math inline">\(0.1240\)</span> to <span class="math inline">\(0.0750\)</span> for Kev 9B. Remarkably, the smallest fine-tuned model (<code>kev 0.8 FT</code>, <span class="math inline">\(\mathrm{KL} = 0.1828\)</span>) outperforms both the 4B and 9B off-the-shelf baselines (<span class="math inline">\(0.3287\)</span> and <span class="math inline">\(0.3728\)</span> bits) by a wide margin.</p>
-</section>
-<section id="generalization-to-unseen-questions-and-personas-subpop" class="level2">
-<h2 class="anchored" data-anchor-id="generalization-to-unseen-questions-and-personas-subpop">Generalization to unseen questions and personas (SubPOP)</h2>
-<div id="tbl-subpop" class="quarto-float quarto-figure quarto-figure-center anchored">
-<figure class="quarto-float quarto-float-tbl figure">
-<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-subpop-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table&nbsp;3: Out-of-distribution performance on the external SubPOP benchmark (<span class="math inline">\(2,926\)</span> subpopulation-question records across 133 US General Social Survey questions and 22 single-attribute subpopulations).
-</figcaption>
-<div aria-describedby="tbl-subpop-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<table class="caption-top table">
-<colgroup>
-<col style="width: 9%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Metric</th>
-<th style="text-align: right;">Uniform</th>
-<th style="text-align: right;">kev 0.8</th>
-<th style="text-align: right;">kev 0.8 FT</th>
-<th style="text-align: right;">kev 4B</th>
-<th style="text-align: right;">kev 4B FT</th>
-<th style="text-align: right;">kev 9B</th>
-<th style="text-align: right;">kev 9B FT</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>SubPOP all <span class="math inline">\(D_{\mathrm{KL}}\)</span> (<span class="math inline">\(\downarrow\)</span>)</td>
-<td style="text-align: right;">0.3758</td>
-<td style="text-align: right;">0.4070</td>
-<td style="text-align: right;">0.2930</td>
-<td style="text-align: right;">0.3430</td>
-<td style="text-align: right;">0.1985</td>
-<td style="text-align: right;">0.3720</td>
-<td style="text-align: right;">0.1895</td>
-</tr>
-<tr class="even">
-<td>SubPOP Likert (<code>score</code>) <span class="math inline">\(D_{\mathrm{KL}}\)</span> (<span class="math inline">\(\downarrow\)</span>)</td>
-<td style="text-align: right;">0.3391</td>
-<td style="text-align: right;">0.3486</td>
-<td style="text-align: right;">0.3046</td>
-<td style="text-align: right;">0.3080</td>
-<td style="text-align: right;">0.2154</td>
-<td style="text-align: right;">0.3146</td>
-<td style="text-align: right;">0.1897</td>
-</tr>
-<tr class="odd">
-<td>SubPOP choice (<code>choice</code>) <span class="math inline">\(D_{\mathrm{KL}}\)</span> (<span class="math inline">\(\downarrow\)</span>)</td>
-<td style="text-align: right;">0.4098</td>
-<td style="text-align: right;">0.4611</td>
-<td style="text-align: right;">0.2822</td>
-<td style="text-align: right;">0.3755</td>
-<td style="text-align: right;">0.1828</td>
-<td style="text-align: right;">0.4252</td>
-<td style="text-align: right;">0.1894</td>
-</tr>
-<tr class="even">
-<td>SubPOP Likert (<code>score</code>) <span class="math inline">\(W_1\)</span> (<span class="math inline">\(\downarrow\)</span>)</td>
-<td style="text-align: right;">0.1771</td>
-<td style="text-align: right;">0.1679</td>
-<td style="text-align: right;">0.1591</td>
-<td style="text-align: right;">0.1413</td>
-<td style="text-align: right;">0.1216</td>
-<td style="text-align: right;">0.1367</td>
-<td style="text-align: right;">0.1097</td>
-</tr>
-</tbody>
-</table>
-</div>
-</figure>
-</div>
-<p>To test whether distributional training transfers across survey instruments and persona definitions, <a href="#tbl-subpop" class="quarto-xref">Table&nbsp;3</a> presents results on the external SubPOP benchmark <span class="citation" data-cites="suh-etal-2025-language">(<a href="#ref-suh-etal-2025-language" role="doc-biblioref">Suh et al. 2025</a>)</span>. Across all <span class="math inline">\(2,926\)</span> subpopulation-question targets, off-the-shelf decision models struggle to improve upon a simple uniform baseline (<span class="math inline">\(\mathrm{KL} = 0.3758\)</span> bits), with <code>kev 0.8</code> (<span class="math inline">\(0.4070\)</span> bits) performing worse than uniform and <code>kev 4B</code> (<span class="math inline">\(0.3430\)</span> bits) and <code>kev 9B</code> (<span class="math inline">\(0.3720\)</span> bits) offering only modest gains.</p>
-<p>In contrast, decision models fine-tuned on ISSP generalize strongly to SubPOP without seeing any GSS questions during training. Overall KL divergence decreases from <span class="math inline">\(0.4070\)</span> to <span class="math inline">\(0.2930\)</span> bits for Kev 0.8B (<span class="math inline">\(-28.0\%\)</span>), from <span class="math inline">\(0.3430\)</span> to <span class="math inline">\(0.1985\)</span> bits for Kev 4B (<span class="math inline">\(-42.1\%\)</span>), and from <span class="math inline">\(0.3720\)</span> to <span class="math inline">\(0.1895\)</span> bits for Kev 9B (<span class="math inline">\(-49.1\%\)</span>). Improvements occur on both Likert <code>score</code> items (where <span class="math inline">\(W_1\)</span> drops to <span class="math inline">\(0.1097\)</span> for <code>kev 9B FT</code>) and categorical <code>choice</code> items (where KL drops by more than half for the 4B and 9B models). Once again, the fine-tuned 0.8B model (<code>kev 0.8 FT</code>, <span class="math inline">\(\mathrm{KL} = 0.2930\)</span>) outperforms the off-the-shelf 4B (<span class="math inline">\(0.3430\)</span>) and 9B (<span class="math inline">\(0.3720\)</span>) models.</p>
-<div id="fig-subpop-polparty" class="quarto-float quarto-figure quarto-figure-center anchored">
-<figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-subpop-polparty-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="figures/political_party_mixed_kde_by_sample_subpop.png" class="img-fluid figure-img" style="width:100.0%">
-</div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-subpop-polparty-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;2: Response distributions from human subpopulations (Democrat versus Republican) and decision models across four representative questions in the SubPOP test set.
-</figcaption>
-</figure>
-</div>
-<p><a href="#fig-subpop-polparty" class="quarto-xref">Figure&nbsp;2</a> illustrates how baseline and fine-tuned models predict partisan subpopulations (Democrat versus Republican) across four unseen GSS questions in SubPOP. Two patterns stand out. First, among the off-the-shelf baselines, larger models better separate Democrat and Republican response distributions, whereas the small baseline (<code>kev 0.8</code>) collapses both parties onto nearly identical middle-heavy curves (e.g., on marriage equality and immigration). Second, after distributional fine-tuning on ISSP, <code>kev 0.8 FT</code> learns to differentiate partisan personas and closely tracks the empirical human distributions, outperforming the untuned 4B model across these items. <a href="#fig-subpop-top5" class="quarto-xref">Figure&nbsp;3</a> further highlights the five SubPOP questions with the largest KL divergence reductions for Kev 0.8B, showing how fine-tuning corrects the extreme single-option overconfidence of the off-the-shelf model across religious, educational, and political personas.</p>
-<div id="fig-subpop-top5" class="quarto-float quarto-figure quarto-figure-center anchored">
-<figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-subpop-top5-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="figures/subpop_08b_top5_unique_q_kl_gains.png" class="img-fluid figure-img" style="width:95.0%">
-</div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-subpop-top5-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;3: Top five unique SubPOP questions by KL divergence reduction between off-the-shelf Kev 0.8B and fine-tuned Kev 0.8B FT compared against empirical human distributions.
-</figcaption>
-</figure>
-</div>
-</section>
-<section id="generalization-to-a-new-marketing-domain-and-unseen-personas-nutrition-rct" class="level2">
-<h2 class="anchored" data-anchor-id="generalization-to-a-new-marketing-domain-and-unseen-personas-nutrition-rct">Generalization to a new marketing domain and unseen personas (nutrition RCT)</h2>
-<div id="tbl-grummon" class="quarto-float quarto-figure quarto-figure-center anchored">
-<figure class="quarto-float quarto-float-tbl figure">
-<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-grummon-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table&nbsp;4: Out-of-domain performance on the front-of-package nutrition labeling randomized clinical trial <span class="citation" data-cites="grummon2025nutrition">(<a href="#ref-grummon2025nutrition" role="doc-biblioref">Grummon et al. 2025</a>)</span> at the trial-arm level (<span class="math inline">\(126\)</span> arm-question records) and single-attribute subpopulation level (<span class="math inline">\(5,060\)</span> persona-arm-question records across 10 shopper attributes, <span class="math inline">\(n \ge 30\)</span>).
-</figcaption>
-<div aria-describedby="tbl-grummon-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<table class="caption-top table">
-<colgroup>
-<col style="width: 9%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Evaluation level and metric</th>
-<th style="text-align: right;">Uniform</th>
-<th style="text-align: right;">kev 0.8</th>
-<th style="text-align: right;">kev 0.8 FT</th>
-<th style="text-align: right;">kev 4B</th>
-<th style="text-align: right;">kev 4B FT</th>
-<th style="text-align: right;">kev 9B</th>
-<th style="text-align: right;">kev 9B FT</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>Trial-arm level (<span class="math inline">\(126\)</span> records, all <span class="math inline">\(D_{\mathrm{KL}}\)</span>) (<span class="math inline">\(\downarrow\)</span>)</td>
-<td style="text-align: right;">0.6778</td>
-<td style="text-align: right;">0.6168</td>
-<td style="text-align: right;">0.5934</td>
-<td style="text-align: right;">0.5544</td>
-<td style="text-align: right;">0.4839</td>
-<td style="text-align: right;">0.4309</td>
-<td style="text-align: right;">0.4077</td>
-</tr>
-<tr class="even">
-<td>Trial-arm level, notice and use choice <span class="math inline">\(D_{\mathrm{KL}}\)</span> (<span class="math inline">\(\downarrow\)</span>)</td>
-<td style="text-align: right;">0.0282</td>
-<td style="text-align: right;">0.1037</td>
-<td style="text-align: right;">0.0347</td>
-<td style="text-align: right;">0.1057</td>
-<td style="text-align: right;">0.0312</td>
-<td style="text-align: right;">0.2275</td>
-<td style="text-align: right;">0.0256</td>
-</tr>
-<tr class="odd">
-<td>Trial-arm level, Likert (<code>score</code>) <span class="math inline">\(D_{\mathrm{KL}}\)</span> (<span class="math inline">\(\downarrow\)</span>)</td>
-<td style="text-align: right;">0.7735</td>
-<td style="text-align: right;">0.6168</td>
-<td style="text-align: right;">0.5857</td>
-<td style="text-align: right;">0.6279</td>
-<td style="text-align: right;">0.4592</td>
-<td style="text-align: right;">0.3884</td>
-<td style="text-align: right;">0.3934</td>
-</tr>
-<tr class="even">
-<td>Subpopulation level (<span class="math inline">\(5,060\)</span> records, all <span class="math inline">\(D_{\mathrm{KL}}\)</span>) (<span class="math inline">\(\downarrow\)</span>)</td>
-<td style="text-align: right;">0.7061</td>
-<td style="text-align: right;">0.6633</td>
-<td style="text-align: right;">0.6231</td>
-<td style="text-align: right;">0.6495</td>
-<td style="text-align: right;">0.5225</td>
-<td style="text-align: right;">0.4783</td>
-<td style="text-align: right;">0.4385</td>
-</tr>
-<tr class="odd">
-<td>Subpopulation level, notice and use choice <span class="math inline">\(D_{\mathrm{KL}}\)</span> (<span class="math inline">\(\downarrow\)</span>)</td>
-<td style="text-align: right;">0.0502</td>
-<td style="text-align: right;">0.0949</td>
-<td style="text-align: right;">0.0465</td>
-<td style="text-align: right;">0.0934</td>
-<td style="text-align: right;">0.0423</td>
-<td style="text-align: right;">0.2871</td>
-<td style="text-align: right;">0.0376</td>
-</tr>
-<tr class="even">
-<td>Subpopulation level, Likert (<code>score</code>) <span class="math inline">\(D_{\mathrm{KL}}\)</span> (<span class="math inline">\(\downarrow\)</span>)</td>
-<td style="text-align: right;">0.8028</td>
-<td style="text-align: right;">0.7023</td>
-<td style="text-align: right;">0.6231</td>
-<td style="text-align: right;">0.6622</td>
-<td style="text-align: right;">0.4942</td>
-<td style="text-align: right;">0.4759</td>
-<td style="text-align: right;">0.4346</td>
-</tr>
-</tbody>
-</table>
-</div>
-</figure>
-</div>
-<p>Our third experiment tests whether decision models fine-tuned on general sociopolitical surveys (ISSP) improve silicon sampling in an unseen marketing domain, namely consumer responses to front-of-package (FOP) nutrition labels in <span class="citation" data-cites="grummon2025nutrition">Grummon et al. (<a href="#ref-grummon2025nutrition" role="doc-biblioref">2025</a>)</span>. None of the models were exposed to food products, nutrition panels, or FOP warning labels during training. <a href="#tbl-grummon" class="quarto-xref">Table&nbsp;4</a> reports results at both the aggregate trial-arm level (<span class="math inline">\(126\)</span> distributions across the 6 FOP labeling arms and 21 survey items) and the single-attribute subpopulation level (<span class="math inline">\(5,060\)</span> distributions conditioning on trial arm and 1 of 10 shopper attributes).</p>
-<p>Across both evaluation levels and all three model sizes, ISSP fine-tuning consistently reduces overall KL divergence relative to the off-the-shelf baselines. At the trial-arm level, mean KL divergence drops from <span class="math inline">\(0.6168\)</span> to <span class="math inline">\(0.5934\)</span> bits for Kev 0.8B, from <span class="math inline">\(0.5544\)</span> to <span class="math inline">\(0.4839\)</span> bits for Kev 4B (<span class="math inline">\(-12.7\%\)</span>), and from <span class="math inline">\(0.4309\)</span> to <span class="math inline">\(0.4077\)</span> bits for Kev 9B. At the subpopulation level (<span class="math inline">\(5,060\)</span> records), mean KL divergence declines from <span class="math inline">\(0.6633\)</span> to <span class="math inline">\(0.6231\)</span> bits for Kev 0.8B (<span class="math inline">\(-6.1\%\)</span>), from <span class="math inline">\(0.6495\)</span> to <span class="math inline">\(0.5225\)</span> bits for Kev 4B (<span class="math inline">\(-19.6\%\)</span>), and from <span class="math inline">\(0.4783\)</span> to <span class="math inline">\(0.4385\)</span> bits for Kev 9B (<span class="math inline">\(-8.3\%\)</span>). Gains are especially pronounced on the 13 Likert (<code>score</code>) items measuring consumer perceptions of label helpfulness, understandability, trust, negative affect, and policy support (where subpopulation KL drops from <span class="math inline">\(0.6622\)</span> to <span class="math inline">\(0.4942\)</span> bits for Kev 4B and from <span class="math inline">\(0.4759\)</span> to <span class="math inline">\(0.4346\)</span> bits for Kev 9B) as well as binary label notice and use items.</p>
-<div id="tbl-grummon-personas" class="quarto-float quarto-figure quarto-figure-center anchored">
-<figure class="quarto-float quarto-float-tbl figure">
-<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-grummon-personas-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table&nbsp;5: Mean KL divergence (bits) across the <span class="math inline">\(5,060\)</span> subpopulation records in the nutrition labeling RCT, partitioned into demographic attributes present in ISSP training versus out-of-sample shopper attributes never seen during training.
-</figcaption>
-<div aria-describedby="tbl-grummon-personas-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<table class="caption-top table">
-<colgroup>
-<col style="width: 8%">
-<col style="width: 8%">
-<col style="width: 11%">
-<col style="width: 11%">
-<col style="width: 11%">
-<col style="width: 11%">
-<col style="width: 11%">
-<col style="width: 11%">
-<col style="width: 11%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Persona attribute group</th>
-<th>Attribute</th>
-<th style="text-align: right;">Uniform</th>
-<th style="text-align: right;">kev 0.8</th>
-<th style="text-align: right;">kev 0.8 FT</th>
-<th style="text-align: right;">kev 4B</th>
-<th style="text-align: right;">kev 4B FT</th>
-<th style="text-align: right;">kev 9B</th>
-<th style="text-align: right;">kev 9B FT</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>Seen in ISSP training</td>
-<td>Sex (<code>SEX</code>)</td>
-<td style="text-align: right;">0.6851</td>
-<td style="text-align: right;">0.6512</td>
-<td style="text-align: right;">0.6139</td>
-<td style="text-align: right;">0.5693</td>
-<td style="text-align: right;">0.4910</td>
-<td style="text-align: right;">0.3966</td>
-<td style="text-align: right;">0.4078</td>
-</tr>
-<tr class="even">
-<td>Seen in ISSP training</td>
-<td>Age (<code>AGE</code>)</td>
-<td style="text-align: right;">0.7142</td>
-<td style="text-align: right;">0.6524</td>
-<td style="text-align: right;">0.6397</td>
-<td style="text-align: right;">0.6000</td>
-<td style="text-align: right;">0.5200</td>
-<td style="text-align: right;">0.4355</td>
-<td style="text-align: right;">0.4385</td>
-</tr>
-<tr class="odd">
-<td>Seen in ISSP training</td>
-<td>Education (<code>EDULEVEL</code>)</td>
-<td style="text-align: right;">0.7078</td>
-<td style="text-align: right;">0.6587</td>
-<td style="text-align: right;">0.6158</td>
-<td style="text-align: right;">0.6352</td>
-<td style="text-align: right;">0.5188</td>
-<td style="text-align: right;">0.4449</td>
-<td style="text-align: right;">0.4278</td>
-</tr>
-<tr class="even">
-<td>Seen in ISSP training</td>
-<td>Income (<code>US_INC</code>)</td>
-<td style="text-align: right;">0.7190</td>
-<td style="text-align: right;">0.6339</td>
-<td style="text-align: right;">0.6283</td>
-<td style="text-align: right;">0.6637</td>
-<td style="text-align: right;">0.5539</td>
-<td style="text-align: right;">0.4656</td>
-<td style="text-align: right;">0.4595</td>
-</tr>
-<tr class="odd">
-<td>Seen in ISSP training</td>
-<td>Group mean</td>
-<td style="text-align: right;">0.7118</td>
-<td style="text-align: right;">0.6456</td>
-<td style="text-align: right;">0.6260</td>
-<td style="text-align: right;">0.6342</td>
-<td style="text-align: right;">0.5319</td>
-<td style="text-align: right;">0.4474</td>
-<td style="text-align: right;">0.4421</td>
-</tr>
-<tr class="even">
-<td>Unseen in training</td>
-<td>Race (<code>RACE</code>)</td>
-<td style="text-align: right;">0.7085</td>
-<td style="text-align: right;">0.6572</td>
-<td style="text-align: right;">0.6209</td>
-<td style="text-align: right;">0.6267</td>
-<td style="text-align: right;">0.5130</td>
-<td style="text-align: right;">0.4283</td>
-<td style="text-align: right;">0.4241</td>
-</tr>
-<tr class="odd">
-<td>Unseen in training</td>
-<td>Hispanic (<code>HISPANIC</code>)</td>
-<td style="text-align: right;">0.6940</td>
-<td style="text-align: right;">0.6522</td>
-<td style="text-align: right;">0.6169</td>
-<td style="text-align: right;">0.5903</td>
-<td style="text-align: right;">0.4984</td>
-<td style="text-align: right;">0.3968</td>
-<td style="text-align: right;">0.4223</td>
-</tr>
-<tr class="even">
-<td>Unseen in training</td>
-<td>SNAP recipient (<code>SNAP</code>)</td>
-<td style="text-align: right;">0.6899</td>
-<td style="text-align: right;">0.6832</td>
-<td style="text-align: right;">0.6038</td>
-<td style="text-align: right;">0.6144</td>
-<td style="text-align: right;">0.5065</td>
-<td style="text-align: right;">0.4414</td>
-<td style="text-align: right;">0.4305</td>
-</tr>
-<tr class="odd">
-<td>Unseen in training</td>
-<td>NFP usage (<code>NFPUSE</code>)</td>
-<td style="text-align: right;">0.7249</td>
-<td style="text-align: right;">0.6860</td>
-<td style="text-align: right;">0.6460</td>
-<td style="text-align: right;">0.6791</td>
-<td style="text-align: right;">0.5267</td>
-<td style="text-align: right;">0.6408</td>
-<td style="text-align: right;">0.4734</td>
-</tr>
-<tr class="even">
-<td>Unseen in training</td>
-<td>Online grocery (<code>ONLINEAMT</code>)</td>
-<td style="text-align: right;">0.6896</td>
-<td style="text-align: right;">0.6175</td>
-<td style="text-align: right;">0.5973</td>
-<td style="text-align: right;">0.7825</td>
-<td style="text-align: right;">0.5122</td>
-<td style="text-align: right;">0.4918</td>
-<td style="text-align: right;">0.4257</td>
-</tr>
-<tr class="odd">
-<td>Unseen in training</td>
-<td>Nutrition literacy (<code>HEALTHLIT</code>)</td>
-<td style="text-align: right;">0.6844</td>
-<td style="text-align: right;">0.7745</td>
-<td style="text-align: right;">0.6231</td>
-<td style="text-align: right;">0.6261</td>
-<td style="text-align: right;">0.5109</td>
-<td style="text-align: right;">0.5384</td>
-<td style="text-align: right;">0.4192</td>
-</tr>
-<tr class="even">
-<td>Unseen in training</td>
-<td>Group mean</td>
-<td style="text-align: right;">0.7007</td>
-<td style="text-align: right;">0.6805</td>
-<td style="text-align: right;">0.6203</td>
-<td style="text-align: right;">0.6642</td>
-<td style="text-align: right;">0.5135</td>
-<td style="text-align: right;">0.5082</td>
-<td style="text-align: right;">0.4351</td>
-</tr>
-<tr class="odd">
-<td>All attributes</td>
-<td>Overall mean</td>
-<td style="text-align: right;">0.7061</td>
-<td style="text-align: right;">0.6633</td>
-<td style="text-align: right;">0.6231</td>
-<td style="text-align: right;">0.6495</td>
-<td style="text-align: right;">0.5225</td>
-<td style="text-align: right;">0.4783</td>
-<td style="text-align: right;">0.4385</td>
-</tr>
-</tbody>
-</table>
-</div>
-</figure>
-</div>
-<p>To examine whether the models merely memorize demographic attributes seen during ISSP training or learn a transferable capability to predict human response distributions for arbitrary personas, <a href="#tbl-grummon-personas" class="quarto-xref">Table&nbsp;5</a> and <a href="#fig-grummon-personas" class="quarto-xref">Figure&nbsp;4</a> break down the <span class="math inline">\(5,060\)</span> subpopulation evaluations by shopper attribute. The first group comprises the 4 standard demographic attributes present in ISSP (<code>SEX</code>, <code>AGE</code>, <code>EDULEVEL</code>, and <code>US_INC</code>), while the second group comprises 6 domain-specific attributes never seen in ISSP (<code>RACE</code>, <code>HISPANIC</code>, <code>SNAP</code>, <code>NFPUSE</code>, <code>ONLINEAMT</code>, and <code>HEALTHLIT</code>).</p>
-<div id="fig-grummon-personas" class="quarto-float quarto-figure quarto-figure-center anchored">
-<figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-grummon-personas-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="figures/grummon_kl_in_vs_out_personas.png" class="img-fluid figure-img" style="width:100.0%">
-</div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-grummon-personas-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;4: Mean KL divergence across <span class="math inline">\(5,060\)</span> subpopulation distributions in the nutrition labeling RCT, comparing baseline (dashed) and ISSP fine-tuned (solid) decision models across persona attributes seen in ISSP training versus unseen out-of-sample shopper attributes.
-</figcaption>
-</figure>
-</div>
-<p>As shown in <a href="#tbl-grummon-personas" class="quarto-xref">Table&nbsp;5</a> and <a href="#fig-grummon-personas" class="quarto-xref">Figure&nbsp;4</a>, off-the-shelf baselines degrade noticeably when conditioned on unseen behavioral and nutrition attributes such as Nutrition Facts panel usage (<code>NFPUSE</code>), online grocery share (<code>ONLINEAMT</code>), and nutrition literacy (<code>HEALTHLIT</code>). Fine-tuning on ISSP produces even larger improvements on these unseen out-of-sample persona attributes than on the in-training demographic attributes. Specifically, on the 6 unseen shopper attributes, mean KL divergence drops from <span class="math inline">\(0.6805\)</span> to <span class="math inline">\(0.6203\)</span> bits for Kev 0.8B (<span class="math inline">\(-8.8\%\)</span>), from <span class="math inline">\(0.6642\)</span> to <span class="math inline">\(0.5135\)</span> bits for Kev 4B (<span class="math inline">\(-22.7\%\)</span>), and from <span class="math inline">\(0.5082\)</span> to <span class="math inline">\(0.4351\)</span> bits for Kev 9B (<span class="math inline">\(-14.4\%\)</span>), with particularly large gains on nutrition literacy (<code>HEALTHLIT</code>, where KL drops from <span class="math inline">\(0.7745\)</span> to <span class="math inline">\(0.6231\)</span> bits for Kev 0.8B and from <span class="math inline">\(0.5384\)</span> to <span class="math inline">\(0.4192\)</span> bits for Kev 9B). These results demonstrate that training decision models on human survey distributions recalibrates how the models express population heterogeneity across Likert and choice options in general, enabling zero-shot transfer to new consumer attributes and new marketing domains.</p>
-</section>
-</section>
-<section id="sec-discussion" class="level1">
-<h1>Discussion and conclusion</h1>
-<p>Silicon sampling in marketing and social science requires predicting how a population of respondents distributes its answers across survey options rather than generating a single text completion. While generative LLMs require hundreds of Monte Carlo text draws or post-hoc reweighting to approximate response distributions <span class="citation" data-cites="wadi2025monte leng2026reducing wang2026large zahradnickova2026ai">(<a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>; <a href="#ref-wadi2025monte" role="doc-biblioref">Wadi and Fredette 2025</a>; <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>; <a href="#ref-zahradnickova2026ai" role="doc-biblioref">Zahradnickova et al. 2026</a>)</span>, decision models output a complete probability distribution over Likert and choice options in a single forward pass <span class="citation" data-cites="palmer2026kev">(<a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>. However, because off-the-shelf decision models and generative LLMs are trained for single-answer accuracy on objective benchmarks such as coding and mathematics, they systematically underrepresent within-group human diversity.</p>
-<p>Our experiments show that fine-tuning decision models to minimize KL divergence on empirical human response distributions from a single social survey dataset (US ISSP) substantially improves distributional silicon sampling on unseen data. Across Kev 0.8B, Kev 4B, and Kev 9B, distributional fine-tuning reduces prediction error on held-out ISSP questions, generalizes zero-shot to unseen questions and demographic personas in the US General Social Survey (SubPOP), and transfers to an applied marketing randomized clinical trial on front-of-package nutrition labels <span class="citation" data-cites="grummon2025nutrition">(<a href="#ref-grummon2025nutrition" role="doc-biblioref">Grummon et al. 2025</a>)</span>, including consumer persona attributes never observed during training. Moreover, our findings show that a compact fine-tuned decision model (Kev 0.8B FT) can outperform off-the-shelf models an order of magnitude larger on public opinion benchmarks, offering marketing researchers a fast, deterministic, and accessible tool for distributional silicon sampling.</p>
 
 </section>
 
 <div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography" id="quarto-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" data-line-spacing="2" role="list">
+<div id="ref-angelopoulos2023prediction" class="csl-entry" role="listitem">
+Angelopoulos, A. N., Bates, S., Fannjiang, C., Jordan, M. I., &amp; Zrnic, T. (2023). Prediction-powered inference. <em>Science</em>, <em>382</em>(6671), 669–674.
+</div>
+<div id="ref-angelopoulos2023ppi" class="csl-entry" role="listitem">
+Angelopoulos, A. N., Duchi, J. C., &amp; Zrnic, T. (2023). Ppi++: Efficient prediction-powered inference. <em>arXiv preprint arXiv:2311.01453</em>.
+</div>
 <div id="ref-argyle2023out" class="csl-entry" role="listitem">
 Argyle, L. P., Busby, E. C., Fulda, N., Gubler, J. R., Rytting, C., &amp; Wingate, D. (2023). Out of one, many: Using language models to simulate human samples. <em>Political Analysis</em>, <em>31</em>(3), 337–351.
 </div>
 <div id="ref-asseri2026calibratedwhompersonalanguage" class="csl-entry" role="listitem">
 Asseri, B., &amp; Asseri, A. (2026). Calibrated to whom? Persona and language effects on cultural values in <span>JEV</span>. <a href="https://arxiv.org/abs/2609.36399">https://arxiv.org/abs/2609.36399</a>
 </div>
-<div id="ref-batterton2017likert" class="csl-entry" role="listitem">
-Batterton, K. A., &amp; Hale, K. N. (2017). The likert scale what it is and how to use it. <em>Phalanx</em>, <em>50</em>(2), 32–39.
-</div>
 <div id="ref-bentegeac2025token" class="csl-entry" role="listitem">
 Bentegeac, R., Le Guellec, B., Kuchcinski, G., Amouyel, P., &amp; Hamroun, A. (2025). Token probabilities to mitigate large language models overconfidence in answering medical questions: Quantitative study. <em>Journal of medical Internet research</em>, <em>27</em>, e64348.
-</div>
-<div id="ref-bhatia2025value" class="csl-entry" role="listitem">
-<span class="nocase">Bhatia, M., Nayak, S., Kamath, G., Mosbach, M., Shwartz, V., Reddy, S., et al.</span> (2025). Value drifts: Tracing value alignment during LLM post-training. <em>arXiv preprint arXiv:2510.26707</em>.
 </div>
 <div id="ref-brand2023using" class="csl-entry" role="listitem">
 Brand, J., Israeli, A., &amp; Ngwe, D. (2023). Using LLMs for market research. <em>Harvard business school marketing unit working paper</em>, (23-062).
@@ -829,6 +781,9 @@ Kabir, M., Abrar, A., &amp; Ananiadou, S. (2025). Break the checkbox: Challengin
 <div id="ref-koo2024benchmarking" class="csl-entry" role="listitem">
 Koo, R., Lee, M., Raheja, V., Park, J. I., Kim, Z. M., &amp; Kang, D. (2024). Benchmarking cognitive biases in large language models as evaluators. In <em>Findings of the association for computational linguistics: ACL 2024</em> (pp. 517–545).
 </div>
+<div id="ref-kreps2020factors" class="csl-entry" role="listitem">
+Kreps, S., Prasad, S., Brownstein, J. S., Hswen, Y., Garibaldi, B. T., Zhang, B., &amp; Kriner, D. L. (2020). Factors associated with <span>US</span> adults’ likelihood of accepting COVID-19 vaccination. <em>JAMA Network Open</em>, <em>3</em>(10), e2025594–e2025594.
+</div>
 <div id="ref-ku2026siliconsamplingcrosssurveytransfer" class="csl-entry" role="listitem">
 Ku, C.-T., Hsu, C., Huang, P.-C., Liu, F. C., Cheng, I.-L., &amp; Kang, Y. (2026). Silicon sampling via cross-survey transfer. <a href="https://arxiv.org/abs/2607.03091">https://arxiv.org/abs/2607.03091</a>
 </div>
@@ -843,9 +798,6 @@ Li, H. (2026). <span>KITE</span>: Scaling <span>Jev</span> population experiment
 </div>
 <div id="ref-li2026llmasjevllmsjevstyledecision" class="csl-entry" role="listitem">
 Li, Y., &amp; Wagle, J. (2026). <span class="nocase">LLM-as-Jev</span>: <span>LLMs</span> are already <span>Jev</span>-style decision models – when and how to fine-tune them. <a href="https://arxiv.org/abs/2610.02076">https://arxiv.org/abs/2610.02076</a>
-</div>
-<div id="ref-liu2025badworktimecrosscultural" class="csl-entry" role="listitem">
-Liu, Z. J., Samir, F., Bhatia, M., Nelson, L. K., &amp; Shwartz, V. (2025). Is it bad to work all the time? Cross-cultural evaluation of social norm biases in GPT-4. <a href="https://arxiv.org/abs/2505.18322">https://arxiv.org/abs/2505.18322</a>
 </div>
 <div id="ref-palmer2026kev" class="csl-entry" role="listitem">
 Palmer, J. (2026). Kev: Small <span>Jev</span>-like decision models. <a href="https://github.com/jaredpalmer/kev" class="uri">https://github.com/jaredpalmer/kev</a>. <a href="https://github.com/jaredpalmer/kev">https://github.com/jaredpalmer/kev</a>
@@ -865,8 +817,8 @@ Shu, B., Zhang, L., Choi, M., Dunagan, L., Logeswaran, L., Lee, M., et al. (2024
 <div id="ref-suh-etal-2025-language" class="csl-entry" role="listitem">
 Suh, J., Jahanparast, E., Moon, S., Kang, M., &amp; Chang, S. (2025). Language model fine-tuning on scaled survey data for predicting distributions of public opinions. In W. Che, J. Nabende, E. Shutova, &amp; M. T. Pilehvar (Eds.), <em>Proceedings of the 63rd annual meeting of the <span>A</span>ssociation for <span>C</span>omputational <span>L</span>inguistics (volume 1: Long papers)</em> (pp. 21147–21170). Vienna, Austria: Association for Computational Linguistics. <a href="https://doi.org/10.18653/v1/2025.acl-long.1028">https://doi.org/10.18653/v1/2025.acl-long.1028</a>
 </div>
-<div id="ref-villani2008optimal" class="csl-entry" role="listitem">
-<span class="nocase">Villani, C. et al.</span> (2008). <em>Optimal transport: Old and new</em> (Vol. 338). Springer.
+<div id="ref-toubia2025database" class="csl-entry" role="listitem">
+Toubia, O., Gui, G. Z., Peng, T., Merlau, D. J., Li, A., &amp; Chen, H. (2025). Database report: Twin-2k-500: A data set for building digital twins of over 2,000 people based on their answers to over 500 questions. <em>Marketing Science</em>, <em>44</em>(6), 1446–1455.
 </div>
 <div id="ref-wadi2025monte" class="csl-entry" role="listitem">
 Wadi, D., &amp; Fredette, M. (2025). A monte-carlo sampling framework for reliable evaluation of large language models using behavioral analysis. <em>Findings of the Association for Computational Linguistics: EMNLP 2025</em>, 9414–9432.

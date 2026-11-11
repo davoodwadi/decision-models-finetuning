@@ -231,6 +231,9 @@ def evaluate_wang_metrics(
     return {"MAPE (%)": mape, "MSE": mse}
 
 
+import re
+
+
 def _persona_label_from_stem(stem: str, mode_field: str | None = None) -> str:
     """Map filename stem or persona_mode field to a human-readable persona label."""
     if mode_field == "random" or stem.endswith("_random"):
@@ -238,6 +241,91 @@ def _persona_label_from_stem(stem: str, mode_field: str | None = None) -> str:
     if mode_field == "persona" or stem.endswith("_persona"):
         return "Respondent Persona"
     raise ValueError(f"Cannot determine persona mode from filename stem {stem!r} or mode {mode_field!r}")
+
+
+def format_raw_model_name(raw_model_id: str, thinking_level: str | None = None) -> str:
+    """Format a raw model identifier or checkpoint path into a clean publication display name."""
+    s = raw_model_id.strip()
+    lower = s.lower()
+
+    if "human subsample" in lower:
+        return "Human subsample"
+    if "full human" in lower:
+        return "Full human"
+
+    # Match Kev models (base or fine-tuned)
+    kev_match = re.search(r"kev-(\d+(?:\.\d+)?b)", lower)
+    if kev_match:
+        size_str = kev_match.group(1).upper()
+        if s.startswith("jaredpalmer/kev-"):
+            return f"Kev {size_str} (base)"
+        suffix = ""
+        if "-ep2" in lower:
+            suffix = " (ep2)"
+        elif lower.endswith("/last"):
+            suffix = " (last)"
+        return f"Kev {size_str} FT{suffix}"
+
+    # Match Gemini or other generative LLMs
+    if lower.startswith("gemini-"):
+        body = s[len("gemini-"):]
+        parts = body.split("-")
+        formatted_parts = [p.capitalize() if not p.replace(".", "").isdigit() else p for p in parts]
+        name = "Gemini " + " ".join(formatted_parts)
+        name = name.replace("Flash Lite", "Flash-Lite")
+    else:
+        name = s
+
+    if thinking_level is not None and str(thinking_level).strip():
+        return f"{name} ({str(thinking_level).strip().lower()})"
+    return name
+
+
+def format_entry_display_label(entry_key: str, default_n: int = 1000) -> str:
+    """Convert an internal regression dictionary key into a concise publication plot/table label."""
+    s = entry_key.strip()
+    if s.lower().startswith("human subsample"):
+        return f"Human subsample (n={default_n:,})"
+
+    # Expected format from load_all_model_regressions:
+    # "<model_id> (<thinking_level>, <Persona Label>, n=<N>)" or "<model_id> (<Persona Label>, n=<N>)"
+    m = re.match(r"^(.*?)\s*\((.*),\s*(Random Persona|Respondent Persona),\s*n=(\d+)\)$", s)
+    if m:
+        raw_model, thinking, _, n_str = m.groups()
+        base_name = format_raw_model_name(raw_model, thinking_level=thinking)
+        n_val = int(n_str)
+        return f"{base_name} (n={n_val:,})" if n_val != default_n else base_name
+
+    m2 = re.match(r"^(.*?)\s*\((Random Persona|Respondent Persona),\s*n=(\d+)\)$", s)
+    if m2:
+        raw_model, _, n_str = m2.groups()
+        base_name = format_raw_model_name(raw_model, thinking_level=None)
+        n_val = int(n_str)
+        return f"{base_name} (n={n_val:,})" if n_val != default_n else base_name
+
+    return s
+
+
+def parse_entry_metadata(entry_key: str) -> dict[str, str | int]:
+    """Parse model display name, persona regime, and valid sample size from a regression dictionary key."""
+    s = entry_key.strip()
+    m = re.match(r"^(.*?)\s*\((.*),\s*(Random Persona|Respondent Persona),\s*n=(\d+)\)$", s)
+    if m:
+        raw_model, thinking, persona, n_str = m.groups()
+        return {
+            "model": format_raw_model_name(raw_model, thinking_level=thinking),
+            "persona": persona,
+            "n": int(n_str),
+        }
+    m2 = re.match(r"^(.*?)\s*\((Random Persona|Respondent Persona),\s*n=(\d+)\)$", s)
+    if m2:
+        raw_model, persona, n_str = m2.groups()
+        return {
+            "model": format_raw_model_name(raw_model, thinking_level=None),
+            "persona": persona,
+            "n": int(n_str),
+        }
+    raise ValueError(f"Unrecognized regression entry key format: {entry_key!r}")
 
 
 def load_all_model_regressions(
@@ -333,7 +421,7 @@ def plot_wang_error_comparison(
     palette: str = "nature",
     persona_filter: str | None = None,
     sort_by: str = "MSE vs. Full Human",
-    benchmark_title: str = "COVID-19 Vaccine Conjoint (Wang et al., 2026)",
+    default_n: int = 1000,
 ) -> plt.Figure:
     """Plot a two-panel horizontal bar chart of MAPE (%) and MSE vs. Full Human beta* sorted from best to worst on MSE."""
     pal = set_academic_palette(palette)
@@ -354,10 +442,7 @@ def plot_wang_error_comparison(
     df_plot = df_plot.sort_values(sort_by, ascending=True)
 
     raw_models = [str(idx) for idx in df_plot.index.tolist()]
-    if persona_filter is not None:
-        models = [m.replace(f"{persona_filter}, ", "").replace(f"({persona_filter})", "").strip() for m in raw_models]
-    else:
-        models = raw_models
+    models = [format_entry_display_label(m, default_n=default_n) for m in raw_models]
 
     mape_vals = df_plot["MAPE vs. Full Human (%)"].to_numpy(dtype=np.float64)
     mse_vals = df_plot["MSE vs. Full Human"].to_numpy(dtype=np.float64)
@@ -385,20 +470,20 @@ def plot_wang_error_comparison(
             key = name.replace("Random Persona", "").replace("Respondent Persona", "").split(", n=")[0].split(", N=")[0].strip()
             bar_colors.append(other_color_map[key])
 
-    fig_height = max(3.4, 0.72 * len(models) + 1.3)
-    fig, axes = plt.subplots(1, 2, figsize=(11.5, fig_height), sharey=True, dpi=150)
+    fig_height = max(3.3, 0.56 * len(models) + 0.9)
+    fig, axes = plt.subplots(1, 2, figsize=(10.5, fig_height), sharey=True, dpi=150)
     y_pos = np.arange(len(models))
 
     panel_specs = [
-        (axes[0], mape_vals, "MAPE vs. Full Human β* (%)", "Mean Absolute Percentage Error (MAPE)", "{:.1f}%"),
-        (axes[1], mse_vals, "MSE vs. Full Human β*", "Mean Squared Error (MSE)", "{:.4f}"),
+        (axes[0], mape_vals, "MAPE vs. full human β* (%)", "A. Mean absolute percentage error (MAPE)", "{:.1f}%"),
+        (axes[1], mse_vals, "MSE vs. full human β*", "B. Mean squared error (MSE)", "{:.4f}"),
     ]
     for ax, vals, xlabel, title, fmt in panel_specs:
         bars = ax.barh(y_pos, vals, color=bar_colors, height=0.55, edgecolor=NEUTRALS["text"], linewidth=0.6, zorder=3)
         ax.set_yticks(y_pos, labels=models, color=NEUTRALS["text"], fontsize=9.5)
         ax.invert_yaxis()
         ax.set_xlabel(xlabel, color=NEUTRALS["muted"], fontsize=9.5)
-        ax.set_title(title, color=NEUTRALS["text"], fontsize=10.5, fontweight="bold", pad=8)
+        ax.set_title(title, color=NEUTRALS["text"], fontsize=10.5, fontweight="bold", loc="left", pad=8)
         ax.tick_params(axis="x", colors=NEUTRALS["muted"], labelsize=9)
         ax.grid(axis="x", color=NEUTRALS["grid"], linestyle="--", linewidth=0.8, zorder=0)
         ax.spines["top"].set_visible(False)
@@ -406,7 +491,7 @@ def plot_wang_error_comparison(
         ax.spines["left"].set_color(NEUTRALS["muted"])
         ax.spines["bottom"].set_color(NEUTRALS["muted"])
         max_val = float(np.max(vals)) if len(vals) else 1.0
-        ax.set_xlim(0, max_val * 1.22)
+        ax.set_xlim(0, max_val * 1.24)
         for bar, val in zip(bars, vals, strict=True):
             ax.text(
                 val + max_val * 0.02,
@@ -419,18 +504,254 @@ def plot_wang_error_comparison(
                 fontweight="bold",
             )
 
-    heading = (
-        f"{benchmark_title}: {persona_filter} — Parameter Recovery Error"
-        if persona_filter is not None
-        else f"{benchmark_title}: Parameter Recovery Error"
+    plt.tight_layout()
+    return fig
+
+
+def build_wang_summary_table(
+    comparison_metrics_df: pd.DataFrame,
+    human_sub_key: str = "Human Subsample Baseline (n=1000)",
+) -> pd.DataFrame:
+    """Build a publication-ready side-by-side table comparing Random Persona and Respondent Persona MNL metrics."""
+    if human_sub_key not in comparison_metrics_df.index:
+        raise KeyError(f"Missing {human_sub_key!r} in comparison_metrics_df")
+
+    by_model: dict[str, dict[str, dict[str, float | int]]] = {}
+    for entry_key, row in comparison_metrics_df.iterrows():
+        key_str = str(entry_key)
+        if key_str == human_sub_key:
+            continue
+        meta = parse_entry_metadata(key_str)
+        model_name = str(meta["model"])
+        persona = str(meta["persona"])
+        if model_name not in by_model:
+            by_model[model_name] = {}
+        by_model[model_name][persona] = {
+            "n": int(meta["n"]),
+            "mape_full": float(row["MAPE vs. Full Human (%)"]),
+            "mse_full": float(row["MSE vs. Full Human"]),
+            "mape_sub": float(row["MAPE vs. Human Subsample (%)"]),
+            "mse_sub": float(row["MSE vs. Human Subsample"]),
+        }
+
+    # Sort models by Respondent Persona MSE vs. Full Human (or Random Persona if Respondent is absent)
+    def sort_key(m_name: str) -> float:
+        entries = by_model[m_name]
+        if "Respondent Persona" in entries:
+            return float(entries["Respondent Persona"]["mse_full"])
+        return float(entries["Random Persona"]["mse_full"])
+
+    sorted_models = sorted(by_model.keys(), key=sort_key)
+
+    h_row = comparison_metrics_df.loc[human_sub_key]
+    table_rows: list[dict[str, str]] = [
+        {
+            "Estimator": "Human subsample (n = 1,000)",
+            "Random persona MAPE (%)": "—",
+            "Random persona MSE": "—",
+            "Respondent persona MAPE (%)": f"{float(h_row['MAPE vs. Full Human (%)']):.1f}%",
+            "Respondent persona MSE": f"{float(h_row['MSE vs. Full Human']):.4f}",
+        }
+    ]
+
+    for m_name in sorted_models:
+        entries = by_model[m_name]
+        if "Random Persona" not in entries or "Respondent Persona" not in entries:
+            raise ValueError(f"Expected both Random and Respondent Persona for {m_name}, got {list(entries.keys())}")
+        rnd = entries["Random Persona"]
+        prs = entries["Respondent Persona"]
+        n_note = f" (random n = {rnd['n']})" if int(rnd["n"]) < 1000 else ""
+        table_rows.append({
+            "Estimator": f"{m_name}{n_note}",
+            "Random persona MAPE (%)": f"{rnd['mape_full']:.1f}%",
+            "Random persona MSE": f"{rnd['mse_full']:.4f}",
+            "Respondent persona MAPE (%)": f"{prs['mape_full']:.1f}%",
+            "Respondent persona MSE": f"{prs['mse_full']:.4f}",
+        })
+
+    return pd.DataFrame(table_rows)
+
+
+def build_wang_coef_table(
+    human_mnl_df: pd.DataFrame,
+    human_sub_mnl_df: pd.DataFrame,
+    model_mnl_dfs: dict[str, pd.DataFrame],
+    persona_mode: str = "Respondent Persona",
+) -> pd.DataFrame:
+    """Build a Web Appendix table of the d=11 MNL part-worth estimates (and standard errors) across estimators."""
+    selected_models: list[tuple[str, pd.DataFrame]] = [
+        ("Full human (N = 9,855)", human_mnl_df),
+        ("Human subsample (n = 1,000)", human_sub_mnl_df),
+    ]
+
+    # Collect models matching persona_mode sorted cleanly (Kev FT, Kev base, then LLMs)
+    matched: list[tuple[str, pd.DataFrame]] = []
+    for key, df_m in model_mnl_dfs.items():
+        meta = parse_entry_metadata(key)
+        if meta["persona"] == persona_mode:
+            matched.append((str(meta["model"]), df_m))
+
+    def model_order(item: tuple[str, pd.DataFrame]) -> tuple[int, str]:
+        name = item[0].lower()
+        if "kev" in name and "ft" in name:
+            return (0, name)
+        if "kev" in name:
+            return (1, name)
+        return (2, name)
+
+    selected_models.extend(sorted(matched, key=model_order))
+
+    rows: list[dict[str, str]] = []
+    for feat_label in human_mnl_df.index:
+        row_dict: dict[str, str] = {"Vaccine attribute level": str(feat_label)}
+        for col_name, df_est in selected_models:
+            b = float(df_est.loc[feat_label, "beta"])
+            se = float(df_est.loc[feat_label, "se"])
+            row_dict[col_name] = f"{b:+.3f} ({se:.3f})"
+        rows.append(row_dict)
+
+    return pd.DataFrame(rows)
+
+
+def plot_wang_coefficients(
+    human_mnl_df: pd.DataFrame,
+    human_sub_mnl_df: pd.DataFrame,
+    model_mnl_dfs: dict[str, pd.DataFrame],
+    palette: str = "nature",
+    persona_mode: str = "Respondent Persona",
+) -> plt.Figure:
+    """Plot a two-panel forest comparison of the d=11 MNL part-worth coefficients:
+    Panel A: Human ground truth vs. off-the-shelf and fine-tuned Kev decision models (with 95% CIs).
+    Panel B: Human ground truth and Kev 9B FT vs. generative LLMs (showing logit-scale inflation).
+    """
+    pal = set_academic_palette(palette)
+    by_name: dict[str, pd.DataFrame] = {}
+    for key, df_m in model_mnl_dfs.items():
+        meta = parse_entry_metadata(key)
+        if meta["persona"] == persona_mode:
+            by_name[str(meta["model"])] = df_m
+
+    kev_base_names = sorted([k for k in by_name if k.startswith("Kev ") and "(base)" in k])
+    kev_ft_names = sorted([k for k in by_name if k.startswith("Kev ") and "FT" in k])
+    llm_names = sorted([k for k in by_name if not k.startswith("Kev ")])
+    if not kev_ft_names or not kev_base_names:
+        raise ValueError(f"Expected both base and FT Kev models for {persona_mode}, found {list(by_name.keys())}")
+
+    labels = list(human_mnl_df.index)
+    short_labels = [
+        lbl.replace("Major side effects: 1 in 1,000,000 (vs. 1 in 10,000)", "Major side effects: 1 in 1M (vs. 1 in 10k)")
+           .replace("FDA: Emergency Use Authorization (vs. Full approval)", "FDA: EUA (vs. Full approval)")
+           .replace("Origin: United Kingdom (vs. United States)", "Origin: UK (vs. US)")
+           .replace("Origin: China (vs. United States)", "Origin: China (vs. US)")
+        for lbl in labels
+    ]
+    y_base = np.arange(len(labels), dtype=np.float64)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11.8, 5.4), sharey=True, dpi=150)
+    fig.subplots_adjust(wspace=0.10)
+
+    # Panel A series: Full human, Human subsample, Kev base, Kev FT
+    panel_a_specs: list[tuple[str, pd.DataFrame, str, str]] = [
+        ("Full human (N = 9,855)", human_mnl_df, MODEL_PALETTES[palette]["human"], "o"),
+        ("Human subsample (n = 1,000)", human_sub_mnl_df, NEUTRALS["baseline"], "s"),
+    ]
+    for kb in kev_base_names:
+        panel_a_specs.append((kb, by_name[kb], MODEL_PALETTES[palette]["off_the_shelf"], "^"))
+    for kft in kev_ft_names:
+        panel_a_specs.append((kft, by_name[kft], MODEL_PALETTES[palette]["fine_tuned"], "D"))
+
+    offsets_a = np.linspace(-0.24, 0.24, len(panel_a_specs))
+    ax1.axvline(0.0, color=NEUTRALS["ref_line"], linestyle=":", linewidth=1.0, zorder=1)
+    for offset, (name, df_m, color, marker) in zip(offsets_a, panel_a_specs, strict=True):
+        betas = df_m.loc[labels, "beta"].to_numpy(dtype=np.float64)
+        ses = df_m.loc[labels, "se"].to_numpy(dtype=np.float64)
+        ax1.errorbar(
+            betas,
+            y_base + offset,
+            xerr=1.96 * ses,
+            fmt=marker,
+            color=color,
+            ecolor=color,
+            elinewidth=1.2,
+            capsize=2.2,
+            markersize=5.2,
+            label=name,
+            zorder=3,
+        )
+
+    ax1.set_yticks(y_base, labels=short_labels, color=NEUTRALS["text"], fontsize=9.0)
+    ax1.invert_yaxis()
+    ax1.set_xlabel("Estimated MNL part-worth coefficient β̂ (log-odds)", color=NEUTRALS["muted"], fontsize=9.5)
+    ax1.set_title("A. Decision models vs. human ground truth", color=NEUTRALS["text"], fontsize=10.5, fontweight="bold", loc="left", pad=8)
+    ax1.tick_params(axis="x", colors=NEUTRALS["muted"], labelsize=9.0)
+    ax1.grid(axis="x", color=NEUTRALS["grid"], linestyle="--", linewidth=0.8, zorder=0)
+    ax1.spines["top"].set_visible(False)
+    ax1.spines["right"].set_visible(False)
+    ax1.spines["left"].set_color(NEUTRALS["muted"])
+    ax1.spines["bottom"].set_color(NEUTRALS["muted"])
+    ax1.legend(
+        frameon=True,
+        facecolor="white",
+        edgecolor=NEUTRALS["legend_edge"],
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.13),
+        ncol=2,
+        fontsize=8.5,
     )
-    fig.suptitle(
-        heading,
-        fontsize=11.5,
-        fontweight="bold",
-        color=NEUTRALS["text"],
-        y=1.02,
+
+    # Panel B series: Full human, best Kev FT, and generative LLMs
+    best_kft = kev_ft_names[-1]
+    panel_b_specs: list[tuple[str, pd.DataFrame, str, str]] = [
+        ("Full human (N = 9,855)", human_mnl_df, MODEL_PALETTES[palette]["human"], "o"),
+        (best_kft, by_name[best_kft], MODEL_PALETTES[palette]["fine_tuned"], "D"),
+    ]
+    llm_colors = [pal[3], pal[4], pal[5], NEUTRALS["baseline"]]
+    llm_markers = ["v", "<", ">", "P"]
+    for i, llm_name in enumerate(llm_names):
+        panel_b_specs.append((
+            llm_name,
+            by_name[llm_name],
+            llm_colors[i % len(llm_colors)],
+            llm_markers[i % len(llm_markers)],
+        ))
+
+    offsets_b = np.linspace(-0.26, 0.26, len(panel_b_specs))
+    ax2.axvline(0.0, color=NEUTRALS["ref_line"], linestyle=":", linewidth=1.0, zorder=1)
+    for offset, (name, df_m, color, marker) in zip(offsets_b, panel_b_specs, strict=True):
+        betas = df_m.loc[labels, "beta"].to_numpy(dtype=np.float64)
+        ses = df_m.loc[labels, "se"].to_numpy(dtype=np.float64)
+        ax2.errorbar(
+            betas,
+            y_base + offset,
+            xerr=1.96 * ses,
+            fmt=marker,
+            color=color,
+            ecolor=color,
+            elinewidth=1.1,
+            capsize=2.0,
+            markersize=5.0,
+            label=name,
+            zorder=3,
+        )
+
+    ax2.set_xlabel("Estimated MNL part-worth coefficient β̂ (log-odds)", color=NEUTRALS["muted"], fontsize=9.5)
+    ax2.set_title("B. Generative LLM scale inflation vs. Kev 9B FT", color=NEUTRALS["text"], fontsize=10.5, fontweight="bold", loc="left", pad=8)
+    ax2.tick_params(axis="x", colors=NEUTRALS["muted"], labelsize=9.0)
+    ax2.grid(axis="x", color=NEUTRALS["grid"], linestyle="--", linewidth=0.8, zorder=0)
+    ax2.spines["top"].set_visible(False)
+    ax2.spines["right"].set_visible(False)
+    ax2.spines["left"].set_color(NEUTRALS["muted"])
+    ax2.spines["bottom"].set_color(NEUTRALS["muted"])
+    ax2.legend(
+        frameon=True,
+        facecolor="white",
+        edgecolor=NEUTRALS["legend_edge"],
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.13),
+        ncol=2,
+        fontsize=8.5,
     )
+
     plt.tight_layout()
     return fig
 

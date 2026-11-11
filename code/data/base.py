@@ -411,6 +411,85 @@ def group_train_records(records, *, max_questions=8, max_chars=2400, rng=None):
     return groups
 
 
+def group_train_records_mixed(records, *, max_questions=8, max_chars=2400, rng=None):
+    """Group training records by persona state while keeping question batteries mixed inside each group.
+
+    - Groups records sharing `tuple(sorted(r["personas"].items()))`.
+    - Shuffles within each persona state (if `rng` is given), then sorts by group capacity
+      `min(max_questions, max_chars // _record_chars(r))` rather than exact character count so questions
+      with the same group capacity remain in random topic order.
+    - Rebalances a short trailing group (`< max_questions // 2`) with its predecessor when `max_chars` permits.
+    """
+    if max_questions < 1:
+        raise ValueError(f"max_questions must be >= 1, got {max_questions}")
+    if max_chars < 1:
+        raise ValueError(f"max_chars must be >= 1, got {max_chars}")
+
+    by_state = defaultdict(list)
+    for r in records:
+        key = tuple(sorted(r["personas"].items()))
+        by_state[key].append(r)
+
+    groups = []
+    for state_recs in by_state.values():
+        state_recs = list(state_recs)
+        if rng is not None and len(state_recs) > 1:
+            rng.shuffle(state_recs)
+        state_recs.sort(key=lambda r: min(max_questions, max_chars // _record_chars(r)))
+
+        state_groups = []
+        cur = []
+        cur_max = 0
+        for r in state_recs:
+            q_chars = _record_chars(r)
+            next_max = max(cur_max, q_chars)
+            if cur and (len(cur) >= max_questions or (len(cur) + 1) * next_max > max_chars):
+                state_groups.append(cur)
+                cur = []
+                cur_max = 0
+                next_max = q_chars
+            cur.append(r)
+            cur_max = next_max
+        if cur:
+            state_groups.append(cur)
+
+        if len(state_groups) >= 2 and len(state_groups[-1]) < max_questions // 2:
+            combined = state_groups[-2] + state_groups[-1]
+            mid = len(combined) // 2
+            g1, g2 = combined[:mid], combined[mid:]
+            if (
+                len(g1) * max(_record_chars(r) for r in g1) <= max_chars
+                and len(g2) * max(_record_chars(r) for r in g2) <= max_chars
+            ):
+                state_groups[-2:] = [g1, g2]
+
+        groups.extend(state_groups)
+
+    if rng is not None:
+        rng.shuffle(groups)
+    return groups
+
+
+def group_train_records_iid(records, *, max_questions=1, max_chars=2400, rng=None, step_size=312):
+    """Shuffled ungrouped i.i.d. training records (`[r]` per item), optionally length-sorted within each `step_size` window.
+
+    - Shuffles all `(persona, question)` records globally when `rng` is given.
+    - When `step_size` (`batch_size * grad_accum_steps`) is > 1, sorts records by total formatted character length
+      only within each `step_size` optimizer-step window so microbatches have minimal right-padding while the
+      accumulated step gradient remains identical to pure i.i.d. uniform SGD.
+    """
+    recs = list(records)
+    if rng is not None and len(recs) > 1:
+        rng.shuffle(recs)
+    if step_size is not None and step_size > 1:
+        for i in range(0, len(recs), step_size):
+            recs[i : i + step_size] = sorted(
+                recs[i : i + step_size],
+                key=lambda r: len(r["persona"]) + _record_chars(r),
+            )
+    return [[r] for r in recs]
+
+
 def pack_views_by_state(views):
     """Deduplicate (state, qid) pairs and pack all questions sharing a state into one multi-question view."""
     state_to_idx = {}
