@@ -26,10 +26,12 @@ GRUMMON_PERSONA_NAMES = {
     "EDULEVEL": "Education",
     "US_INC": "Income",
     "RACE": "Race",
+    "HHSIZE": "How many people, including yourself, live in your household?",
     "HISPANIC": "Hispanic or Latino",
     "SNAP": "SNAP / Food Stamps recipient",
     "NFPUSE": "Nutrition Facts label usage",
     "ONLINEAMT": "Share of groceries bought online",
+    # Derived in Grummon 2025 (scr_litall = 0..4 sum across 4 NVS ice-cream Nutrition Facts math items, not a single verbatim survey question); may be adapted in the future.
     "HEALTHLIT": "Nutrition literacy score",
 }
 

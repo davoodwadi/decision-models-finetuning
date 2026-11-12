@@ -155,7 +155,7 @@ LEFT_RIGHT_LEVELS = [   # WVS Q240 left-right self-placement; each label says wh
 
 GLOBAL_PERSONA_LEVELS = {
     "c_alphan": ["United States"],
-    "SEX": ["Male", "Female"],
+    "SEX": ["Male", "Female", "Non-binary"],
     "AGE": ["18-29", "30-49", "50-64", "65+"],
     "US_REG": ["Northeast", "Midwest", "South", "West"],
     "EDULEVEL": [
@@ -267,6 +267,7 @@ PERSONA_MAPS = {
         "subpop": {"United States": "United States"},
         "covid": {"United States": "United States"},
         "grummon": {"United States": "United States"},
+        "grummon2023": {"United States": "United States"},
         "wvs": {"United States": "United States"},
     },
     "SEX": {
@@ -274,7 +275,8 @@ PERSONA_MAPS = {
         "twin2k": {"Male": "Male", "Female": "Female"},
         "subpop": {"Male": "Male", "Female": "Female"},
         "covid": {1: "Male", 2: "Female", 3: None},
-        "grummon": {1.0: "Female", 2.0: "Male", 3.0: None, 4.0: None},
+        "grummon": {1.0: "Female", 2.0: "Male", 3.0: "Non-binary", 4.0: None},
+        "grummon2023": {1.0: "Female", 2.0: "Male", 3.0: "Non-binary", 4.0: None},
         "wvs": {"Male": "Male", "Female": "Female"},
     },
     "AGE": {
@@ -395,6 +397,14 @@ PERSONA_MAPS = {
             5.0: "College graduate/some postgrad",
             6.0: "College graduate/some postgrad",
         },
+        "grummon2023": {
+            1.0: "Less than high school",
+            2.0: "High school or some college",
+            3.0: "High school or some college",
+            4.0: "Associate's degree",
+            5.0: "College graduate/some postgrad",
+            6.0: "College graduate/some postgrad",
+        },
         "wvs": {  # ISCED 2011
             "Early childhood education (ISCED 0) / no education": "Less than high school",
             "Primary education (ISCED 1)": "Less than high school",
@@ -437,6 +447,12 @@ PERSONA_MAPS = {
             "Amer Ind AK Native": "Other",
             "Native Hawaiian or Pacific Islander": "Other",
             "Other or multi-racial": "Other",
+        },
+        "grummon2023": {
+            "White": "White",
+            "Black": "Black",
+            "Asian": "Asian",
+            "Other": "Other",
         },
         "wvs": {  # WVS US has no Asian group (Asians are in "Other, Non-Hispanic"): its own levels, so "Other" keeps its meaning across datasets
             "US: White, non-Hispanic": "White",
@@ -635,6 +651,18 @@ PERSONA_MAPS = {
             9.0: "$100,000 or more",
             10.0: "$100,000 or more",
         },
+        "grummon2023": {
+            1.0: "Less than $25,000",
+            2.0: "Less than $25,000",
+            3.0: "Less than $25,000",
+            4.0: "$25,000 - $34,999",
+            5.0: "$35,000 - $49,999",
+            6.0: "$50,000 - $75,000",
+            7.0: "$75,000 - $100,000",
+            8.0: "$100,000 or more",
+            9.0: "$100,000 or more",
+            10.0: "$100,000 or more",
+        },
     },
     "PARTY_LR": {
         "issp": {
@@ -674,6 +702,8 @@ PERSONA_MAPS = {
             "More than 4": "More than 4",
         },
         "wvs": {"1": "1", "2": "2", "3": "3", "4": "4", "5": "More than 4", "6": "More than 4"},
+        "grummon": {float(k): (str(k) if k <= 4 else "More than 4") for k in range(1, 21)},
+        "grummon2023": {float(k): (str(k) if k <= 4 else "More than 4") for k in range(1, 21)},
     },
     "MAINSTAT": {
         "issp": {
@@ -742,7 +772,7 @@ def bucket_age_series(series: pd.Series, dataset: str) -> pd.Series:
 
 def map_persona_series(series: pd.Series, attr: str, dataset: str) -> pd.Series:
     """Map a dataset persona column into its canonical global levels with fail-fast validation."""
-    if attr == "AGE" and dataset in {"issp", "covid", "grummon", "wvs"}:
+    if attr == "AGE" and dataset in {"issp", "covid", "grummon", "grummon2023", "wvs"}:
         return bucket_age_series(series, dataset=dataset)
 
     mapping = PERSONA_MAPS[attr][dataset]

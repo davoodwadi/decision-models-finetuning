@@ -47,10 +47,13 @@ def build_marginal_lookup(train_df, *, include_country):
         if req_col not in train_df.columns:
             raise KeyError(f"Expected column {req_col!r} in train_df")
 
-    persona_cols = tuple(c for c in PERSONA_NAMES if include_country or c != "c_alphan")
-    missing_cols = [c for c in persona_cols if c not in train_df.columns]
-    if missing_cols:
-        raise KeyError(f"Missing expected persona columns in train_df: {missing_cols}")
+    persona_cols = tuple(
+        c
+        for c in ALL_PERSONA_NAMES
+        if c in train_df.columns and train_df[c].notna().any() and (include_country or c != "c_alphan")
+    )
+    if not persona_cols:
+        raise KeyError("No non-empty persona columns from ALL_PERSONA_NAMES found in train_df")
 
     df = train_df.reset_index(drop=True)
     persona_groups = df.groupby(list(persona_cols), dropna=False, sort=False)

@@ -40,7 +40,12 @@ EXTRA_PERSONA_NAMES = {
     "SNAP": "SNAP / Food Stamps recipient",
     "NFPUSE": "Nutrition Facts label usage",
     "ONLINEAMT": "Share of groceries bought online",
+    # Derived in Grummon 2025 (scr_litall = 0..4 sum across 4 NVS ice-cream Nutrition Facts math items, not a single verbatim survey question); may be adapted in the future.
     "HEALTHLIT": "Nutrition literacy score",
+    "MEDHELP": (
+        "How often do you need to have someone help you when you read instructions, "
+        "pamphlets, or other written materials from your doctor or pharmacy?"
+    ),
 }
 ALL_PERSONA_NAMES = {**PERSONA_NAMES, **EXTRA_PERSONA_NAMES}
 
@@ -78,19 +83,30 @@ def make_record(sub_df, cols, persona_names=ALL_PERSONA_NAMES):
         n = len(sub_df)
 
     personas = {c: row[c] for c in cols}
-    return {
+    opt_descs = (
+        list(row["option_descriptions"])
+        if ("option_descriptions" in row and row["option_descriptions"] is not None)
+        else None
+    )
+    rec = {
         "qid": row["qid"],
         "year": row["year"],
         "v": row["v"],
         "type": row["type"],
         "question": row["question"],
-        "option_texts": row["option_texts"],
+        "option_texts": list(row["option_texts"]),
+        "option_descriptions": opt_descs,
         "personas": personas,
         "attribute": "+".join(personas.keys()) if personas else "none",
         "persona": ", ".join(f"{persona_names[c]}={v}" for c, v in personas.items()) if personas else "All",
         "n": n,
         "human_dist": human_dist,
     }
+    if "CASEID" in row:
+        rec["CASEID"] = row["CASEID"]
+    if "arm" in row:
+        rec["arm"] = row["arm"]
+    return rec
 
 
 def load_split_qids(split_spec):
@@ -159,7 +175,7 @@ def build_persona_dataset(
             print(f"Loaded {len(records):,} records from {cache_file.name}")
             return records
 
-    candidate_cols = [c for c in PERSONA_NAMES if include_country or c != "c_alphan"]
+    candidate_cols = [c for c in ALL_PERSONA_NAMES if include_country or c != "c_alphan"]
     records = []
     q_groups = list(df.groupby("qid", sort=False))
     for _, q_df in tqdm(q_groups, desc=desc, unit="question"):
@@ -313,7 +329,15 @@ def make_grouped_view(group_records, rng=None, persona_names=ALL_PERSONA_NAMES):
 
 def _record_chars(r):
     """Estimated formatted character length including Kev chat-template framing per question and per option."""
-    return 32 + len(r["question"]) + sum(24 + len(str(o)) for o in r["option_texts"])
+    descs = r["option_descriptions"] if "option_descriptions" in r else None
+    if descs is not None:
+        opt_chars = sum(
+            24 + len(str(o)) + (len(str(d)) + 2 if d is not None else 0)
+            for o, d in zip(r["option_texts"], descs, strict=True)
+        )
+    else:
+        opt_chars = sum(24 + len(str(o)) for o in r["option_texts"])
+    return 32 + len(r["question"]) + opt_chars
 
 
 def _question_spec_chars(q_spec):
