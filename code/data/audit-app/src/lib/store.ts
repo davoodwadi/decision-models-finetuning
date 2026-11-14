@@ -244,7 +244,7 @@ async function loadOrRefreshDataset(dsId: string): Promise<CachedDataset> {
   const hasNotebook =
     hasDataNb ||
     (hasStimulus &&
-      ["grummon2023", "grummon2025", "covid"].includes(path.basename(datasetDir)));
+      ["grummon2023", "grummon2025", "covid", "Kriner2026"].includes(path.basename(datasetDir)));
 
   const { columns, rows: rawRows } = parseCsv(csvText);
   const schemaKind = detectSchemaKind(columns);
@@ -747,7 +747,8 @@ export async function rebuildDatasetParquet(dsId: string): Promise<{
     const isPythonExport =
       dirBase === "grummon2023" ||
       dirBase === "grummon2025" ||
-      dirBase === "covid";
+      dirBase === "covid" ||
+      dirBase === "Kriner2026";
     if (!hasNb && !isPythonExport) {
       throw new Error(
         `No data.ipynb or Python parquet exporter found in ${ds.datasetDir}`

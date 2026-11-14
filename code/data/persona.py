@@ -57,6 +57,20 @@ DATASET_PERSONA_COLS = {
         "US_INC",
         "RACE",
     ],
+    "kriner2026": [
+        "c_alphan",
+        "US_REG",
+        "SEX",
+        "AGE",
+        "EDULEVEL",
+        "RELIGGRP",
+        "PARTY_LR",
+        "US_PRTY",
+        "US_INC",
+        "RACE",
+        "URBRURAL",
+        "VOTE_LE",
+    ],
     "wvs": [
         "c_alphan",
         "SEX",
@@ -98,6 +112,32 @@ COVID_RACE_COLS = [
     ("race_3", "Black or African American"),
     ("race_4", "Hispanic"),
     ("race_5", "White"),
+    ("race_6", "Other"),
+]
+
+# Kriner2026 (Goldfarb, Kriner et al. 2026, SAF survey); decisions in `Kriner2026/DECISIONS.md`.
+# `age_years` is built by the loader from the `.dta` value labels (raw `age` holds codes: 1 = 18 ... 80 = 97).
+# `party_lean` and the authors' `party3` are intentionally not used: `US_PRTY` uses `party` alone.
+# `vs_votechoice_2024` (Verasight profile 2024 vote choice) is intentionally not used.
+KRINER2026_COL_TO_PERSONA = {
+    "state": "US_REG",
+    "gender": "SEX",
+    "age_years": "AGE",
+    "education": "EDULEVEL",
+    "relig": "RELIGGRP",
+    "ideology": "PARTY_LR",
+    "party": "US_PRTY",
+    "income": "US_INC",
+    "urban_rural_best": "URBRURAL",
+    "vs_vote_2024": "VOTE_LE",  # Verasight panel profile (2024 presidential election), not asked in this survey
+}
+
+KRINER2026_RACE_COLS = [
+    ("native_american", "American Indian"),
+    ("asian", "Asian"),
+    ("black", "Black or African American"),
+    ("hispanic", "Hispanic"),
+    ("white", "White"),
     ("race_6", "Other"),
 ]
 
@@ -192,6 +232,7 @@ GLOBAL_PERSONA_LEVELS = {
         "Agnostic",
         "Nothing in particular",
         "Other",
+        "None",  # Kriner2026 `relig` answer "None" (its 6-answer list has no atheist/agnostic split)
     ],
     "ATTEND": [
         "More than once a week",
@@ -257,7 +298,7 @@ GLOBAL_PERSONA_LEVELS = {
         "Permanently sick or disabled",
         "Other",
     ],
-    "VOTE_LE": ["Yes", "No"],
+    "VOTE_LE": ["Yes", "No", "I was too young to vote", "I was not registered to vote"],  # last two: Kriner2026 `vs_vote_2024`
     "VOTE_FREQ": ["Always", "Usually", "Never"],
     "URBRURAL": [
         "A big city",
@@ -267,6 +308,7 @@ GLOBAL_PERSONA_LEVELS = {
         "A farm or home in the country",
         "Urban",
         "Rural",
+        "Suburban",  # Kriner2026 `urban_rural_best` (Urban / Suburban / Rural)
     ],
     "UNION": ["Yes", "No", "Active member", "Inactive member"],
     "US_ETHN1": US_ETHN1_LEVELS,
@@ -835,6 +877,68 @@ PERSONA_MAPS = {
     },
 }
 
+# --- Kriner2026 maps (raw `.dta` codes -> global levels); decisions in `Kriner2026/DECISIONS.md` ---
+PERSONA_MAPS["c_alphan"]["kriner2026"] = {"United States": "United States"}
+PERSONA_MAPS["SEX"]["kriner2026"] = {1: "Male", 2: "Female", 3: None}  # 3 = Prefer not to say
+# State codes 1..52 are identical to Covid's STATE_LABELS, so Covid's state -> region map is reused (52 has no region).
+PERSONA_MAPS["US_REG"]["kriner2026"] = PERSONA_MAPS["US_REG"]["covid"]
+PERSONA_MAPS["EDULEVEL"]["kriner2026"] = {
+    1: "Less than high school",           # Less than High School
+    2: "High school or some college",     # High School / GED
+    3: "High school or some college",     # Some College
+    4: "Associate's degree",              # 2-year College Degree
+    5: "College graduate/some postgrad",  # 4-year College Degree
+    6: "College graduate/some postgrad",  # Master's Degree
+    7: "College graduate/some postgrad",  # Doctoral Degree
+    8: "College graduate/some postgrad",  # Professional Degree
+}
+PERSONA_MAPS["RACE"]["kriner2026"] = {  # applied after the Covid multi-box rule (2+ boxes -> "Other")
+    "White": "White",
+    "Black or African American": "Black",
+    "Asian": "Asian",
+    "Hispanic": "Hispanic",
+    "American Indian": "Other",
+    "Other": "Other",
+}
+PERSONA_MAPS["RELIGGRP"]["kriner2026"] = {
+    1: "Protestant",
+    2: "Catholic",
+    3: "Jewish",
+    4: "Muslim",
+    5: "Other",
+    6: "None",  # the global level string "None", not Python None (missing)
+}
+PERSONA_MAPS["PARTY_LR"]["kriner2026"] = {
+    1: "Very liberal",
+    2: "Liberal",
+    3: "Somewhat liberal",
+    4: "Moderate",
+    5: "Somewhat conservative",
+    6: "Conservative",
+    7: "Very conservative",
+}
+PERSONA_MAPS["US_PRTY"]["kriner2026"] = {
+    1: "Republican",
+    2: "Democrat",
+    3: "Independent",
+    4: "Something else",  # Other/don't know
+}
+PERSONA_MAPS["URBRURAL"]["kriner2026"] = {1: "Urban", 2: "Suburban", 3: "Rural"}  # `urban_rural_best`
+PERSONA_MAPS["VOTE_LE"]["kriner2026"] = {  # `vs_vote_2024`
+    1: "Yes",                             # I voted
+    2: "I was too young to vote",
+    3: "I was not registered to vote",
+    4: "No",                              # I did not vote
+}
+PERSONA_MAPS["US_INC"]["kriner2026"] = {
+    1: "Below $20,000",
+    2: "$20,000 - $39,999",
+    3: "$40,000 - $59,999",
+    4: "$60,000 - $79,999",
+    5: "$80,000 - $99,999",
+    6: "$100,000 or more",
+}
+
 
 def bucket_age_series(series: pd.Series, dataset: str) -> pd.Series:
     """Bucket numeric respondent ages into canonical AGE_LABELS with strict range validation."""
@@ -847,7 +951,7 @@ def bucket_age_series(series: pd.Series, dataset: str) -> pd.Series:
 
 def map_persona_series(series: pd.Series, attr: str, dataset: str) -> pd.Series:
     """Map a dataset persona column into its canonical global levels with fail-fast validation."""
-    if attr == "AGE" and dataset in {"issp", "covid", "grummon2025", "grummon2023", "wvs"}:
+    if attr == "AGE" and dataset in {"issp", "covid", "grummon2025", "grummon2023", "wvs", "kriner2026"}:
         return bucket_age_series(series, dataset=dataset)
 
     mapping = PERSONA_MAPS[attr][dataset]
@@ -900,6 +1004,25 @@ def apply_persona_mapping(df: pd.DataFrame, dataset: str) -> pd.DataFrame:
                     raise ValueError("covid: respondent has no race indicator checked in race_1..race_6")
                 raw_races.append(checked[0] if len(checked) == 1 else "Other")
             df["RACE"] = pd.Series(raw_races, index=df.index, dtype=object)
+    elif dataset == "kriner2026":
+        df["c_alphan"] = "United States"
+        for src_col, attr in KRINER2026_COL_TO_PERSONA.items():
+            if src_col not in df.columns:
+                raise ValueError(f"kriner2026: missing column {src_col} for persona attribute {attr}")
+            df[attr] = df[src_col]
+        missing_race = [col for col, _ in KRINER2026_RACE_COLS if col not in df.columns]
+        if missing_race:
+            raise ValueError(f"kriner2026: missing race columns {missing_race}")
+        raw_races = []
+        for _, r in df.iterrows():
+            flags = [r[col] for col, _ in KRINER2026_RACE_COLS]
+            if any(f not in (0, 1) for f in flags):
+                raise ValueError(f"kriner2026: race indicators must be 0/1, got {flags}")
+            checked = [label for (col, label), f in zip(KRINER2026_RACE_COLS, flags) if f == 1]
+            if not checked:
+                raise ValueError("kriner2026: respondent has no race indicator checked")
+            raw_races.append(checked[0] if len(checked) == 1 else "Other")
+        df["RACE"] = pd.Series(raw_races, index=df.index, dtype=object)
     elif dataset == "wvs":
         for src_col, attr in WVS_COL_TO_PERSONA.items():
             if src_col not in df.columns:

@@ -257,10 +257,10 @@ To test whether fine-tuning on human response distributions generalizes to out-o
 
 ## Experimental Design and Multinomial Logit Specification
 
-For our first held-out study, following the benchmark protocol of @wang2026large, we use a COVID-19 vaccine conjoint dataset [@kreps2020factors] to investigate part-worth utility recovery (@tbl-datasets).
+For our first held-out study, following the benchmark protocol of @wang2026large, we use a COVID-19 vaccine conjoint dataset [@kreps2020factors], summarized in @tbl-datasets, to investigate part-worth utility recovery.
 In this study, 1,971 US respondents each complete $t \in \{1, \dots, 5\}$ paired choice tasks (9,855 observations).
 Each task presents two hypothetical vaccine profiles (`Option A` and `Option B`) with binary attribute vectors $\mathbf{x}_{i,t,A}, \mathbf{x}_{i,t,B} \in \{0, 1\}^d$, alongside a no-vaccine outside option (`Option C`) whose utility is normalized to zero.
-Profiles vary across $7$ attributes represented by $d = 11$ non-reference binary indicators: efficacy ($70\%$ and $90\%$ vs. $50\%$), protection duration ($5$ years vs. $1$ year), major side effects ($1$ in 1,000,000 vs. $1$ in 10,000), minor side effects ($1$ in $30$ vs. $1$ in $10$), regulatory status (emergency use authorization vs. full FDA approval), origin (China and the United Kingdom vs. the United States), and endorsement (Joe Biden, the US CDC, and the WHO vs. Donald Trump).
+Profiles vary across $7$ attributes coded as $d = 11$ non-reference binary indicators (@apptbl-wang-coefs).
 
 Under the standard Multinomial Logit (MNL) model [@wang2026large], choice probabilities for parameter vector $\boldsymbol{\beta} \in \mathbb{R}^d$ are:
 $$
@@ -287,24 +287,25 @@ Unlike @wang2026large, who excluded vaccine opt-out respondents due to LLM safet
 
 ## Conjoint Estimation Results
 
-**Generative LLM bias and inverse scaling with reasoning.**
+**Generative LLM bias.**
 Estimating MNL on the 200 sampled humans yields a finite-sample benchmark of $\mathrm{MSE} = 0.0065$ (@tbl-wang-mnl; @appfig-wang-random and @appfig-wang-persona).
 Consistent with @wang2026large, generative LLMs exhibit severe bias under random personas ($\mathrm{MSE} = 3.2073$ to $26.2179$).
 Conditioning on the $9$ respondent attributes cuts error substantially ($\mathrm{MSE} = 0.5925$ to $2.1687$), yet estimates remain far from the human benchmark.
 Moreover, higher reasoning budgets and model scale worsen parameter recovery.
 Under respondent personas, raising `Gemini 3.5 Flash-Lite` thinking from `minimal` to `high` doubles MSE ($0.5925$ to $1.1984$), while `Gemini 4 Argon` degrades further ($1.7637$ at `low` and $2.1687$ at `high`).
 
-**Why generative LLMs fail and why choice probabilities matter.**
-Humans choose the no-vaccine option in $20.3\%$ of subsample tasks, whereas unconditioned generative LLMs almost never opt out ($0.0\%$ to $3.0\%$), and `Gemini 4 Argon (high)` refuses $16$ of $1,000$ tasks outright.
-Because generative LLMs also pick a single winning profile nearly deterministically, MNL coefficients explode (@fig-wang-coefs, Panel B; @apptbl-wang-coefs): under respondent personas, `Efficacy: 90%` reaches $+1.846$ to $+3.538$ versus $+0.746$ for humans.
-Scoring options with `Kev 9B (base)` ($T = 2.19$) eliminates refusals and cuts MSE by an order of magnitude, to $0.2449$ (random) and $0.0815$ (respondent).
-Crucially, forcing `Kev 9B (base)` to output only its top-scoring option—rather than full choice probabilities—raises respondent-persona MSE nearly $23$-fold ($0.0815$ to $1.8678$), back into the generative LLM range.
+**Why choice probabilities matter.**
+Generative LLMs bias conjoint estimation because discrete text generation collapses choice uncertainty and triggers safety refusals.
+Under random personas, generative LLMs rarely select the no-vaccine option ($0.0\%$ to $3.0\%$ vs. $20.3\%$ for humans), while `Gemini 4 Argon (high)` refuses $16$ of $1,000$ tasks.
+Even under respondent personas, near-deterministic profile selection pushes conditional choice shares toward zero or one, causing severe MNL scale inflation (@fig-wang-coefs, Panel B; @apptbl-wang-coefs): `Efficacy: 90%` reaches $+1.846$ to $+3.538$ versus $+0.746$ for humans.
+Scoring options directly via `Kev 9B (base)` ($T = 2.19$) eliminates refusals and cuts MSE by an order of magnitude ($0.2449$ random; $0.0815$ respondent).
+Collapsing those same `Kev 9B (base)` probabilities into one-hot top choices inflates respondent-persona MSE nearly $23$-fold ($0.0815$ to $1.8678$), showing that continuous probability readouts--rather than discrete choices--are essential to prevent scale distortion.
 
-**Gains from distributional survey fine-tuning.**
-Without using any target-study conjoint data, `Kev 9B (FT)` ($T = 1.00$) cuts MNL MSE relative to `Kev 9B (base)` by $64.3\%$ under random personas ($0.2449$ to $0.0875$) and by $67.2\%$ under respondent personas ($0.0815$ to $0.0267$; @tbl-wang-mnl).
-Fine-tuning also lowers choice cross-entropy (`1.6370` to `1.5192` bits random; `1.5255` to `1.4449` bits respondent) and restores realistic opt-out shares ($19.0\%$ and $28.1\%$ vs. $11.9\%$ and $16.4\%$ for `base`).
-In @fig-wang-coefs (Panel A; @apptbl-wang-coefs), `Kev 9B (base)` overstates efficacy and institutional endorsements, placing only $5$ of $11$ estimates inside the human subsample's $95\%$ confidence intervals.
-`Kev 9B (FT)` places $8$ of $11$ estimates inside the subsample $95\%$ intervals, closely matching humans on efficacy ($+0.217$ and $+0.562$ vs. $+0.361$ and $+0.746$), EUA ($-0.123$ vs. $-0.115$), origin ($-0.192$ and $-0.553$ vs. $-0.140$ and $-0.570$), and endorsements (`Biden` $+0.135$ vs. $+0.095$; `WHO` $+0.516$ vs. $+0.273$; `US CDC` $+0.621$ vs. $+0.416$, down from base $+1.017$), while conservatively attenuating `Duration: 5 years` ($+0.035$ vs. $+0.261$) and `Major side effects` ($+0.043$ vs. $+0.304$).
+**Distributional survey fine-tuning.**
+Evaluated zero-shot--without training or calibration on conjoint data--`Kev 9B (FT)` reduces MNL MSE relative to `Kev 9B (base)` by $64.3\%$ under random personas ($0.2449$ to $0.0875$) and by $67.2\%$ under respondent personas ($0.0815$ to $0.0267$; @tbl-wang-mnl).
+Fine-tuning also lowers choice cross-entropy (`1.6370` to `1.5192` bits under random personas; `1.5255` to `1.4449` bits under respondent personas) and raises predicted no-vaccine shares ($19.0\%$ and $28.1\%$, up from $11.9\%$ and $16.4\%$ for `Kev 9B (base)`).
+At the attribute level (@fig-wang-coefs, Panel A; @apptbl-wang-coefs), `Kev 9B (base)` overestimates the part-worths of vaccine efficacy and institutional endorsements, with only $5$ of $11$ estimates falling within the human subsample's $95\%$ confidence intervals.
+By contrast, `Kev 9B (FT)` recovers $8$ of $11$ estimates within those $95\%$ confidence intervals, closely aligning with full-sample human part-worths on efficacy, FDA Emergency Use Authorization, country of origin, and endorsements while attenuating protection duration and rare major side effects toward zero.
 
 +-----------------------+------------------+---------------------+---------------------+
 | Model                 | Configuration    | Random Persona      | Respondent Persona  |
@@ -348,23 +349,21 @@ In @fig-wang-coefs (Panel A; @apptbl-wang-coefs), `Kev 9B (base)` overstates eff
 
 ## Experimental Design and OLS Specification
 
-Our second held-out study evaluates causal treatment-effect recovery in the front-of-package (FOP) nutrition labeling randomized clinical trial of @grummon2025nutrition (@tbl-datasets).
-In this trial, *N* = 5,633 US grocery shoppers are randomized to one of six between-subjects labeling arms $a_i$: `Positive` (reference arm), `Nutrition Info`, `High In` warning, `Positive + Nutrition Info`, `Positive + High In`, or `Spectrum` (1-to-5 star rating).
-Each shopper completes $q \in \{1, \dots, 6\}$ three-option product healthfulness choice tasks across distinct food and beverage categories (36 arm-by-category tasks, 33,798 choices), where option $y_1$ denotes the objectively healthier product.
+Our second held-out study evaluates causal treatment-effect recovery in a front-of-package nutrition labeling trial [@grummon2025nutrition].
+In this experiment, *N* = 5,633 US grocery shoppers are randomized to one of six between-subjects labeling arms (`Positive` serves as the reference arm; @apptbl-grummon2025-coefs).
+Each shopper completes $q \in \{1, \dots, 6\}$ three-option product choice tasks across food and beverage categories, where $y_1$ denotes the objectively healthier option.
 
-For each shopper $i$, we compute the mean probability of selecting the healthier product across the six tasks, $\bar{p}_i = \frac{1}{6} \sum_{q=1}^6 p_{i,q,1}$, where $p_{i,q,1}$ is the binary choice indicator $y_{i,q,1}$ for human shoppers and the predicted probability $P_{\mathrm{model}}(Y_{i,q} = y_1 \mid \mathbf{s}_i; \theta)$ under arm $a_i$ for decision models.
+For each shopper $i$, we compute the mean probability of selecting the healthier product across the six tasks, $\bar{p}_i = \frac{1}{6} \sum_{q=1}^6 p_{i,q,1}$, where $p_{i,q,1}$ is the binary choice indicator $y_{i,q,1}$ for human shoppers and the predicted probability $P_{\mathrm{model}}(Y_{i,q} = y_1 \mid \mathbf{s}_i; \theta)$ under the assigned arm for decision models.
 Following @grummon2025nutrition, we regress $\bar{p}_i$ on the five treatment-arm indicators via ordinary least squares (OLS) with HC1 heteroskedasticity-robust standard errors to obtain $\hat{\boldsymbol{\beta}} \in \mathbb{R}^5$ relative to `Positive`.
-We evaluate models on a 200-shopper subsample (*n* = 1,200 choices) against the full-sample human vector $\boldsymbol{\beta}^*$ (*N* = 5,633) using $\mathrm{MAPE}$, $\mathrm{MSE}$, and Spearman rank correlation $\rho$.
+We evaluate models on a 200-shopper subsample (*n* = 1,200 choices) against the full-sample human vector $\boldsymbol{\beta}^*$ (*N* = 5,633).
 Each shopper profile contains $13$ attributes (@apptbl-attributes): $6$ demographic attributes seen in survey training (sex, age, education, income, race, and household size) and $7$ covariates completely unseen during training (Hispanic ethnicity, number of children, SNAP receipt, WIC receipt, Nutrition Facts label usage, online grocery share, and nutrition literacy score).
 
 ## Trial Estimation and Attribute Generalization Results
 
-**Calibration and treatment-effect recovery across model scales.**
-Estimating OLS on the 200 sampled shoppers yields the finite-sample benchmark of $\mathrm{MAPE} = 22.7\%$ and $\mathrm{MSE} = 0.0016$ ($\rho = +0.40$, as finite-sample noise swaps the nearly tied `Nutrition Info` [$+0.184$] and `Positive + Nutrition Info` [$+0.179$] arms; @tbl-grummon2025-ols; @appfig-grummon2025-random and @appfig-grummon2025-persona).
-Under $13$-attribute personas, larger off-the-shelf models actually worsen in choice cross-entropy (`1.4770`, `1.5124`, and `1.5405` bits across `0.8B`, `4B`, and `9B`) and yield higher OLS MSE than under random prompts ($0.0074$ vs. $0.0050$ on `0.8B`, $0.0088$ vs. $0.0028$ on `4B`, and $0.0047$ vs. $0.0034$ on `9B`).
-Once fine-tuned on survey distributions ($T = 1.00$), choice cross-entropy improves steadily as model scale increases (`1.5536`, `1.4659`, and `1.3479` bits).
-On OLS recovery, `Kev 0.8B (FT)` improves rank correlation to $\rho = +0.70$ under both persona regimes, and `Kev 4B (FT)` lowers respondent-persona MAPE from $95.9\%$ to $83.0\%$ ($\rho = +0.80$; $\mathrm{MSE} = 0.0099$).
-At the $9\text{B}$ scale, `Kev 9B (FT)` reaches $\rho = +0.90$, lowers respondent-persona MAPE from $63.7\%$ to $44.3\%$, and cuts OLS MSE by $53.2\%$ ($0.0047$ to $0.0022$; and by $44.1\%$ under random prompts, $0.0034$ to $0.0019$), approaching the 200-shopper human subsample ($\mathrm{MSE} = 0.0016$).
+**Scaling and treatment-effect recovery.**
+Under $13$-attribute shopper personas, scaling off-the-shelf models from `0.8B` to `9B` worsens choice cross-entropy (`1.4770` to `1.5405` bits; @tbl-grummon2025-ols) and yields higher OLS MSE than unconditioned random prompts at every scale (@appfig-grummon2025-random; @appfig-grummon2025-persona).
+Survey fine-tuning ($T = 1.00$) reverses this scaling pattern, steadily lowering cross-entropy from `1.5536` bits (`0.8B`) to `1.3479` bits (`9B`).
+Whereas smaller fine-tuned models (`0.8B` and `4B`) improve arm rank ordering or MAPE without reducing OLS MSE, `Kev 9B (FT)` improves every metric: it reaches a Spearman rank correlation of $\rho = +0.90$, lowers respondent-persona MAPE from $63.7\%$ to $44.3\%$, and reduces OLS MSE by $53.2\%$ ($0.0047$ to $0.0022$; and by $44.1\%$ to $0.0019$ under random prompts), approaching the 200-shopper human benchmark ($\mathrm{MSE} = 0.0016$, $\mathrm{MAPE} = 22.7\%$).
 
 **Interpretive labels versus visual warning shields.**
 Arm-level estimates (@fig-grummon2025-coefs, Panel A; @apptbl-grummon2025-coefs) clarify both the accuracy and modality limits of text-only silicon sampling.
