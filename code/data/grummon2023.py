@@ -125,37 +125,9 @@ def strict_code_map(series: pd.Series, mapping: dict[float, str], name: str) -> 
 
 
 def derive_grummon2023_race(clean_df: pd.DataFrame) -> pd.Series:
-    """Construct raw race categories from `Race_1..Race_6` matching Grummon 2025 `racecat`."""
-    race_cols = [f"Race_{i}" for i in range(1, 7)]
-    missing_cols = [c for c in race_cols if c not in clean_df.columns]
-    if missing_cols:
-        raise KeyError(f"grummon2023: missing expected race columns {missing_cols}")
-
-    r_mat = clean_df[race_cols].apply(pd.to_numeric, errors="raise")
-    observed = set(r_mat.stack().dropna().unique())
-    unexpected = observed - {0.0, 1.0}
-    if unexpected:
-        raise ValueError(f"grummon2023.Race_1..6: unexpected indicator values {sorted(unexpected)}")
-
-    out: list[object] = []
-    for _, row in r_mat.iterrows():
-        if row.isna().all():
-            out.append(float("nan"))
-            continue
-        if row.isna().any():
-            raise ValueError("grummon2023.Race_1..6: partial NaN across race checkboxes")
-        checked = [idx for idx in range(1, 7) if float(row[f"Race_{idx}"]) == 1.0]
-        if not checked:
-            raise ValueError("grummon2023.Race_1..6: respondent checked zero race boxes without all-NaN")
-        if checked == [5]:
-            out.append("White")
-        elif checked == [3]:
-            out.append("Black")
-        elif checked == [2]:
-            out.append("Asian")
-        else:
-            out.append("Other")
-    raw_race = pd.Series(out, index=clean_df.index, name="RACE", dtype=object)
+    """Race from the `Race_1..Race_6` checkboxes via `persona.race_from_checkboxes` (all boxes missing -> NaN)."""
+    labels = [(f"Race_{i}", label) for i, label in persona.GRUMMON_RACE_LABELS.items()]
+    raw_race = persona.race_from_checkboxes(clean_df, labels, "grummon2023", allow_all_missing=True)
     return persona.map_persona_series(raw_race, "RACE", "grummon2023")
 
 

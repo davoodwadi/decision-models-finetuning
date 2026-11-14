@@ -95,6 +95,14 @@ def strict_code_map(series: pd.Series, mapping: dict[int, str], col_name: str) -
     return pd.Series(out, index=series.index, dtype=object)
 
 
+def derive_grummon2025_race(clean_df: pd.DataFrame) -> pd.Series:
+    """Race from the `race_1..race_6` checkboxes via `persona.race_from_checkboxes` (not the authors' `racecat`, which
+    merges "Another race" with multi-race); all boxes missing -> NaN."""
+    labels = [(f"race_{i}", label) for i, label in persona.GRUMMON_RACE_LABELS.items()]
+    raw_race = persona.race_from_checkboxes(clean_df, labels, "grummon2025", allow_all_missing=True)
+    return persona.map_persona_series(raw_race, "RACE", "grummon2025")
+
+
 def build_grummon2025_persona_df(clean_df: pd.DataFrame) -> pd.DataFrame:
     """Build the standardized 13-attribute + Country respondent persona table (`N = 5,636`)."""
     resp_df = pd.DataFrame(
@@ -111,7 +119,7 @@ def build_grummon2025_persona_df(clean_df: pd.DataFrame) -> pd.DataFrame:
             "AGE": persona.map_persona_series(clean_df["age"], "AGE", "grummon2025"),
             "EDULEVEL": persona.map_persona_series(clean_df["educ"], "EDULEVEL", "grummon2025"),
             "US_INC": persona.map_persona_series(clean_df["income"], "US_INC", "grummon2025"),
-            "RACE": persona.map_persona_series(clean_df["racecat"], "RACE", "grummon2025"),
+            "RACE": derive_grummon2025_race(clean_df),
             "HHSIZE": persona.map_persona_series(clean_df["hhsize_num"], "HHSIZE", "grummon2025"),
             "HISPANIC": strict_code_map(clean_df["latino"], LATINO_MAP, "latino"),
             "CHILDREN": strict_code_map(clean_df["children_num"], CHILDREN_MAP, "children_num"),

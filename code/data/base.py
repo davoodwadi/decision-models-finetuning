@@ -26,6 +26,7 @@ DEFAULT_CACHE_DIR = CODE_DIR / ".cache"
 
 if str(CODE_DIR / "kev") not in sys.path:
     sys.path.insert(0, str(CODE_DIR / "kev"))
+import kev.cuda_graphs as _kev_cuda_graphs
 from kev.cuda_graphs import CudaGraphs
 from kev.fused_qwen35 import (
     _fix_nb,
@@ -666,6 +667,55 @@ def predict_probs(model, records, batch_size=64, show_progress=True, view_fn=mak
     return (preds, stats) if return_stats else preds
 
 
+# `CudaGraphs` allocates fixed buffers sized by `kev.cuda_graphs` module limits tuned for `kev.serve` (long documents, many
+# concurrent requests): ~5.5 GiB on 9B whatever the eval batch size. Persona states here are short (<= 256 tokens seen), so
+# evaluation binds smaller limits (~1.9 GiB on 9B). Inputs past them run the eager path (same answers, slower).
+EVAL_GRAPH_LIMITS = {
+    "BANK_WIDTH": 512,      # positions per state-bank entry (serve: 4096)
+    "GRAPH_STATE": 512,     # longest state the graphed state pass takes; must be <= BANK_WIDTH (serve: 1024)
+    "GRAPH_STATES": 8,      # states per state pass = bank entries (serve: 16)
+    "GRAPH_ROWS": 16,       # question rows per row pass (serve: 32)
+    "GRAPH_TOKENS": 16384,  # rows x positions in the row buffers; must be >= BANK_WIDTH + GRAPH_ROW (serve: 32768)
+}
+
+
+def _validate_graph_limits(limits):
+    if set(limits) != {"BANK_WIDTH", "GRAPH_STATE", "GRAPH_STATES", "GRAPH_ROWS", "GRAPH_TOKENS"}:
+        raise KeyError(f"Unexpected graph limit keys: {sorted(limits)}")
+    for name, value in limits.items():
+        if not hasattr(_kev_cuda_graphs, name):
+            raise AttributeError(f"kev.cuda_graphs has no limit {name!r}")
+        if not isinstance(value, int) or value < 1:
+            raise ValueError(f"{name} must be a positive int, got {value!r}")
+    bank, state = limits["BANK_WIDTH"], limits["GRAPH_STATE"]
+    if bank & (bank - 1) or state & (state - 1):
+        raise ValueError(f"BANK_WIDTH ({bank}) and GRAPH_STATE ({state}) must be powers of two (row passes read pow2(state) bank slots)")
+    if state > bank:
+        raise ValueError(f"GRAPH_STATE ({state}) must be <= BANK_WIDTH ({bank}): a graphed new state is written into the bank")
+    if limits["GRAPH_TOKENS"] < bank + _kev_cuda_graphs.GRAPH_ROW:
+        raise ValueError(
+            f"GRAPH_TOKENS ({limits['GRAPH_TOKENS']}) must be >= BANK_WIDTH + GRAPH_ROW "
+            f"({bank + _kev_cuda_graphs.GRAPH_ROW}) so every row pass holds at least one row"
+        )
+    for name in ("GRAPH_STATES", "GRAPH_ROWS"):
+        if _kev_cuda_graphs.count_bucket(limits[name]) != limits[name]:
+            raise ValueError(f"{name} ({limits[name]}) must be a count_bucket value (1, 2, 3, 4, 6, 8, 12, 16, 24, 32, ...)")
+
+
+@contextlib.contextmanager
+def eval_graph_limits(limits=EVAL_GRAPH_LIMITS):
+    """Temporarily bind smaller `kev.cuda_graphs` buffer limits; restores the serving values on exit."""
+    _validate_graph_limits(limits)
+    saved = {name: getattr(_kev_cuda_graphs, name) for name in limits}
+    for name, value in limits.items():
+        setattr(_kev_cuda_graphs, name, value)
+    try:
+        yield
+    finally:
+        for name, value in saved.items():
+            setattr(_kev_cuda_graphs, name, value)
+
+
 def release_cuda_graphs(model):
     """Break closure reference cycles inside `CudaGraphs` and release `model.net.graphs`."""
     graphs = model.net.graphs
@@ -693,7 +743,17 @@ def _concat_weights(dtype, *mods):
 
 @contextlib.contextmanager
 def fused_eval_context(model, eval_dtype=None):
-    """Temporarily bind `kev.fused_qwen35` kernels + `CudaGraphs` for fast evaluation, offloading original weights to CPU RAM."""
+    """Temporarily bind `kev.fused_qwen35` kernels + `CudaGraphs` for fast evaluation, offloading original weights to CPU RAM.
+
+    `EVAL_GRAPH_LIMITS` stay bound for the whole context: `CudaGraphs` sizes its buffers at creation and reads the same
+    limits on every pass, so they must not change while `model.net.graphs` exists.
+    """
+    with eval_graph_limits(), _fused_eval_context_impl(model, eval_dtype=eval_dtype):
+        yield
+
+
+@contextlib.contextmanager
+def _fused_eval_context_impl(model, eval_dtype=None):
     lm = model.net.lm
     base = lm.get_base_model() if hasattr(lm, "get_base_model") else lm
     dev = base.embed_tokens.weight.device

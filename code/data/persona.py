@@ -71,6 +71,12 @@ DATASET_PERSONA_COLS = {
         "URBRURAL",
         "VOTE_LE",
     ],
+    "berke2023": [  # Country and the remaining attributes are added as they are decided (berke2023/DECISIONS.md)
+        "SEX",
+        "AGE",
+        "RACE",
+        "US_INC",
+    ],
     "wvs": [
         "c_alphan",
         "SEX",
@@ -141,6 +147,35 @@ KRINER2026_RACE_COLS = [
     ("race_6", "Other"),
 ]
 
+# berke2023 (Berke et al. 2023, drone delivery); decisions in `berke2023/DECISIONS.md`.
+BERKE2023_COL_TO_PERSONA = {
+    "Q_gender": "SEX",
+    "Q_age": "AGE",
+    "Q_income": "US_INC",
+}
+
+# `Q_race` is select-all-that-apply stored as comma-separated codes ("1,6"); labels from the authors' codebook.py.
+BERKE2023_RACE_CODES = {
+    1: "White",
+    2: "Black or African American",
+    3: "American Indian or Alaska Native",
+    4: "Asian",
+    5: "Native Hawaiian or Pacific Islander",
+    6: "Hispanic or Latino",
+    7: "Other",
+}
+
+# Grummon 2023 / 2025 "What is your race? (Check all that apply)" option labels by checkbox index
+# (columns `Race_<i>` in Grummon 2023, `race_<i>` in Grummon 2025).
+GRUMMON_RACE_LABELS = {
+    1: "American Indian or Alaska Native",
+    2: "Asian",
+    3: "Black or African American",
+    4: "Native Hawaiian or Other Pacific Islander",
+    5: "White",
+    6: "Another race",
+}
+
 TWIN2K_QID_TO_PERSONA = {
     "QID11": "US_REG",
     "QID12": "SEX",
@@ -201,8 +236,12 @@ LEFT_RIGHT_LEVELS = [   # WVS Q240 left-right self-placement; each label says wh
 
 GLOBAL_PERSONA_LEVELS = {
     "c_alphan": ["United States"],
-    "SEX": ["Male", "Female", "Non-binary"],
-    "AGE": ["18-29", "30-49", "50-64", "65+"],
+    "SEX": ["Male", "Female", "Non-binary", "Other", "Prefer not to say"],  # last two: answers offered by some surveys
+    "AGE": [
+        "18-29", "30-49", "50-64", "65+",
+        # berke2023 Q_age brackets (25-34 and 45-54 cross AGE_BINS, so they cannot be bucketed)
+        "18 - 24 years", "25 - 34 years", "35 - 44 years", "45 - 54 years", "55 - 64 years", "65 or older",
+    ],
     "US_REG": ["Northeast", "Midwest", "South", "West"],
     "EDULEVEL": [
         "Less than high school",
@@ -210,7 +249,13 @@ GLOBAL_PERSONA_LEVELS = {
         "Associate's degree",
         "College graduate/some postgrad",
     ],
-    "RACE": ["White", "Black", "Asian", "Hispanic", "Other", "Other, Non-Hispanic", "Two plus, non-Hispanic"],
+    "RACE": [
+        "White", "Black", "Asian", "Hispanic", "Other", "Other, Non-Hispanic", "Two plus, non-Hispanic",
+        # race checkbox questions (berke2023, Grummon 2023/2025, Covid, Kriner2026): single-box answers without a match,
+        # and 2+ boxes. NHOPI uses the official OMB wording (berke2023's "Native Hawaiian or Pacific Islander" = same group).
+        "American Indian or Alaska Native", "Native Hawaiian or Other Pacific Islander", "Two or more races",
+        "American Indian",  # Covid / Kriner2026 wording (no "or Alaska Native")
+    ],
     "MARITAL": [
         "Married",
         "Living with a partner",
@@ -219,20 +264,24 @@ GLOBAL_PERSONA_LEVELS = {
         "Widowed",
         "Never been married",
     ],
+    # Union of all datasets' religion answers: one level per meaning (same-meaning wordings share a level).
     "RELIGGRP": [
         "Protestant",
         "Catholic",
         "Orthodox",
+        "Mormon",                 # Twin-2K, Covid
         "Other Christian",
         "Jewish",
         "Muslim",
         "Buddhist",
         "Hindu",
+        "Other Asian Religions",  # ISSP
+        "Other Religions",        # ISSP
+        "Other",                  # each list's catch-all ("Other", "Something else")
         "Atheist",
         "Agnostic",
         "Nothing in particular",
-        "Other",
-        "None",  # Kriner2026 `relig` answer "None" (its 6-answer list has no atheist/agnostic split)
+        "No religion",            # ISSP "No religion", Kriner2026 "None", WVS "Do not belong to a denomination"
     ],
     "ATTEND": [
         "More than once a week",
@@ -257,22 +306,36 @@ GLOBAL_PERSONA_LEVELS = {
         "Libertarian",
         "Green",
     ],
+    # Union of all datasets' income brackets, ordered by amount: one level per distinct range (no merging). Identical
+    # ranges share a level ("$50,000 to $74,999" = "$50,000-$75,000"); one format "$X - $Y". Levels overlap across datasets.
     "US_INC": [
-        "Less than $30,000",
-        "$30,000 - $50,000",
-        "$50,000 - $75,000",
-        "$75,000 - $89,999",
-        "$75,000 - $100,000",
-        "$90,000 - $109,999",
-        "$100,000 or more",
-        "Below $20,000",
-        "$20,000 - $39,999",
-        "$40,000 - $59,999",
-        "$60,000 - $79,999",
-        "$80,000 - $99,999",
-        "Less than $25,000",
-        "$25,000 - $34,999",
-        "$35,000 - $49,999",
+        "Less than $10,000",       # Grummon
+        "$10,000 - $14,999",       # Grummon
+        "$15,000 - $24,999",       # Grummon
+        "Below $20,000",           # Covid, Kriner2026
+        "Less than $25,000",       # berke2023
+        "Less than $30,000",       # ISSP, Twin-2K, SubPOP
+        "$20,000 - $39,999",       # Covid, Kriner2026
+        "$25,000 - $34,999",       # Grummon
+        "$25,000 - $49,999",       # berke2023
+        "$30,000 - $34,999",       # ISSP
+        "$30,000 - $50,000",       # Twin-2K
+        "$35,000 - $39,999",       # ISSP
+        "$35,000 - $49,999",       # Grummon
+        "$40,000 - $49,999",       # ISSP
+        "$40,000 - $59,999",       # Covid, Kriner2026
+        "$50,000 - $59,999",       # ISSP
+        "$50,000 - $75,000",       # Twin-2K, Grummon, berke2023
+        "$60,000 - $74,999",       # ISSP
+        "$60,000 - $79,999",       # Covid, Kriner2026
+        "$75,000 - $89,999",       # ISSP
+        "$75,000 - $100,000",      # Twin-2K, Grummon, berke2023
+        "$80,000 - $99,999",       # Covid, Kriner2026
+        "$90,000 - $109,999",      # ISSP
+        "$100,000 or more",        # ISSP, Twin-2K, SubPOP, Covid, Kriner2026
+        "$100,000 - $149,999",     # Grummon, berke2023
+        "$150,000 - $199,999",     # Grummon, berke2023
+        "$200,000 or more",        # Grummon, berke2023
     ],
     "PARTY_LR": [
         "Very liberal",
@@ -314,6 +377,60 @@ GLOBAL_PERSONA_LEVELS = {
     "US_ETHN1": US_ETHN1_LEVELS,
 }
 
+STATE_CODE_TO_REGION = {  # Covid / Kriner2026 `state` codes (1..51, alphabetical incl. DC) -> US Census Bureau region
+        1: "South",  # Alabama
+        2: "West",  # Alaska
+        3: "West",  # Arizona
+        4: "South",  # Arkansas
+        5: "West",  # California
+        6: "West",  # Colorado
+        7: "Northeast",  # Connecticut
+        8: "South",  # Delaware
+        9: "South",  # District of Columbia
+        10: "South",  # Florida
+        11: "South",  # Georgia
+        12: "West",  # Hawaii
+        13: "West",  # Idaho
+        14: "Midwest",  # Illinois
+        15: "Midwest",  # Indiana
+        16: "Midwest",  # Iowa
+        17: "Midwest",  # Kansas
+        18: "South",  # Kentucky
+        19: "South",  # Louisiana
+        20: "Northeast",  # Maine
+        21: "South",  # Maryland
+        22: "Northeast",  # Massachusetts
+        23: "Midwest",  # Michigan
+        24: "Midwest",  # Minnesota
+        25: "South",  # Mississippi
+        26: "Midwest",  # Missouri
+        27: "West",  # Montana
+        28: "Midwest",  # Nebraska
+        29: "West",  # Nevada
+        30: "Northeast",  # New Hampshire
+        31: "Northeast",  # New Jersey
+        32: "West",  # New Mexico
+        33: "Northeast",  # New York
+        34: "South",  # North Carolina
+        35: "Midwest",  # North Dakota
+        36: "Midwest",  # Ohio
+        37: "South",  # Oklahoma
+        38: "West",  # Oregon
+        39: "Northeast",  # Pennsylvania
+        40: "Northeast",  # Rhode Island
+        41: "South",  # South Carolina
+        42: "Midwest",  # South Dakota
+        43: "South",  # Tennessee
+        44: "South",  # Texas
+        45: "West",  # Utah
+        46: "Northeast",  # Vermont
+        47: "South",  # Virginia
+        48: "West",  # Washington
+        49: "South",  # West Virginia
+        50: "Midwest",  # Wisconsin
+        51: "West",  # Wyoming
+}
+
 PERSONA_MAPS = {
     "c_alphan": {
         "issp": {"US": "United States"},
@@ -323,15 +440,18 @@ PERSONA_MAPS = {
         "grummon2025": {"United States": "United States"},
         "grummon2023": {"United States": "United States"},
         "wvs": {"United States": "United States"},
+        "kriner2026": {"United States": "United States"},
     },
     "SEX": {
         "issp": {"Male": "Male", "Female": "Female"},
         "twin2k": {"Male": "Male", "Female": "Female"},
         "subpop": {"Male": "Male", "Female": "Female"},
-        "covid": {1: "Male", 2: "Female", 3: None},
-        "grummon2025": {1.0: "Female", 2.0: "Male", 3.0: "Non-binary", 4.0: None},
-        "grummon2023": {1.0: "Female", 2.0: "Male", 3.0: "Non-binary", 4.0: None},
+        "covid": {1: "Male", 2: "Female", 3: "Prefer not to say"},
+        "grummon2025": {1.0: "Female", 2.0: "Male", 3.0: "Non-binary", 4.0: "Other"},  # 4 = Prefer to self-describe
+        "grummon2023": {1.0: "Female", 2.0: "Male", 3.0: "Non-binary", 4.0: "Other"},  # 4 = Another gender (specify)
         "wvs": {"Male": "Male", "Female": "Female"},
+        "berke2023": {1: "Male", 2: "Female", 3: "Other", 4: "Prefer not to say"},  # 4 = Prefer not to answer
+        "kriner2026": {1: "Male", 2: "Female", 3: "Prefer not to say"},
     },
     "AGE": {
         "twin2k": {
@@ -339,6 +459,14 @@ PERSONA_MAPS = {
             "30-49": "30-49",
             "50-64": "50-64",
             "65+": "65+",
+        },
+        "berke2023": {
+            1: "18 - 24 years",
+            2: "25 - 34 years",
+            3: "35 - 44 years",
+            4: "45 - 54 years",
+            5: "55 - 64 years",
+            6: "65 or older",
         },
     },
     "US_REG": {
@@ -361,59 +489,7 @@ PERSONA_MAPS = {
             "Northeast": "Northeast",
             "South": "South",
         },
-        "covid": {  # state (1..51) -> US Census Bureau region
-            1: "South",  # Alabama
-            2: "West",  # Alaska
-            3: "West",  # Arizona
-            4: "South",  # Arkansas
-            5: "West",  # California
-            6: "West",  # Colorado
-            7: "Northeast",  # Connecticut
-            8: "South",  # Delaware
-            9: "South",  # District of Columbia
-            10: "South",  # Florida
-            11: "South",  # Georgia
-            12: "West",  # Hawaii
-            13: "West",  # Idaho
-            14: "Midwest",  # Illinois
-            15: "Midwest",  # Indiana
-            16: "Midwest",  # Iowa
-            17: "Midwest",  # Kansas
-            18: "South",  # Kentucky
-            19: "South",  # Louisiana
-            20: "Northeast",  # Maine
-            21: "South",  # Maryland
-            22: "Northeast",  # Massachusetts
-            23: "Midwest",  # Michigan
-            24: "Midwest",  # Minnesota
-            25: "South",  # Mississippi
-            26: "Midwest",  # Missouri
-            27: "West",  # Montana
-            28: "Midwest",  # Nebraska
-            29: "West",  # Nevada
-            30: "Northeast",  # New Hampshire
-            31: "Northeast",  # New Jersey
-            32: "West",  # New Mexico
-            33: "Northeast",  # New York
-            34: "South",  # North Carolina
-            35: "Midwest",  # North Dakota
-            36: "Midwest",  # Ohio
-            37: "South",  # Oklahoma
-            38: "West",  # Oregon
-            39: "Northeast",  # Pennsylvania
-            40: "Northeast",  # Rhode Island
-            41: "South",  # South Carolina
-            42: "Midwest",  # South Dakota
-            43: "South",  # Tennessee
-            44: "South",  # Texas
-            45: "West",  # Utah
-            46: "Northeast",  # Vermont
-            47: "South",  # Virginia
-            48: "West",  # Washington
-            49: "South",  # West Virginia
-            50: "Midwest",  # Wisconsin
-            51: "West",  # Wyoming
-        },
+        "covid": STATE_CODE_TO_REGION,
         "wvs": {  # state -> US Census Bureau region
             "US-AL Alabama": "South",
             "US-AR Arkansas": "South",
@@ -466,6 +542,7 @@ PERSONA_MAPS = {
             "US-WV West Virginia": "South",
             "US-WY Wyoming": "West",
         },
+        "kriner2026": STATE_CODE_TO_REGION,  # same state codes as Covid (52 has no region)
     },
     "EDULEVEL": {
         "issp": {
@@ -523,7 +600,21 @@ PERSONA_MAPS = {
             "Master or equivalent (ISCED 7)": "College graduate/some postgrad",
             "Doctoral or equivalent (ISCED 8)": "College graduate/some postgrad",
         },
+        "kriner2026": {
+            1: "Less than high school",           # Less than High School
+            2: "High school or some college",     # High School / GED
+            3: "High school or some college",     # Some College
+            4: "Associate's degree",              # 2-year College Degree
+            5: "College graduate/some postgrad",  # 4-year College Degree
+            6: "College graduate/some postgrad",  # Master's Degree
+            7: "College graduate/some postgrad",  # Doctoral Degree
+            8: "College graduate/some postgrad",  # Professional Degree
+        },
     },
+    # Select-all race questions (Covid, Kriner2026, berke2023, Grummon 2023/2025) are first combined by
+    # `race_from_checkboxes` (one box -> its option label, 2+ boxes -> "Two or more races"); the option labels it uses
+    # are in COVID_RACE_COLS, KRINER2026_RACE_COLS, BERKE2023_RACE_CODES and GRUMMON_RACE_LABELS. The maps below then
+    # turn those labels into global levels.
     "RACE": {
         "twin2k": {
             "White": "White",
@@ -538,28 +629,34 @@ PERSONA_MAPS = {
             "Asian": "Asian",
             "Hispanic": "Hispanic",
         },
-        "covid": {
+        "covid": {  # applied after the multi-box rule (2+ boxes -> "Two or more races")
             "White": "White",
             "Black or African American": "Black",
             "Asian": "Asian",
             "Hispanic": "Hispanic",
-            "American Indian": "Other",
+            "American Indian": "American Indian",
             "Other": "Other",
+            "Two or more races": "Two or more races",
         },
+        # Grummon 2023 / 2025: "What is your race? (Check all that apply)" checkboxes (Hispanic is the separate
+        # HISPANIC attribute); single box -> its label below, 2+ boxes -> "Two or more races" (derived in the loaders).
         "grummon2025": {
             "White": "White",
-            "Black": "Black",
+            "Black or African American": "Black",
             "Asian": "Asian",
-            "Hispanic": "Hispanic",
-            "Amer Ind AK Native": "Other",
-            "Native Hawaiian or Pacific Islander": "Other",
-            "Other or multi-racial": "Other",
+            "American Indian or Alaska Native": "American Indian or Alaska Native",
+            "Native Hawaiian or Other Pacific Islander": "Native Hawaiian or Other Pacific Islander",
+            "Another race": "Other",
+            "Two or more races": "Two or more races",
         },
         "grummon2023": {
             "White": "White",
-            "Black": "Black",
+            "Black or African American": "Black",
             "Asian": "Asian",
-            "Other": "Other",
+            "American Indian or Alaska Native": "American Indian or Alaska Native",
+            "Native Hawaiian or Other Pacific Islander": "Native Hawaiian or Other Pacific Islander",
+            "Another race": "Other",
+            "Two or more races": "Two or more races",
         },
         "wvs": {  # WVS US has no Asian group (Asians are in "Other, Non-Hispanic"): its own levels, so "Other" keeps its meaning across datasets
             "US: White, non-Hispanic": "White",
@@ -567,6 +664,25 @@ PERSONA_MAPS = {
             "US: Hispanic": "Hispanic",
             "US: Other, Non-Hispanic": "Other, Non-Hispanic",
             "US: Two plus, non-Hispanic": "Two plus, non-Hispanic",
+        },
+        "berke2023": {  # applied after the multi-box rule (2+ boxes -> "Two or more races")
+            "White": "White",
+            "Black or African American": "Black",
+            "American Indian or Alaska Native": "American Indian or Alaska Native",
+            "Asian": "Asian",
+            "Native Hawaiian or Pacific Islander": "Native Hawaiian or Other Pacific Islander",  # same group, official wording
+            "Hispanic or Latino": "Hispanic",
+            "Other": "Other",
+            "Two or more races": "Two or more races",
+        },
+        "kriner2026": {  # applied after the multi-box rule (2+ boxes -> "Two or more races")
+            "White": "White",
+            "Black or African American": "Black",
+            "Asian": "Asian",
+            "Hispanic": "Hispanic",
+            "American Indian": "American Indian",
+            "Other": "Other",
+            "Two or more races": "Two or more races",
         },
     },
     "MARITAL": {
@@ -604,14 +720,14 @@ PERSONA_MAPS = {
             "Muslim": "Muslim",
             "Buddhist": "Buddhist",
             "Hindu": "Hindu",
-            "Atheist": "Atheist",
-            "Other Religions": "Other",
-            "Other Asian Religions": "Other",
+            "Atheist": "No religion",  # ISSP "No religion": the build notebooks store it as "Atheist" (ISSP has no atheist answer)
+            "Other Religions": "Other Religions",
+            "Other Asian Religions": "Other Asian Religions",
         },
         "twin2k": {
             "Protestant": "Protestant",
             "Roman Catholic": "Catholic",
-            "Mormon": "Other Christian",
+            "Mormon": "Mormon",
             "Orthodox": "Orthodox",
             "Jewish": "Jewish",
             "Muslim": "Muslim",
@@ -632,7 +748,7 @@ PERSONA_MAPS = {
         "covid": {
             1: "Protestant",
             2: "Catholic",
-            3: "Other Christian",
+            3: "Mormon",
             4: "Orthodox",
             5: "Jewish",
             6: "Muslim",
@@ -644,7 +760,7 @@ PERSONA_MAPS = {
             12: "Nothing in particular",
         },
         "wvs": {
-            "Do not belong to a denomination": "Nothing in particular",
+            "Do not belong to a denomination": "No religion",
             "Roman Catholic": "Catholic",
             "Protestant": "Protestant",
             "Orthodox (Russian/Greek/etc.)": "Orthodox",
@@ -654,6 +770,14 @@ PERSONA_MAPS = {
             "Hindu": "Hindu",
             "Buddhist": "Buddhist",
             "Other": "Other",
+        },
+        "kriner2026": {
+            1: "Protestant",
+            2: "Catholic",
+            3: "Jewish",
+            4: "Muslim",
+            5: "Other",
+            6: "No religion",  # answer "None"
         },
     },
     "ATTEND": {
@@ -724,15 +848,21 @@ PERSONA_MAPS = {
             7.0: "Strong Republican",
             8.0: "Something else",
         },
+        "kriner2026": {
+            1: "Republican",
+            2: "Democrat",
+            3: "Independent",
+            4: "Something else",  # Other/don't know
+        },
     },
     "US_INC": {
         "issp": {
             "Less than $30,000": "Less than $30,000",
-            "$30,000 - $34,999": "$30,000 - $50,000",
-            "$35,000 - $39,999": "$30,000 - $50,000",
-            "$40,000 - $49,999": "$30,000 - $50,000",
-            "$50,000 - $59,999": "$50,000 - $75,000",
-            "$60,000 - $74,999": "$50,000 - $75,000",
+            "$30,000 - $34,999": "$30,000 - $34,999",
+            "$35,000 - $39,999": "$35,000 - $39,999",
+            "$40,000 - $49,999": "$40,000 - $49,999",
+            "$50,000 - $59,999": "$50,000 - $59,999",
+            "$60,000 - $74,999": "$60,000 - $74,999",
             "$75,000 - $89,999": "$75,000 - $89,999",
             "$90,000 - $109,999": "$90,000 - $109,999",
             "$100,000 or more": "$100,000 or more",
@@ -757,28 +887,45 @@ PERSONA_MAPS = {
             6: "$100,000 or more",
         },
         "grummon2025": {
-            1.0: "Less than $25,000",
-            2.0: "Less than $25,000",
-            3.0: "Less than $25,000",
+            1.0: "Less than $10,000",
+            2.0: "$10,000 - $14,999",
+            3.0: "$15,000 - $24,999",
             4.0: "$25,000 - $34,999",
             5.0: "$35,000 - $49,999",
-            6.0: "$50,000 - $75,000",
-            7.0: "$75,000 - $100,000",
-            8.0: "$100,000 or more",
-            9.0: "$100,000 or more",
-            10.0: "$100,000 or more",
+            6.0: "$50,000 - $75,000",    # $50,000 to $74,999
+            7.0: "$75,000 - $100,000",   # $75,000 to $99,999
+            8.0: "$100,000 - $149,999",
+            9.0: "$150,000 - $199,999",
+            10.0: "$200,000 or more",
         },
         "grummon2023": {
-            1.0: "Less than $25,000",
-            2.0: "Less than $25,000",
-            3.0: "Less than $25,000",
+            1.0: "Less than $10,000",
+            2.0: "$10,000 - $14,999",
+            3.0: "$15,000 - $24,999",
             4.0: "$25,000 - $34,999",
             5.0: "$35,000 - $49,999",
-            6.0: "$50,000 - $75,000",
-            7.0: "$75,000 - $100,000",
-            8.0: "$100,000 or more",
-            9.0: "$100,000 or more",
-            10.0: "$100,000 or more",
+            6.0: "$50,000 - $75,000",    # $50,000 to $74,999
+            7.0: "$75,000 - $100,000",   # $75,000 to $99,999
+            8.0: "$100,000 - $149,999",
+            9.0: "$150,000 - $199,999",
+            10.0: "$200,000 or more",
+        },
+        "kriner2026": {
+            1: "Below $20,000",
+            2: "$20,000 - $39,999",
+            3: "$40,000 - $59,999",
+            4: "$60,000 - $79,999",
+            5: "$80,000 - $99,999",
+            6: "$100,000 or more",
+        },
+        "berke2023": {
+            1: "Less than $25,000",
+            2: "$25,000 - $49,999",      # $25,000 to $49,999
+            3: "$50,000 - $75,000",      # $50,000 to $74,999
+            4: "$75,000 - $100,000",     # $75,000 to $99,999
+            5: "$100,000 - $149,999",
+            6: "$150,000 - $199,999",
+            7: "$200,000 or more",
         },
     },
     "PARTY_LR": {
@@ -809,6 +956,15 @@ PERSONA_MAPS = {
             7: "Very conservative",
         },
         "wvs": dict(zip(["Left", *[str(i) for i in range(2, 10)], "Right"], LEFT_RIGHT_LEVELS, strict=True)),   # Q240
+        "kriner2026": {
+            1: "Very liberal",
+            2: "Liberal",
+            3: "Somewhat liberal",
+            4: "Moderate",
+            5: "Somewhat conservative",
+            6: "Conservative",
+            7: "Very conservative",
+        },
     },
     "HHSIZE": {
         "twin2k": {
@@ -854,6 +1010,12 @@ PERSONA_MAPS = {
     },
     "VOTE_LE": {
         "issp": {"Yes": "Yes", "No": "No"},
+        "kriner2026": {  # `vs_vote_2024`
+            1: "Yes",                             # I voted
+            2: "I was too young to vote",
+            3: "I was not registered to vote",
+            4: "No",                              # I did not vote
+        },
     },
     "VOTE_FREQ": {
         "wvs": {"Always": "Always", "Usually": "Usually", "Never": "Never", "Not allowed to vote": None},   # Q222
@@ -867,6 +1029,7 @@ PERSONA_MAPS = {
             "A farm or home in the country": "A farm or home in the country",
         },
         "wvs": {"Urban": "Urban", "Rural": "Rural"},
+        "kriner2026": {1: "Urban", 2: "Suburban", 3: "Rural"},  # `urban_rural_best`
     },
     "UNION": {
         "issp": {"Yes": "Yes", "No": "No"},
@@ -877,67 +1040,6 @@ PERSONA_MAPS = {
     },
 }
 
-# --- Kriner2026 maps (raw `.dta` codes -> global levels); decisions in `Kriner2026/DECISIONS.md` ---
-PERSONA_MAPS["c_alphan"]["kriner2026"] = {"United States": "United States"}
-PERSONA_MAPS["SEX"]["kriner2026"] = {1: "Male", 2: "Female", 3: None}  # 3 = Prefer not to say
-# State codes 1..52 are identical to Covid's STATE_LABELS, so Covid's state -> region map is reused (52 has no region).
-PERSONA_MAPS["US_REG"]["kriner2026"] = PERSONA_MAPS["US_REG"]["covid"]
-PERSONA_MAPS["EDULEVEL"]["kriner2026"] = {
-    1: "Less than high school",           # Less than High School
-    2: "High school or some college",     # High School / GED
-    3: "High school or some college",     # Some College
-    4: "Associate's degree",              # 2-year College Degree
-    5: "College graduate/some postgrad",  # 4-year College Degree
-    6: "College graduate/some postgrad",  # Master's Degree
-    7: "College graduate/some postgrad",  # Doctoral Degree
-    8: "College graduate/some postgrad",  # Professional Degree
-}
-PERSONA_MAPS["RACE"]["kriner2026"] = {  # applied after the Covid multi-box rule (2+ boxes -> "Other")
-    "White": "White",
-    "Black or African American": "Black",
-    "Asian": "Asian",
-    "Hispanic": "Hispanic",
-    "American Indian": "Other",
-    "Other": "Other",
-}
-PERSONA_MAPS["RELIGGRP"]["kriner2026"] = {
-    1: "Protestant",
-    2: "Catholic",
-    3: "Jewish",
-    4: "Muslim",
-    5: "Other",
-    6: "None",  # the global level string "None", not Python None (missing)
-}
-PERSONA_MAPS["PARTY_LR"]["kriner2026"] = {
-    1: "Very liberal",
-    2: "Liberal",
-    3: "Somewhat liberal",
-    4: "Moderate",
-    5: "Somewhat conservative",
-    6: "Conservative",
-    7: "Very conservative",
-}
-PERSONA_MAPS["US_PRTY"]["kriner2026"] = {
-    1: "Republican",
-    2: "Democrat",
-    3: "Independent",
-    4: "Something else",  # Other/don't know
-}
-PERSONA_MAPS["URBRURAL"]["kriner2026"] = {1: "Urban", 2: "Suburban", 3: "Rural"}  # `urban_rural_best`
-PERSONA_MAPS["VOTE_LE"]["kriner2026"] = {  # `vs_vote_2024`
-    1: "Yes",                             # I voted
-    2: "I was too young to vote",
-    3: "I was not registered to vote",
-    4: "No",                              # I did not vote
-}
-PERSONA_MAPS["US_INC"]["kriner2026"] = {
-    1: "Below $20,000",
-    2: "$20,000 - $39,999",
-    3: "$40,000 - $59,999",
-    4: "$60,000 - $79,999",
-    5: "$80,000 - $99,999",
-    6: "$100,000 or more",
-}
 
 
 def bucket_age_series(series: pd.Series, dataset: str) -> pd.Series:
@@ -947,6 +1049,42 @@ def bucket_age_series(series: pd.Series, dataset: str) -> pd.Series:
     if int(age_bucketed.isna().sum()) != int(series.isna().sum()):
         raise ValueError(f"{dataset}: some non-missing AGE values fell outside AGE_BINS {AGE_BINS}")
     return age_bucketed
+
+
+MULTI_RACE_LEVEL = "Two or more races"
+
+
+def race_from_checkboxes(
+    flags: pd.DataFrame, labels: list[tuple[str, str]], dataset: str, *, allow_all_missing: bool
+) -> pd.Series:
+    """Raw race label per row from select-all race checkboxes (0/1 columns).
+
+    `labels` lists `(column, option label)` in survey order. One box checked -> its label; two or more -> `MULTI_RACE_LEVEL`.
+    A row with every box missing -> NaN if `allow_all_missing`, else an error. Partly missing rows, values other than 0/1,
+    and rows with no box checked raise. Map the result with `map_persona_series(..., "RACE", dataset)`.
+    """
+    cols = [c for c, _ in labels]
+    missing_cols = [c for c in cols if c not in flags.columns]
+    if missing_cols:
+        raise KeyError(f"{dataset}: missing race columns {missing_cols}")
+    mat = flags[cols].apply(pd.to_numeric, errors="raise")
+    unexpected = set(mat.stack().dropna().unique()) - {0, 1}
+    if unexpected:
+        raise ValueError(f"{dataset}: race indicators must be 0/1, got {sorted(unexpected)}")
+    out: list[object] = []
+    for _, row in mat.iterrows():
+        if row.isna().all():
+            if not allow_all_missing:
+                raise ValueError(f"{dataset}: respondent with every race box missing")
+            out.append(float("nan"))
+            continue
+        if row.isna().any():
+            raise ValueError(f"{dataset}: partly missing race boxes")
+        checked = [label for col, label in labels if row[col] == 1]
+        if not checked:
+            raise ValueError(f"{dataset}: respondent with no race box checked")
+        out.append(checked[0] if len(checked) == 1 else MULTI_RACE_LEVEL)
+    return pd.Series(out, index=flags.index, name="RACE", dtype=object)
 
 
 def map_persona_series(series: pd.Series, attr: str, dataset: str) -> pd.Series:
@@ -994,35 +1132,34 @@ def apply_persona_mapping(df: pd.DataFrame, dataset: str) -> pd.DataFrame:
                     raise ValueError(f"covid: missing column {src_col} for persona attribute {attr}")
                 df[attr] = df[src_col]
         if "RACE" not in df.columns:
-            missing_race = [col for col, _ in COVID_RACE_COLS if col not in df.columns]
-            if missing_race:
-                raise ValueError(f"covid: missing race columns {missing_race}")
-            raw_races = []
-            for _, r in df.iterrows():
-                checked = [label for col, label in COVID_RACE_COLS if r[col] == 1]
-                if not checked:
-                    raise ValueError("covid: respondent has no race indicator checked in race_1..race_6")
-                raw_races.append(checked[0] if len(checked) == 1 else "Other")
-            df["RACE"] = pd.Series(raw_races, index=df.index, dtype=object)
+            df["RACE"] = race_from_checkboxes(df, COVID_RACE_COLS, "covid", allow_all_missing=False)
+    elif dataset == "berke2023":
+        for src_col, attr in BERKE2023_COL_TO_PERSONA.items():
+            if src_col not in df.columns:
+                raise ValueError(f"berke2023: missing column {src_col} for persona attribute {attr}")
+            df[attr] = df[src_col]
+        if "Q_race" not in df.columns:
+            raise ValueError("berke2023: missing column Q_race")
+        # `Q_race` stores the checked boxes as comma-separated codes ("1,6"): expand to one 0/1 column per code.
+        flag_rows = []
+        for val in df["Q_race"]:
+            if pd.isna(val):
+                raise ValueError("berke2023: missing Q_race")
+            codes = [int(x) for x in str(val).split(",")]
+            unknown = [c for c in codes if c not in BERKE2023_RACE_CODES]
+            if unknown or len(set(codes)) != len(codes):
+                raise ValueError(f"berke2023: invalid Q_race value {val!r}")
+            flag_rows.append({f"Q_race_{c}": int(c in codes) for c in BERKE2023_RACE_CODES})
+        flags = pd.DataFrame(flag_rows, index=df.index)
+        race_labels = [(f"Q_race_{c}", label) for c, label in BERKE2023_RACE_CODES.items()]
+        df["RACE"] = race_from_checkboxes(flags, race_labels, "berke2023", allow_all_missing=False)
     elif dataset == "kriner2026":
         df["c_alphan"] = "United States"
         for src_col, attr in KRINER2026_COL_TO_PERSONA.items():
             if src_col not in df.columns:
                 raise ValueError(f"kriner2026: missing column {src_col} for persona attribute {attr}")
             df[attr] = df[src_col]
-        missing_race = [col for col, _ in KRINER2026_RACE_COLS if col not in df.columns]
-        if missing_race:
-            raise ValueError(f"kriner2026: missing race columns {missing_race}")
-        raw_races = []
-        for _, r in df.iterrows():
-            flags = [r[col] for col, _ in KRINER2026_RACE_COLS]
-            if any(f not in (0, 1) for f in flags):
-                raise ValueError(f"kriner2026: race indicators must be 0/1, got {flags}")
-            checked = [label for (col, label), f in zip(KRINER2026_RACE_COLS, flags) if f == 1]
-            if not checked:
-                raise ValueError("kriner2026: respondent has no race indicator checked")
-            raw_races.append(checked[0] if len(checked) == 1 else "Other")
-        df["RACE"] = pd.Series(raw_races, index=df.index, dtype=object)
+        df["RACE"] = race_from_checkboxes(df, KRINER2026_RACE_COLS, "kriner2026", allow_all_missing=False)
     elif dataset == "wvs":
         for src_col, attr in WVS_COL_TO_PERSONA.items():
             if src_col not in df.columns:

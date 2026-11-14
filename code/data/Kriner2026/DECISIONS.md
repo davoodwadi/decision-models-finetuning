@@ -8,17 +8,17 @@ Each entry records the issue, the options considered, and what was decided. All 
 Persona values that map to NaN are dropped from that respondent's persona (`base.py`), so no line appears for that attribute.
 
 Implemented as dataset key `kriner2026` in `persona.py` (`DATASET_PERSONA_COLS`, `KRINER2026_COL_TO_PERSONA`,
-`KRINER2026_RACE_COLS`, the `PERSONA_MAPS[...]["kriner2026"]` block, and the `apply_persona_mapping` branch).
+`KRINER2026_RACE_COLS`, a `"kriner2026"` entry in each attribute block of `PERSONA_MAPS` (region uses the shared `STATE_CODE_TO_REGION`), and the `apply_persona_mapping` branch).
 `stimulus.build_persona_input_df` builds its input, including `age_years` decoded from the `age` value labels.
 All persona attributes are decided.
 
 | Attribute | Source variable | Decision |
 |---|---|---|
 | `c_alphan` (Country) | none (US panel) | All respondents `United States`. |
-| `SEX` | `gender` | 1 Male → `Male`, 2 Female → `Female`, 3 Prefer not to say → NaN (5 respondents). Same as Covid. |
+| `SEX` | `gender` | 1 Male → `Male`, 2 Female → `Female`, 3 Prefer not to say → `Prefer not to say` (5; first NaN as in Covid, changed 2026-11-14 together with Covid when it became a global level). |
 | `AGE` | `age` | The `.dta` stores codes, not ages (code 1 = 18, …, code 80 = 97). Decode through the value labels, then bucket with `AGE_BINS`. |
 | `EDULEVEL` | `education` | Same 8 labels and mapping as Covid: 1 → `Less than high school`; 2, 3 → `High school or some college`; 4 → `Associate's degree`; 5–8 → `College graduate/some postgrad`. |
-| `RACE` | `native_american`, `asian`, `black`, `hispanic`, `white`, `race_6` | Covid rule: one box → that category (American Indian → `Other`); two or more boxes → `Other` (98 respondents, 65 of whom checked Hispanic). Chosen over Hispanic-first (Grummon) so `Other` means the same as in Covid. |
+| `RACE` | `native_american`, `asian`, `black`, `hispanic`, `white`, `race_6` | Covid rule: one box → that category, with American Indian kept verbatim as `American Indian` (10); two or more boxes → `Two or more races` (98, 65 of whom checked Hispanic). Chosen over Hispanic-first (Grummon) so it matches Covid. Revised 2026-11-14 together with Covid, after berke2023 added `Two or more races`: previously American Indian and 2+ boxes → `Other`, which made `Other` mostly mean multi-race. "American Indian" is kept separate from berke2023's "American Indian or Alaska Native" (verbatim wording). |
 | `US_INC` | `income` | Same 6 labels as Covid, each mapped to the identically worded global level. |
 | `PARTY_LR` | `ideology` | Same 7 labels as Covid, one-to-one to the global levels (persona uses the global lower-case spelling). |
 | `US_PRTY` | `party` | Same as Covid: 1 → `Republican`, 2 → `Democrat`, 3 → `Independent`, 4 Other/don't know → `Something else`. `party_lean` (asked only to Independents) is not used. The authors' `party3` is not used (it folds leaners into parties and Other/don't know into Independent). |
@@ -40,15 +40,14 @@ what this survey calls "Other" into `Orthodox`, `Other Christian`, `Buddhist`, `
 (c) add new global levels for this survey's categories; (d) map the matching answers and set None to NaN.
 
 **Decision.** Protestant → `Protestant`, Catholic → `Catholic`, Jewish → `Jewish`, Muslim → `Muslim`, Other → `Other`,
-None → a new global level `None` (added to `GLOBAL_PERSONA_LEVELS["RELIGGRP"]` in `persona.py`).
-This replaced an earlier decision of None → NaN, which would have left the 289 "None" respondents without a religion
-line, so that a missing line meant "None" in Kriner2026 but "not asked or not answered" elsewhere.
+None → `No religion`.
+History: first None → NaN (rejected: a missing line would mean "None" here but "not asked" elsewhere), then a new level
+`None`, then (2026-11-14) the religion union across all datasets, where "None" shares the level `No religion` with ISSP's
+"No religion" and WVS's "Do not belong to a denomination" (same meaning, clearer wording than a bare "None").
 
 **Known consequences.**
-- `None` is used only by Kriner2026; other datasets split non-religious respondents into `Atheist`, `Agnostic` and
-  `Nothing in particular`.
-- `Other` here includes groups that other datasets list separately.
-- The level is the string `"None"`, not Python's `None` (which means missing); the mapping code must keep them apart.
+- `Other` here includes groups that other datasets list separately (Orthodox, Mormon, Buddhist, Hindu, ...): a
+  catch-all answer is only as specific as the list it was offered with.
 
 ## Parquet export (`__init__.py`, `export_Kriner2026_parquet`)
 

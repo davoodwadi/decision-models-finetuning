@@ -50,11 +50,11 @@ Respondent background variables in `grummon2023` map cleanly onto eight canonica
 | Persona column | State label | Raw `grummon2023` source | Canonical mapped values | Non-missing ($N = 7,945$) |
 |---|---|---|---|---|
 | `c_alphan` | `Country` | US eligibility | `'United States'` | $7,945$ |
-| `SEX` | `Sex` | `gender` (`1..4`) | `'Female'` (`1`), `'Male'` (`2`), `None` (`3`, `4`, matching Grummon 2025) | $7,857$ (`1`/`2`) |
+| `SEX` | `Sex` | `gender` (`1..4`) | `Female` (`1` Woman), `Male` (`2` Man), `Non-binary` (`3`, 69), `Other` (`4` Another gender (specify), 19; mapped to `None` until 2026-11-14) | $7,945$ |
 | `AGE` | `Age` | `age` ($\ge 18$) | `AGE_BINS = [17, 29, 49, 64, 120]` $\rightarrow$ `'18-29'`, `'30-49'`, `'50-64'`, `'65+'` | $7,945$ |
 | `EDULEVEL` | `Education` | `educ` (`1..6`) | `'Less than high school'` (`1`), `'High school or some college'` (`2`, `3`), `'Associate\'s degree'` (`4`), `'College graduate/some postgrad'` (`5`, `6`) | $7,945$ |
-| `RACE` | `Race` | `Race_1..Race_6` | Single-race `'White'` (`Race_5`), `'Black'` (`Race_3`), `'Asian'` (`Race_2` or `Race_4`, per `01_DataPrep.do`), and `'Other'` (`Race_1`, `Race_6`, or multiracial) | $7,944$ |
-| `US_INC` | `Income` | `income_10cat` (`1..10`) | `'Less than $25,000'` (`1..3`), `'$25,000 - $34,999'` (`4`), `'$35,000 - $49,999'` (`5`), `'$50,000 - $75,000'` (`6`), `'$75,000 - $100,000'` (`7`), `'$100,000 or more'` (`8..10`), identical to Grummon 2025 | $7,934$ |
+| `RACE` | `Race` | `Race_1..Race_6` | One box → `White` (`Race_5`), `Black` (`Race_3`), `Asian` (`Race_2`), `American Indian or Alaska Native` (`Race_1`, 116), `Native Hawaiian or Other Pacific Islander` (`Race_4`, 36), `Other` (`Race_6` Another race, 300); 2+ boxes → `Two or more races` (272). Changed 2026-11-14; previously all but single White/Black/Asian → `Other`. (The authors' `01_DataPrep.do` groups `Race_4` with Asian; we keep it separate.) | $7,944$ |
+| `US_INC` | `Income` | `income_10cat` (`1..10`) | One global level per bracket: `Less than $10,000`, `$10,000 - $14,999`, `$15,000 - $24,999`, `$25,000 - $34,999`, `$35,000 - $49,999`, `$50,000 - $75,000` (`$50,000 to $74,999`), `$75,000 - $100,000` (`$75,000 to $99,999`), `$100,000 - $149,999`, `$150,000 - $199,999`, `$200,000 or more`. Changed 2026-11-14 (previously `1..3` and `8..10` were merged); identical to Grummon 2025 | $7,934$ |
 | `US_PRTY` | `Political party` | `partyid` (`1..8`) | `'Democrat'` (`1..3`), `'Independent'` (`4`), `'Republican'` (`5..7`), `'Other'` (`8`, mapped to `None` or `'Something else'` per `PERSONA_MAPS`) | $7,943$ |
 | `HHSIZE` | `How many people, including yourself, live in your household?` | `hhsize_num` (`1..20`) | `'1'`, `'2'`, `'3'`, `'4'`, `'More than 4'` ($\ge 5$, matching Twin-2K-500 and WVS) | $7,944$ |
 | `HISPANIC` | `Hispanic or Latino` | `latino` (`0`, `1`) | `'No'` (`0`), `'Yes'` (`1`), identical to Grummon 2025 | $7,944$ |
