@@ -242,9 +242,7 @@ async function loadOrRefreshDataset(dsId: string): Promise<CachedDataset> {
       fileExists(tagsPath),
     ]);
   const hasNotebook =
-    hasDataNb ||
-    (hasStimulus &&
-      ["grummon2023", "grummon2025", "covid", "Kriner2026"].includes(path.basename(datasetDir)));
+    hasDataNb || (hasStimulus && PYTHON_EXPORT_DIRS.includes(path.basename(datasetDir)));
 
   const { columns, rows: rawRows } = parseCsv(csvText);
   const schemaKind = detectSchemaKind(columns);
@@ -734,6 +732,47 @@ export async function updateRows(
   );
 }
 
+// Dataset folders whose parquet is written by `data.<folder>.export_<folder>_parquet()` (others use data.ipynb).
+const PYTHON_EXPORT_DIRS = ["grummon2023", "grummon2025", "covid", "Kriner2026", "berke2023"];
+
+// Folders that must be rebuilt before the others: the Twin-2K-500 Mega-Study notebook checks its personas against
+// Twin-2K-500's parquet, so Twin-2K-500 goes first.
+const REBUILD_FIRST_DIRS = ["Twin-2K-500"];
+
+export interface RebuildResult {
+  dsId: string;
+  ok: boolean;
+  summary: string;
+  stderr: string;
+}
+
+/** Rebuild every dataset that has an exporter (data.ipynb or Python), in dependency order; stop at the first failure. */
+export async function rebuildAllParquets(): Promise<{ ok: boolean; results: RebuildResult[]; skipped: string[] }> {
+  const { datasets } = await discoverDatasets();
+  const rebuildable: { dsId: string; dirName: string }[] = [];
+  for (const ds of datasets) {
+    const dir = path.dirname(ds.path);
+    const dirName = path.basename(dir);
+    const hasNb = await fileExists(path.join(dir, "data.ipynb"));
+    const hasStimulus = await fileExists(path.join(dir, "stimulus.py"));
+    if (hasNb || (hasStimulus && PYTHON_EXPORT_DIRS.includes(dirName))) {
+      rebuildable.push({ dsId: ds.id, dirName });
+    }
+  }
+  const rank = (d: string) => (REBUILD_FIRST_DIRS.includes(d) ? REBUILD_FIRST_DIRS.indexOf(d) : REBUILD_FIRST_DIRS.length);
+  rebuildable.sort((a, b) => rank(a.dirName) - rank(b.dirName) || a.dsId.localeCompare(b.dsId));
+
+  const results: RebuildResult[] = [];
+  for (let i = 0; i < rebuildable.length; i++) {
+    const res = await rebuildDatasetParquet(rebuildable[i].dsId);
+    results.push({ dsId: rebuildable[i].dsId, ...res });
+    if (!res.ok) {
+      return { ok: false, results, skipped: rebuildable.slice(i + 1).map((r) => r.dsId) };
+    }
+  }
+  return { ok: true, results, skipped: [] };
+}
+
 export async function rebuildDatasetParquet(dsId: string): Promise<{
   ok: boolean;
   summary: string;
@@ -744,11 +783,7 @@ export async function rebuildDatasetParquet(dsId: string): Promise<{
     const nbPath = path.join(ds.datasetDir, "data.ipynb");
     const hasNb = await fileExists(nbPath);
     const dirBase = path.basename(ds.datasetDir);
-    const isPythonExport =
-      dirBase === "grummon2023" ||
-      dirBase === "grummon2025" ||
-      dirBase === "covid" ||
-      dirBase === "Kriner2026";
+    const isPythonExport = PYTHON_EXPORT_DIRS.includes(dirBase);
     if (!hasNb && !isPythonExport) {
       throw new Error(
         `No data.ipynb or Python parquet exporter found in ${ds.datasetDir}`

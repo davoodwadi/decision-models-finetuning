@@ -66,7 +66,6 @@ TREAT_ARMS = [
     "Spectrum",
 ]
 
-LATINO_MAP = {0: "No", 1: "Yes"}
 CHILDREN_MAP = {0: "0", 1: "1", 2: "2", **{k: "3 or more" for k in range(3, 16)}}
 SNAP_MAP = {0: "No", 1: "Yes", 2: "Don't know"}
 WIC_MAP = {0: "No", 1: "Yes", 2: "Don't know"}
@@ -121,7 +120,7 @@ def build_grummon2025_persona_df(clean_df: pd.DataFrame) -> pd.DataFrame:
             "US_INC": persona.map_persona_series(clean_df["income"], "US_INC", "grummon2025"),
             "RACE": derive_grummon2025_race(clean_df),
             "HHSIZE": persona.map_persona_series(clean_df["hhsize_num"], "HHSIZE", "grummon2025"),
-            "HISPANIC": strict_code_map(clean_df["latino"], LATINO_MAP, "latino"),
+            "HISPANIC": persona.map_persona_series(clean_df["latino"], "HISPANIC", "grummon2025"),
             "CHILDREN": strict_code_map(clean_df["children_num"], CHILDREN_MAP, "children_num"),
             "SNAP": strict_code_map(clean_df["snap"], SNAP_MAP, "snap"),
             "WIC": strict_code_map(clean_df["wic"], WIC_MAP, "wic"),

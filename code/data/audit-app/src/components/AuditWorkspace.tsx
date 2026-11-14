@@ -224,6 +224,7 @@ export function AuditWorkspace({
   const [draftTags, setDraftTags] = useState<Record<number, string[]>>({});
   const [draftResetSeq, setDraftResetSeq] = useState(0);
   const [rebuilding, setRebuilding] = useState(false);
+  const [rebuildingAll, setRebuildingAll] = useState(false);
   const [rebuildBanner, setRebuildBanner] = useState<string | null>(null);
   const [showBulk, setShowBulk] = useState(false);
 
@@ -1503,6 +1504,42 @@ export function AuditWorkspace({
     }
   };
 
+  const handleRebuildAll = async () => {
+    if (unsavedTotal > 0) {
+      setSaveState("error");
+      setSaveMessage(
+        `Save or discard ${unsavedTotal} unsaved question(s) before rebuilding all Parquets`
+      );
+      setTriage("unsaved");
+      return;
+    }
+    setRebuildingAll(true);
+    setRebuildBanner(null);
+    try {
+      const res = await fetch("/api/rebuild-all", { method: "POST" });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      const results = json.results as { dsId: string; ok: boolean; summary: string; stderr: string }[];
+      const done = results.filter((r) => r.ok).map((r) => `${r.dsId.split("/")[0]}: ${r.summary}`);
+      if (!json.ok) {
+        const failed = results[results.length - 1];
+        const skipped = (json.skipped as string[]).map((d) => d.split("/")[0]);
+        throw new Error(
+          `Rebuilt ${done.length}; FAILED ${failed.dsId.split("/")[0]}` +
+            (skipped.length ? `; not run: ${skipped.join(", ")}` : "") +
+            `\n${failed.stderr}`
+        );
+      }
+      setRebuildBanner(`All ${done.length} Parquets rebuilt. ${done.join(" || ")}`);
+      await switchDataset(payload.dsId, true);
+    } catch (err: unknown) {
+      setSaveState("error");
+      setSaveMessage(err instanceof Error ? err.message : String(err));
+    } finally {
+      setRebuildingAll(false);
+    }
+  };
+
   // Header stats
   const substantiveTotal = displayRows.filter((r) => !r.isFormatSkipped).length;
   const substantiveReviewed = displayRows.filter(
@@ -1547,7 +1584,7 @@ export function AuditWorkspace({
   return (
     <div className="flex flex-col h-full w-full overflow-hidden">
       {/* Top Global Header */}
-      <header className="bg-white border-b border-slate-200 px-4 py-2 flex items-center gap-3 shrink-0">
+      <header className="bg-white border-b border-slate-200 px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-2 shrink-0">
         <div className="flex items-center gap-2">
           <Database className="w-4 h-4 text-blue-600" />
           <h1 className="text-sm font-bold text-slate-900 whitespace-nowrap">
@@ -1584,7 +1621,7 @@ export function AuditWorkspace({
 
         {loadingDs && <Loader2 className="w-4 h-4 animate-spin text-blue-600" />}
 
-        <div className="hidden md:flex items-center gap-2 text-xs text-slate-600 ml-1">
+        <div className="hidden xl:flex items-center gap-2 text-xs text-slate-600 ml-1 whitespace-nowrap">
           <Badge
             variant="outline"
             className="bg-amber-50 text-amber-800 border-amber-200 font-medium"
@@ -1608,6 +1645,7 @@ export function AuditWorkspace({
 
         <div className="flex-1" />
 
+        <div className="flex flex-wrap items-center justify-end gap-2 ml-auto min-w-0 max-w-full">
         {unsavedTotal > 0 ? (
           <div className="flex items-center gap-1.5">
             <Button
@@ -1659,7 +1697,9 @@ export function AuditWorkspace({
                 : saveState === "error"
                   ? "text-rose-700 bg-rose-50"
                   : "text-emerald-700 bg-emerald-50",
+              "max-w-[18rem] truncate block",
             ].join(" ")}
+            title={saveMessage}
           >
             {saveMessage}
           </Badge>
@@ -1668,7 +1708,8 @@ export function AuditWorkspace({
         {unsavedTotal > 0 && saveState === "error" && (
           <Badge
             variant="outline"
-            className="rounded-md font-medium text-rose-700 bg-rose-50 border-rose-200"
+            className="rounded-md font-medium text-rose-700 bg-rose-50 border-rose-200 max-w-[18rem] truncate block"
+            title={saveMessage}
           >
             {saveMessage}
           </Badge>
@@ -1685,32 +1726,51 @@ export function AuditWorkspace({
           Bulk ({filteredIndices.length})
         </Button>
 
-        {payload.hasNotebook && (
+        <div className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 p-0.5 gap-0.5">
+          <span className="px-1.5 text-[11px] font-semibold text-slate-500 select-none">Parquet</span>
+          {payload.hasNotebook && (
+            <Button
+              type="button"
+              size="sm"
+              disabled={rebuilding || rebuildingAll}
+              onClick={() => void handleRebuild()}
+              title={
+                unsavedTotal > 0
+                  ? `Save or discard ${unsavedTotal} unsaved question(s) before rebuilding Parquet`
+                  : "Rebuild this dataset's Parquet from its saved CSV"
+              }
+              className={[
+                "h-7 text-xs font-semibold cursor-pointer",
+                unsavedTotal > 0
+                  ? "bg-slate-200 text-slate-600 hover:bg-slate-300"
+                  : "bg-blue-600 text-white hover:bg-blue-700",
+              ].join(" ")}
+            >
+              {rebuilding ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Play className="w-3.5 h-3.5" />
+              )}
+              {rebuilding ? "Rebuilding..." : "This dataset"}
+            </Button>
+          )}
           <Button
             type="button"
             size="sm"
-            disabled={rebuilding}
-            onClick={() => void handleRebuild()}
-            title={
-              unsavedTotal > 0
-                ? `Save or discard ${unsavedTotal} unsaved question(s) before rebuilding Parquet`
-                : "Compile saved CSV into Parquet via data.ipynb"
-            }
-            className={[
-              "text-xs font-semibold cursor-pointer",
-              unsavedTotal > 0
-                ? "bg-slate-200 text-slate-600 hover:bg-slate-300"
-                : "bg-blue-600 text-white hover:bg-blue-700",
-            ].join(" ")}
+            disabled={rebuilding || rebuildingAll}
+            onClick={() => void handleRebuildAll()}
+            title="Rebuild every dataset's Parquet (Twin-2K-500 first, then the rest); stops at the first failure"
+            className="h-7 text-xs font-semibold cursor-pointer bg-indigo-600 text-white hover:bg-indigo-700"
           >
-            {rebuilding ? (
+            {rebuildingAll ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
             ) : (
               <Play className="w-3.5 h-3.5" />
             )}
-            {rebuilding ? "Rebuilding..." : "Rebuild Parquet"}
+            {rebuildingAll ? "Rebuilding all..." : "All datasets"}
           </Button>
-        )}
+        </div>
+        </div>
       </header>
 
       {/* Optional Rebuild / Bulk Banner */}

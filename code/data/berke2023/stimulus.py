@@ -265,7 +265,8 @@ def build_survey_audit_artifacts() -> tuple[pd.DataFrame, dict[str, list[str]], 
                 "catalog_idx": str(idx), "QuestionID": qid, "csv_cols": ";".join(csv_cols),
                 "n_cols": str(len(csv_cols)), "family": family, "BlockName": block, "n_subitems": "1",
                 "n_answered": str(n_answered), "include": "True" if include else "False",
-                "kev_type": kev_type if include else "", "context_source": context_source, "context_sep": "",
+                "kev_type": kev_type if include else "",
+                "context_source": context_source, "context_sep": "",
                 "drop_options": "", "review_note": review_note, "QuestionText": question_text,
                 "Context_preview": in_block_db_text if context_source == "in_block_db" else "",
                 "Rows_preview": "",
@@ -344,13 +345,13 @@ def build_survey_audit_artifacts() -> tuple[pd.DataFrame, dict[str, list[str]], 
     add_mc("Q_online_shopping", "Consumer behavior", "2_Ordinal_Scale", FREQ_OPTIONS, True, "score", freq_note)
     add_mc("Q_takeout_food", "Consumer behavior", "2_Ordinal_Scale", FREQ_OPTIONS, True, "score", freq_note)
     add_mc("Q_online_groceries", "Consumer behavior", "2_Ordinal_Scale", FREQ_OPTIONS, True, "score", freq_note)
-    add_multi("Q_v_0_why_no", "Consumer behavior", "1_Choice_Multi", WHY_NO_OPTIONS, why_note + " Shown if take-out frequency = Never.")
+    add_multi("Q_v_0_why_no", "Consumer behavior", "5_MC_Multi", WHY_NO_OPTIONS, why_note + " Shown if take-out frequency = Never.")
     add_te("Q_v_0_why_no_4_TEXT", "Consumer behavior", "Excluded: free-text 'Other' reason.", True)
     add_mc("Q_v_1", "Consumer behavior", "1_Choice_Multi", YES_NO_DK_OPTIONS, True, "choice", yn_note, tags=["has-dont-know"])
-    add_multi("Q_v_1_why_no", "Consumer behavior", "1_Choice_Multi", WHY_NO_OPTIONS, why_note + " Shown if Q_v_1 = No.")
+    add_multi("Q_v_1_why_no", "Consumer behavior", "5_MC_Multi", WHY_NO_OPTIONS, why_note + " Shown if Q_v_1 = No.")
     add_te("Q_v_1_why_no_4_TEXT", "Consumer behavior", "Excluded: free-text 'Other' reason.", True)
     add_mc("Q_v_2", "Consumer behavior", "1_Choice_Multi", YES_NO_DK_OPTIONS, True, "choice", yn_note, tags=["has-dont-know"])
-    add_multi("Q_v_2_why_no", "Consumer behavior", "1_Choice_Multi", WHY_NO_OPTIONS, why_note + " Shown if Q_v_2 = No.")
+    add_multi("Q_v_2_why_no", "Consumer behavior", "5_MC_Multi", WHY_NO_OPTIONS, why_note + " Shown if Q_v_2 = No.")
     add_te("Q_v_2_why_no_4_TEXT", "Consumer behavior", "Excluded: free-text 'Other' reason.", True)
 
     # --- Delivery choice experiment ---

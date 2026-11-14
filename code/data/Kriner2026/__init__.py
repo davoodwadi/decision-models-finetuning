@@ -51,13 +51,6 @@ STUDY_DB_TEXTS = {
     "saf_conjoint_intro": CONJOINT_INTRO_TEXT,
 }
 
-# `reversed` for included `score` items: True when the first listed option is the high end of the scale
-# (Covid convention, e.g. `vax_likert`). Every included score item must be listed here; export fails otherwise.
-SCORE_REVERSED = {  # values confirmed by the user, 2026-11-14
-    "saf_familiar_old": True,  # Very informed ... Not at all informed
-    "saf_safe_old": True,  # Strongly agree ... Strongly disagree
-    "sci_know_self": False,  # Not at All Knowledgeable ... Very Knowledgeable
-}
 
 FLIGHT_ATTRIBUTES = ["Airline", "Fuel type", "Included baggage", "Legroom", "Price", "Seat type"]
 
@@ -236,7 +229,6 @@ def build_kriner2026_long_df(
             sub["label"] = [f"flight_choice ({s})" for s in stim_ids]
             sub["question"] = full_q
             sub["type"] = q_type
-            sub["reversed"] = False
             sub["option_codes"] = [list(kept_codes) for _ in range(len(sub))]
             sub["option_texts"] = [list(kept_texts) for _ in range(len(sub))]
             sub["option_descriptions"] = [
@@ -250,8 +242,6 @@ def build_kriner2026_long_df(
 
         if v_name not in value_labels or v_name not in resp_raw.columns:
             raise KeyError(f"{v_name}: export supports the flight choice and single-variable labelled questions only")
-        if q_type == "score" and v_name not in SCORE_REVERSED:
-            raise KeyError(f"{v_name}: included as score but has no entry in SCORE_REVERSED")
         labels = value_labels[v_name]
         raw_pairs = [(c, labels[c]) for c in sorted(labels)]
         kept_codes, kept_texts, dropped = _apply_option_edits(raw_pairs, drop_set, opt_overrides, v_name)
@@ -271,7 +261,6 @@ def build_kriner2026_long_df(
         sub["label"] = v_name
         sub["question"] = full_q
         sub["type"] = q_type
-        sub["reversed"] = SCORE_REVERSED[v_name] if q_type == "score" else False
         sub["option_codes"] = [list(kept_codes) for _ in range(len(sub))]
         sub["option_texts"] = [list(kept_texts) for _ in range(len(sub))]
         sub["option_descriptions"] = [None for _ in range(len(sub))]

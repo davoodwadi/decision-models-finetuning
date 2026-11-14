@@ -32,11 +32,6 @@ GRUMMON2023_AUDIT_CSV_PATH = GRUMMON2023_DIR / "question_audit.csv"
 GRUMMON2023_OVERRIDES_PATH = GRUMMON2023_DIR / "question_overrides.json"
 GRUMMON2023_STUDY_DB_TEXTS = {"vending_intro": VENDING_BONUS_INTRO}
 
-HISPANIC_MAP = {
-    0.0: "No",
-    1.0: "Yes",
-}
-
 NFPUSE_MAP = {
     1.0: "Never",
     2.0: "Rarely",
@@ -186,7 +181,7 @@ def build_grummon2023_persona_df(clean_df: pd.DataFrame) -> pd.DataFrame:
             "AGE": persona.map_persona_series(clean_df["age"], "AGE", "grummon2023"),
             "EDULEVEL": persona.map_persona_series(clean_df["educ"], "EDULEVEL", "grummon2023"),
             "US_INC": persona.map_persona_series(clean_df["income_10cat"], "US_INC", "grummon2023"),
-            "HISPANIC": strict_code_map(clean_df["latino"], HISPANIC_MAP, "HISPANIC"),
+            "HISPANIC": persona.map_persona_series(clean_df["latino"], "HISPANIC", "grummon2023"),
             "RACE": derive_grummon2023_race(clean_df),
             "HHSIZE": persona.map_persona_series(clean_df["hhsize_num"], "HHSIZE", "grummon2023"),
             "CHILDREN": derive_grummon2023_children(clean_df),

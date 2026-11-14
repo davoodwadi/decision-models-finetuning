@@ -37,7 +37,6 @@ from kev.fused_qwen35 import (
 )
 
 EXTRA_PERSONA_NAMES = {
-    "HISPANIC": "Hispanic or Latino",
     "CHILDREN": "How many children (ages 0-18) currently live in your household?",
     "SNAP": "SNAP / Food Stamps recipient",
     "WIC": "Do you or anyone else in your household currently receive WIC benefits?",

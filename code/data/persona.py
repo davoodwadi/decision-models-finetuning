@@ -23,12 +23,14 @@ PERSONA_NAMES = {
     "US_REG": "Region",
     "US_ETHN1": "Ancestry",
     "RACE": "Race",
+    "HISPANIC": "Hispanic or Latino",  # separate Hispanic question (Grummon 2023/2025, wu2025)
     "HHSIZE": "How many people, including yourself, live in your household?",
     "VOTE_FREQ": "Votes in national elections",
+    "RESTYPE": "What type of residence do you live in?",  # berke2023 Q_residence_type
 }
 
 DATASET_PERSONA_COLS = {
-    "issp": [c for c in PERSONA_NAMES if c not in {"RACE", "HHSIZE", "VOTE_FREQ"}],
+    "issp": [c for c in PERSONA_NAMES if c not in {"RACE", "HISPANIC", "HHSIZE", "VOTE_FREQ", "RESTYPE"}],
     "twin2k": [
         "c_alphan",
         "US_REG",
@@ -71,11 +73,21 @@ DATASET_PERSONA_COLS = {
         "URBRURAL",
         "VOTE_LE",
     ],
-    "berke2023": [  # Country and the remaining attributes are added as they are decided (berke2023/DECISIONS.md)
+    "berke2023": [  # decisions in berke2023/DECISIONS.md
+        "c_alphan",
+        "US_REG",
         "SEX",
         "AGE",
         "RACE",
         "US_INC",
+        "URBRURAL",
+        "RESTYPE",
+    ],
+    "wu2025": [  # decisions in wu2025/DECISIONS.md; remaining attributes added as decided
+        "SEX",
+        "AGE",
+        "RACE",
+        "HISPANIC",
     ],
     "wvs": [
         "c_alphan",
@@ -152,6 +164,9 @@ BERKE2023_COL_TO_PERSONA = {
     "Q_gender": "SEX",
     "Q_age": "AGE",
     "Q_income": "US_INC",
+    "Q_urban_rural": "URBRURAL",
+    "Q_residence_type": "RESTYPE",
+    "Q_state": "US_REG",
 }
 
 # `Q_race` is select-all-that-apply stored as comma-separated codes ("1,6"); labels from the authors' codebook.py.
@@ -175,6 +190,24 @@ GRUMMON_RACE_LABELS = {
     5: "White",
     6: "Another race",
 }
+
+# wu2025 (Wu et al. 2025, CCA electricity plans); decisions in `wu2025/DECISIONS.md`. The `.dta` stores text labels,
+# with "" where no answer was recorded.
+WU2025_COL_TO_PERSONA = {
+    "sex": "SEX",
+    "age": "AGE",
+    "ethnicity": "HISPANIC",
+}
+
+# `race` is select-all stored as comma-separated labels ("White,Multi-racial"), in this survey's option wording.
+WU2025_RACE_LABELS = [
+    "White",
+    "Black or African American",
+    "American Indian or Alaska Native",
+    "Asian/Pacific Islander",
+    "Multi-racial",
+    "Other",
+]
 
 TWIN2K_QID_TO_PERSONA = {
     "QID11": "US_REG",
@@ -241,6 +274,8 @@ GLOBAL_PERSONA_LEVELS = {
         "18-29", "30-49", "50-64", "65+",
         # berke2023 Q_age brackets (25-34 and 45-54 cross AGE_BINS, so they cannot be bucketed)
         "18 - 24 years", "25 - 34 years", "35 - 44 years", "45 - 54 years", "55 - 64 years", "65 or older",
+        # wu2025 `age` (its first five brackets share berke2023's levels)
+        "65 - 74 years", "75 - 84 years", "85 or older",
     ],
     "US_REG": ["Northeast", "Midwest", "South", "West"],
     "EDULEVEL": [
@@ -255,6 +290,7 @@ GLOBAL_PERSONA_LEVELS = {
         # and 2+ boxes. NHOPI uses the official OMB wording (berke2023's "Native Hawaiian or Pacific Islander" = same group).
         "American Indian or Alaska Native", "Native Hawaiian or Other Pacific Islander", "Two or more races",
         "American Indian",  # Covid / Kriner2026 wording (no "or Alaska Native")
+        "Asian/Pacific Islander",  # wu2025 (one combined option)
     ],
     "MARITAL": [
         "Married",
@@ -372,8 +408,11 @@ GLOBAL_PERSONA_LEVELS = {
         "Urban",
         "Rural",
         "Suburban",  # Kriner2026 `urban_rural_best` (Urban / Suburban / Rural)
+        "I don't know",  # berke2023 `Q_urban_rural`
     ],
     "UNION": ["Yes", "No", "Active member", "Inactive member"],
+    "RESTYPE": ["Private home", "Apartment", "Other"],  # berke2023
+    "HISPANIC": ["Yes", "No"],
     "US_ETHN1": US_ETHN1_LEVELS,
 }
 
@@ -441,6 +480,7 @@ PERSONA_MAPS = {
         "grummon2023": {"United States": "United States"},
         "wvs": {"United States": "United States"},
         "kriner2026": {"United States": "United States"},
+        "berke2023": {"United States": "United States"},  # Prolific US residents; nobody chose "not in the US"
     },
     "SEX": {
         "issp": {"Male": "Male", "Female": "Female"},
@@ -452,6 +492,7 @@ PERSONA_MAPS = {
         "wvs": {"Male": "Male", "Female": "Female"},
         "berke2023": {1: "Male", 2: "Female", 3: "Other", 4: "Prefer not to say"},  # 4 = Prefer not to answer
         "kriner2026": {1: "Male", 2: "Female", 3: "Prefer not to say"},
+        "wu2025": {"Female": "Female", "Male": "Male"},  # `sex`; "" (no answer) -> NaN in the loader
     },
     "AGE": {
         "twin2k": {
@@ -467,6 +508,16 @@ PERSONA_MAPS = {
             4: "45 - 54 years",
             5: "55 - 64 years",
             6: "65 or older",
+        },
+        "wu2025": {  # `age`; first five share berke2023's levels (same ranges)
+            "18 - 24": "18 - 24 years",
+            "25 - 34": "25 - 34 years",
+            "35 - 44": "35 - 44 years",
+            "45 - 54": "45 - 54 years",
+            "55 - 64": "55 - 64 years",
+            "65 - 74": "65 - 74 years",
+            "75 - 84": "75 - 84 years",
+            "85 or older": "85 or older",
         },
     },
     "US_REG": {
@@ -543,6 +594,61 @@ PERSONA_MAPS = {
             "US-WY Wyoming": "West",
         },
         "kriner2026": STATE_CODE_TO_REGION,  # same state codes as Covid (52 has no region)
+        # berke2023 `Q_state` codes: alphabetical incl. DC (9) and Puerto Rico (40), so codes from 41 on are Covid's + 1.
+        # Puerto Rico (40) and 53 ("I do not reside in the United States") were never chosen and have no region.
+        "berke2023": {
+            1: "South",  # Alabama
+            2: "West",  # Alaska
+            3: "West",  # Arizona
+            4: "South",  # Arkansas
+            5: "West",  # California
+            6: "West",  # Colorado
+            7: "Northeast",  # Connecticut
+            8: "South",  # Delaware
+            9: "South",  # District of Columbia
+            10: "South",  # Florida
+            11: "South",  # Georgia
+            12: "West",  # Hawaii
+            13: "West",  # Idaho
+            14: "Midwest",  # Illinois
+            15: "Midwest",  # Indiana
+            16: "Midwest",  # Iowa
+            17: "Midwest",  # Kansas
+            18: "South",  # Kentucky
+            19: "South",  # Louisiana
+            20: "Northeast",  # Maine
+            21: "South",  # Maryland
+            22: "Northeast",  # Massachusetts
+            23: "Midwest",  # Michigan
+            24: "Midwest",  # Minnesota
+            25: "South",  # Mississippi
+            26: "Midwest",  # Missouri
+            27: "West",  # Montana
+            28: "Midwest",  # Nebraska
+            29: "West",  # Nevada
+            30: "Northeast",  # New Hampshire
+            31: "Northeast",  # New Jersey
+            32: "West",  # New Mexico
+            33: "Northeast",  # New York
+            34: "South",  # North Carolina
+            35: "Midwest",  # North Dakota
+            36: "Midwest",  # Ohio
+            37: "South",  # Oklahoma
+            38: "West",  # Oregon
+            39: "Northeast",  # Pennsylvania
+            41: "Northeast",  # Rhode Island
+            42: "South",  # South Carolina
+            43: "Midwest",  # South Dakota
+            44: "South",  # Tennessee
+            45: "South",  # Texas
+            46: "West",  # Utah
+            47: "Northeast",  # Vermont
+            48: "South",  # Virginia
+            49: "West",  # Washington
+            50: "South",  # West Virginia
+            51: "Midwest",  # Wisconsin
+            52: "West",  # Wyoming
+        },
     },
     "EDULEVEL": {
         "issp": {
@@ -611,9 +717,9 @@ PERSONA_MAPS = {
             8: "College graduate/some postgrad",  # Professional Degree
         },
     },
-    # Select-all race questions (Covid, Kriner2026, berke2023, Grummon 2023/2025) are first combined by
+    # Select-all race questions (Covid, Kriner2026, berke2023, Grummon 2023/2025, wu2025) are first combined by
     # `race_from_checkboxes` (one box -> its option label, 2+ boxes -> "Two or more races"); the option labels it uses
-    # are in COVID_RACE_COLS, KRINER2026_RACE_COLS, BERKE2023_RACE_CODES and GRUMMON_RACE_LABELS. The maps below then
+    # are in COVID_RACE_COLS, KRINER2026_RACE_COLS, BERKE2023_RACE_CODES, GRUMMON_RACE_LABELS and WU2025_RACE_LABELS. The maps below then
     # turn those labels into global levels.
     "RACE": {
         "twin2k": {
@@ -681,6 +787,15 @@ PERSONA_MAPS = {
             "Asian": "Asian",
             "Hispanic": "Hispanic",
             "American Indian": "American Indian",
+            "Other": "Other",
+            "Two or more races": "Two or more races",
+        },
+        "wu2025": {  # applied after the multi-box rule (2+ boxes -> "Two or more races")
+            "White": "White",
+            "Black or African American": "Black",
+            "American Indian or Alaska Native": "American Indian or Alaska Native",
+            "Asian/Pacific Islander": "Asian/Pacific Islander",
+            "Multi-racial": "Two or more races",  # an answer option in this survey; same meaning
             "Other": "Other",
             "Two or more races": "Two or more races",
         },
@@ -1030,6 +1145,7 @@ PERSONA_MAPS = {
         },
         "wvs": {"Urban": "Urban", "Rural": "Rural"},
         "kriner2026": {1: "Urban", 2: "Suburban", 3: "Rural"},  # `urban_rural_best`
+        "berke2023": {1: "Urban", 2: "Suburban", 3: "Rural", 4: "I don't know"},  # `Q_urban_rural`
     },
     "UNION": {
         "issp": {"Yes": "Yes", "No": "No"},
@@ -1037,6 +1153,18 @@ PERSONA_MAPS = {
     },
     "US_ETHN1": {
         "issp": {v: v for v in US_ETHN1_LEVELS},
+    },
+    "RESTYPE": {
+        "berke2023": {1: "Private home", 2: "Apartment", 3: "Other"},  # `Q_residence_type`
+    },
+    # Separate "Hispanic / Latino" question (not a race option in these surveys).
+    "HISPANIC": {
+        "grummon2023": {0.0: "No", 1.0: "Yes"},  # `latino`: Are you of Hispanic, Latino, or Spanish origin?
+        "grummon2025": {0.0: "No", 1.0: "Yes"},  # `latino`: same question
+        "wu2025": {  # `ethnicity`: Are you Spanish, Hispanic, or Latino or none of these?
+            "Spanish, Hispanic, or Latino": "Yes",
+            "None of these": "No",
+        },
     },
 }
 
@@ -1134,6 +1262,7 @@ def apply_persona_mapping(df: pd.DataFrame, dataset: str) -> pd.DataFrame:
         if "RACE" not in df.columns:
             df["RACE"] = race_from_checkboxes(df, COVID_RACE_COLS, "covid", allow_all_missing=False)
     elif dataset == "berke2023":
+        df["c_alphan"] = "United States"
         for src_col, attr in BERKE2023_COL_TO_PERSONA.items():
             if src_col not in df.columns:
                 raise ValueError(f"berke2023: missing column {src_col} for persona attribute {attr}")
@@ -1153,6 +1282,26 @@ def apply_persona_mapping(df: pd.DataFrame, dataset: str) -> pd.DataFrame:
         flags = pd.DataFrame(flag_rows, index=df.index)
         race_labels = [(f"Q_race_{c}", label) for c, label in BERKE2023_RACE_CODES.items()]
         df["RACE"] = race_from_checkboxes(flags, race_labels, "berke2023", allow_all_missing=False)
+    elif dataset == "wu2025":
+        source_cols = [*WU2025_COL_TO_PERSONA, "race"]
+        missing_cols = [c for c in source_cols if c not in df.columns]
+        if missing_cols:
+            raise ValueError(f"wu2025: missing columns {missing_cols}")
+        for src_col, attr in WU2025_COL_TO_PERSONA.items():
+            df[attr] = df[src_col].replace("", float("nan"))  # "" = no answer recorded
+        flag_rows = []
+        for val in df["race"]:
+            if val == "":
+                flag_rows.append({f"race_{i}": float("nan") for i in range(len(WU2025_RACE_LABELS))})
+                continue
+            parts = str(val).split(",")
+            unknown = [p for p in parts if p not in WU2025_RACE_LABELS]
+            if unknown or len(set(parts)) != len(parts):
+                raise ValueError(f"wu2025: invalid race value {val!r}")
+            flag_rows.append({f"race_{i}": int(lab in parts) for i, lab in enumerate(WU2025_RACE_LABELS)})
+        flags = pd.DataFrame(flag_rows, index=df.index)
+        race_labels = [(f"race_{i}", lab) for i, lab in enumerate(WU2025_RACE_LABELS)]
+        df["RACE"] = race_from_checkboxes(flags, race_labels, "wu2025", allow_all_missing=True)
     elif dataset == "kriner2026":
         df["c_alphan"] = "United States"
         for src_col, attr in KRINER2026_COL_TO_PERSONA.items():

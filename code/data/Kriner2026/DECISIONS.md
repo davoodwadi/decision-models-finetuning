@@ -56,9 +56,9 @@ History: first None → NaN (rejected: a missing line would mean "None" here but
 - `flight_choice`: one row per respondent x task; `option_texts = ['Flight 1', 'Flight 2']`, `option_descriptions` = each
   flight's attributes in the respondent's display order. `qid` = `kriner2026:flight_choice:<profile A>_<profile B>_<attribute order>`,
   so identical screens share a `qid`.
-- `reversed` for included score items (`SCORE_REVERSED`), confirmed by the user: `saf_familiar_old` True,
-  `saf_safe_old` True, `sci_know_self` False (True = the first listed option is the high end, Covid convention).
-  Nothing in this repo currently reads `reversed`.
+- No `reversed` column (decision 2026-11-14): nothing in training or inference reads it (`build_long_records` drops it;
+  the model sees only the listed option order), and the repo used two conflicting meanings for it (ISSP: codes run
+  downward in the listed order; Covid: the high end is listed first). Excluded from the audit CSV, the UI and the parquet.
 
 ## Loaders (`__init__.py`)
 
