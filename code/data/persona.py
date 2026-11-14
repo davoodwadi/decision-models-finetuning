@@ -47,6 +47,7 @@ DATASET_PERSONA_COLS = {
     ],
     "covid": [
         "c_alphan",
+        "US_REG",
         "SEX",
         "AGE",
         "EDULEVEL",
@@ -76,7 +77,12 @@ DATASET_PERSONA_COLS = {
     ],
 }
 
+# Note: `party_lean` (asked to all 1,971 respondents without skip logic) and `evangelical`
+# (asked only when `relig in {1, 2, 3, 4}`; neither ISSP nor Twin-2K QID18 has an evangelical
+# persona key, and folding it into `Other Christian` would overwrite `Protestant`/`Catholic`/`Orthodox`)
+# are intentionally excluded from COVID personas.
 COVID_COL_TO_PERSONA = {
+    "state": "US_REG",
     "gender": "SEX",
     "age": "AGE",
     "education": "EDULEVEL",
@@ -197,7 +203,13 @@ GLOBAL_PERSONA_LEVELS = {
     ],
     "US_PRTY": [
         "Democrat",
+        "Strong Democrat",
+        "Moderate Democrat",
+        "Lean Democrat",
         "Republican",
+        "Lean Republican",
+        "Moderate Republican",
+        "Strong Republican",
         "Independent",
         "Something else",
         "Other candidate",
@@ -266,7 +278,7 @@ PERSONA_MAPS = {
         "twin2k": {"United States": "United States"},
         "subpop": {"United States": "United States"},
         "covid": {"United States": "United States"},
-        "grummon": {"United States": "United States"},
+        "grummon2025": {"United States": "United States"},
         "grummon2023": {"United States": "United States"},
         "wvs": {"United States": "United States"},
     },
@@ -275,7 +287,7 @@ PERSONA_MAPS = {
         "twin2k": {"Male": "Male", "Female": "Female"},
         "subpop": {"Male": "Male", "Female": "Female"},
         "covid": {1: "Male", 2: "Female", 3: None},
-        "grummon": {1.0: "Female", 2.0: "Male", 3.0: "Non-binary", 4.0: None},
+        "grummon2025": {1.0: "Female", 2.0: "Male", 3.0: "Non-binary", 4.0: None},
         "grummon2023": {1.0: "Female", 2.0: "Male", 3.0: "Non-binary", 4.0: None},
         "wvs": {"Male": "Male", "Female": "Female"},
     },
@@ -306,6 +318,59 @@ PERSONA_MAPS = {
         "subpop": {
             "Northeast": "Northeast",
             "South": "South",
+        },
+        "covid": {  # state (1..51) -> US Census Bureau region
+            1: "South",  # Alabama
+            2: "West",  # Alaska
+            3: "West",  # Arizona
+            4: "South",  # Arkansas
+            5: "West",  # California
+            6: "West",  # Colorado
+            7: "Northeast",  # Connecticut
+            8: "South",  # Delaware
+            9: "South",  # District of Columbia
+            10: "South",  # Florida
+            11: "South",  # Georgia
+            12: "West",  # Hawaii
+            13: "West",  # Idaho
+            14: "Midwest",  # Illinois
+            15: "Midwest",  # Indiana
+            16: "Midwest",  # Iowa
+            17: "Midwest",  # Kansas
+            18: "South",  # Kentucky
+            19: "South",  # Louisiana
+            20: "Northeast",  # Maine
+            21: "South",  # Maryland
+            22: "Northeast",  # Massachusetts
+            23: "Midwest",  # Michigan
+            24: "Midwest",  # Minnesota
+            25: "South",  # Mississippi
+            26: "Midwest",  # Missouri
+            27: "West",  # Montana
+            28: "Midwest",  # Nebraska
+            29: "West",  # Nevada
+            30: "Northeast",  # New Hampshire
+            31: "Northeast",  # New Jersey
+            32: "West",  # New Mexico
+            33: "Northeast",  # New York
+            34: "South",  # North Carolina
+            35: "Midwest",  # North Dakota
+            36: "Midwest",  # Ohio
+            37: "South",  # Oklahoma
+            38: "West",  # Oregon
+            39: "Northeast",  # Pennsylvania
+            40: "Northeast",  # Rhode Island
+            41: "South",  # South Carolina
+            42: "Midwest",  # South Dakota
+            43: "South",  # Tennessee
+            44: "South",  # Texas
+            45: "West",  # Utah
+            46: "Northeast",  # Vermont
+            47: "South",  # Virginia
+            48: "West",  # Washington
+            49: "South",  # West Virginia
+            50: "Midwest",  # Wisconsin
+            51: "West",  # Wyoming
         },
         "wvs": {  # state -> US Census Bureau region
             "US-AL Alabama": "South",
@@ -389,7 +454,7 @@ PERSONA_MAPS = {
             7: "College graduate/some postgrad",
             8: "College graduate/some postgrad",
         },
-        "grummon": {
+        "grummon2025": {
             1.0: "Less than high school",
             2.0: "High school or some college",
             3.0: "High school or some college",
@@ -439,7 +504,7 @@ PERSONA_MAPS = {
             "American Indian": "Other",
             "Other": "Other",
         },
-        "grummon": {
+        "grummon2025": {
             "White": "White",
             "Black": "Black",
             "Asian": "Asian",
@@ -607,6 +672,16 @@ PERSONA_MAPS = {
             "USA: Green Party of the United States": "Green",
             "Other": "Other candidate",
         },
+        "grummon2023": {
+            1.0: "Strong Democrat",
+            2.0: "Moderate Democrat",
+            3.0: "Lean Democrat",
+            4.0: "Independent",
+            5.0: "Lean Republican",
+            6.0: "Moderate Republican",
+            7.0: "Strong Republican",
+            8.0: "Something else",
+        },
     },
     "US_INC": {
         "issp": {
@@ -639,7 +714,7 @@ PERSONA_MAPS = {
             5: "$80,000 - $99,999",
             6: "$100,000 or more",
         },
-        "grummon": {
+        "grummon2025": {
             1.0: "Less than $25,000",
             2.0: "Less than $25,000",
             3.0: "Less than $25,000",
@@ -702,7 +777,7 @@ PERSONA_MAPS = {
             "More than 4": "More than 4",
         },
         "wvs": {"1": "1", "2": "2", "3": "3", "4": "4", "5": "More than 4", "6": "More than 4"},
-        "grummon": {float(k): (str(k) if k <= 4 else "More than 4") for k in range(1, 21)},
+        "grummon2025": {float(k): (str(k) if k <= 4 else "More than 4") for k in range(1, 21)},
         "grummon2023": {float(k): (str(k) if k <= 4 else "More than 4") for k in range(1, 21)},
     },
     "MAINSTAT": {
@@ -772,7 +847,7 @@ def bucket_age_series(series: pd.Series, dataset: str) -> pd.Series:
 
 def map_persona_series(series: pd.Series, attr: str, dataset: str) -> pd.Series:
     """Map a dataset persona column into its canonical global levels with fail-fast validation."""
-    if attr == "AGE" and dataset in {"issp", "covid", "grummon", "grummon2023", "wvs"}:
+    if attr == "AGE" and dataset in {"issp", "covid", "grummon2025", "grummon2023", "wvs"}:
         return bucket_age_series(series, dataset=dataset)
 
     mapping = PERSONA_MAPS[attr][dataset]

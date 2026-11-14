@@ -19,8 +19,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  defaultSubitemSep,
   getEffectiveType,
   getRawStem,
+  isLegacyAutoSubitemSepDataset,
   joinQuestionStem,
   normalizeQuestionOverride,
   resolveContextText,
@@ -36,6 +38,7 @@ import type {
 import { TagEditor } from "./TagEditor";
 
 interface DetailPaneProps {
+  dsId: string;
   row: AuditRow | undefined;
   savedData: Record<string, string> | undefined;
   savedOverride?: QuestionOverride;
@@ -95,6 +98,7 @@ function initContextState(rawCsInput: string): {
 }
 
 export function DetailPane({
+  dsId,
   row,
   savedData,
   savedOverride,
@@ -131,6 +135,9 @@ export function DetailPane({
     const raw = row?.data.context_sep ?? "";
     return raw === "" ? "\\n\\n" : raw;
   });
+  const [subitemSepInput, setSubitemSepInput] = useState(
+    () => effectiveOverride?.subitem_sep ?? defaultSubitemSep(dsId)
+  );
   const [blockSearch, setBlockSearch] = useState("");
   const [showStemCandidates, setShowStemCandidates] = useState(false);
   const [showFullSubItemPrompts, setShowFullSubItemPrompts] = useState(false);
@@ -193,7 +200,8 @@ export function DetailPane({
           effectiveContextSource,
           effectiveContextSep,
           effectiveOverride,
-          dropSet
+          dropSet,
+          dsId
         )
       : [];
   const safeVariantIdx =
@@ -238,6 +246,9 @@ export function DetailPane({
       ...(effectiveOverride?.subitems
         ? { subitems: { ...effectiveOverride.subitems } }
         : {}),
+      ...(effectiveOverride?.subitem_sep !== undefined
+        ? { subitem_sep: effectiveOverride.subitem_sep }
+        : {}),
       ...(effectiveOverride?.options
         ? { options: { ...effectiveOverride.options } }
         : {}),
@@ -247,7 +258,8 @@ export function DetailPane({
       updated,
       schemaKind,
       d,
-      detail
+      detail,
+      dsId
     );
     onStageOverride(row.rowIdx, normalized);
   };
@@ -370,7 +382,9 @@ export function DetailPane({
               resolvedCtx,
               effectiveQuestionStem,
               rawRowText,
-              effectiveContextSep
+              effectiveContextSep,
+              effectiveOverride?.subitem_sep,
+              dsId
             ),
             options: subOpts,
             totalN: subOpts.reduce((acc, o) => acc + o.count, 0),
@@ -735,7 +749,9 @@ export function DetailPane({
                           : "modified"
                         : col === "override.subitems"
                           ? `${Object.keys(effectiveOverride?.subitems ?? {}).length} sub-item(s)`
-                          : `${Object.keys(effectiveOverride?.options ?? {}).length} option(s)`;
+                          : col === "override.subitem_sep"
+                            ? `delimiter ${JSON.stringify(effectiveOverride?.subitem_sep ?? defaultSubitemSep(dsId))}`
+                            : `${Object.keys(effectiveOverride?.options ?? {}).length} option(s)`;
                     return (
                       <span
                         key={col}
@@ -1410,6 +1426,76 @@ export function DetailPane({
                     </span>
                   </div>
                   <div className="flex items-center gap-2.5 flex-wrap">
+                    {isMatrixLikert &&
+                      !isLegacyAutoSubitemSepDataset(dsId) &&
+                      onStageOverride && (
+                        <div className="flex items-center gap-1 rounded-md border border-violet-200 bg-white px-1.5 py-0.5">
+                          <span className="text-[11px] font-medium text-slate-600">
+                            Delimiter:
+                          </span>
+                          {(
+                            [
+                              { raw: "\\n\\n", label: "\\n\\n", title: "Blank line (default)" },
+                              { raw: "\\n", label: "\\n", title: "Single newline" },
+                              { raw: " ", label: "␣", title: "Single space" },
+                              { raw: ": ", label: ": ", title: "Colon + space" },
+                            ] as const
+                          ).map((preset) => {
+                            const curRaw =
+                              effectiveOverride?.subitem_sep ?? defaultSubitemSep(dsId);
+                            const active = curRaw === preset.raw;
+                            return (
+                              <button
+                                key={preset.raw}
+                                type="button"
+                                title={preset.title}
+                                onClick={() => {
+                                  setSubitemSepInput(preset.raw);
+                                  stageOverrideUpdate((cur) => ({
+                                    ...cur,
+                                    subitem_sep: preset.raw,
+                                  }));
+                                }}
+                                className={[
+                                  "px-1.5 py-0.5 rounded font-mono text-[11px] transition-colors cursor-pointer",
+                                  active
+                                    ? "bg-violet-600 text-white font-semibold"
+                                    : "bg-slate-100 text-slate-700 hover:bg-violet-100",
+                                ].join(" ")}
+                              >
+                                {preset.label}
+                              </button>
+                            );
+                          })}
+                          <Input
+                            type="text"
+                            value={subitemSepInput}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setSubitemSepInput(v);
+                              stageOverrideUpdate((cur) => ({
+                                ...cur,
+                                subitem_sep: v === "" ? undefined : v,
+                              }));
+                            }}
+                            onBlur={() => {
+                              if (subitemSepInput === "") {
+                                setSubitemSepInput(defaultSubitemSep(dsId));
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                (e.target as HTMLInputElement).blur();
+                              }
+                            }}
+                            placeholder="\\n\\n"
+                            title="Custom delimiter between Matrix stem and sub-item (use \n for newline)"
+                            className="h-5 w-16 bg-slate-50 px-1.5 font-mono text-[11px] text-slate-900 shadow-none"
+                          />
+                        </div>
+                      )}
                     {onStageOverride && activeSubItem && (
                       <Button
                         type="button"

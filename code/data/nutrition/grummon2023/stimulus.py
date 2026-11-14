@@ -221,7 +221,7 @@ LABEL_REACTION_SPECS = OrderedDict(
                 "plural": "Did the labels influence which beverage you selected?",
                 "options": INFL_3,
                 "tags": ["prior-task-dep", "grummon2025-similar"],
-                "note": "Retrospective self-report about prior beverage selection; similar to Grummon 2025 secondary item rused_trial (not in grummon_US_long.parquet).",
+                "note": "Retrospective self-report about prior beverage selection; similar to Grummon 2025 secondary item rused_trial (also in grummon2025_US_long.parquet).",
             },
         ),
         (
@@ -234,7 +234,7 @@ LABEL_REACTION_SPECS = OrderedDict(
                 "plural": "How much did you use these labels to help you decide which beverage to select?",
                 "options": EXTENT_5,
                 "tags": ["prior-task-dep", "grummon2025-similar"],
-                "note": "Retrospective self-report about prior beverage selection; similar to Grummon 2025 secondary items rused_trial / rhelp (not in grummon_US_long.parquet).",
+                "note": "Retrospective self-report about prior beverage selection; similar to Grummon 2025 secondary items rused_trial / rhelp (also in grummon2025_US_long.parquet).",
             },
         ),
         (
@@ -247,7 +247,7 @@ LABEL_REACTION_SPECS = OrderedDict(
                 "plural": "Did the labels influence which snack you selected?",
                 "options": INFL_3,
                 "tags": ["prior-task-dep", "grummon2025-similar"],
-                "note": "Retrospective self-report about prior snack selection; similar to Grummon 2025 secondary item rused_trial (not in grummon_US_long.parquet).",
+                "note": "Retrospective self-report about prior snack selection; similar to Grummon 2025 secondary item rused_trial (also in grummon2025_US_long.parquet).",
             },
         ),
         (
@@ -260,7 +260,7 @@ LABEL_REACTION_SPECS = OrderedDict(
                 "plural": "How much did you use these labels to help you decide which snack to select?",
                 "options": EXTENT_5,
                 "tags": ["prior-task-dep", "grummon2025-similar"],
-                "note": "Retrospective self-report about prior snack selection; similar to Grummon 2025 secondary items rused_trial / rhelp (not in grummon_US_long.parquet).",
+                "note": "Retrospective self-report about prior snack selection; similar to Grummon 2025 secondary items rused_trial / rhelp (also in grummon2025_US_long.parquet).",
             },
         ),
         (
@@ -286,7 +286,7 @@ LABEL_REACTION_SPECS = OrderedDict(
                 "plural": "How much do these labels make you think about the health effects of foods and beverages?",
                 "options": EXTENT_5,
                 "tags": ["grummon2025-similar"],
-                "note": "Standalone label evaluation (Table 2); construct parallel to Grummon 2025 secondary item elaborationhealth (not in grummon_US_long.parquet).",
+                "note": "Standalone label evaluation (Table 2); construct parallel to Grummon 2025 secondary item elaborationhealth (also in grummon2025_US_long.parquet).",
             },
         ),
         (
@@ -325,7 +325,7 @@ LABEL_REACTION_SPECS = OrderedDict(
                 "plural": "How much do these labels make you feel worried?",
                 "options": EXTENT_5,
                 "tags": ["in-grummon2025"],
-                "note": "Same wording/scale as Grummon 2025 secondary item raffect_worried in ParentFile_wide.csv (NOT in exported test set grummon_US_long.parquet, and evaluated on different FOPL designs).",
+                "note": "Same wording/scale as Grummon 2025 secondary item raffect_worried (also in the Grummon 2025 test set grummon2025_US_long.parquet, evaluated on different FOPL designs).",
             },
         ),
         (
@@ -338,7 +338,7 @@ LABEL_REACTION_SPECS = OrderedDict(
                 "plural": "How much do these labels make you feel scared?",
                 "options": EXTENT_5,
                 "tags": ["in-grummon2025"],
-                "note": "Same wording/scale as Grummon 2025 secondary item raffect_scared in ParentFile_wide.csv (NOT in grummon_US_long.parquet).",
+                "note": "Same wording/scale as Grummon 2025 secondary item raffect_scared (also in grummon2025_US_long.parquet).",
             },
         ),
         (
@@ -351,7 +351,7 @@ LABEL_REACTION_SPECS = OrderedDict(
                 "plural": "How much do these labels make you feel guilty?",
                 "options": EXTENT_5,
                 "tags": ["in-grummon2025"],
-                "note": "Same wording/scale as Grummon 2025 secondary item raffect_guilty in ParentFile_wide.csv (NOT in grummon_US_long.parquet).",
+                "note": "Same wording/scale as Grummon 2025 secondary item raffect_guilty (also in grummon2025_US_long.parquet).",
             },
         ),
         (
@@ -364,7 +364,7 @@ LABEL_REACTION_SPECS = OrderedDict(
                 "plural": "How much do these labels make you feel ashamed?",
                 "options": EXTENT_5,
                 "tags": ["in-grummon2025"],
-                "note": "Same wording/scale as Grummon 2025 secondary item raffect_ashamed in ParentFile_wide.csv (NOT in grummon_US_long.parquet).",
+                "note": "Same wording/scale as Grummon 2025 secondary item raffect_ashamed (also in grummon2025_US_long.parquet).",
             },
         ),
         (
@@ -377,7 +377,7 @@ LABEL_REACTION_SPECS = OrderedDict(
                 "plural": "How much do these labels make you feel sad?",
                 "options": EXTENT_5,
                 "tags": ["in-grummon2025"],
-                "note": "Same wording/scale as Grummon 2025 secondary item raffect_sad in ParentFile_wide.csv (NOT in grummon_US_long.parquet).",
+                "note": "Same wording/scale as Grummon 2025 secondary item raffect_sad (also in grummon2025_US_long.parquet).",
             },
         ),
         (
@@ -403,7 +403,7 @@ LABEL_REACTION_SPECS = OrderedDict(
                 "plural": "How much do you trust or distrust the information in these labels?",
                 "options": TRUST_5,
                 "tags": ["in-grummon2025"],
-                "note": "Same wording/scale as Grummon 2025 secondary item rtrust in ParentFile_wide.csv (NOT in grummon_US_long.parquet).",
+                "note": "Same wording/scale as Grummon 2025 secondary item rtrust (also in grummon2025_US_long.parquet).",
             },
         ),
         (
@@ -1048,7 +1048,7 @@ def build_survey_audit_artifacts(
         kev_type="choice",
         include=False,
         tags=["prior-task-dep", "in-grummon2025"],
-        note="Retrospective recall of non-calorie labels ([134]-[138]); direct counterpart to Grummon 2025 secondary item rnoticed_trial in ParentFile_wide.csv (NOT in grummon_US_long.parquet).",
+        note="Retrospective recall of non-calorie labels ([134]-[138]); direct counterpart to Grummon 2025 item noticed_trial (same Yes / No / Not sure options; also in grummon2025_US_long.parquet).",
     )
 
     for stem, spec in LABEL_REACTION_SPECS.items():

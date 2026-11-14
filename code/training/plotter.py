@@ -120,7 +120,8 @@ class TrainingPlotter:
         self.redraw(step)
         self.redraw_table()
 
-    def update_status(self, step, epoch=0, status="training", lr=None):
+    def update_status(self, step, epoch=0, status="training", lr=None, eval_progress=None):
+        """Redraw the status box; `eval_progress=(done_batches, total_batches, start_time)` adds an eval sub-bar."""
         self.init_display()
         if lr is not None:
             self.last_lr = lr
@@ -153,10 +154,28 @@ class TrainingPlotter:
             f"</div>"
             f"<div style='width: 100%; height: 12px; background: #e2e8f0; border-radius: 4px; overflow: hidden;'>"
             f"<div style='width: {min(100.0, max(0.2 if step > 0 else 0.0, pct)):.3f}%; height: 100%; background: {bar_color};'></div>"
-            f"</div></div>"
+            f"</div>{self._eval_bar_html(eval_progress, now)}</div>"
         )
         if self.status_handle is not None:
             self.status_handle.update(HTML(html))
+
+    @staticmethod
+    def _eval_bar_html(eval_progress, now):
+        if eval_progress is None:
+            return ""
+        done, total, start_time = eval_progress
+        if total <= 0 or not 0 <= done <= total:
+            raise ValueError(f"Invalid eval_progress: done={done}, total={total}")
+        elapsed = now - start_time
+        eta_str = fmt_time(elapsed / done * (total - done)) if done > 0 else "--:--"
+        eval_pct = 100.0 * done / total
+        return (
+            f"<div style='margin: 6px 0 3px 0; color: #b45309;'>"
+            f"eval batches <b>{done:,} / {total:,}</b> (<b>{eval_pct:.1f}%</b>) &nbsp;|&nbsp; "
+            f"{fmt_time(elapsed)} &lt; {eta_str}</div>"
+            f"<div style='width: 100%; height: 8px; background: #fde68a; border-radius: 4px; overflow: hidden;'>"
+            f"<div style='width: {eval_pct:.3f}%; height: 100%; background: #f59e0b;'></div></div>"
+        )
 
     def log_step(self, step, step_kls, epoch=1, lr=None):
         self.init_display()
@@ -210,8 +229,11 @@ class TrainingPlotter:
         if not self.val_rows:
             return
         df = pd.DataFrame(self.val_rows)
-        val_col = f"{self.val_name}_kl"
-        best_idx = df[val_col].idxmin() if df[val_col].notna().any() else None
+        if self.val_name is None:
+            best_idx = None
+        else:
+            val_col = f"{self.val_name}_kl"
+            best_idx = df[val_col].idxmin() if df[val_col].notna().any() else None
         fmt = {c: "{:.4f}" for c in df.columns if c not in ("epoch", "step")}
         for c in df.columns:
             if "MAPE" in c:

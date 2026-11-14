@@ -638,15 +638,18 @@ def build_question_bank_details(csv_path: Path, df: pd.DataFrame) -> dict:
     }
 
 
-def build_grummon2023_details(csv_path: Path) -> dict:
-    import sys
+def build_stimulus_details(csv_path: Path) -> dict:
+    import importlib.util
 
-    g23_dir = str(csv_path.parent.resolve())
-    if g23_dir not in sys.path:
-        sys.path.insert(0, g23_dir)
-    import stimulus as g23_stimulus
-
-    _, _, details_payload = g23_stimulus.build_survey_audit_artifacts()
+    stim_path = csv_path.parent.resolve() / "stimulus.py"
+    spec = importlib.util.spec_from_file_location(
+        f"{csv_path.parent.name}_stimulus", stim_path
+    )
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Could not load stimulus module: {stim_path}")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    _, _, details_payload = mod.build_survey_audit_artifacts()
     return details_payload
 
 
@@ -657,8 +660,8 @@ def index_csv(csv_path: Path) -> Path:
     if {"catalog_idx", "QuestionID", "include", "kev_type"}.issubset(cols):
         if "study" in cols:
             payload = build_mega_study_details(csv_path, df)
-        elif csv_path.parent.name == "grummon2023":
-            payload = build_grummon2023_details(csv_path)
+        elif (csv_path.parent / "stimulus.py").exists():
+            payload = build_stimulus_details(csv_path)
         else:
             payload = build_twin2k_details(csv_path, df)
     elif {"v", "type", "question", "options"}.issubset(cols):

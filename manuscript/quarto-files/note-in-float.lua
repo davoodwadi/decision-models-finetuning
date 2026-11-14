@@ -1,14 +1,15 @@
 -- note-in-float.lua
--- LaTeX only: move a "Table Note" div that directly follows an appendix float
--- (appfig/apptbl) inside the float, so the note always stays with its
--- figure/table. The qmd keeps the note outside the float div, so docx output is
--- unchanged. Must run at post-render, after Quarto builds the float.
+-- LaTeX only: move a "Table Note" div that directly follows a float
+-- (figure/table/appfig/apptbl) inside the float, so the note always stays with
+-- its figure/table. The qmd keeps the note outside the float div, so docx
+-- output is unchanged. Must run at post-render, after Quarto builds the float.
 --
 -- appfig uses a bottom caption, which the float package always typesets last, so
--- figure notes are wrapped in \floatnote{...} (preamble.tex) to print after the
--- caption. apptbl floats are normally unwrapped first by breakable-apptbl.lua.
+-- appfig notes are wrapped in \floatnote{...} (preamble.tex) to print after the
+-- caption. Standard figure environments typeset blocks in order after \caption.
+-- apptbl/table floats are normally unwrapped first by breakable-apptbl.lua.
 
-local float_envs = { appfig = true, apptbl = true }
+local float_envs = { figure = true, table = true, appfig = true, apptbl = true }
 
 local function float_env(block)
   if block.t ~= "Div" or not block.classes:includes("quarto-scaffold") then
@@ -30,14 +31,27 @@ local function is_note(block)
 end
 
 local function note_blocks(env, note)
-  if env ~= "appfig" then
-    return note.content
+  if env == "appfig" then
+    local res = pandoc.Blocks({ pandoc.RawBlock("latex", "\\floatnote{") })
+    res:extend(note.content)
+    res:insert(pandoc.RawBlock("latex", "}"))
+    return res
   end
-  -- fragment only (no template), keeping the document's citation method
-  local opts = { cite_method = PANDOC_WRITER_OPTIONS.cite_method }
-  local tex = pandoc.write(pandoc.Pandoc(note.content), "latex", opts)
-  tex = tex:gsub("^%s+", ""):gsub("%s+$", "")
-  return { pandoc.RawBlock("latex", "\\floatnote{" .. tex .. "}") }
+  if env == "figure" then
+    local res = pandoc.Blocks({ pandoc.RawBlock("latex", "\\vspace{\\abovecaptionskip}") })
+    if #note.content > 0 and note.content[1].t == "Para" then
+      local p = note.content[1]:clone()
+      p.content:insert(1, pandoc.RawInline("latex", "\\noindent "))
+      res:insert(p)
+      for j = 2, #note.content do
+        res:insert(note.content[j])
+      end
+    else
+      res:extend(note.content)
+    end
+    return res
+  end
+  return note.content
 end
 
 function Blocks(blocks)

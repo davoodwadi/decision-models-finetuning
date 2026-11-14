@@ -36,3 +36,10 @@ if logits.shape[-1] != num_options:
 # Bad: silently slicing or ignoring mismatched dimensions
 logits = logits[..., :num_options]
 ```
+
+# Python environment and packages
+
+Always use the uv python environment that is available in a workspace.
+If you hit a missing package, remind the user to install it.
+
+**Never use the ask_user tool**

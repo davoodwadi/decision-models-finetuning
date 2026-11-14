@@ -37,7 +37,9 @@ from kev.fused_qwen35 import (
 
 EXTRA_PERSONA_NAMES = {
     "HISPANIC": "Hispanic or Latino",
+    "CHILDREN": "How many children (ages 0-18) currently live in your household?",
     "SNAP": "SNAP / Food Stamps recipient",
+    "WIC": "Do you or anyone else in your household currently receive WIC benefits?",
     "NFPUSE": "Nutrition Facts label usage",
     "ONLINEAMT": "Share of groceries bought online",
     # Derived in Grummon 2025 (scr_litall = 0..4 sum across 4 NVS ice-cream Nutrition Facts math items, not a single verbatim survey question); may be adapted in the future.
@@ -46,6 +48,11 @@ EXTRA_PERSONA_NAMES = {
         "How often do you need to have someone help you when you read instructions, "
         "pamphlets, or other written materials from your doctor or pharmacy?"
     ),
+    "DIETQUAL": "In general, how healthy is your overall diet?",
+    "VENDING_BEV": "In a typical week, how often do you buy beverages from vending machines?",
+    "VENDING_SNACK": "In a typical week, how often do you buy snacks from vending machines?",
+    # Derived in Grummon 2023 from self-reported height_feet, height_inches, and weight_lbs matching published Table 1; may be adapted in the future.
+    "BMI": "Body mass index (BMI)",
 }
 ALL_PERSONA_NAMES = {**PERSONA_NAMES, **EXTRA_PERSONA_NAMES}
 
@@ -68,6 +75,15 @@ def add_one_hot(df):
     df["one_hot"] = one_hots
 
 
+def option_descs_or_none(value):
+    """Return `option_descriptions` as a list, or None when the row has none (None, or NaN from concatenating datasets without the column)."""
+    if value is None or (isinstance(value, float) and np.isnan(value)):
+        return None
+    if isinstance(value, (list, tuple, np.ndarray)):
+        return list(value)
+    raise TypeError(f"option_descriptions must be a list, None or NaN, got {type(value).__name__}: {value!r}")
+
+
 def make_record(sub_df, cols, persona_names=ALL_PERSONA_NAMES):
     """Build a single persona-question record dict from a respondent row or subgroup DataFrame."""
     if isinstance(sub_df, dict):
@@ -83,11 +99,7 @@ def make_record(sub_df, cols, persona_names=ALL_PERSONA_NAMES):
         n = len(sub_df)
 
     personas = {c: row[c] for c in cols}
-    opt_descs = (
-        list(row["option_descriptions"])
-        if ("option_descriptions" in row and row["option_descriptions"] is not None)
-        else None
-    )
+    opt_descs = option_descs_or_none(row["option_descriptions"]) if "option_descriptions" in row else None
     rec = {
         "qid": row["qid"],
         "year": row["year"],
@@ -166,7 +178,7 @@ def build_persona_dataset(
     cache_file = None
     if cache_dir is not None:
         unique_qids = tuple(sorted(df["qid"].unique()))
-        key = repr((len(df), unique_qids, attr_sets, include_country, min_n, PERSONA_MAPS))
+        key = repr((len(df), tuple(df.columns), unique_qids, attr_sets, include_country, min_n, PERSONA_MAPS, ALL_PERSONA_NAMES))
         digest = hashlib.md5(key.encode()).hexdigest()[:8]
         cache_file = Path(cache_dir) / f"{desc}_min{min_n}_{digest}.pkl"
         if cache_file.exists():
@@ -232,11 +244,7 @@ def build_long_records(long_df, persona_cols, *, include_country, year="long", p
     records = []
     for row in long_df.to_dict("records"):
         personas = {c: row[c] for c in cols if c in row and pd.notna(row[c])}
-        opt_descs = (
-            list(row["option_descriptions"])
-            if has_descs and row["option_descriptions"] is not None
-            else None
-        )
+        opt_descs = option_descs_or_none(row["option_descriptions"]) if has_descs else None
         rec = {
             "qid": row["qid"],
             "year": row["year"] if has_year else year,
@@ -791,8 +799,11 @@ def predict_probs_grouped(
     show_progress=True,
     return_stats=False,
     capture_graphs=True,
+    progress_fn=None,
 ):
     """Shared-state inference using the pre-grouped evaluation bundle from `group_records_by_state()`.
+
+    - `progress_fn(done_batches, total_batches)`, when given, is called after every GPU batch (e.g. to update a status box).
 
     - Tokenizes `packed_views` once per `(tokenizer, option_isolation)` and caches `grouped_records["encs"]` in memory and `.cache/`.
     - Packs states into length-sorted batches bounded by `max_questions` and padded `max_chars`.
@@ -842,13 +853,15 @@ def predict_probs_grouped(
         with ctx:
             packed_probs = [None] * len(encs)
             batch_iter = tqdm(batches, desc=f"Evaluating {label} (shared-state)", unit="batch", leave=False) if show_progress else batches
-            for batch_indices in batch_iter:
+            for done, batch_indices in enumerate(batch_iter, start=1):
                 b_encs = [encs[i] for i in batch_indices]
                 probs_batch, _ = model.net.probs_batch(b_encs, [None] * len(b_encs), [False] * len(b_encs))
                 if capture_graphs and model.net.graphs.capture_due(False):
                     model.net.graphs.capture_pending()
                 for orig_idx, q_list in zip(batch_indices, probs_batch, strict=True):
                     packed_probs[orig_idx] = [p.float().numpy() for p in q_list]
+                if progress_fn is not None:
+                    progress_fn(done, len(batches))
         torch.cuda.synchronize()
     finally:
         if was_training:
@@ -919,6 +932,7 @@ def evaluate_model(
     show_progress=True,
     view_fn=make_view,
     return_details=False,
+    progress_fn=None,
 ):
     """Unified evaluation entry point accepting either flat `records` (list) or `grouped_records` (dict)."""
     if isinstance(eval_data, dict):
@@ -930,9 +944,12 @@ def evaluate_model(
             max_chars=max_chars,
             show_progress=show_progress,
             return_stats=True,
+            progress_fn=progress_fn,
         )
         eval_fn = eval_data["eval_fn"]
     else:
+        if progress_fn is not None:
+            raise ValueError("progress_fn is only supported for grouped eval sets (dict), not flat record lists")
         records = eval_data
         preds, stats = predict_probs(
             model, records, batch_size=batch_size, show_progress=show_progress, view_fn=view_fn, return_stats=True

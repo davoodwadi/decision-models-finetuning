@@ -28,6 +28,10 @@ export const WARNING_TAGS = new Set([
   "kev-type-check",
   "mpl-table-text",
   "rescuable-context",
+  "arm-prompt-collision",
+  "in-grummon2023",
+  "grummon2023-similar",
+  "in-grummon2023-persona",
   "in-grummon2025",
   "grummon2025-similar",
   "in-grummon2025-persona",
@@ -93,12 +97,25 @@ export function getRawStem(
     : data.question ?? "";
 }
 
+export function isLegacyAutoSubitemSepDataset(dsId?: string): boolean {
+  return Boolean(dsId && dsId.startsWith("Twin-2K-500-Mega-Study/"));
+}
+
+export function defaultSubitemSep(dsId?: string): string {
+  return isLegacyAutoSubitemSepDataset(dsId) ? "auto" : "\\n\\n";
+}
+
+export function decodeSubitemSep(rawSep: string): string {
+  return rawSep.replaceAll("\\n", "\n").replaceAll("\\t", "\t");
+}
+
 export function isNonEmptyOverride(
   ov: QuestionOverride | null | undefined
 ): ov is QuestionOverride {
   if (!ov) return false;
   if (ov.stem !== undefined) return true;
   if (ov.subitems && Object.keys(ov.subitems).length > 0) return true;
+  if (ov.subitem_sep !== undefined && ov.subitem_sep !== "") return true;
   if (ov.options && Object.keys(ov.options).length > 0) return true;
   return false;
 }
@@ -107,7 +124,8 @@ export function normalizeQuestionOverride(
   ov: QuestionOverride | null | undefined,
   schemaKind: SchemaKind,
   data: Record<string, string>,
-  detail: ItemDetail | undefined
+  detail: ItemDetail | undefined,
+  dsId?: string
 ): QuestionOverride | null {
   if (!ov) return null;
   const rawStem = getRawStem(schemaKind, data);
@@ -135,6 +153,15 @@ export function normalizeQuestionOverride(
     }
   }
 
+  const defSubSep = defaultSubitemSep(dsId);
+  if (
+    ov.subitem_sep !== undefined &&
+    ov.subitem_sep !== "" &&
+    ov.subitem_sep !== defSubSep
+  ) {
+    cleaned.subitem_sep = ov.subitem_sep;
+  }
+
   if (ov.options) {
     const opts: Record<string, string> = {};
     for (const orig of Object.keys(ov.options)) {
@@ -160,6 +187,7 @@ export function overridesEqual(
   if (!na && !nb) return true;
   if (!na || !nb) return false;
   if ((na.stem ?? null) !== (nb.stem ?? null)) return false;
+  if ((na.subitem_sep ?? null) !== (nb.subitem_sep ?? null)) return false;
 
   const subA = na.subitems ?? {};
   const subB = nb.subitems ?? {};
@@ -195,6 +223,9 @@ export function describeDirtyOverrideFields(
   }
   if (JSON.stringify(s?.subitems ?? {}) !== JSON.stringify(d?.subitems ?? {})) {
     fields.push("override.subitems");
+  }
+  if ((s?.subitem_sep ?? null) !== (d?.subitem_sep ?? null)) {
+    fields.push("override.subitem_sep");
   }
   if (JSON.stringify(s?.options ?? {}) !== JSON.stringify(d?.options ?? {})) {
     fields.push("override.options");
@@ -311,7 +342,9 @@ export function joinQuestionStem(
   resolvedCtx: string,
   questionText: string,
   firstMatrixRow?: string,
-  rawContextSep?: string
+  rawContextSep?: string,
+  rawSubitemSep?: string,
+  dsId?: string
 ): string {
   const sep = decodeContextSep(rawContextSep);
   let stem = "";
@@ -333,10 +366,17 @@ export function joinQuestionStem(
     ) {
       return `${resolvedCtx}${sep}${firstMatrixRow}`;
     }
-    const lastChar = stem[stem.length - 1];
-    return TERMINAL_PUNCT.has(lastChar)
-      ? `${stem} ${firstMatrixRow}`
-      : `${stem}\n\n${firstMatrixRow}`;
+    const effSubSep =
+      rawSubitemSep !== undefined && rawSubitemSep !== ""
+        ? rawSubitemSep
+        : defaultSubitemSep(dsId);
+    if (effSubSep === "auto") {
+      const lastChar = stem[stem.length - 1];
+      return TERMINAL_PUNCT.has(lastChar)
+        ? `${stem} ${firstMatrixRow}`
+        : `${stem}\n\n${firstMatrixRow}`;
+    }
+    return `${stem}${decodeSubitemSep(effSubSep)}${firstMatrixRow}`;
   }
   return stem.trim();
 }
@@ -398,7 +438,8 @@ export function resolvePairedVariants(
   effectiveContextSource: string,
   effectiveContextSep: string,
   effectiveOverride: QuestionOverride | undefined,
-  dropSet: Set<string>
+  dropSet: Set<string>,
+  dsId?: string
 ): ResolvedPairedVariant[] {
   if (!detail?.paired_variants || detail.paired_variants.length <= 1) {
     return [];
@@ -462,6 +503,15 @@ export function resolvePairedVariants(
       });
     } else {
       existing.n += pv.n;
+      if (
+        pv.in_block_db_qid &&
+        existing.inBlockDbQid !== pv.in_block_db_qid &&
+        !existing.inBlockDbQid.split(" + ").includes(pv.in_block_db_qid)
+      ) {
+        existing.inBlockDbQid = existing.inBlockDbQid
+          ? `${existing.inBlockDbQid} + ${pv.in_block_db_qid}`
+          : pv.in_block_db_qid;
+      }
       for (let i = 0; i < existing.counts.length && i < pv.options.length; i++) {
         existing.counts[i] += pv.options[i].count;
       }
@@ -507,7 +557,9 @@ export function resolvePairedVariants(
       m.ctxText,
       m.effectiveStem,
       firstMatrixRow,
-      effectiveContextSep
+      effectiveContextSep,
+      effectiveOverride?.subitem_sep,
+      dsId
     );
     const activeOptLabels = options
       .filter((o) => !dropSet.has(o.rawOption))

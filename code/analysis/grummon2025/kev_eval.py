@@ -5,6 +5,7 @@ import json
 import sys
 import time
 import traceback
+from collections.abc import Sequence
 from pathlib import Path
 
 import numpy as np
@@ -19,9 +20,9 @@ if str(CODE_DIR) not in sys.path:
 if str(CODE_DIR / "kev") not in sys.path:
     sys.path.insert(0, str(CODE_DIR / "kev"))
 
-from data.grummon import (  # noqa: E402
-    GRUMMON_PERSONA_COLS,
-    GRUMMON_PERSONA_NAMES,
+from data.grummon2025 import (  # noqa: E402
+    GRUMMON2025_PERSONA_NAMES,
+    PRIMARY_CHOICE_STEMS,
 )
 from kev.model import rows_of  # noqa: E402
 from models.kev_pointer import Checkpoint, KevEncoder, KevPointerModel, LoadOptions  # noqa: E402
@@ -74,75 +75,61 @@ def load_kev_model(
     return model
 
 
-SEEN_PERSONA_COLS: tuple[str, ...] = ("SEX", "AGE", "EDULEVEL", "US_INC", "RACE", "HHSIZE")
-UNSEEN_PERSONA_COLS: tuple[str, ...] = ("HISPANIC", "SNAP", "NFPUSE", "ONLINEAMT", "HEALTHLIT")
-if list(SEEN_PERSONA_COLS) + list(UNSEEN_PERSONA_COLS) != list(GRUMMON_PERSONA_COLS):
-    raise ValueError(
-        f"SEEN_PERSONA_COLS + UNSEEN_PERSONA_COLS != GRUMMON_PERSONA_COLS: "
-        f"{list(SEEN_PERSONA_COLS) + list(UNSEEN_PERSONA_COLS)} vs {list(GRUMMON_PERSONA_COLS)}"
-    )
-
-
 def build_kev_prompt_items(
     sub_df: pd.DataFrame,
-    persona_mode: str,
-    include_country: bool = False,
+    *,
+    design_name: str,
+    persona_cols: Sequence[str],
+    skip_missing_state: bool,
 ) -> list[dict[str, object]]:
-    """Build ordered task-level Kev prompt items for the Grummon RCT subsample.
+    """Build ordered task-level Kev prompt items for one persona design.
 
-    - persona_mode == 'random': state is empty ('').
-    - persona_mode == 'persona': state is all 10 shopper attributes from GRUMMON_PERSONA_NAMES (no Country when include_country=False).
-    - persona_mode == 'seen': state is the 5 in-training demographic attributes (SEX, AGE, EDULEVEL, US_INC, RACE).
-    - persona_mode == 'unseen': state is the 5 novel shopper attributes (HISPANIC, SNAP, NFPUSE, ONLINEAMT, HEALTHLIT).
-    - persona_mode == 'single:<COL>': state is the single attribute <COL> from GRUMMON_PERSONA_COLS (rows with missing <COL> are skipped).
+    - `design_name` labels the design in every item and saved record (e.g. "random", "persona", "single:SNAP").
+    - `persona_cols` are the GRUMMON2025_PERSONA_NAMES columns rendered as "Label: value" lines in the state, in this
+      order; an empty sequence gives an empty state (no persona). Missing values are left out of a participant's state.
+    - `skip_missing_state=True` drops participants whose state would be empty (e.g. single-attribute designs);
+      `False` raises instead.
     """
-    if persona_mode == "random":
-        base_cols: list[str] = []
-    elif persona_mode == "persona":
-        base_cols = list(GRUMMON_PERSONA_COLS)
-    elif persona_mode == "seen":
-        base_cols = list(SEEN_PERSONA_COLS)
-    elif persona_mode == "unseen":
-        base_cols = list(UNSEEN_PERSONA_COLS)
-    elif persona_mode.startswith("single:"):
-        col_name = persona_mode.split(":", 1)[1]
-        if col_name not in GRUMMON_PERSONA_COLS:
-            raise ValueError(f"Unknown single persona attribute {col_name!r}, expected one of {GRUMMON_PERSONA_COLS}")
-        base_cols = [col_name]
-    else:
-        raise ValueError(
-            f"persona_mode must be 'random', 'persona', 'seen', 'unseen', or 'single:<COL>', got {persona_mode!r}"
-        )
+    persona_cols = list(persona_cols)
+    unknown = [c for c in persona_cols if c not in GRUMMON2025_PERSONA_NAMES]
+    if unknown:
+        raise ValueError(f"Unknown persona columns {unknown}; expected columns of GRUMMON2025_PERSONA_NAMES")
+    if len(set(persona_cols)) != len(persona_cols):
+        raise ValueError(f"Duplicate persona columns in {persona_cols}")
 
-    cols = (["c_alphan"] if include_country and persona_mode != "random" else []) + base_cols
     items: list[dict[str, object]] = []
     for row in sub_df.to_dict("records"):
-        if persona_mode == "random":
-            state = ""
-        else:
-            lines = [
-                f"{GRUMMON_PERSONA_NAMES[c]}: {row[c]}"
-                for c in cols
-                if c in row and pd.notna(row[c])
-            ]
-            if not lines:
-                if persona_mode.startswith("single:"):
-                    continue
-                raise ValueError(f"Empty persona state for CASEID={row['CASEID']!r} under persona_mode={persona_mode!r}")
-            state = "\n".join(lines)
+        lines = [f"{GRUMMON2025_PERSONA_NAMES[c]}: {row[c]}" for c in persona_cols if pd.notna(row[c])]
+        if persona_cols and not lines:
+            if skip_missing_state:
+                continue
+            raise ValueError(f"Empty persona state for CASEID={row['CASEID']!r} under design {design_name!r}")
+        state = "\n".join(lines)
 
+        q_type = str(row["type"])
         opt_texts = [str(t) for t in row["option_texts"]]
-        opt_descs = [None if d is None or pd.isna(d) else str(d) for d in row["option_descriptions"]]
-        if len(opt_texts) != 3 or len(opt_descs) != 3:
-            raise ValueError(f"Expected 3 options for {row['qid']}, got {len(opt_texts)}")
-        criteria = dict(zip(opt_texts, opt_descs, strict=True))
-        target = {str(t): 1.0 / len(opt_texts) for t in opt_texts}
+        raw_descs = row["option_descriptions"]
+        if q_type == "choice":
+            if raw_descs is not None:
+                opt_descs = [None if d is None or pd.isna(d) else str(d) for d in raw_descs]
+                if len(opt_texts) != len(opt_descs):
+                    raise ValueError(f"Mismatched option_descriptions length for {row['qid']}")
+                criteria: object = dict(zip(opt_texts, opt_descs, strict=True))
+            else:
+                criteria = {t: None for t in opt_texts}
+            target = {str(t): 1.0 / len(opt_texts) for t in opt_texts}
+        elif q_type == "score":
+            criteria = list(opt_texts)
+            target = {str(idx): 1.0 / len(opt_texts) for idx in range(len(opt_texts))}
+        else:
+            raise ValueError(f"Unsupported question type {q_type!r} for {row['qid']}")
+
         qid = str(row["qid"])
         view = {
             "state": state,
             "questions": {
                 qid: {
-                    "type": "choice",
+                    "type": q_type,
                     "instructions": str(row["question"]),
                     "criteria": criteria,
                     "target": target,
@@ -155,7 +142,9 @@ def build_kev_prompt_items(
             "v": str(row["v"]),
             "qid": qid,
             "arm": str(row["arm"]),
-            "persona_mode": persona_mode,
+            "type": q_type,
+            "persona_mode": design_name,
+            "persona_cols": persona_cols,
             "state": state,
             "instructions": str(row["question"]),
             "criteria": criteria,
@@ -166,7 +155,7 @@ def build_kev_prompt_items(
 
 
 def preview_kev_item(item: dict[str, object], checkpoint: str | Path = "jaredpalmer/kev-9b") -> str:
-    """Decode and format a single Grummon Kev prompt item using KevEncoder.preview (without loading backbone weights)."""
+    """Decode and format a single Grummon 2025 Kev prompt item using KevEncoder.preview (without loading backbone weights)."""
     enc = KevEncoder.for_base(str(checkpoint))
     header, text = enc.preview(item["view"])
     return f"{header}\n{text}"
@@ -178,8 +167,13 @@ def load_kev_jsonl(
     expected_model: str | None = None,
     expected_persona_mode: str | None = None,
     expected_temperature: float | None = None,
+    expected_persona_cols: Sequence[str] | None = None,
 ) -> dict[tuple[str, str], dict[str, object]]:
-    """Load saved Grummon Kev JSONL records keyed by (CASEID, v) and validate metadata."""
+    """Load saved Grummon 2025 Kev JSONL records keyed by (CASEID, v) and validate metadata.
+
+    `expected_persona_cols` requires every record to carry the same `persona_cols` (records written before
+    persona_cols were saved have no such field and fail this check).
+    """
     path = Path(jsonl_path)
     if not path.exists():
         return {}
@@ -200,6 +194,8 @@ def load_kev_jsonl(
                 raise ValueError(f"Line {line_num} in {path}: persona_mode={rec['persona_mode']!r} != {expected_persona_mode!r}")
             if expected_temperature is not None and abs(float(rec["temperature"]) - float(expected_temperature)) > 1e-6:
                 raise ValueError(f"Line {line_num} in {path}: temperature={rec['temperature']!r} != {expected_temperature!r}")
+            if expected_persona_cols is not None and rec["persona_cols"] != list(expected_persona_cols):
+                raise ValueError(f"Line {line_num} in {path}: persona_cols={rec['persona_cols']!r} != {list(expected_persona_cols)!r}")
             records[key] = rec
     return records
 
@@ -246,13 +242,16 @@ def collect_kev_prompts(
     n_personas: int | None = None,
     temperature: float | None = None,
 ) -> list[dict[str, object]]:
-    """Progressively evaluate Kev on Grummon prompt_items using (state, arm) shared-prefix deduplication."""
+    """Progressively evaluate Kev on Grummon 2025 prompt_items using (state, arm) shared-prefix deduplication."""
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     if not prompt_items:
         raise ValueError("prompt_items must not be empty")
 
     persona_mode = str(prompt_items[0]["persona_mode"])
+    persona_cols = list(prompt_items[0]["persona_cols"])
+    if any(it["persona_mode"] != persona_mode or list(it["persona_cols"]) != persona_cols for it in prompt_items):
+        raise ValueError("prompt_items mix persona designs; collect one design per output file")
     effective_temp = float(model.meta.temperature) if temperature is None else float(temperature)
 
     existing = load_kev_jsonl(
@@ -260,6 +259,7 @@ def collect_kev_prompts(
         expected_model=model_name,
         expected_persona_mode=persona_mode,
         expected_temperature=effective_temp,
+        expected_persona_cols=persona_cols,
     )
     if n_personas is not None:
         seen_cids: list[str] = []
@@ -296,11 +296,18 @@ def collect_kev_prompts(
             unique_groups[g_key] = {}
             group_items[g_key] = []
         opt_texts = list(item["option_texts"])
+        q_type = str(item["type"])
+        if q_type == "score":
+            criteria_val: object = list(item["criteria"])
+            target_val = {str(idx): 1.0 / len(opt_texts) for idx in range(len(opt_texts))}
+        else:
+            criteria_val = dict(item["criteria"])
+            target_val = {str(t): 1.0 / len(opt_texts) for t in opt_texts}
         unique_groups[g_key][v_code] = {
-            "type": "choice",
+            "type": q_type,
             "instructions": str(item["instructions"]),
-            "criteria": dict(item["criteria"]),
-            "target": {str(t): 1.0 / len(opt_texts) for t in opt_texts},
+            "criteria": criteria_val,
+            "target": target_val,
         }
         group_items[g_key].append(item)
 
@@ -326,26 +333,31 @@ def collect_kev_prompts(
             v_to_res = dict(zip(v_codes, res_list, strict=True))
             for item in group_items[(state_str, arm_str)]:
                 v_code = str(item["v"])
+                q_type = str(item["type"])
                 logits, probs = v_to_res[v_code]
-                p_correct, p_wrong, p_same = float(probs[0]), float(probs[1]), float(probs[2])
                 pred_idx = int(np.argmax(probs))
-                rec = {
+                rec: dict[str, object] = {
                     "CASEID": str(item["CASEID"]),
                     "v": v_code,
                     "qid": str(item["qid"]),
                     "arm": arm_str,
+                    "type": q_type,
                     "model": model_name,
                     "persona_mode": persona_mode,
+                    "persona_cols": persona_cols,
                     "temperature": effective_temp,
-                    "prob_correct": p_correct,
-                    "prob_wrong": p_wrong,
-                    "prob_same": p_same,
-                    "logit_correct": float(logits[0]),
-                    "logit_wrong": float(logits[1]),
-                    "logit_same": float(logits[2]),
+                    "probs": [float(x) for x in probs],
+                    "logits": [float(x) for x in logits],
                     "pred_option_idx": pred_idx,
                     "elapsed_sec": round(dt, 4),
                 }
+                if v_code in PRIMARY_CHOICE_STEMS:
+                    rec["prob_correct"] = float(probs[0])
+                    rec["prob_wrong"] = float(probs[1])
+                    rec["prob_same"] = float(probs[2])
+                    rec["logit_correct"] = float(logits[0])
+                    rec["logit_wrong"] = float(logits[1])
+                    rec["logit_same"] = float(logits[2])
                 f.write(json.dumps(rec) + "\n")
                 existing[(str(item["CASEID"]), v_code)] = rec
             f.flush()
@@ -359,7 +371,7 @@ def load_single_attr_jsonl(
     expected_model: str | None = None,
     expected_temperature: float | None = None,
 ) -> dict[tuple[str, str, str], dict[str, object]]:
-    """Load saved single-attribute Grummon Kev JSONL records keyed by (attribute, CASEID, v)."""
+    """Load saved single-attribute Grummon 2025 Kev JSONL records keyed by (attribute, CASEID, v)."""
     path = Path(jsonl_path)
     if not path.exists():
         return {}
@@ -388,9 +400,10 @@ def collect_kev_single_attr_prompts(
     output_path: str | Path,
     *,
     model_name: str,
+    attr_cols: Sequence[str],
     temperature: float | None = None,
 ) -> list[dict[str, object]]:
-    """Evaluate Kev conditioned on each individual shopper attribute (10 attributes: 5 seen + 5 unseen)."""
+    """Evaluate Kev conditioned on each attribute in `attr_cols` alone (participants missing that attribute are skipped)."""
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     effective_temp = float(model.meta.temperature) if temperature is None else float(temperature)
@@ -401,9 +414,16 @@ def collect_kev_single_attr_prompts(
         expected_temperature=effective_temp,
     )
 
+    attr_cols = list(attr_cols)
+    extra = sorted({key[0] for key in existing} - set(attr_cols))
+    if extra:
+        raise ValueError(f"{path} already holds attributes outside attr_cols: {extra}")
+
     all_items: list[tuple[str, dict[str, object]]] = []
-    for col in GRUMMON_PERSONA_COLS:
-        col_items = build_kev_prompt_items(sub_df, persona_mode=f"single:{col}", include_country=False)
+    for col in attr_cols:
+        col_items = build_kev_prompt_items(
+            sub_df, design_name=f"single:{col}", persona_cols=[col], skip_missing_state=True
+        )
         for it in col_items:
             all_items.append((col, it))
 
@@ -460,11 +480,9 @@ def collect_kev_single_attr_prompts(
                 logits, probs = v_to_res[v_code]
                 p_correct, p_wrong, p_same = float(probs[0]), float(probs[1]), float(probs[2])
                 pred_idx = int(np.argmax(probs))
-                attr_group = "Seen in training" if col in SEEN_PERSONA_COLS else "Unseen in training"
                 rec = {
                     "attribute": col,
-                    "attribute_name": GRUMMON_PERSONA_NAMES[col],
-                    "attribute_group": attr_group,
+                    "attribute_name": GRUMMON2025_PERSONA_NAMES[col],
                     "CASEID": str(item["CASEID"]),
                     "v": v_code,
                     "qid": str(item["qid"]),

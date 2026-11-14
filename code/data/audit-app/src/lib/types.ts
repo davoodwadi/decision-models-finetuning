@@ -14,6 +14,7 @@ export type TriageMode =
 export interface QuestionOverride {
   stem?: string;
   subitems?: Record<string, string>;
+  subitem_sep?: string;
   options?: Record<string, string>;
 }
 

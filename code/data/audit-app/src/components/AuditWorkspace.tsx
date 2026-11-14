@@ -121,7 +121,8 @@ function hydrateDraftOverridesForPayload(
       rawOv,
       dsPayload.schemaKind,
       savedRow.data,
-      dsPayload.items[rowKey]
+      dsPayload.items[rowKey],
+      dsPayload.dsId
     );
     if (!overridesEqual(norm, savedOverrides[rowKey])) {
       out[savedRow.rowIdx] = norm;
@@ -936,7 +937,8 @@ export function AuditWorkspace({
         nextOverride,
         payload.schemaKind,
         mergedData,
-        payload.items[savedRow.rowKey]
+        payload.items[savedRow.rowKey],
+        payload.dsId
       );
       const savedOv = (payload.overrides ?? {})[savedRow.rowKey];
       setDraftOverrides((prev) => {
@@ -950,6 +952,7 @@ export function AuditWorkspace({
       });
     },
     [
+      payload.dsId,
       payload.rows,
       payload.schemaKind,
       payload.items,
@@ -2096,6 +2099,7 @@ export function AuditWorkspace({
         {/* Right Detail Pane */}
         <DetailPane
           key={`${currentRow?.rowKey ?? "empty"}:${draftResetSeq}`}
+          dsId={payload.dsId}
           row={currentRow}
           savedData={currentSavedRow?.data}
           savedOverride={currentSavedOverride}

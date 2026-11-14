@@ -8,6 +8,7 @@ import os
 import pickle
 import random
 import shutil
+import time
 import sys
 import traceback
 from pathlib import Path
@@ -102,7 +103,10 @@ def load_checkpoint(
 
 
 def normalize_eval_sets(eval_records):
-    """Normalize `eval_records` into shallow-copied grouped bundle dicts and verify exactly one has `valid=True`."""
+    """Normalize `eval_records` into shallow-copied grouped bundle dicts and verify at most one has `valid=True`.
+
+    Returns `(eval_sets, val_name)`, where `val_name` is `None` when no set has `valid=True` (no `best/` checkpoint).
+    """
     if isinstance(eval_records, dict) and "records" in eval_records:
         copied = dict(eval_records)
         copied["valid"] = True
@@ -121,11 +125,13 @@ def normalize_eval_sets(eval_records):
             raise KeyError(f"Evaluation set {s['name']!r} is missing required 'valid' boolean flag")
 
     valid_sets = [s for s in eval_sets if s["valid"]]
-    if len(valid_sets) != 1:
+    if len(valid_sets) > 1:
         raise ValueError(
-            f"Exactly one evaluation set in eval_records must have valid=True, got {len(valid_sets)}: "
+            f"At most one evaluation set in eval_records may have valid=True, got {len(valid_sets)}: "
             f"{[(s['name'], s['valid']) for s in eval_sets]}"
         )
+    if not valid_sets:
+        return eval_sets, None
     return eval_sets, valid_sets[0]["name"]
 
 
@@ -491,11 +497,15 @@ class GroupedTrainer:
     def _verify_resume_signature(self, st):
         saved = st["signature"]
         current = self._run_signature()
-        mismatches = [
-            f"{k}: saved={saved[k]!r} != current={current[k]!r}"
-            for k in current
-            if saved[k] != current[k]
-        ]
+        all_keys = list(dict.fromkeys([*current.keys(), *saved.keys()]))
+        mismatches = []
+        for k in all_keys:
+            if k not in saved:
+                mismatches.append(f"{k}: saved=<unset> != current={current[k]!r}")
+            elif k not in current:
+                mismatches.append(f"{k}: saved={saved[k]!r} != current=<unset>")
+            elif saved[k] != current[k]:
+                mismatches.append(f"{k}: saved={saved[k]!r} != current={current[k]!r}")
         if mismatches:
             raise ValueError(
                 f"Cannot resume {self.save_dir.name}: configuration does not match saved checkpoint: "
@@ -680,6 +690,23 @@ class GroupedTrainer:
             h.update(r["human_dist"].tobytes())
         return h.hexdigest()[:12]
 
+    def _eval_progress_fn(self, step, epoch, status, min_interval_s=0.5):
+        """Return a `progress_fn(done, total)` that redraws the status box with an eval sub-bar (throttled)."""
+        start = time.perf_counter()
+        last_draw = [0.0]
+
+        def progress_fn(done, total):
+            now = time.perf_counter()
+            if done < total and now - last_draw[0] < min_interval_s:
+                return
+            last_draw[0] = now
+            self.plotter.update_status(
+                step, epoch=epoch, status=status,
+                eval_progress=(done, total, start),
+            )
+
+        return progress_fn
+
     def evaluate_step0(self):
         """Evaluate step-0 baseline using `.cache/` per `(model, dtype, eval_set)` so repeated runs start immediately."""
         model_digest = self._model_eval0_digest()
@@ -706,15 +733,15 @@ class GroupedTrainer:
                 try:
                     for idx, (s, cache_path) in enumerate(uncached, start=1):
                         name = s["name"]
-                        self.plotter.update_status(
-                            0, epoch=0, status=f"eval step 0 ({idx}/{len(uncached)}): {name}..."
-                        )
+                        status = f"eval step 0 ({idx}/{len(uncached)}): {name}..."
+                        self.plotter.update_status(0, epoch=0, status=status)
                         summary, _ = evaluate_model(
                             self.model,
                             s,
                             max_questions=self.eval_max_questions,
                             max_chars=self.eval_max_chars,
                             show_progress=False,
+                            progress_fn=self._eval_progress_fn(0, 0, status),
                         )
                         extra_df = s["last_extra_df"]
                         summaries[name] = summary
@@ -752,16 +779,16 @@ class GroupedTrainer:
             try:
                 for idx, s in enumerate(target_sets, start=1):
                     name = s["name"]
+                    status = f"eval ({idx}/{len(target_sets)}): {name}..."
                     if not show_progress:
-                        self.plotter.update_status(
-                            self.step, epoch=cur_epoch, status=f"eval ({idx}/{len(target_sets)}): {name}..."
-                        )
+                        self.plotter.update_status(self.step, epoch=cur_epoch, status=status)
                     summary, _ = evaluate_model(
                         self.model,
                         s,
                         max_questions=self.eval_max_questions,
                         max_chars=self.eval_max_chars,
                         show_progress=show_progress,
+                        progress_fn=None if show_progress else self._eval_progress_fn(self.step, cur_epoch, status),
                     )
                     summaries[name] = summary
                     extra_dfs[name] = s["last_extra_df"]
@@ -996,7 +1023,9 @@ class GroupedTrainer:
                 self.resume_start_idx = 0
                 if self.eval_at_start:
                     summaries_0, extra_dfs_0 = self.evaluate_step0()
-                    self.best_val_kl = float(summaries_0[self.val_name]["dist_kl"])
+                    self.best_val_kl = (
+                        float("inf") if self.val_name is None else float(summaries_0[self.val_name]["dist_kl"])
+                    )
                     self.plotter.log_eval(0, summaries_0, extra_dfs_0, epoch=0)
                 else:
                     self.best_val_kl = float("inf")

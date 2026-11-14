@@ -47,3 +47,6 @@ data/**/raw/
 mlruns/
 kev/runs/
 
+
+/.quarto/
+**/*.quarto_ipynb

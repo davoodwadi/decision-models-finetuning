@@ -31,8 +31,24 @@ BORDER_ATTRS = {
     f"{W}space": "0",
     f"{W}color": "000000",
 }
+SPANNER_BORDER_ATTRS = {
+    f"{W}val": "single",
+    f"{W}sz": "6",
+    f"{W}space": "0",
+    f"{W}color": "000000",
+}
+NIL_BORDER_ATTRS = {
+    f"{W}val": "nil",
+}
+WHITE_GAP_BORDER_ATTRS = {
+    f"{W}val": "single",
+    f"{W}sz": "36",
+    f"{W}space": "0",
+    f"{W}color": "FFFFFF",
+}
 
 TC_PR_PRE = {f"{W}cnfStyle", f"{W}tcW", f"{W}gridSpan", f"{W}hMerge", f"{W}vMerge"}
+TC_PR_POST_VALIGN = {"hideMark", "headers", "cellIns", "cellDel", "cellMerge", "tcPrChange"}
 BORDER_SIDE_ORDER = ["top", "start", "left", "bottom", "end", "right", "insideH", "insideV"]
 
 
@@ -58,7 +74,7 @@ def ensure_tc_borders(tcPr):
     return tcBorders
 
 
-def set_border_side(tcBorders, side):
+def set_border_side(tcBorders, side, attrs=BORDER_ATTRS):
     tag = f"{W}{side}"
     el = tcBorders.find(tag)
     if el is None:
@@ -71,8 +87,44 @@ def set_border_side(tcBorders, side):
                 insert_at = i
                 break
         tcBorders.insert(insert_at, el)
-    for k, v in BORDER_ATTRS.items():
+    else:
+        el.attrib.clear()
+    for k, v in attrs.items():
         el.set(k, v)
+
+
+def cell_grid_span(tc):
+    gs = tc.find(f"{W}tcPr/{W}gridSpan")
+    if gs is None:
+        return 1
+    span = int(gs.attrib[f"{W}val"])
+    if span < 1:
+        raise ValueError(f"Invalid w:gridSpan value: {span}")
+    return span
+
+
+def is_vmerge_continue(tc):
+    vm = tc.find(f"{W}tcPr/{W}vMerge")
+    if vm is None:
+        return False
+    val_attr = f"{W}val"
+    if val_attr not in vm.attrib:
+        return True
+    return vm.attrib[val_attr] == "continue"
+
+
+def set_cell_valign(tc, value):
+    tcPr = ensure_tc_pr(tc)
+    for existing in tcPr.findall(f"{W}vAlign"):
+        tcPr.remove(existing)
+    el = etree.Element(f"{W}vAlign")
+    el.set(f"{W}val", value)
+    insert_at = len(tcPr)
+    for i, child in enumerate(tcPr):
+        if child.tag[len(W):] in TC_PR_POST_VALIGN:
+            insert_at = i
+            break
+    tcPr.insert(insert_at, el)
 
 
 def add_row_border(row, side):
@@ -112,6 +164,17 @@ def set_paragraph_jc(p, value):
             insert_at = i
             break
     pPr.insert(insert_at, jc)
+
+
+def preserve_pandoc_cell_jc(tbl):
+    """Drop duplicate w:jc added by Quarto's float wrapper, keeping Pandoc's."""
+    val_attr = f"{W}val"
+    for row in tbl.findall(f"{W}tr"):
+        for tc in row.findall(f"{W}tc"):
+            for p in tc.findall(f"{W}p"):
+                jcs = p.findall(f"{W}pPr/{W}jc")
+                if len(jcs) > 1:
+                    set_paragraph_jc(p, jcs[0].attrib[val_attr])
 
 
 def left_justify_first_column(tbl):
@@ -508,22 +571,45 @@ def fit_table_columns(tbl, available):
     grid = tbl.find(f"{W}tblGrid")
     cols = grid.findall(f"{W}gridCol")
     n = len(cols)
-    min_w = [0.0] * n
-    one_line = [0.0] * n
-    for row in tbl.findall(f"{W}tr"):
-        cells = row.findall(f"{W}tc")
-        if len(cells) != n:
-            raise ValueError(f"APATable row has {len(cells)} cells for {n} grid columns.")
-        for k, tc in enumerate(cells):
-            if tc.find(f"{W}tcPr/{W}gridSpan") is not None:
-                raise ValueError("APATable with merged cells: column fitting not implemented.")
-            for text, bold in cell_runs(tc):
-                for piece in unbreakable_pieces(text):
-                    min_w[k] = max(min_w[k], text_twips(piece, bold))
-                one_line[k] = max(one_line[k], text_twips(text.strip(), bold))
     pad = 2 * TABLE_CELL_MARGIN + TABLE_WIDTH_SLACK
-    min_w = [w + pad for w in min_w]
-    one_line = [w + pad for w in one_line]
+    min_w = [float(pad)] * n
+    one_line = [float(pad)] * n
+    spanners = []
+    for row in tbl.findall(f"{W}tr"):
+        k = 0
+        for tc in row.findall(f"{W}tc"):
+            span = cell_grid_span(tc)
+            if k + span > n:
+                raise ValueError(f"APATable row overflows {n} grid columns at {k + span}.")
+            if not is_vmerge_continue(tc):
+                raw_min = 0.0
+                raw_one = 0.0
+                for text, bold in cell_runs(tc):
+                    for piece in unbreakable_pieces(text):
+                        raw_min = max(raw_min, text_twips(piece, bold))
+                    raw_one = max(raw_one, text_twips(text.strip(), bold))
+                if span == 1:
+                    min_w[k] = max(min_w[k], raw_min + pad)
+                    one_line[k] = max(one_line[k], raw_one + pad)
+                else:
+                    spanners.append((k, span, raw_min + pad, raw_one + pad))
+            k += span
+        if k != n:
+            raise ValueError(f"APATable row spans {k} grid columns, expected {n}.")
+
+    for k, span, span_min, span_one in spanners:
+        cur_min = sum(min_w[k : k + span])
+        if span_min > cur_min:
+            deficit = span_min - cur_min
+            for j in range(k, k + span):
+                min_w[j] += deficit * min_w[j] / cur_min
+                one_line[j] = max(one_line[j], min_w[j])
+        cur_one = sum(one_line[k : k + span])
+        if span_one > cur_one:
+            deficit = span_one - cur_one
+            for j in range(k, k + span):
+                one_line[j] += deficit * one_line[j] / cur_one
+
     if sum(min_w) > available:
         raise ValueError(f"APATable needs {sum(min_w):.0f} twips without breaking words; "
                          f"only {available} available.")
@@ -539,7 +625,10 @@ def fit_table_columns(tbl, available):
     for col, w in zip(cols, widths):
         col.set(f"{W}w", str(w))
     for row in tbl.findall(f"{W}tr"):
-        for tc, w in zip(row.findall(f"{W}tc"), widths):
+        k = 0
+        for tc in row.findall(f"{W}tc"):
+            span = cell_grid_span(tc)
+            w = sum(widths[k : k + span])
             tcPr = ensure_tc_pr(tc)
             tcW = tcPr.find(f"{W}tcW")
             if tcW is None:
@@ -548,6 +637,7 @@ def fit_table_columns(tbl, available):
                 tcPr.insert(insert_at, tcW)
             tcW.set(f"{W}w", str(w))
             tcW.set(f"{W}type", "dxa")
+            k += span
 
 
 def table_available_width(tbl, text_width):
@@ -723,10 +813,36 @@ def fix_document_xml(xml_bytes, footer_rid):
         rows = tbl.findall(f"{W}tr")
         if not rows:
             continue
-        header_rows = [r for r in rows if is_header_row(r)] or [rows[0]]
+        header_rows = [r for r in rows if is_header_row(r)]
+        if not header_rows:
+            header_rows = [rows[0]]
+        has_merges = len(header_rows) > 1 or any(
+            tc.find(f"{W}tcPr/{W}vMerge") is not None or cell_grid_span(tc) > 1
+            for r in rows for tc in r.findall(f"{W}tc")
+        )
         add_row_border(header_rows[0], "top")
+        for hr in header_rows[:-1]:
+            hcells = hr.findall(f"{W}tc")
+            for idx_c, tc in enumerate(hcells):
+                tcBorders = ensure_tc_borders(ensure_tc_pr(tc))
+                if cell_grid_span(tc) > 1 and not is_vmerge_continue(tc):
+                    set_border_side(tcBorders, "bottom", SPANNER_BORDER_ATTRS)
+                    if idx_c > 0 and cell_grid_span(hcells[idx_c - 1]) > 1:
+                        set_border_side(tcBorders, "left", WHITE_GAP_BORDER_ATTRS)
+                    if idx_c + 1 < len(hcells) and cell_grid_span(hcells[idx_c + 1]) > 1:
+                        set_border_side(tcBorders, "right", WHITE_GAP_BORDER_ATTRS)
+                else:
+                    set_border_side(tcBorders, "bottom", NIL_BORDER_ATTRS)
         add_row_border(header_rows[-1], "bottom")
         add_row_border(rows[-1], "bottom")
+        if has_merges:
+            for hr in header_rows:
+                for tc in hr.findall(f"{W}tc"):
+                    set_cell_valign(tc, "bottom")
+            for br in rows[len(header_rows):]:
+                for tc in br.findall(f"{W}tc"):
+                    set_cell_valign(tc, "top")
+            preserve_pandoc_cell_jc(tbl)
         left_justify_first_column(tbl)
         fit_table_columns(tbl, table_available_width(tbl, text_block_width(tree)))
         fixed += 1

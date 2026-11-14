@@ -232,14 +232,19 @@ async function loadOrRefreshDataset(dsId: string): Promise<CachedDataset> {
   await ensureDetailsBuilt(datasetDir, detailsPath);
   const finalDetailsMtime = await fileMtimeMs(detailsPath);
 
-  const [csvText, detailsText, hasNotebook, hasOverrides, hasTags] =
+  const [csvText, detailsText, hasDataNb, hasStimulus, hasOverrides, hasTags] =
     await Promise.all([
       fs.readFile(csvPath, "utf8"),
       fs.readFile(detailsPath, "utf8"),
       fileExists(path.join(datasetDir, "data.ipynb")),
+      fileExists(path.join(datasetDir, "stimulus.py")),
       fileExists(overridesPath),
       fileExists(tagsPath),
     ]);
+  const hasNotebook =
+    hasDataNb ||
+    (hasStimulus &&
+      ["grummon2023", "grummon2025", "covid"].includes(path.basename(datasetDir)));
 
   const { columns, rows: rawRows } = parseCsv(csvText);
   const schemaKind = detectSchemaKind(columns);
@@ -451,7 +456,8 @@ function applyOverrideToRow(
     rawOverride,
     ds.schemaKind,
     rowData,
-    detail
+    detail,
+    ds.dsId
   );
 
   if (!cleaned) {
@@ -467,6 +473,28 @@ function applyOverrideToRow(
     throw new Error(
       `Cannot apply a single stem override to collapsed multi-item loop ${rowKey}`
     );
+  }
+
+  if (cleaned.subitem_sep !== undefined) {
+    if (ds.dsId.startsWith("Twin-2K-500-Mega-Study/")) {
+      throw new Error(
+        `subitem_sep override is disabled on verified dataset ${ds.dsId}`
+      );
+    }
+    const isMatrixLikert = Boolean(
+      detail &&
+        detail.QuestionType === "Matrix" &&
+        detail.Selector === "Likert" &&
+        detail.rows.length > 0
+    );
+    if (!isMatrixLikert) {
+      throw new Error(
+        `subitem_sep override on ${rowKey} is only valid on Matrix Likert questions`
+      );
+    }
+    if (!cleaned.subitem_sep.length) {
+      throw new Error(`subitem_sep override on ${rowKey} cannot be empty`);
+    }
   }
 
   if (cleaned.subitems) {
@@ -714,32 +742,57 @@ export async function rebuildDatasetParquet(dsId: string): Promise<{
   return withLock(dsId, async () => {
     const ds = await loadOrRefreshDataset(dsId);
     const nbPath = path.join(ds.datasetDir, "data.ipynb");
-    if (!(await fileExists(nbPath))) {
-      throw new Error(`No data.ipynb found in ${ds.datasetDir}`);
+    const hasNb = await fileExists(nbPath);
+    const dirBase = path.basename(ds.datasetDir);
+    const isPythonExport =
+      dirBase === "grummon2023" ||
+      dirBase === "grummon2025" ||
+      dirBase === "covid";
+    if (!hasNb && !isPythonExport) {
+      throw new Error(
+        `No data.ipynb or Python parquet exporter found in ${ds.datasetDir}`
+      );
     }
 
     try {
       const venvBinDir = path.dirname(PYTHON_BIN);
+      const codeDir = path.resolve(DATA_DIR, "..");
       const execEnv = {
         ...process.env,
         PATH: `${venvBinDir}${path.delimiter}${process.env.PATH ?? ""}`,
+        PYTHONPATH: codeDir,
       };
-      await execFileAsync(
-        PYTHON_BIN,
-        [
-          "-c",
-          `import nbformat
+      if (isPythonExport) {
+        await execFileAsync(
+          PYTHON_BIN,
+          [
+            "-c",
+            `from data.${dirBase} import export_${dirBase}_parquet; export_${dirBase}_parquet()`,
+          ],
+          {
+            cwd: ds.datasetDir,
+            env: execEnv,
+            maxBuffer: 32 * 1024 * 1024,
+          }
+        );
+      } else {
+        await execFileAsync(
+          PYTHON_BIN,
+          [
+            "-c",
+            `import nbformat
 from nbclient import NotebookClient
 nb = nbformat.read("data.ipynb", as_version=4)
 NotebookClient(nb, timeout=600, kernel_name="python3").execute()
 nbformat.write(nb, "data.ipynb")`,
-        ],
-        {
-          cwd: ds.datasetDir,
-          env: execEnv,
-          maxBuffer: 32 * 1024 * 1024,
-        }
-      );
+          ],
+          {
+            cwd: ds.datasetDir,
+            env: execEnv,
+            maxBuffer: 32 * 1024 * 1024,
+          }
+        );
+      }
       // Re-index details in case *_US_long.parquet counts changed
       await execFileAsync(
         PYTHON_BIN,
