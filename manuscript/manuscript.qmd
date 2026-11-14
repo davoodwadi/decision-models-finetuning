@@ -360,16 +360,11 @@ Each shopper profile contains $13$ attributes (@apptbl-attributes): $6$ demograp
 
 ## Trial Estimation and Attribute Generalization Results
 
-**Scaling and treatment-effect recovery.**
+**Treatment-effect recovery.**
 Under $13$-attribute shopper personas, scaling off-the-shelf models from `0.8B` to `9B` worsens choice cross-entropy (`1.4770` to `1.5405` bits; @tbl-grummon2025-ols) and yields higher OLS MSE than unconditioned random prompts at every scale (@appfig-grummon2025-random; @appfig-grummon2025-persona).
-Survey fine-tuning ($T = 1.00$) reverses this scaling pattern, steadily lowering cross-entropy from `1.5536` bits (`0.8B`) to `1.3479` bits (`9B`).
-Whereas smaller fine-tuned models (`0.8B` and `4B`) improve arm rank ordering or MAPE without reducing OLS MSE, `Kev 9B (FT)` improves every metric: it reaches a Spearman rank correlation of $\rho = +0.90$, lowers respondent-persona MAPE from $63.7\%$ to $44.3\%$, and reduces OLS MSE by $53.2\%$ ($0.0047$ to $0.0022$; and by $44.1\%$ to $0.0019$ under random prompts), approaching the 200-shopper human benchmark ($\mathrm{MSE} = 0.0016$, $\mathrm{MAPE} = 22.7\%$).
-
-**Interpretive labels versus visual warning shields.**
-Arm-level estimates (@fig-grummon2025-coefs, Panel A; @apptbl-grummon2025-coefs) clarify both the accuracy and modality limits of text-only silicon sampling.
-`Kev 9B (base)` underpredicts the `"They're the same"` tie option ($26.7\%$ vs. human $31.6\%$ in `Positive`), favors the less healthy item in both `High In` arms, and overshoots both `Nutrition Info` arms ($+0.224$ and $+0.229$).
-`Kev 9B (FT)` restores realistic tie shares ($34.9\%$ in `Positive`), places all five arm estimates inside the 200-shopper subsample's $95\%$ confidence intervals, and closely matches $\boldsymbol{\beta}^*$ on all three symmetrical interpretive arms: `Nutrition Info` ($+0.177$ vs. $+0.184$), `Positive + Nutrition Info` ($+0.168$ vs. $+0.179$), and `Spectrum` ($+0.139$ vs. $+0.108$).
-Remaining error concentrates in the two asymmetric `High In` arms (`High In`: $-0.010$ vs. $+0.054$, up from base $-0.047$; `Positive + High In`: $+0.042$ vs. $+0.119$, up from base $+0.023$), where graphical black exclamation-mark shields in @grummon2025nutrition were serialized into text (`Front-of-package label: None` vs. `High In: ... | FDA.gov`), creating institutional-tag salience ambiguity without visual warning cues.
+Survey fine-tuning reverses this scaling pattern, steadily lowering cross-entropy from `1.5536` bits (`0.8B`) to `1.3479` bits (`9B`).
+Whereas smaller fine-tuned models (`0.8B` and `4B`) improve arm rank ordering or MAPE without reducing OLS MSE, `Kev 9B (FT)` improves every metric. 
+It reaches a Spearman rank correlation of $\rho = +0.90$, lowers respondent-persona MAPE from $63.7\%$ to $44.3\%$, and reduces OLS MSE by $53.2\%$ ($0.0047$ to $0.0022$; and by $44.1\%$ to $0.0019$ under random prompts), approaching the 200-shopper human benchmark ($\mathrm{MSE} = 0.0016$, $\mathrm{MAPE} = 22.7\%$).
 
 **Generalization to unseen shopper attributes.**
 To test whether fine-tuning memorizes training demographics or generalizes to novel covariates, we evaluate single-attribute conditioning across the $6$ seen and $7$ unseen shopper attributes (@fig-grummon2025-coefs, Panel B; @apptbl-grummon2025-personas) as well as separate $6$-attribute seen and $7$-attribute unseen bundles.

@@ -60,3 +60,13 @@ line, so that a missing line meant "None" in Kriner2026 but "not asked or not an
 - `reversed` for included score items (`SCORE_REVERSED`), confirmed by the user: `saf_familiar_old` True,
   `saf_safe_old` True, `sci_know_self` False (True = the first listed option is the high end, Covid convention).
   Nothing in this repo currently reads `reversed`.
+
+## Loaders (`__init__.py`)
+
+- `load_kriner2026_df`: reads the parquet, restores list columns, adds `year = "kriner2026"` and `one_hot`.
+- `load_kriner2026_records`: training records via `build_long_records` (optionally state-grouped).
+- `load_kriner2026_eval` + `evaluate_kriner2026_ols`: Table 2 replication. Each flight choice gives two rows (one per flight);
+  attribute codes are parsed from `option_descriptions` (on-screen text -> the authors' `*_n` codes, `FLIGHT_LEVEL_CODES`).
+  Reports OLS MAPE, MAE and Spearman rho between model and human AMCEs. Checked: with human choices as predictions,
+  the human AMCEs equal the paper's Table 2 column (1) on all 12 terms.
+- Not decided yet: whether Kriner2026 is training data, evaluation data, or both, and if both, how train and eval are kept apart.

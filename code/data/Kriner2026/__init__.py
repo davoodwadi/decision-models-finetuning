@@ -12,7 +12,18 @@ import json
 from pathlib import Path
 
 import pandas as pd
+from scipy.stats import spearmanr
+import statsmodels.formula.api as smf
 
+from data.base import (
+    DEFAULT_CACHE_DIR,
+    add_one_hot,
+    build_eval_set,
+    build_long_records,
+    filter_by_qids,
+    group_records_by_state,
+    make_view,
+)
 import data.persona as persona
 from data.Kriner2026.stimulus import (
     CHOICE_OPTIONS,
@@ -49,6 +60,46 @@ SCORE_REVERSED = {  # values confirmed by the user, 2026-11-14
 }
 
 FLIGHT_ATTRIBUTES = ["Airline", "Fuel type", "Included baggage", "Legroom", "Price", "Seat type"]
+
+# On-screen level text -> the authors' Stata codes (`*_n` columns; code 1 = Table 2 baseline).
+FLIGHT_LEVEL_CODES: dict[str, tuple[str, dict[str, int]]] = {
+    "Airline": ("airline_n", {"Delta": 1, "Frontier": 2, "Southwest": 3, "United": 4}),
+    "Fuel type": (
+        "fuel_type_n",
+        {
+            "Conventional aviation fuel produced from petroleum": 1,
+            "Sutainable aviation fuel produced from biomass": 2,
+        },
+    ),
+    "Included baggage": (
+        "baggage_n",
+        {
+            "Carry-on bag and personal item": 1,
+            "Checked bag, carry-on bag, and personal item": 2,
+            "Personal item only": 3,
+        },
+    ),
+    "Legroom": ("legroom_n", {"Standard legroom (31 inches)": 1, "Extra legroom (33 inches)": 2}),
+    "Price": ("price_n", {"$250": 1, "$275": 2, "$300": 3, "$325": 4}),
+    "Seat type": ("seat_n", {"Aisle": 1, "Middle": 2, "Window": 3}),
+}
+
+# Goldfarb, Kriner et al. (2026) Table 2: OLS of choose_flight on attribute indicators, clustered by respondent.
+AMCE_FORMULA = "y ~ C(airline_n) + C(fuel_type_n) + C(baggage_n) + C(legroom_n) + C(seat_n) + C(price_n)"
+AMCE_TERMS: list[tuple[str, str]] = [
+    ("C(airline_n)[T.2]", "Airline: Frontier"),
+    ("C(airline_n)[T.3]", "Airline: Southwest"),
+    ("C(airline_n)[T.4]", "Airline: United"),
+    ("C(fuel_type_n)[T.2]", "Fuel: Sustainable aviation fuel"),
+    ("C(baggage_n)[T.2]", "Baggage: Checked bag+carry-on"),
+    ("C(baggage_n)[T.3]", "Baggage: Personal item only"),
+    ("C(legroom_n)[T.2]", "Space: Extra legroom"),
+    ("C(seat_n)[T.2]", "Seat: Middle"),
+    ("C(seat_n)[T.3]", "Seat: Window"),
+    ("C(price_n)[T.2]", "Price: $275"),
+    ("C(price_n)[T.3]", "Price: $300"),
+    ("C(price_n)[T.4]", "Price: $325"),
+]
 
 
 def build_kriner2026_persona_df(raw_df: pd.DataFrame, value_labels: dict[str, dict[int, str]]) -> pd.DataFrame:
@@ -240,3 +291,124 @@ def export_Kriner2026_parquet(
     long_df = build_kriner2026_long_df(audit_csv_path=audit_csv_path, overrides_path=overrides_path)
     long_df.to_parquet(parquet_path, index=False)
     return long_df
+
+
+def load_kriner2026_df(qids=None, parquet_path=KRINER2026_PARQUET_PATH) -> pd.DataFrame:
+    """Load `kriner2026_US_long.parquet`, attach `year` and `one_hot`, and optionally filter to `qids`."""
+    path = Path(parquet_path)
+    if not path.exists():
+        raise FileNotFoundError(f"Kriner2026 parquet not found: {path} (export it from the audit app)")
+    df = pd.read_parquet(path)
+    for col in ("option_codes", "option_texts"):
+        df[col] = df[col].map(list)
+    df["option_descriptions"] = [list(x) if x is not None else None for x in df["option_descriptions"]]
+    df["year"] = "kriner2026"
+    add_one_hot(df)
+    return filter_by_qids(df, qids)
+
+
+def load_kriner2026_records(
+    *,
+    include_country: bool,
+    qids=None,
+    grouped: bool = False,
+    persona_cols=KRINER2026_PERSONA_COLS,
+    parquet_path=KRINER2026_PARQUET_PATH,
+):
+    """Respondent-level training records (one per parquet row), optionally state-grouped."""
+    df = load_kriner2026_df(qids=qids, parquet_path=parquet_path)
+    records = build_long_records(df, persona_cols=persona_cols, include_country=include_country, year="kriner2026")
+    if grouped:
+        return group_records_by_state(records, view_fn=make_view, name="kriner2026")
+    return records
+
+
+def parse_flight_description(description: str) -> dict[str, int]:
+    """`'Airline: Delta; Price: $250; ...'` (display order) -> `{'airline_n': 1, 'price_n': 1, ...}`."""
+    parts = description.split("; ")
+    if len(parts) != len(FLIGHT_ATTRIBUTES):
+        raise ValueError(f"Expected {len(FLIGHT_ATTRIBUTES)} attribute rows, got {len(parts)}: {description!r}")
+    out: dict[str, int] = {}
+    for part in parts:
+        attr, level = part.split(": ", 1)
+        col, codes = FLIGHT_LEVEL_CODES[attr]
+        if col in out:
+            raise ValueError(f"Duplicate attribute {attr!r} in {description!r}")
+        out[col] = codes[level]
+    return out
+
+
+def _fit_amce_series(df_obs: pd.DataFrame, y_col: str) -> pd.Series:
+    work = df_obs.copy()
+    work["y"] = work[y_col]
+    fit = smf.ols(AMCE_FORMULA, data=work).fit(cov_type="cluster", cov_kwds={"groups": work["CASEID"]})
+    return pd.Series({label: float(fit.params[term]) for term, label in AMCE_TERMS})
+
+
+def evaluate_kriner2026_ols(eval_data, preds):
+    """Replicate Table 2 AMCEs on human choices vs. model probabilities (one row per displayed flight).
+
+    Each `flight_choice` record contributes two rows (Flight 1, Flight 2) with the flight's attribute codes,
+    `human` = its one-hot choice and `model` = the model's probability for it. Other included questions are ignored.
+    """
+    records = eval_data["records"] if isinstance(eval_data, dict) else eval_data
+    if len(records) != len(preds):
+        raise ValueError(f"Length mismatch: {len(records)} records vs {len(preds)} predictions")
+
+    rows: list[dict] = []
+    for r, p in zip(records, preds, strict=True):
+        if r["v"] != "flight_choice":
+            continue
+        probs = [float(x) for x in p]
+        h_dist = [float(x) for x in r["human_dist"]]
+        descs = r["option_descriptions"]
+        if len(probs) != 2 or len(h_dist) != 2 or descs is None or len(descs) != 2:
+            raise ValueError(f"{r['qid']}: expected 2 flights with descriptions, got {len(probs)} probabilities")
+        for k in (0, 1):
+            rows.append({"CASEID": r["CASEID"], **parse_flight_description(descs[k]), "human": h_dist[k], "model": probs[k]})
+    if not rows:
+        raise ValueError("No `flight_choice` records found in eval_data")
+
+    obs = pd.DataFrame(rows)
+    hb = _fit_amce_series(obs, "human")
+    mb = _fit_amce_series(obs, "model")
+    if (hb == 0).any():
+        raise ValueError("Zero human AMCE encountered in MAPE denominator")
+    metrics = {
+        "OLS MAPE (%)": float(((mb - hb).abs() / hb.abs()).mean() * 100.0),
+        "OLS MAE": float((mb - hb).abs().mean()),
+        "Spearman rho": float(spearmanr(mb, hb).statistic),
+    }
+    beta_df = pd.DataFrame(
+        {"effect": hb.index, "human": hb.values, "model": mb.values, "abs_diff": (mb - hb).abs().values}
+    )
+    return metrics, beta_df
+
+
+def load_kriner2026_eval(
+    parquet_path=KRINER2026_PARQUET_PATH,
+    *,
+    attr_sets=None,
+    include_country: bool,
+    min_n=None,
+    qids=None,
+    persona_cols=KRINER2026_PERSONA_COLS,
+    grouped: bool = True,
+    name: str = "kriner2026",
+    valid: bool = False,
+    cache_dir=DEFAULT_CACHE_DIR,
+):
+    """Evaluation bundle (state-grouped when `grouped=True`); respondent-level runs use the Table 2 AMCE evaluator."""
+    df = load_kriner2026_df(qids=qids, parquet_path=parquet_path)
+    return build_eval_set(
+        df,
+        attr_sets=attr_sets,
+        include_country=include_country,
+        min_n=min_n,
+        persona_cols=persona_cols,
+        grouped=grouped,
+        eval_fn=evaluate_kriner2026_ols if attr_sets is None else None,
+        name=name,
+        valid=valid,
+        cache_dir=cache_dir,
+    )
