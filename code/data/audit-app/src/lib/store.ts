@@ -733,7 +733,7 @@ export async function updateRows(
 }
 
 // Dataset folders whose parquet is written by `data.<folder>.export_<folder>_parquet()` (others use data.ipynb).
-const PYTHON_EXPORT_DIRS = ["grummon2023", "grummon2025", "covid", "Kriner2026", "berke2023"];
+const PYTHON_EXPORT_DIRS = ["grummon2023", "grummon2025", "covid", "Kriner2026", "berke2023", "wu2025"];
 
 // Folders that must be rebuilt before the others: the Twin-2K-500 Mega-Study notebook checks its personas against
 // Twin-2K-500's parquet, so Twin-2K-500 goes first.

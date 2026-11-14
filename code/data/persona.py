@@ -27,10 +27,16 @@ PERSONA_NAMES = {
     "HHSIZE": "How many people, including yourself, live in your household?",
     "VOTE_FREQ": "Votes in national elections",
     "RESTYPE": "What type of residence do you live in?",  # berke2023 Q_residence_type
+    "ELECHEAT": "Does your household use electricity for heat?",  # wu2025 householdheat
+    "MILITARY": "Have you ever served on active duty in the US Armed Forces?",  # wu2025 military
+    "ORIENTATION": "Which of the following best describes your sexual orientation?",  # wu2025 orientation
+    "OWNHOME": "Do you own your primary residence?",  # wu2025 residenceownership
+    "RENTHOME": "Do you rent your primary residence?",  # wu2025 residencerental
+    "POL_LABEL": "When it comes to politics, would you describe yourself as libertarian, socialist, communist, liberal, conservative, centrist, or something else?",  # wu2025 ideology_original
 }
 
 DATASET_PERSONA_COLS = {
-    "issp": [c for c in PERSONA_NAMES if c not in {"RACE", "HISPANIC", "HHSIZE", "VOTE_FREQ", "RESTYPE"}],
+    "issp": [c for c in PERSONA_NAMES if c not in {"RACE", "HISPANIC", "HHSIZE", "VOTE_FREQ", "RESTYPE", "POL_LABEL", "OWNHOME", "RENTHOME", "ORIENTATION", "MILITARY", "ELECHEAT"}],
     "twin2k": [
         "c_alphan",
         "US_REG",
@@ -84,10 +90,25 @@ DATASET_PERSONA_COLS = {
         "RESTYPE",
     ],
     "wu2025": [  # decisions in wu2025/DECISIONS.md; remaining attributes added as decided
+        "c_alphan",
+        "US_REG",
         "SEX",
         "AGE",
         "RACE",
         "HISPANIC",
+        "EDULEVEL",
+        "US_INC",
+        "US_PRTY",
+        "PARTY_LR",
+        "POL_LABEL",
+        "MARITAL",
+        "MAINSTAT",
+        "RESTYPE",
+        "OWNHOME",
+        "RENTHOME",
+        "ORIENTATION",
+        "MILITARY",
+        "ELECHEAT",
     ],
     "wvs": [
         "c_alphan",
@@ -197,6 +218,20 @@ WU2025_COL_TO_PERSONA = {
     "sex": "SEX",
     "age": "AGE",
     "ethnicity": "HISPANIC",
+    "education": "EDULEVEL",
+    "income": "US_INC",
+    "partisan": "US_PRTY",  # party strength and `leaner` follow-ups intentionally not used (as in Kriner2026)
+    "ideology": "PARTY_LR",
+    "ideology_original": "POL_LABEL",
+    "state": "US_REG",
+    "marriage": "MARITAL",
+    "employment": "MAINSTAT",
+    "residence": "RESTYPE",
+    "residenceownership": "OWNHOME",
+    "orientation": "ORIENTATION",
+    "military": "MILITARY",
+    "householdheat": "ELECHEAT",
+    "residencerental": "RENTHOME",  # asked to everyone; 239 answers contradict OWNHOME (both or neither), kept as given
 }
 
 # `race` is select-all stored as comma-separated labels ("White,Multi-racial"), in this survey's option wording.
@@ -345,32 +380,40 @@ GLOBAL_PERSONA_LEVELS = {
     # Union of all datasets' income brackets, ordered by amount: one level per distinct range (no merging). Identical
     # ranges share a level ("$50,000 to $74,999" = "$50,000-$75,000"); one format "$X - $Y". Levels overlap across datasets.
     "US_INC": [
-        "Less than $10,000",       # Grummon
+        "Less than $10,000",       # Grummon, wu2025
         "$10,000 - $14,999",       # Grummon
+        "$10,000 - $19,999",       # wu2025
         "$15,000 - $24,999",       # Grummon
         "Below $20,000",           # Covid, Kriner2026
         "Less than $25,000",       # berke2023
         "Less than $30,000",       # ISSP, Twin-2K, SubPOP
+        "$20,000 - $29,999",       # wu2025
         "$20,000 - $39,999",       # Covid, Kriner2026
         "$25,000 - $34,999",       # Grummon
         "$25,000 - $49,999",       # berke2023
         "$30,000 - $34,999",       # ISSP
+        "$30,000 - $39,999",       # wu2025
         "$30,000 - $50,000",       # Twin-2K
         "$35,000 - $39,999",       # ISSP
         "$35,000 - $49,999",       # Grummon
-        "$40,000 - $49,999",       # ISSP
+        "$40,000 - $49,999",       # ISSP, wu2025
         "$40,000 - $59,999",       # Covid, Kriner2026
-        "$50,000 - $59,999",       # ISSP
+        "$50,000 - $59,999",       # ISSP, wu2025
         "$50,000 - $75,000",       # Twin-2K, Grummon, berke2023
+        "$60,000 - $69,999",       # wu2025
         "$60,000 - $74,999",       # ISSP
         "$60,000 - $79,999",       # Covid, Kriner2026
+        "$70,000 - $79,999",       # wu2025
         "$75,000 - $89,999",       # ISSP
         "$75,000 - $100,000",      # Twin-2K, Grummon, berke2023
+        "$80,000 - $89,999",       # wu2025
         "$80,000 - $99,999",       # Covid, Kriner2026
+        "$90,000 - $99,999",       # wu2025
         "$90,000 - $109,999",      # ISSP
         "$100,000 or more",        # ISSP, Twin-2K, SubPOP, Covid, Kriner2026
-        "$100,000 - $149,999",     # Grummon, berke2023
+        "$100,000 - $149,999",     # Grummon, berke2023, wu2025
         "$150,000 - $199,999",     # Grummon, berke2023
+        "$150,000 or more",        # wu2025
         "$200,000 or more",        # Grummon, berke2023
     ],
     "PARTY_LR": [
@@ -383,6 +426,10 @@ GLOBAL_PERSONA_LEVELS = {
         "Very conservative",
         "Other",
         *LEFT_RIGHT_LEVELS,
+        # wu2025 7-point wording (Very / Somewhat / Slightly): mapped by wording, so its "Somewhat liberal" (2nd step)
+        # shares the level with other surveys' "Somewhat liberal" (their 3rd step)
+        "Slightly liberal",
+        "Slightly conservative",
     ],
     "HHSIZE": ["1", "2", "3", "4", "More than 4"],
     "MAINSTAT": [
@@ -396,6 +443,12 @@ GLOBAL_PERSONA_LEVELS = {
         "Retired",
         "Permanently sick or disabled",
         "Other",
+        # wu2025 `employment` answers without an equivalent level (verbatim)
+        "Working (paid employee)",
+        "Not working (disabled)",
+        "Not working (temporary layoff from a job)",
+        "Not working (other)",
+        "Prefer not to say",
     ],
     "VOTE_LE": ["Yes", "No", "I was too young to vote", "I was not registered to vote"],  # last two: Kriner2026 `vs_vote_2024`
     "VOTE_FREQ": ["Always", "Usually", "Never"],
@@ -411,8 +464,17 @@ GLOBAL_PERSONA_LEVELS = {
         "I don't know",  # berke2023 `Q_urban_rural`
     ],
     "UNION": ["Yes", "No", "Active member", "Inactive member"],
-    "RESTYPE": ["Private home", "Apartment", "Other"],  # berke2023
+    "RESTYPE": [
+        "Private home", "Apartment", "Other",  # berke2023
+        "Single family home", "Townhouse", "Mobile home", "Condominium", "Something else",  # wu2025 `residence`
+    ],
     "HISPANIC": ["Yes", "No"],
+    "POL_LABEL": ["Libertarian", "Socialist", "Communist", "Liberal", "Conservative", "Centrist", "Other"],  # wu2025
+    "OWNHOME": ["Yes", "No"],  # wu2025
+    "RENTHOME": ["Yes", "No"],  # wu2025
+    "ORIENTATION": ["Heterosexual (straight)", "Bisexual", "Homosexual (gay)", "Other", "Prefer not to say"],  # wu2025
+    "MILITARY": ["Yes", "No"],  # wu2025
+    "ELECHEAT": ["Yes", "No"],  # wu2025
     "US_ETHN1": US_ETHN1_LEVELS,
 }
 
@@ -481,6 +543,7 @@ PERSONA_MAPS = {
         "wvs": {"United States": "United States"},
         "kriner2026": {"United States": "United States"},
         "berke2023": {"United States": "United States"},  # Prolific US residents; nobody chose "not in the US"
+        "wu2025": {"United States": "United States"},  # non-US respondents removed by the authors
     },
     "SEX": {
         "issp": {"Male": "Male", "Female": "Female"},
@@ -649,6 +712,60 @@ PERSONA_MAPS = {
             51: "Midwest",  # Wisconsin
             52: "West",  # Wyoming
         },
+        # wu2025 `state` holds state names (not codes); regions as in Covid's STATE_CODE_TO_REGION.
+        "wu2025": {
+            "Alabama": "South",
+            "Alaska": "West",
+            "Arizona": "West",
+            "Arkansas": "South",
+            "California": "West",
+            "Colorado": "West",
+            "Connecticut": "Northeast",
+            "Delaware": "South",
+            "District of Columbia": "South",
+            "Florida": "South",
+            "Georgia": "South",
+            "Hawaii": "West",
+            "Idaho": "West",
+            "Illinois": "Midwest",
+            "Indiana": "Midwest",
+            "Iowa": "Midwest",
+            "Kansas": "Midwest",
+            "Kentucky": "South",
+            "Louisiana": "South",
+            "Maine": "Northeast",
+            "Maryland": "South",
+            "Massachusetts": "Northeast",
+            "Michigan": "Midwest",
+            "Minnesota": "Midwest",
+            "Mississippi": "South",
+            "Missouri": "Midwest",
+            "Montana": "West",
+            "Nebraska": "Midwest",
+            "Nevada": "West",
+            "New Hampshire": "Northeast",
+            "New Jersey": "Northeast",
+            "New Mexico": "West",
+            "New York": "Northeast",
+            "North Carolina": "South",
+            "North Dakota": "Midwest",
+            "Ohio": "Midwest",
+            "Oklahoma": "South",
+            "Oregon": "West",
+            "Pennsylvania": "Northeast",
+            "Rhode Island": "Northeast",
+            "South Carolina": "South",
+            "South Dakota": "Midwest",
+            "Tennessee": "South",
+            "Texas": "South",
+            "Utah": "West",
+            "Vermont": "Northeast",
+            "Virginia": "South",
+            "Washington": "West",
+            "West Virginia": "South",
+            "Wisconsin": "Midwest",
+            "Wyoming": "West",
+        },
     },
     "EDULEVEL": {
         "issp": {
@@ -715,6 +832,16 @@ PERSONA_MAPS = {
             6: "College graduate/some postgrad",  # Master's Degree
             7: "College graduate/some postgrad",  # Doctoral Degree
             8: "College graduate/some postgrad",  # Professional Degree
+        },
+        "wu2025": {  # `education`; same 8-level -> 4-level scheme as Covid
+            "Less than high school degree": "Less than high school",
+            "High school graduate (high school diploma or equivalent including GED)": "High school or some college",
+            "Some college but no degree": "High school or some college",
+            "Associate degree in college (2-year)": "Associate's degree",
+            "Bachelor's degree in college (4-year)": "College graduate/some postgrad",
+            "Master's degree": "College graduate/some postgrad",
+            "Professional degree (JD, MD)": "College graduate/some postgrad",
+            "Doctoral degree": "College graduate/some postgrad",
         },
     },
     # Select-all race questions (Covid, Kriner2026, berke2023, Grummon 2023/2025, wu2025) are first combined by
@@ -823,6 +950,13 @@ PERSONA_MAPS = {
             "Separated": "Separated",
             "Widowed": "Widowed",
             "Single": "Never been married",
+        },
+        "wu2025": {  # `marriage`
+            "Married": "Married",
+            "Never married": "Never been married",
+            "Divorced": "Divorced",
+            "Widowed": "Widowed",
+            "Separated": "Separated",
         },
     },
     "RELIGGRP": {
@@ -969,6 +1103,12 @@ PERSONA_MAPS = {
             3: "Independent",
             4: "Something else",  # Other/don't know
         },
+        "wu2025": {  # `partisan`
+            "Democrat": "Democrat",
+            "Republican": "Republican",
+            "Independent": "Independent",
+            "Something else": "Something else",
+        },
     },
     "US_INC": {
         "issp": {
@@ -1042,6 +1182,20 @@ PERSONA_MAPS = {
             6: "$150,000 - $199,999",
             7: "$200,000 or more",
         },
+        "wu2025": {  # `income`; one level per bracket (income union)
+            "Less than $10,000": "Less than $10,000",
+            "$10,000 to $19,999": "$10,000 - $19,999",
+            "$20,000 to $29,999": "$20,000 - $29,999",
+            "$30,000 to $39,999": "$30,000 - $39,999",
+            "$40,000 to $49,999": "$40,000 - $49,999",
+            "$50,000 to $59,999": "$50,000 - $59,999",
+            "$60,000 to $69,999": "$60,000 - $69,999",
+            "$70,000 to $79,999": "$70,000 - $79,999",
+            "$80,000 to $89,999": "$80,000 - $89,999",
+            "$90,000 to $99,999": "$90,000 - $99,999",
+            "$100,000 to $149,999": "$100,000 - $149,999",
+            "$150,000 or more": "$150,000 or more",
+        },
     },
     "PARTY_LR": {
         "issp": {
@@ -1079,6 +1233,15 @@ PERSONA_MAPS = {
             5: "Somewhat conservative",
             6: "Conservative",
             7: "Very conservative",
+        },
+        "wu2025": {  # `ideology`, mapped by wording (not scale position)
+            "Very liberal": "Very liberal",
+            "Somewhat liberal": "Somewhat liberal",
+            "Slightly liberal": "Slightly liberal",
+            "Moderate; middle of the road": "Moderate",
+            "Slightly conservative": "Slightly conservative",
+            "Somewhat conservative": "Somewhat conservative",
+            "Very conservative": "Very conservative",
         },
     },
     "HHSIZE": {
@@ -1122,6 +1285,16 @@ PERSONA_MAPS = {
             "Unemployed": "Unemployed",
             "Other": "Other",
         },
+        "wu2025": {  # `employment`
+            "Working (paid employee)": "Working (paid employee)",
+            "Working (self-employed)": "Self-employed",
+            "Not working (retired)": "Retired",
+            "Not working (disabled)": "Not working (disabled)",
+            "Not working (looking for work)": "Unemployed",
+            "Not working (temporary layoff from a job)": "Not working (temporary layoff from a job)",
+            "Not working (other)": "Not working (other)",
+            "Prefer not to answer": "Prefer not to say",
+        },
     },
     "VOTE_LE": {
         "issp": {"Yes": "Yes", "No": "No"},
@@ -1156,6 +1329,7 @@ PERSONA_MAPS = {
     },
     "RESTYPE": {
         "berke2023": {1: "Private home", 2: "Apartment", 3: "Other"},  # `Q_residence_type`
+        "wu2025": {v: v for v in ["Single family home", "Apartment", "Townhouse", "Mobile home", "Condominium", "Something else"]},  # `residence`
     },
     # Separate "Hispanic / Latino" question (not a race option in these surveys).
     "HISPANIC": {
@@ -1165,6 +1339,24 @@ PERSONA_MAPS = {
             "Spanish, Hispanic, or Latino": "Yes",
             "None of these": "No",
         },
+    },
+    "POL_LABEL": {
+        "wu2025": {v: v for v in ["Libertarian", "Socialist", "Communist", "Liberal", "Conservative", "Centrist", "Other"]},
+    },
+    "OWNHOME": {
+        "wu2025": {"Yes": "Yes", "No": "No"},  # `residenceownership`
+    },
+    "RENTHOME": {
+        "wu2025": {"Yes": "Yes", "No": "No"},  # `residencerental`
+    },
+    "ORIENTATION": {
+        "wu2025": {v: v for v in GLOBAL_PERSONA_LEVELS["ORIENTATION"]},  # `orientation`, verbatim
+    },
+    "MILITARY": {
+        "wu2025": {"Yes": "Yes", "No": "No"},  # `military`
+    },
+    "ELECHEAT": {
+        "wu2025": {"Yes": "Yes", "No": "No"},  # `householdheat`
     },
 }
 
@@ -1283,6 +1475,7 @@ def apply_persona_mapping(df: pd.DataFrame, dataset: str) -> pd.DataFrame:
         race_labels = [(f"Q_race_{c}", label) for c, label in BERKE2023_RACE_CODES.items()]
         df["RACE"] = race_from_checkboxes(flags, race_labels, "berke2023", allow_all_missing=False)
     elif dataset == "wu2025":
+        df["c_alphan"] = "United States"  # the authors dropped "I do not reside in the United States"
         source_cols = [*WU2025_COL_TO_PERSONA, "race"]
         missing_cols = [c for c in source_cols if c not in df.columns]
         if missing_cols:
