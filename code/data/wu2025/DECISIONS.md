@@ -79,3 +79,17 @@ without its "Task t/10:" prefix.
 | `billestimate2`, `employment_7_TEXT`, `comment` | exclude | Free entry (comment samples not shown). |
 | Persona and party follow-up columns | exclude | Used for the persona (`persona.py`) or deliberately not used there. |
 | `conjoint_intro` | exclude (`0_DB`) | Context screen for `plan_choice`. |
+
+## Parquet export and loaders (`__init__.py`)
+
+- `export_wu2025_parquet` (audit app "This dataset" / "All datasets" buttons) writes `wu2025_US_long.parquet` from the
+  rows marked `include=True`, with the audit app's `drop_options`, `context_source`, `context_sep` and
+  `question_overrides.json` edits. IP / location columns are never loaded.
+- `plan_choice`: one row per answered task; `option_texts = ['Choice 1', 'Choice 2']`, `option_descriptions` = each
+  plan's three attributes in the respondent's row order; `qid` = `wu2025:plan_choice:<plan 1>_<plan 2>_<attribute order>`
+  (same screen -> same qid). Question = background screen + bill message + stem.
+- Other included questions: `option_texts` in the catalog's option order (codes 1..n in that order).
+- Loaders: `load_wu2025_df`, `load_wu2025_records`, `load_wu2025_eval` (no dataset-specific evaluator yet; the paper's
+  benchmark would be its AMCEs / marginal means and attribute salience scores).
+- Dry run with the reviewed audit CSV (identical to the starting values): 90,979 rows from 1,862 respondents,
+  46 questions (27 score, 19 choice; plan_choice 18,591 rows), all building into valid training records.

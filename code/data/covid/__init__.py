@@ -438,25 +438,25 @@ def evaluate_covid_ols(eval_data, preds):
             raise ValueError(f"Zero human AMCE encountered in {task_label} MAPE denominator")
         metrics[f"{task_label} OLS MAPE (%)"] = float(((mb - hb).abs() / hb.abs()).mean() * 100.0)
         metrics[f"{task_label} OLS MAE"] = float((mb - hb).abs().mean())
+        metrics[f"{task_label} OLS MSE"] = float(((mb - hb) ** 2).mean())
         metrics[f"{task_label} Spearman rho"] = float(spearmanr(mb, hb).statistic)
         sub_b = pd.DataFrame(
             {
-                "task": task_label,
-                "effect": hb.index,
                 "human": hb.values,
                 "model": mb.values,
                 "abs_diff": (mb - hb).abs().values,
-            }
+            },
+            index=pd.Index([f"{task_label}: {eff}" for eff in hb.index], name="effect"),
         )
         beta_frames.append(sub_b)
 
-    beta_df = pd.concat(beta_frames, ignore_index=True)
-    if len(beta_frames) == 2:
-        hb_all = beta_df["human"]
-        mb_all = beta_df["model"]
-        metrics["OLS MAPE (%)"] = float(((mb_all - hb_all).abs() / hb_all.abs()).mean() * 100.0)
-        metrics["OLS MAE"] = float((mb_all - hb_all).abs().mean())
-        metrics["Spearman rho"] = float(spearmanr(mb_all, hb_all).statistic)
+    beta_df = pd.concat(beta_frames)
+    hb_all = beta_df["human"]
+    mb_all = beta_df["model"]
+    metrics["OLS MAPE (%)"] = float(((mb_all - hb_all).abs() / hb_all.abs()).mean() * 100.0)
+    metrics["OLS MAE"] = float((mb_all - hb_all).abs().mean())
+    metrics["OLS MSE"] = float(((mb_all - hb_all) ** 2).mean())
+    metrics["Spearman rho"] = float(spearmanr(mb_all, hb_all).statistic)
 
     return metrics, beta_df
 

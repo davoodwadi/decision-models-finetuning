@@ -366,10 +366,12 @@ def evaluate_kriner2026_ols(eval_data, preds):
     metrics = {
         "OLS MAPE (%)": float(((mb - hb).abs() / hb.abs()).mean() * 100.0),
         "OLS MAE": float((mb - hb).abs().mean()),
+        "OLS MSE": float(((mb - hb) ** 2).mean()),
         "Spearman rho": float(spearmanr(mb, hb).statistic),
     }
     beta_df = pd.DataFrame(
-        {"effect": hb.index, "human": hb.values, "model": mb.values, "abs_diff": (mb - hb).abs().values}
+        {"human": hb.values, "model": mb.values, "abs_diff": (mb - hb).abs().values},
+        index=pd.Index(hb.index, name="effect"),
     )
     return metrics, beta_df
 
