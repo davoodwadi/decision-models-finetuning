@@ -38,7 +38,7 @@ $$
 \frac{\partial \mathcal{L}_{\beta}}{\partial z_t} = \frac{2}{P}\, p_t(1 - p_t) \left[A_{\mathrm{diff}}^\top \big(\hat{\beta}_{p,s} - \hat{\beta}_{y,s}\big)\right]_t.
 $$
 
-Notice that the Bernoulli variance factor $p_t(1 - p_t)$ attains its global maximum of `0.25` precisely at $p_t = 0.5$. Right where `KL` pulls predictions toward uniformity, $\mathcal{L}_{\beta}$ applies maximum restoring leverage along the $P$ experimental contrast directions $\operatorname{row}(A_{\mathrm{diff}})$ without amplifying orthogonal prompt noise. Third, because $A_s p(z)$ averages across all $T_s$ tasks *before* applying the quadratic loss, unstructured per-task errors $\tilde{\delta}_t$ cancel inside $A_s p(z)$ at rate $\mathcal{O}(\sigma_\delta^2 / T_s)$, eliminating the per-task curvature tax that causes $\gamma^*_{\mathrm{KL}} < 1$.
+Notice that the Bernoulli variance factor $p_t(1 - p_t)$ attains its global maximum of `0.25` precisely at $p_t = 0.5$. Right where `KL` pulls predictions toward uniformity, $\mathcal{L}_{\beta}$ applies maximum restoring leverage along the $P$ experimental contrast directions $\operatorname{row}(A_{\mathrm{diff}})$ without amplifying orthogonal prompt noise. Third, because $A_s p(z)$ averages across all $T_s$ tasks before applying the quadratic loss, unstructured per-task errors $\tilde{\delta}_t$ cancel inside $A_s p(z)$ at rate $\mathcal{O}(\sigma_\delta^2 / T_s)$, eliminating the per-task curvature tax that causes $\gamma^*_{\mathrm{KL}} < 1$.
 
 ## Operating conditions for sample size and regularization weight
 
@@ -68,12 +68,12 @@ On the Wu 2025 electricity conjoint (`18,591` paired tasks across `1,861` respon
 
 | Benchmark and run (`S = 16`) | Choice KL loss | Population beta MSE | Population beta MAE | Population beta MAPE (%) | Spearman rho | Attenuation slope ($\hat{\gamma}$) | Mean grad norm | Train time (s) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Wu 2025 in-experiment, step 0 | 1.06993 | 0.05118 | 0.20925 | 114.13 | -0.214 | 0.055 | n/a | 0.0 |
+| Wu 2025 in-experiment, step 0 | 1.06993 | 0.05118 | 0.20925 | 114.13 | -0.214 | -0.019 | n/a | 0.0 |
 | Wu 2025 in-experiment, $\lambda = 0$ | 0.53275 | 0.00023 | 0.01258 | 7.46 | 1.000 | 0.940 | 1.81 | 252.0 |
 | Wu 2025 in-experiment, $\lambda = 1$ | 0.53481 | 0.00009 | 0.00742 | 3.89 | 1.000 | 0.961 | 1.91 | 261.0 |
 | Wu 2025 in-experiment, $\lambda = 5$ | 0.53746 | 0.00017 | 0.00982 | 4.72 | 1.000 | 0.996 | 2.75 | 251.0 |
 | Wu 2025 in-experiment, $\lambda = 20$ | 0.54274 | 0.00075 | 0.02044 | 11.30 | 0.976 | 1.026 | 6.35 | 264.5 |
-| Kriner 2026 zero-shot, step 0 | 1.08491 | 0.01776 | 0.11429 | 133.53 | -0.266 | -0.028 | n/a | 0.0 |
+| Kriner 2026 zero-shot, step 0 | 1.08491 | 0.01776 | 0.11429 | 133.53 | -0.266 | -0.030 | n/a | 0.0 |
 | Kriner 2026 zero-shot, $\lambda = 0$ | 0.62682 | 0.00389 | 0.05537 | 75.40 | 0.937 | 0.592 | 1.90 | 250.2 |
 | Kriner 2026 zero-shot, $\lambda = 1$ | 0.62384 | 0.00294 | 0.04329 | 63.41 | 0.895 | 0.724 | 1.95 | 238.8 |
 | Kriner 2026 zero-shot, $\lambda = 5$ | 0.63163 | 0.00357 | 0.05084 | 67.46 | 0.860 | 0.621 | 2.78 | 238.1 |
