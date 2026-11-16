@@ -14,35 +14,9 @@ A sample must come from exactly one dataset (one dataset per optimization step).
 
 from __future__ import annotations
 
-import pandas as pd
 import torch
 
-from data.base import build_long_records, make_grouped_view
-
 from beta_ols.core import RegressionSpec, raw_beta_operator
-
-
-def make_respondent_item(prepare_fn, dataset_module, caseid: str, r_df: pd.DataFrame) -> dict:
-    # Tokenize one respondent with Kev's `prepare` and attach their beta part.
-    # Kev's prepared targets must equal the beta part's one-hot choices task by task, which guarantees the model's
-    # logits come back in the same order the outcome rows index.
-    part = dataset_module.respondent_beta_part(r_df)
-    r_records = build_long_records(
-        r_df, persona_cols=dataset_module.PERSONA_COLS, include_country=False, year=dataset_module.NAME
-    )
-    r_enc, r_targets = prepare_fn(make_grouped_view(r_records))
-    prepared_counts = [int(q["target"].shape[0]) for q in r_targets]
-    prepared_targets = torch.cat([q["target"].to(dtype=torch.float64) for q in r_targets])
-    if prepared_counts != part.num_options or not torch.equal(prepared_targets, part.y_flat):
-        raise AssertionError(f"{caseid}: Kev prepared targets do not match the beta part's one-hot choices")
-    return {
-        "dataset": dataset_module.NAME,
-        "caseid": caseid,
-        "enc": r_enc,
-        "num_options": part.num_options,
-        "y_flat": part.y_flat,
-        "outcome_rows": part.outcome_rows,
-    }
 
 
 def build_sample_beta_operators(sample_items: list[dict], specs: dict[str, RegressionSpec], device: str) -> dict:

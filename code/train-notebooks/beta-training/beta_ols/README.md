@@ -1,13 +1,14 @@
 # `beta_ols`: dataset OLS modules and the unified beta loss
 
 Used by the notebooks in `train-notebooks/beta-training/`. Their first cell adds this folder to `sys.path`.
+Data and OLS only: no model or tokenizer. The training side (items, gradient step, validation, trainer) is `../beta_train/`.
 
 ## Layout
 
 | File | Contents |
 |---|---|
 | `core.py` | Shared types (`RegressionSpec`, `OutcomeRow`, `RespondentBetaPart`), `fit_human_ols`, `wide_ols_table`, `ols_projector`, `beta_noise_by_sample_size` |
-| `unified_loss.py` | `make_respondent_item` (tokenize + check targets), `build_sample_beta_operators`, `compute_unified_loss` |
+| `unified_loss.py` | `build_sample_beta_operators`, `compute_unified_loss` |
 | `evaluation.py` | `build_population_eval`, `flat_probs_from_predictions`, `compare_population_betas`: model vs human population betas with the module's own coding |
 | `wu2025.py`, `berke2023.py`, `grummon2023.py`, `kriner2026.py`, `covid.py`, `grummon2025.py` | One module per dataset |
 | `__init__.py` | `DATASET_MODULES`: every dataset module by name |

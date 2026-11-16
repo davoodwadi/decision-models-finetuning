@@ -7,7 +7,8 @@ Every dataset module exposes the same interface:
     regression_rows(choice_df) -> one row per regression observation (CASEID, group, design columns, y)
     regression_specs(rows) -> {group: RegressionSpec}
 Shared helpers (core): fit_human_ols, wide_ols_table, beta_noise_by_sample_size, ols_projector.
-Training loss (unified_loss): make_respondent_item, build_sample_beta_operators, compute_unified_loss.
+Training loss (unified_loss): build_sample_beta_operators, compute_unified_loss.
+No model or tokenizer dependency: tokenizing respondents into training items lives in `beta_train.items`.
 Population evaluation (evaluation): build_population_eval, flat_probs_from_predictions, compare_population_betas.
 """
 
