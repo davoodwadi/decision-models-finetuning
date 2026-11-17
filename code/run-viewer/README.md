@@ -4,8 +4,8 @@ Read-only web viewer for `code/train-notebooks/beta-training/runs/<notebook>/<ru
 It reads `run.json`, `steps.csv` and `val_history.csv` on every request; it never lists or opens `checkpoints/` or `betas/`.
 
 ```bash
-npm install
-npm run dev   # http://localhost:3210
+pnpm install
+pnpm dev   # http://localhost:3210
 ```
 
 Or start the `run-viewer` entry in `.claude/launch.json`.
@@ -16,4 +16,4 @@ Or start the `run-viewer` entry in `.claude/launch.json`.
 - Running runs have no `summary` in `run.json`, so total steps show as `?` and the best step/value is computed from `val_history.csv` ("so far").
 - Run pages poll every 10 s while the run's status is `running`.
 - Older run folders without `identity` in `run.json` (v5) are listed with an error instead of being read.
-- Use `npm run dev`: `next start` replaces server error messages on the error page with a generic text.
+- Use `pnpm dev`: `next start` replaces server error messages on the error page with a generic text.
