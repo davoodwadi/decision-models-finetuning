@@ -4,7 +4,7 @@ import * as echarts from "echarts";
 import ReactECharts from "echarts-for-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import { INK } from "@/components/charts/line-chart";
+import { INK } from "@/lib/chart-theme";
 import { SERIES_DARK, SERIES_LIGHT, formatNumber, formatTick } from "@/lib/format";
 
 export type BetaPair = { term: string; human: number; predicted: number };
