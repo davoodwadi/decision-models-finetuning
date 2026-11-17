@@ -17,7 +17,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
-from tqdm.auto import tqdm
 
 from training import free_gpu
 
@@ -28,6 +27,7 @@ from beta_train.batching import build_epoch_samples, steps_per_epoch
 from beta_train.config import TrainConfig
 from beta_train.live_display import LiveDisplay, make_val_row
 from beta_train.model_state import reset_trainable, set_checkpointing, snapshot_trainable
+from beta_train.progress import PROGRESS_INTERVAL_SEC, HtmlProgress
 from beta_train.step import two_pass_gradients
 from beta_train.validation import METRIC_NAMES, validate_all
 
@@ -251,7 +251,9 @@ def run_training(
 
     trainable_params = None
     optimizer = None
+    step_bar = None
     chunk_bar = None
+    validation_bar = None
     scheduler = None
     sample_ops = None
     finished = False
@@ -329,10 +331,19 @@ def run_training(
         live.update_table(val_rows, best)
         live.redraw(step_rows, val_rows, best)
 
-        pbar = tqdm(range(start_step, total_steps + 1), initial=start_step - 1, total=total_steps, desc=config.label())
-        # One bar for the micro-chunk passes, reset every step (a new bar per step would add one cell output per step)
-        chunk_bar = tqdm(total=0, desc="pass 1 (forward)")
-        for step_idx in pbar:
+        # HTML bars redrawn in place, like the table and figure above (see HtmlProgress): one for the steps, one for the
+        # micro-chunk passes, reset every step (a new bar per step would add one cell output per step)
+        step_bar = HtmlProgress(
+            total=total_steps, initial=start_step - 1, description=config.label(), unit="step", min_interval_sec=PROGRESS_INTERVAL_SEC
+        )
+        chunk_bar = HtmlProgress(
+            total=0, initial=0, description="pass 1 (forward)", unit="pass", min_interval_sec=PROGRESS_INTERVAL_SEC
+        )
+        # One bar for the validations' GPU batches, reset by every validator (also for the end-of-run check of best.pt)
+        validation_bar = HtmlProgress(
+            total=0, initial=0, description="validation (waiting)", unit="batch", min_interval_sec=PROGRESS_INTERVAL_SEC
+        )
+        for step_idx in range(start_step, total_steps + 1):
             # 2. This step's sample (a new shuffled epoch plan at the start of every epoch)
             epoch_idx = (step_idx - 1) // epoch_steps + 1
             step_in_epoch = (step_idx - 1) % epoch_steps + 1
@@ -405,7 +416,7 @@ def run_training(
             if step_idx % postfix_every == 0 or step_idx == total_steps:
                 recent = step_rows[-rolling_steps:]
                 recent_betas = [r["raw_beta_loss"] for r in recent if r["has_beta"]]
-                pbar.set_postfix(
+                step_bar.set_postfix(
                     kl=f"{float(np.mean([r['kl_loss'] for r in recent])):.3f}",
                     beta=f"{float(np.mean(recent_betas)):.4f}" if recent_betas else "n/a",
                     step_ms=f"{float(np.mean([r['step_ms'] for r in recent])):.1f}",
@@ -417,7 +428,7 @@ def run_training(
                 step_validators = {}
                 for name in due_validators:
                     step_validators[name] = validators[name]
-                step_validation = validate_all(model, step_validators)
+                step_validation = validate_all(model, step_validators, validation_bar)
                 for metrics, _ in step_validation.values():
                     cum_eval_sec += metrics["eval_wall_sec"]
                 losses = runs.validation_losses(validators, step_validation, config.beta_lambda)
@@ -454,8 +465,11 @@ def run_training(
                 save_last_state(step_idx)
                 live.update_table(val_rows, best)
 
-            if step_idx % postfix_every == 0 or due_validators:
+            # With gradient_split (debugging), the figure is redrawn every step so the per-step split is visible as it
+            # happens (costs a figure redraw per step); otherwise at the progress-bar interval and at validations
+            if config.gradient_split or step_idx % postfix_every == 0 or due_validators:
                 live.redraw(step_rows, val_rows, best)
+            step_bar.update(1)
 
         # 7. Held-out check of best.pt: validate it on every validator that did not run at its step, then put the
         #    final weights back
@@ -469,7 +483,7 @@ def run_training(
             held_out_validators = {}
             for name in missing_validators:
                 held_out_validators[name] = validators[name]
-            held_out_validation = validate_all(model, held_out_validators)
+            held_out_validation = validate_all(model, held_out_validators, validation_bar)
             for metrics, _ in held_out_validation.values():
                 cum_eval_sec += metrics["eval_wall_sec"]
             reset_trainable(model, final_weights)
@@ -504,6 +518,10 @@ def run_training(
         sample_ops = None
         if chunk_bar is not None:
             chunk_bar.close()
+        if step_bar is not None:
+            step_bar.close()
+        if validation_bar is not None:
+            validation_bar.close()
         free_gpu()
         if not finished:
             runs.set_status(run_dir, runs.STATUS_INTERRUPTED, None)

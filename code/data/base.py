@@ -741,13 +741,14 @@ def _concat_weights(dtype, *mods):
 
 
 @contextlib.contextmanager
-def fused_eval_context(model, eval_dtype=None):
+def fused_eval_context(model, eval_dtype=None, graph_limits=EVAL_GRAPH_LIMITS):
     """Temporarily bind `kev.fused_qwen35` kernels + `CudaGraphs` for fast evaluation, offloading original weights to CPU RAM.
 
-    `EVAL_GRAPH_LIMITS` stay bound for the whole context: `CudaGraphs` sizes its buffers at creation and reads the same
-    limits on every pass, so they must not change while `model.net.graphs` exists.
+    `graph_limits` (default `EVAL_GRAPH_LIMITS`; same keys, checked by `_validate_graph_limits`) stay bound for the whole
+    context: `CudaGraphs` sizes its buffers at creation and reads the same limits on every pass, so they must not change
+    while `model.net.graphs` exists. Larger limits = fewer, larger graphed passes, at the cost of larger fixed buffers.
     """
-    with eval_graph_limits(), _fused_eval_context_impl(model, eval_dtype=eval_dtype):
+    with eval_graph_limits(graph_limits), _fused_eval_context_impl(model, eval_dtype=eval_dtype):
         yield
 
 

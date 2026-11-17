@@ -1,12 +1,12 @@
 """Population validation on any `beta_ols` dataset: model predictions on every task, then KL and population betas.
 
 The betas use `beta_ols.evaluation`, i.e. the dataset module's own coding (same as its human replication and the
-training loss). Two validators with the same interface (`.validate(model) -> (metrics, beta_df)`):
+training loss). Two validators with the same interface (`.validate(model, progress_bar) -> (metrics, beta_df)`):
 - PopulationValidator ("fused"): merges the LoRA into the weights, swaps in fused kernels and CUDA graphs, and runs
   respondents that share a persona state together. Fast per token; each call merges, offloads, and recaptures.
 - TrainingPathValidator ("training_path"): the training forward (`beta_train.step.predict_chunk`) in eval mode with
   the LoRA unmerged, over the dataset's training items. No merge, offload, or graph capture; memory set by `eval_chunk`.
-Build one per validation dataset once; call `.validate(model)` any time.
+Build one per validation dataset once; call `.validate(model, progress_bar)` any time (`beta_train.progress.HtmlProgress`).
 """
 
 from __future__ import annotations
@@ -18,13 +18,21 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
-from tqdm.auto import tqdm
 
 import data.base
 import kev.cuda_graphs
 import kev.fused_qwen35
 import kev.shared_prefix
-from data.base import build_long_records, fused_eval_context, group_records_by_state, make_view, predict_probs_grouped
+from data.base import (
+    EVAL_GRAPH_LIMITS,
+    _validate_graph_limits,
+    build_long_records,
+    fused_eval_context,
+    group_eval_views,
+    group_records_by_state,
+    make_view,
+    predict_probs_grouped,
+)
 from training import free_gpu
 
 import beta_ols.core
@@ -35,8 +43,9 @@ from beta_ols.evaluation import build_population_eval, compare_population_betas,
 import beta_train.items
 import beta_train.step
 from beta_train.cache import dataframe_fingerprint, load_or_compute, source_fingerprint
-from beta_train.model_state import reset_trainable
 from beta_train.batching import split_into_chunks
+from beta_train.model_state import reset_trainable
+from beta_train.progress import PROGRESS_INTERVAL_SEC, HtmlProgress
 from beta_train.step import predict_chunk
 
 # This file's own module, so its source is part of the cache keys it writes
@@ -73,18 +82,32 @@ class PopulationValidator:
 
     KIND = "fused"
 
-    def __init__(self, dataset_module, choice_df: pd.DataFrame, specs: dict, max_questions: int, max_chars: int):
+    def __init__(
+        self,
+        dataset_module,
+        choice_df: pd.DataFrame,
+        specs: dict,
+        max_questions: int,
+        max_chars: int,
+        graph_limits: dict = EVAL_GRAPH_LIMITS,
+    ):
         # max_questions / max_chars: per-GPU-batch budgets for inference (questions, padded characters); whichever is
         # hit first closes a batch. Lower them to avoid OOM on bigger models, raise them for fewer, fuller batches.
+        # graph_limits: the CUDA-graph buffer limits inside a batch (data.base.EVAL_GRAPH_LIMITS keys: rows / tokens per
+        # row pass, states per state pass, state bank width). A batch runs as passes of at most these sizes, so they cap
+        # each pass however large the batch budgets are. Default = data.base.EVAL_GRAPH_LIMITS; larger = fewer passes and
+        # larger fixed buffers. Inference only: not part of a run's identity or the step-0 cache key.
         for budget_name, budget in (("max_questions", max_questions), ("max_chars", max_chars)):
             if not isinstance(budget, int) or isinstance(budget, bool) or budget < 1:
                 raise ValueError(f"{budget_name} must be a positive integer, got {budget!r}")
+        _validate_graph_limits(graph_limits)
         t_start = time.perf_counter()
         self.name = dataset_module.NAME
         self.dataset_module = dataset_module
         self.choice_fingerprint = dataframe_fingerprint(choice_df)
         self.max_questions = max_questions
         self.max_chars = max_chars
+        self.graph_limits = dict(graph_limits)
 
         # 1. State-grouped bundle: respondents sharing a persona state are run together (fast inference)
         records = build_long_records(
@@ -100,7 +123,7 @@ class PopulationValidator:
                 raise ValueError(f"{self.name} record {rec_idx}: expected a one-hot human choice, got {h_dist}")
             self.human_choices.append(h_dist.index(1.0))
 
-        # 3. Population OLS operators from the module's coding; records matched to tasks by (CASEID, qid)
+        # 3. Population OLS operators from the module's coding; records matched to tasks by (CASEID, qid, occurrence)
         self.eval_ops = build_population_eval(dataset_module, choice_df, specs, self.bundle["records"])
         self.prep_sec = time.perf_counter() - t_start
 
@@ -113,6 +136,7 @@ class PopulationValidator:
             "regressions": ", ".join(self.eval_ops["specs"]),
             "max_questions": self.max_questions,
             "max_chars": self.max_chars,
+            "graph_limits": ", ".join(f"{name}={value}" for name, value in self.graph_limits.items()),
             "prep_sec": round(self.prep_sec, 3),
         }
 
@@ -120,22 +144,35 @@ class PopulationValidator:
         return human_beta_series(self.name, self.eval_ops)
 
     @torch.no_grad()
-    def validate(self, model) -> tuple[dict[str, float], pd.DataFrame]:
-        # Inference in fused eval mode (training mode and weights restored afterwards), then KL + population betas
+    def validate(self, model, progress_bar: HtmlProgress) -> tuple[dict[str, float], pd.DataFrame]:
+        # Inference in fused eval mode (training mode and weights restored afterwards), then KL + population betas.
+        # progress_bar: reset to this validation's GPU batches and advanced after each one
+        num_batches = len(group_eval_views(self.bundle["packed_views"], max_questions=self.max_questions, max_chars=self.max_chars))
+        progress_bar.set_description(f"validating {self.name} (fused)")
+        progress_bar.reset(total=num_batches)
+
+        def batch_done(done_batches: int, total_batches: int) -> None:
+            if total_batches != num_batches:
+                raise ValueError(f"{self.name}: inference made {total_batches} batches, the bar expected {num_batches}")
+            progress_bar.update(1)
+
         torch.cuda.synchronize()
         t_start = time.perf_counter()
         was_training = model.training
         model.eval()
         free_gpu()
         try:
-            with torch.autocast("cuda", dtype=torch.bfloat16), fused_eval_context(model, eval_dtype=torch.bfloat16):
+            with torch.autocast("cuda", dtype=torch.bfloat16), fused_eval_context(
+                model, eval_dtype=torch.bfloat16, graph_limits=self.graph_limits
+            ):
                 preds, stats = predict_probs_grouped(
                     model,
                     self.bundle,
                     max_questions=self.max_questions,
                     max_chars=self.max_chars,
-                    show_progress=True,
+                    show_progress=False,
                     return_stats=True,
+                    progress_fn=batch_done,
                 )
         finally:
             if was_training:
@@ -226,23 +263,26 @@ class TrainingPathValidator:
         return human_beta_series(self.name, self.eval_ops)
 
     @torch.no_grad()
-    def validate(self, model) -> tuple[dict[str, float], pd.DataFrame]:
-        # Training forward in eval mode (no dropout), chunk by chunk; then KL + population betas
+    def validate(self, model, progress_bar: HtmlProgress) -> tuple[dict[str, float], pd.DataFrame]:
+        # Training forward in eval mode (no dropout), chunk by chunk; then KL + population betas.
+        # progress_bar: reset to this validation's forward chunks and advanced after each one
         torch.cuda.synchronize()
         t_start = time.perf_counter()
         was_training = model.training
         model.eval()
         preds = []
         chunks = split_into_chunks(self.items, self.eval_chunk)
+        progress_bar.set_description(f"validating {self.name} (training path)")
+        progress_bar.reset(total=len(chunks))
         try:
-            # One bar over the forward chunks (cleared when validation ends), like the fused validator's batch bar
-            for chunk in tqdm(chunks, desc=f"validating {self.name} (training path)", unit="chunk", leave=False):
+            for chunk in chunks:
                 flat_logits = predict_chunk(model, chunk)
                 chunk_num_options = []
                 for item in chunk:
                     chunk_num_options.extend(item["num_options"])
                 for task_logits in torch.split(flat_logits, chunk_num_options):
                     preds.append(torch.softmax(task_logits, dim=-1).cpu().numpy())
+                progress_bar.update(1)
             torch.cuda.synchronize()
         finally:
             if was_training:
@@ -278,11 +318,11 @@ class TrainingPathValidator:
         return metrics, beta_df
 
 
-def validate_all(model, validators: dict) -> dict[str, tuple[dict[str, float], pd.DataFrame]]:
-    # {validator name: (metrics, beta_df)} for every validator
+def validate_all(model, validators: dict, progress_bar: HtmlProgress) -> dict[str, tuple[dict[str, float], pd.DataFrame]]:
+    # {validator name: (metrics, beta_df)} for every validator; each validator resets `progress_bar` to its own batches
     results = {}
     for name, validator in validators.items():
-        results[name] = validator.validate(model)
+        results[name] = validator.validate(model, progress_bar)
     return results
 
 
@@ -301,6 +341,10 @@ def validate_all_cached(
     reset_trainable(model, init_snapshot)
     results = {}
     report_rows = []
+    # One bar for every validator this call computes (a validator loaded from the cache does not move it)
+    progress_bar = HtmlProgress(
+        total=0, initial=0, description="step-0 validation (waiting)", unit="batch", min_interval_sec=PROGRESS_INTERVAL_SEC
+    )
     for name, validator in validators.items():
         # Code the result depends on: OLS + encoding + forward for both kinds; the training-path validator also runs
         # the training forward (step) on training items (items), the fused one does not
@@ -327,10 +371,12 @@ def validate_all_cached(
         }
 
         def compute_one_validator():
-            return validator.validate(model)
+            return validator.validate(model, progress_bar)
 
         results[name], loaded = load_or_compute(cache_dir, f"step0_{name}", key, compute_one_validator)
         report_rows.append({"validator": name, "source": "cache" if loaded else "computed"})
+    progress_bar.set_description("step-0 validation (done)")
+    progress_bar.close()
     return results, pd.DataFrame(report_rows).set_index("validator")
 
 

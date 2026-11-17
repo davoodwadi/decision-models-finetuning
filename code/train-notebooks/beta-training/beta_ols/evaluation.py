@@ -24,7 +24,10 @@ def build_population_eval(dataset_module, choice_df: pd.DataFrame, specs: dict[s
     # 1. Flat option vector over the whole dataset, respondent by respondent, task by task (module order)
     y_parts = []
     rows_by_group: dict[str, list[tuple[list[float], list[int], list[float]]]] = {}
-    task_offset_by_key: dict[tuple[str, str], tuple[int, int]] = {}
+    # Each task is identified by (CASEID, qid, occurrence): a respondent can see the same task twice (Wu 2025: the same
+    # pair of plans in two of the 10 tasks, same qid). Repeats have identical prompts, hence identical predictions, so
+    # matching the k-th record of a (CASEID, qid) to its k-th task places every prediction correctly.
+    task_offset_by_key: dict[tuple[str, str, int], tuple[int, int]] = {}
     offset = 0
     for caseid, r_df in iter_respondents(choice_df):
         part = dataset_module.respondent_beta_part(r_df)
@@ -33,13 +36,13 @@ def build_population_eval(dataset_module, choice_df: pd.DataFrame, specs: dict[s
             if row.group not in rows_by_group:
                 rows_by_group[row.group] = []
             rows_by_group[row.group].append((row.x, [offset + i for i in row.option_idx], row.weights))
-        # Each task is identified by (CASEID, qid); its options start at `task_start` in the flat vector
+        # The task's options start at `task_start` in the flat vector
         task_start = offset
+        occurrences_by_qid: dict[str, int] = {}
         for qid, n_options in zip(r_df["qid"], part.num_options, strict=True):
-            key = (caseid, str(qid))
-            if key in task_offset_by_key:
-                raise ValueError(f"{caseid}: task qid {qid!r} appears twice; tasks cannot be matched to records")
-            task_offset_by_key[key] = (task_start, n_options)
+            occurrence = occurrences_by_qid.get(str(qid), 0)   # 0 for a qid not seen yet for this respondent
+            occurrences_by_qid[str(qid)] = occurrence + 1
+            task_offset_by_key[(caseid, str(qid), occurrence)] = (task_start, n_options)
             task_start += n_options
         offset += part.y_flat.shape[0]
     total_options = offset
@@ -57,8 +60,12 @@ def build_population_eval(dataset_module, choice_df: pd.DataFrame, specs: dict[s
     if len(eval_records) != len(task_offset_by_key):
         raise ValueError(f"Expected {len(task_offset_by_key)} evaluation records (one per task), got {len(eval_records)}")
     record_positions = []
+    record_occurrences: dict[tuple[str, str], int] = {}
     for rec in eval_records:
-        key = (str(rec["CASEID"]), str(rec["qid"]))
+        caseid_qid = (str(rec["CASEID"]), str(rec["qid"]))
+        occurrence = record_occurrences.get(caseid_qid, 0)   # 0 for a (CASEID, qid) not seen yet among the records
+        record_occurrences[caseid_qid] = occurrence + 1
+        key = (*caseid_qid, occurrence)
         if key not in task_offset_by_key:
             raise KeyError(f"Evaluation record {key} has no matching task in the module's choice rows")
         record_positions.append(task_offset_by_key[key])

@@ -171,10 +171,13 @@ class LiveDisplay:
         if self.gradient_split:
             self.draw_gradient_split(step_rows)
 
-        # Dashed lines at epoch boundaries
+        # Dashed lines at epoch boundaries (none when an epoch is one step, e.g. a fixed-sample overfit run: every
+        # step would be a boundary)
         last_step = step_rows[-1]["step"] if step_rows else 0
         for ax in self.axes.flat:
             ax.set_xlabel("step")
+            if self.steps_per_epoch == 1:
+                continue
             for boundary in range(self.steps_per_epoch, last_step + 1, self.steps_per_epoch):
                 ax.axvline(boundary, color="gray", linestyle="--", linewidth=0.8)
         self.fig.tight_layout()
@@ -182,7 +185,7 @@ class LiveDisplay:
 
     def draw_gradient_split(self, step_rows: list[dict]) -> None:
         # Third row, one point per step (steps alternate between training datasets, so lines zigzag between them):
-        # the gradient norms together (log scale), CE vs lambda x beta cosine, each part's projection onto the total
+        # the gradient norms together (linear, from 0, so relative sizes read directly), CE vs lambda x beta cosine, each part's projection onto the total
         # gradient, and the lambda x beta / CE norm ratio
         norms_ax = self.axes[2, 0]
         cosine_ax = self.axes[2, 1]
@@ -195,7 +198,7 @@ class LiveDisplay:
                     raise KeyError(f"gradient_split is on but steps have no {column!r} column")
             for column, label in GRADIENT_NORM_LINES:
                 norms_ax.plot(step_df["step"], step_df[column], linewidth=0.8, label=label)
-            norms_ax.set_yscale("log")
+            norms_ax.set_ylim(bottom=0.0)
             norms_ax.legend(fontsize=8)
             cosine_ax.plot(step_df["step"], step_df["grad_cos_ce_lambda_beta"], linewidth=0.8)
             cosine_ax.axhline(0.0, color="gray", linewidth=0.8)
@@ -210,3 +213,4 @@ class LiveDisplay:
         cosine_ax.set_title("cosine(CE gradient, lambda x beta gradient)")
         projection_ax.set_title("projection onto the total gradient (sums to total)")
         ratio_ax.set_title("|lambda x beta gradient| / |CE gradient|")
+

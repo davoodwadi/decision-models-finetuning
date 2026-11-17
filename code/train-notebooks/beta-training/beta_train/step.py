@@ -124,7 +124,7 @@ def two_pass_gradients(
     sample_ops: dict,
     beta_lambda: float,
     micro_chunk: int,
-    chunk_bar,                                     # the run's one tqdm bar, reset here every step (no new output per step)
+    chunk_bar,                                     # the run's one chunk progress bar (live_display.HtmlProgress), reset here every step
     gradient_split: bool,                          # True: also split the gradient into its CE and beta parts (2nd pass 2)
 ) -> tuple[dict, dict, dict | None]:
     # Fill every trainable parameter's .grad with the exact full-sample gradient. Returns (loss_out, timings_ms,
