@@ -72,3 +72,35 @@ def mse_decomposition(runs: dict, step0_validation: dict, validator: str) -> pd.
     table = pd.DataFrame(columns)
     mean_row = pd.DataFrame([table.mean()], index=pd.Index(["MEAN (= beta_mse on sq_err columns)"]))
     return pd.concat([table, mean_row])
+
+
+def best_table(runs: dict) -> pd.DataFrame:
+    # One row per run: the best-metric rule, the best step, and every validation column of best.pt (validators that
+    # did not run at that step were validated on best.pt at the end of the run)
+    rows = []
+    for run_name, run in runs.items():
+        row = {
+            "run": run_name,
+            "beta_lambda": run.config["beta_lambda"],
+            "best_metric": run.best["metric"],
+            "best_mode": run.best["mode"],
+            "best_step": run.best["step"],
+            "best_value": run.best["value"],
+        }
+        for column, value in run.best_row.items():
+            if column != "step":
+                row[column] = value
+        rows.append(row)
+    return pd.DataFrame(rows).set_index("run")
+
+
+def best_beta_table(runs: dict, step0_validation: dict, validator: str) -> pd.DataFrame:
+    # Human betas, untrained-model betas, and every run's betas at its best step for one validator
+    _, step0_beta_df = step0_validation[validator]
+    columns = {"human_pop_beta": step0_beta_df["human_pop_beta"], "step_0": step0_beta_df["model_pop_beta"]}
+    for run_name, run in runs.items():
+        _, beta_df = run.best_validation[validator]
+        if not beta_df.index.equals(step0_beta_df.index):
+            raise ValueError(f"Beta index mismatch for run {run_name!r}")
+        columns[f"{run_name} (best step {run.best['step']})"] = beta_df["model_pop_beta"]
+    return pd.DataFrame(columns)

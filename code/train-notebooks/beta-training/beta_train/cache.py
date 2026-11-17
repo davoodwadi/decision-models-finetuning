@@ -37,9 +37,11 @@ def source_fingerprint(*modules) -> str:
 
 
 def cache_file(cache_dir: Path, name: str, key: dict) -> Path:
-    # <cache_dir>/<name>_<first 16 hex of sha256(key)>.pkl
+    # <cache_dir>/<name>_<first 16 hex of sha256(key)>.pkl; "/" in a pseudo dataset name ("berke2023/delivery_choice_v0")
+    # becomes "__" so the file stays directly in the cache folder
     key_digest = hashlib.sha256(json.dumps(key, sort_keys=True).encode()).hexdigest()[:16]
-    return Path(cache_dir) / f"{name}_{key_digest}.pkl"
+    file_stem = name.replace("/", "__")
+    return Path(cache_dir) / f"{file_stem}_{key_digest}.pkl"
 
 
 def load_or_compute(cache_dir: Path, name: str, key: dict, compute_fn):

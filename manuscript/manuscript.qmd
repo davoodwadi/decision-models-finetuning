@@ -237,11 +237,11 @@ Off-the-shelf decision models exhibit high cross-entropy on the $18$ unseen vali
 Distributional fine-tuning reduces held-out validation cross-entropy by $26.0\%$ to $27.5\%$ and improves accuracy steadily with model scale, reaching `1.7963` bits on `Kev 0.8B` ($0.34$ epochs), `1.7431` bits on `Kev 4B` ($0.67$ epochs), and `1.7377` bits on `Kev 9B` ($0.60$ epochs).
 Most of the reduction occurs within the first $0.10$ epochs as the decision head adapts to subjective response distributions, followed by steady gains from persona conditioning.
 
-| Model | Base valid CE | FT valid CE (best) | FT valid CE (end Ep. 1) | Valid CE change | Best ckpt (epoch) |
-|:---|---:|---:|---:|---:|---:|
-| Kev 0.8B | 2.4262 | 1.7963 | 1.8141 | -26.0% | 0.34 |
-| Kev 4B | 2.3586 | 1.7431 | 1.7604 | -26.1% | 0.67 |
-| Kev 9B | 2.3983 | 1.7377 | 1.7589 | -27.5% | 0.60 |
+| Model | Base valid CE | FT valid CE | Valid CE change | Best ckpt (epoch) |
+|:---|---:|---:|---:|---:|
+| Kev 0.8B | 2.4262 | 1.7963 | -26.0% | 0.34 |
+| Kev 4B | 2.3586 | 1.7431 | -26.1% | 0.67 |
+| Kev 9B | 2.3983 | 1.7377 | -27.5% | 0.60 |
 
 : Choice cross-entropy on the held-out survey validation split {#tbl-validation}
 
@@ -312,7 +312,7 @@ At the attribute level (@fig-wang-coefs, Panel A; @apptbl-wang-coefs), `Kev 9B (
 By contrast, `Kev 9B (FT)` recovers $8$ of $11$ estimates within those $95\%$ confidence intervals, closely aligning with full-sample human part-worths on efficacy, FDA Emergency Use Authorization, country of origin, and endorsements while attenuating protection duration and rare major side effects toward zero.
 
 +-----------------------+------------------+---------------------+---------------------+
-| Model                 | Configuration    | Random Persona      | Respondent Persona  |
+| Estimator             | Configuration    | Random Persona      | Respondent Persona  |
 +                       +                  +----------+----------+----------+----------+
 |                       |                  | MAPE (%) | MSE      | MAPE (%) | MSE      |
 +:======================+:=================+=========:+=========:+=========:+=========:+

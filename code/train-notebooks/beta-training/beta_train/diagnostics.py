@@ -21,7 +21,7 @@ from beta_train.step import predict_chunk
 def gradient_check(
     model,
     dataset_items: list[dict],
-    specs: dict,
+    specs: dict,                                   # {group: RegressionSpec} of the dataset `dataset_items` come from
     init_snapshot: dict,
     sample_size: int,
     micro_chunk: int,
@@ -83,7 +83,7 @@ def gradient_check(
         loss_a2, grad_a2 = method_a(saved_rng_states)
         return {
             "dataset": sample[0]["dataset"],
-            "respondents": len(sample),
+            "items (rows)": len(sample),
             "tasks": len(sample_ops["num_options"]),
             "micro_chunk": micro_chunk,
             "beta_lambda": beta_lambda,
@@ -98,8 +98,8 @@ def gradient_check(
         reset_trainable(model, init_snapshot)
 
 
-def respondent_shape(item: dict) -> dict:
-    # What sets a respondent's memory in the shared-prefix forward: its state length and its question-branch lengths
+def item_shape(item: dict) -> dict:
+    # What sets an item's memory in the shared-prefix forward: its state length and its question-branch lengths
     state_ids, _, rows = rows_of(item["enc"])
     row_lens = [len(row["ids"]) for row in rows]
     return {"state_len": len(state_ids), "num_rows": len(rows), "max_row_len": max(row_lens), "item": item}
@@ -114,7 +114,7 @@ def padded_tokens(shapes: list[dict]) -> int:
     return len(shapes) * max_state + total_rows * max_row
 
 
-# Sort keys for respondent shapes and candidate chunks
+# Sort keys for item shapes and candidate chunks
 def shape_num_rows(shape: dict) -> int:
     return shape["num_rows"]
 
@@ -136,14 +136,14 @@ def candidate_padded_tokens(candidate: dict) -> int:
 
 
 def worst_case_chunks(items: list[dict], chunk_size: int, num_candidates: int) -> list[dict]:
-    # Candidate chunks of `chunk_size` respondents from ONE dataset (training chunks never mix datasets), built to
-    # maximize padding: the respondent with the longest state, the one with the longest branch, and the respondents
-    # with the most questions, plus simpler orderings. Returns the `num_candidates` with the most padded tokens.
+    # Candidate chunks of `chunk_size` items from ONE dataset (training chunks never mix datasets), built to
+    # maximize padding: the item with the longest state, the one with the longest branch, and the items with the
+    # most questions, plus simpler orderings. Returns the `num_candidates` with the most padded tokens.
     shapes_by_dataset: dict[str, list[dict]] = {}
     for item in items:
         if item["dataset"] not in shapes_by_dataset:
             shapes_by_dataset[item["dataset"]] = []
-        shapes_by_dataset[item["dataset"]].append(respondent_shape(item))
+        shapes_by_dataset[item["dataset"]].append(item_shape(item))
 
     candidates = []
     for dataset_name, shapes in shapes_by_dataset.items():
@@ -162,11 +162,12 @@ def worst_case_chunks(items: list[dict], chunk_size: int, num_candidates: int) -
         }
         for rule, ordering in orderings.items():
             chosen = []
-            seen_caseids = set()
+            seen_keys = set()
             for shape in ordering:
-                if shape["item"]["caseid"] not in seen_caseids:
+                item_key = (shape["item"]["caseid"], tuple(shape["item"]["qids"]))
+                if item_key not in seen_keys:
                     chosen.append(shape)
-                    seen_caseids.add(shape["item"]["caseid"])
+                    seen_keys.add(item_key)
                 if len(chosen) == chunk_size:
                     break
             candidates.append(
@@ -175,7 +176,7 @@ def worst_case_chunks(items: list[dict], chunk_size: int, num_candidates: int) -
                     "rule": rule,
                     "padded_tokens": padded_tokens(chosen),
                     "items": [shape["item"] for shape in chosen],
-                    "caseids": frozenset(seen_caseids),
+                    "item_keys": frozenset(seen_keys),
                 }
             )
 
@@ -184,9 +185,9 @@ def worst_case_chunks(items: list[dict], chunk_size: int, num_candidates: int) -
     distinct = []
     seen_chunks = set()
     for candidate in candidates:
-        if candidate["caseids"] not in seen_chunks:
+        if candidate["item_keys"] not in seen_chunks:
             distinct.append(candidate)
-            seen_chunks.add(candidate["caseids"])
+            seen_chunks.add(candidate["item_keys"])
     return distinct[:num_candidates]
 
 
@@ -198,8 +199,8 @@ def find_max_micro_chunk(
     gradient_checkpointing: bool,
     candidates_per_size: int,
 ) -> tuple[pd.DataFrame, int]:
-    # Largest micro-chunk for which one pass-2 forward + backward + AdamW step fits in VRAM for EVERY one of the
-    # `candidates_per_size` worst-case chunks (most padded tokens, see `worst_case_chunks`). Doubles the size until a
+    # Largest micro-chunk (items per chunk) for which one pass-2 forward + backward + AdamW step fits in VRAM for
+    # EVERY one of the `candidates_per_size` worst-case chunks (most padded tokens, see `worst_case_chunks`). Doubles the size until a
     # candidate runs out of memory, then binary-searches. Weights are reset after every trial.
     set_checkpointing(model, gradient_checkpointing)
     total_vram_gib = torch.cuda.get_device_properties(0).total_memory / 2**30
@@ -241,7 +242,7 @@ def find_max_micro_chunk(
         # A size fits only if every worst-case candidate fits; stop at the first that does not
         candidates = worst_case_chunks(items, chunk_size, candidates_per_size)
         if not candidates:
-            raise ValueError(f"No dataset has {chunk_size} respondents to build a chunk from")
+            raise ValueError(f"No dataset has {chunk_size} items to build a chunk from")
         for candidate in candidates:
             if not candidate_fits(chunk_size, candidate):
                 return False

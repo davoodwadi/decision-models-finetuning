@@ -98,3 +98,12 @@ Persona values that map to NaN are dropped from that respondent's persona (`base
   the paper's benchmark would be its mode-choice logit models per product type).
 - Dry run with the current audit CSV: 54,872 rows (36,297 delivery choices + 5 x 3,715 single questions), all building
   into valid training records.
+
+## Observations from beta training (2026-11-16)
+- Tasks per respondent per product type: 1,585 respondents answered 3 choices for each of the 4 product types (12);
+  1,143 answered 3 types and 629 two (3 choices per type). The 268 respondents who saw a single product type answered
+  12 distinct choices of it: take-out food 54, prescription medications 168, liquor store 14, groceries 32 (12 different
+  designs each, not duplicated rows). Cause not checked (possibly a single-product survey version); kept as is.
+- Beta training splits Berke into one pseudo dataset per product type (`berke2023/delivery_choice_v0..v3`,
+  `beta_ols.core.split_by_task`), so one training item holds one respondent's choices of a single product type
+  (usually 3, at most 12). The per-type regressions and sigmas equal the full-data vendor models exactly.

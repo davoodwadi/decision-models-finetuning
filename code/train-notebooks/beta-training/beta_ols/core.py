@@ -74,7 +74,10 @@ def parse_treatment_term(term: str) -> tuple[str, int]:
 
 
 def iter_respondents(choice_df: pd.DataFrame):
-    # Yield (caseid, one respondent's task rows) in first-appearance order, keeping each respondent's task order
+    # Yield (caseid, one respondent's task rows) in first-appearance order, keeping each respondent's task order.
+    # groupby would silently drop rows with a missing CASEID, so those raise instead.
+    if bool(choice_df["CASEID"].isna().any()):
+        raise ValueError("choice_df has rows without a CASEID")
     for caseid, r_group in choice_df.groupby("CASEID", sort=False):
         yield str(caseid), r_group.reset_index(drop=True)
 
@@ -82,12 +85,21 @@ def iter_respondents(choice_df: pd.DataFrame):
 def regression_rows_from_parts(choice_df: pd.DataFrame, beta_part_fn, design_columns_by_group: dict) -> pd.DataFrame:
     # Build the regression table (one row per outcome row) from every respondent's beta part.
     # Human outcome y = the outcome row's weights applied to the respondent's one-hot choices.
+    # `task` = "<CASEID>#<task index>": the data row (answered task) an outcome row comes from; a task's stacked
+    # option rows share it (the unit training samples, see beta_noise_by_sample_size).
     table_rows = []
     for caseid, r_df in iter_respondents(choice_df):
         part = beta_part_fn(r_df)
+        # Task of each position in the respondent's flat option vector
+        task_of_option = []
+        for task_idx, n_options in enumerate(part.num_options):
+            task_of_option.extend([task_idx] * n_options)
         for row in part.outcome_rows:
+            row_tasks = {task_of_option[option_idx] for option_idx in row.option_idx}
+            if len(row_tasks) != 1:
+                raise ValueError(f"{caseid}: an outcome row of {row.group} spans tasks {sorted(row_tasks)}")
             design_columns = design_columns_by_group[row.group]
-            table_row = {"CASEID": caseid, "group": row.group}
+            table_row = {"CASEID": caseid, "task": f"{caseid}#{row_tasks.pop()}", "group": row.group}
             for col, value in zip(design_columns, row.x, strict=True):
                 table_row[col] = value
             human_y = 0.0
@@ -99,11 +111,25 @@ def regression_rows_from_parts(choice_df: pd.DataFrame, beta_part_fn, design_col
 
 
 def outcome_sigma(y: np.ndarray) -> float:
-    # Population SD (ddof=0) of a regression's human outcome; must be positive to standardize by it
+    # Population SD (ddof=0) of a regression's human outcome; must be finite and positive to standardize by it
+    if len(y) == 0:
+        raise ValueError("No outcomes to compute an SD from")
     sigma = float(np.std(y, ddof=0))
-    if sigma <= 0.0:
-        raise ValueError(f"Non-positive outcome SD {sigma}")
+    if not np.isfinite(sigma) or sigma <= 0.0:
+        raise ValueError(f"Outcome SD must be finite and positive, got {sigma}")
     return sigma
+
+
+def split_by_task(choice_df: pd.DataFrame, dataset_name: str) -> dict[str, pd.DataFrame]:
+    # One pseudo dataset per task variable `v`, named "<dataset>/<v>", in first-appearance order; a dataset with a
+    # single task variable stays whole under its own name. Each piece keeps every respondent's rows of that task in order.
+    task_names = list(dict.fromkeys(choice_df["v"]))
+    if len(task_names) == 1:
+        return {dataset_name: choice_df}
+    pieces = {}
+    for task_name in task_names:
+        pieces[f"{dataset_name}/{task_name}"] = choice_df[choice_df["v"] == task_name].reset_index(drop=True)
+    return pieces
 
 
 def fit_human_ols(rows: pd.DataFrame, specs: dict[str, RegressionSpec]) -> pd.DataFrame:
@@ -208,11 +234,12 @@ def beta_noise_by_sample_size(
     num_draws: int,
     seed: int,
 ) -> pd.DataFrame:
-    # Monte Carlo: for each sample size, draw respondents, fit each regression on their rows, and compare the
-    # standardized sample betas with the full-data standardized betas (target noise). Signal = mean squared
-    # full-data standardized beta. Rank-deficient draws are counted and skipped.
+    # Monte Carlo: for each sample size, draw that many tasks (data rows, the training sample unit), fit each
+    # regression on their outcome rows, and compare the standardized sample betas with the full-data standardized
+    # betas (target noise). Signal = mean squared full-data standardized beta. Rank-deficient draws are counted and
+    # skipped.
     rng = np.random.default_rng(seed)
-    caseids = rows["CASEID"].unique()
+    tasks = rows["task"].unique()
     result_rows = []
     for group, spec in specs.items():
         group_rows = rows[rows["group"] == group].reset_index(drop=True)
@@ -224,20 +251,20 @@ def beta_noise_by_sample_size(
         full_betas = A_full @ y_full
         signal = float(full_betas.pow(2).mean())
 
-        # Row positions of each respondent in this group (respondents without rows in this group get none)
-        row_idx_by_case = {}
-        for caseid, case_rows in group_rows.groupby("CASEID", sort=False):
-            row_idx_by_case[caseid] = case_rows.index.to_numpy()
+        # Outcome-row positions of each task in this group (tasks of other groups have none)
+        row_idx_by_task = {}
+        for task, task_rows in group_rows.groupby("task", sort=False):
+            row_idx_by_task[task] = task_rows.index.to_numpy()
 
         for sample_size in sample_sizes:
             noise_values = []
             rank_deficient = 0
             for _ in range(num_draws):
-                drawn = rng.choice(caseids, size=sample_size, replace=False)
+                drawn = rng.choice(tasks, size=sample_size, replace=False)
                 drawn_idx_parts = []
-                for caseid in drawn:
-                    if caseid in row_idx_by_case:
-                        drawn_idx_parts.append(row_idx_by_case[caseid])
+                for task in drawn:
+                    if task in row_idx_by_task:
+                        drawn_idx_parts.append(row_idx_by_task[task])
                 if not drawn_idx_parts:
                     rank_deficient += 1
                     continue

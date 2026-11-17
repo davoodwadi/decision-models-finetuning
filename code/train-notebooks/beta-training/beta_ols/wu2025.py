@@ -74,6 +74,8 @@ def respondent_beta_part(r_df: pd.DataFrame) -> RespondentBetaPart:
         if list(row.option_texts) != CONJOINT_OPTIONS:
             raise ValueError(f"{row.CASEID} task {t_idx}: expected {CONJOINT_OPTIONS}, got {row.option_texts}")
         one_hot = check_one_hot([float(v) for v in row.one_hot], 2, f"{row.CASEID} task {t_idx}")
+        if len(row.option_descriptions) != 2:
+            raise ValueError(f"{row.CASEID} task {t_idx}: expected 2 plans, got {len(row.option_descriptions)}")
         first_option = len(y_values)
         for opt_idx, description in enumerate(row.option_descriptions):
             outcome_rows.append(

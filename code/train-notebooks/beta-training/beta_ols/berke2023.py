@@ -129,8 +129,12 @@ def regression_rows(choice_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def regression_specs(rows: pd.DataFrame) -> dict[str, RegressionSpec]:
+    # Specs for the vendor groups present in `rows` (all four on the full data, one on a single-vendor pseudo dataset)
+    present_groups = set(rows["group"])
     specs = {}
     for v_idx, group in enumerate(GROUPS):
+        if group not in present_groups:
+            continue
         vendor_label = VENDOR_TYPES[v_idx][0]
         specs[group] = RegressionSpec(
             name=group,

@@ -10,7 +10,7 @@ Data and OLS only: no model or tokenizer. The training side (items, gradient ste
 | `core.py` | Shared types (`RegressionSpec`, `OutcomeRow`, `RespondentBetaPart`), `fit_human_ols`, `wide_ols_table`, `ols_projector`, `beta_noise_by_sample_size` |
 | `unified_loss.py` | `build_sample_beta_operators`, `compute_unified_loss` |
 | `evaluation.py` | `build_population_eval`, `flat_probs_from_predictions`, `compare_population_betas`: model vs human population betas with the module's own coding |
-| `wu2025.py`, `berke2023.py`, `grummon2023.py`, `kriner2026.py`, `covid.py`, `grummon2025.py` | One module per dataset |
+| `wu2025.py`, `berke2023.py`, `grummon2023_calories.py`, `grummon2023_labels.py`, `kriner2026.py`, `covid.py`, `grummon2025.py` | One module per dataset (`grummon2023_calories` and `grummon2023_labels` are two codings of Grummon 2023's data) |
 | `__init__.py` | `DATASET_MODULES`: every dataset module by name |
 
 ## Dataset module interface
@@ -47,7 +47,8 @@ Human betas use the same `B` with one-hot choices, so the beta error is `B @ (p 
 |---|---|---|---|---|
 | Wu 2025 | 1 | each displayed plan | that plan's choice probability | clustered by respondent |
 | Berke 2023 | 4 (one per vendor) | stacked Ground/Drone rows, own − other option, plus a drone constant | that option's probability | clustered |
-| Grummon 2023 | 2 (beverage, snack), one shared design row | respondent | calories of the chosen product (Σ p·kcal) | HC1 |
+| Grummon 2023 calories | 2 (beverage, snack), one shared design row | respondent | calories of the chosen product as printed on its label (Σ p·kcal; see data/nutrition/grummon2023/DECISIONS.md) | HC1 |
+| Grummon 2023 labels | 2 (beverage, snack) | each of the 16 displayed products; product fixed effects, arm dummies (nuisance) and 5 label targets (see data/nutrition/grummon2023/DECISIONS.md) | that product's probability | clustered |
 | Kriner 2026 | 1 | each displayed flight | that flight's probability | clustered |
 | COVID (Kreps 2020) | 1 | profiles A and B ("neither" has no row) | that profile's probability | clustered |
 | Grummon 2025 | 1 | each of the 6 items (the paper's unit of analysis) | p(picked the healthier product) | clustered |

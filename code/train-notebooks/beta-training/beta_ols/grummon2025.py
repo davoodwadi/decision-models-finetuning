@@ -64,8 +64,9 @@ def load_choice_df() -> pd.DataFrame:
 #    6 tasks of 3 options (healthier, less healthy, "They're the same"); each task gives one outcome row =
 #    p(option 1), the probability of picking the healthier product
 def respondent_beta_part(r_df: pd.DataFrame) -> RespondentBetaPart:
-    if len(r_df) != ITEMS_PER_RESPONDENT:
-        raise ValueError(f"{r_df['CASEID'].iloc[0]}: expected {ITEMS_PER_RESPONDENT} items, got {len(r_df)}")
+    # All 6 items on the full data (load_choice_df checks that); fewer on a single-item pseudo dataset
+    if len(r_df) == 0 or len(r_df) > ITEMS_PER_RESPONDENT or r_df["v"].nunique() != len(r_df):
+        raise ValueError(f"{r_df['CASEID'].iloc[0]}: expected 1 to {ITEMS_PER_RESPONDENT} distinct items, got {list(r_df['v'])}")
     if r_df["arm"].nunique() != 1:
         raise ValueError(f"{r_df['CASEID'].iloc[0]}: arm differs between items")
     x_row = design_row(str(r_df["arm"].iloc[0]))
