@@ -1,4 +1,5 @@
 import AutoRefresh from "@/components/AutoRefresh";
+import BetasView from "@/components/betas-view";
 import LocalTime from "@/components/LocalTime";
 import LineChart, { ChartSeries, XY } from "@/components/charts/line-chart";
 import RollingChart, { StepGroup } from "@/components/charts/rolling-chart";
@@ -9,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Table as UiTable, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, readRun, validatorMetrics } from "@/lib/runs";
+import { Table, readBetas, readRun, validatorMetrics } from "@/lib/runs";
 import { columnIndex, numberAt } from "@/lib/csv";
 import { formatNumber, notebookHref } from "@/lib/format";
 
@@ -115,6 +116,7 @@ export default async function RunPage({ params }: { params: Promise<{ notebook: 
   const gradGroups = hasSteps && gradColumns.length > 0 ? groupStepsByDataset(steps, gradColumns, stepsFile) : [];
   const lrPoints = hasSteps && steps.columns.includes("lr") ? stepColumnSeries(steps, "lr", stepsFile) : [];
   const chartGroup = `val:${notebook}/${run}`;
+  const betaFiles = readBetas(notebook, run);
 
   return (
     <>
@@ -149,6 +151,7 @@ export default async function RunPage({ params }: { params: Promise<{ notebook: 
           <TabsTrigger value="validation">Validation</TabsTrigger>
           <TabsTrigger value="training">Training</TabsTrigger>
           {gradGroups.length > 0 ? <TabsTrigger value="gradients">Gradients</TabsTrigger> : null}
+          <TabsTrigger value="betas">OLS betas</TabsTrigger>
           <TabsTrigger value="table">Table</TabsTrigger>
           <TabsTrigger value="config">Config</TabsTrigger>
         </TabsList>
@@ -194,6 +197,14 @@ export default async function RunPage({ params }: { params: Promise<{ notebook: 
             <RollingChart title="gradient split" columns={gradColumns} groups={gradGroups} defaultWindow={25} />
           </TabsContent>
         ) : null}
+
+        <TabsContent value="betas">
+          {betaFiles.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No betas written yet.</p>
+          ) : (
+            <BetasView files={betaFiles} />
+          )}
+        </TabsContent>
 
         <TabsContent value="table">
           {val.rows.length === 0 ? (

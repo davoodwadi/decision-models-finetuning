@@ -365,3 +365,62 @@ export function validatorMetrics(columns: string[]): { validators: string[]; met
 }
 
 export type { Cell, Table };
+
+// ---------------------------------------------------------------- betas
+
+// betas/step_NNNNNN.csv: betas of every validator that ran at that step
+// betas/best_step_NNNNNN.csv: every validator's betas for the best checkpoint
+const BETA_FILE = /^(best_)?step_(\d{6})\.csv$/;
+
+export type BetaRow = { validator: string; model: string; term: string; human: number; predicted: number };
+export type BetaFile = { file: string; step: number; isBest: boolean; rows: BetaRow[] };
+
+function requireCellText(row: Cell[], index: number, column: string, file: string): string {
+  const value = row[index];
+  if (typeof value !== "string") {
+    throw new Error(`${file}: column "${column}" holds ${JSON.stringify(value)}, expected text`);
+  }
+  return value;
+}
+
+function requireCellNumber(row: Cell[], index: number, column: string, file: string): number {
+  const value = numberAt(row, index, column, file);
+  if (value === null) {
+    throw new Error(`${file}: column "${column}" is empty`);
+  }
+  return value;
+}
+
+export function readBetas(notebook: string, run: string): BetaFile[] {
+  const dir = path.join(runDir(notebook, run), "betas");
+  if (!fs.existsSync(dir)) {
+    return [];
+  }
+  const files: BetaFile[] = [];
+  for (const name of fs.readdirSync(dir).sort()) {
+    if (name.endsWith(".tmp")) {
+      // An atomic write in progress (write_text_atomic renames it when complete)
+      continue;
+    }
+    const match = BETA_FILE.exec(name);
+    if (match === null) {
+      throw new Error(`${dir}: unexpected file "${name}" (expected step_NNNNNN.csv or best_step_NNNNNN.csv)`);
+    }
+    const full = path.join(/*turbopackIgnore: true*/ dir, name);
+    const table = parseCsv(fs.readFileSync(full, "utf8"), full);
+    const validatorIndex = columnIndex(table, "validator", full);
+    const modelIndex = columnIndex(table, "model", full);
+    const termIndex = columnIndex(table, "term", full);
+    const humanIndex = columnIndex(table, "human_pop_beta", full);
+    const predictedIndex = columnIndex(table, "model_pop_beta", full);
+    const rows: BetaRow[] = table.rows.map((row) => ({
+      validator: requireCellText(row, validatorIndex, "validator", full),
+      model: requireCellText(row, modelIndex, "model", full),
+      term: requireCellText(row, termIndex, "term", full),
+      human: requireCellNumber(row, humanIndex, "human_pop_beta", full),
+      predicted: requireCellNumber(row, predictedIndex, "model_pop_beta", full),
+    }));
+    files.push({ file: name, step: Number(match[2]), isBest: match[1] !== undefined, rows });
+  }
+  return files;
+}
