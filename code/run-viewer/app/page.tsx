@@ -1,5 +1,8 @@
 import Link from "next/link";
 import LocalTime from "@/components/LocalTime";
+import PageHeader from "@/components/page-header";
+import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { listNotebooks, runsRoot } from "@/lib/runs";
 import { formatAge, notebookHref } from "@/lib/format";
 
@@ -10,35 +13,41 @@ export default function Home() {
   const notebooks = listNotebooks();
   const now = Date.now();
   return (
-    <div>
-      <h1>Notebooks</h1>
-      <p className="crumbs">{root}</p>
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>notebook</th>
-              <th>runs</th>
-              <th>newest update</th>
-              <th>other folders</th>
-            </tr>
-          </thead>
-          <tbody>
-            {notebooks.map((notebook) => (
-              <tr key={notebook.name}>
-                <td>
-                  <Link href={notebookHref(notebook.name)}>{notebook.name}</Link>
-                </td>
-                <td className="num">{notebook.runCount}</td>
-                <td>
-                  <LocalTime ms={notebook.newestUpdate} /> <span className="muted small">{formatAge(notebook.newestUpdate, now)}</span>
-                </td>
-                <td className="muted small">{notebook.otherFolders.join(", ")}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <>
+      <PageHeader crumbs={[{ label: "notebooks" }]} title="Notebooks">
+        <span className="font-mono text-xs break-all text-muted-foreground">{root}</span>
+      </PageHeader>
+      <Card className="py-0">
+        <CardContent className="px-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="pl-4">notebook</TableHead>
+                <TableHead className="text-right">runs</TableHead>
+                <TableHead>newest update</TableHead>
+                <TableHead>other folders</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {notebooks.map((notebook) => (
+                <TableRow key={notebook.name}>
+                  <TableCell className="pl-4 font-mono">
+                    <Link href={notebookHref(notebook.name)} className="hover:underline">
+                      {notebook.name}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{notebook.runCount}</TableCell>
+                  <TableCell>
+                    <LocalTime ms={notebook.newestUpdate} />{" "}
+                    <span className="text-xs text-muted-foreground">{formatAge(notebook.newestUpdate, now)}</span>
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{notebook.otherFolders.join(", ")}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </>
   );
 }

@@ -87,6 +87,11 @@ function notebookDir(notebook: string): string {
   return path.join(root, notebook);
 }
 
+// Run folder names of a notebook in their fixed (sorted) order; compare colors follow this order
+export function listRunNames(notebook: string): string[] {
+  return splitRunFolders(notebookDir(notebook)).runs;
+}
+
 function runDir(notebook: string, run: string): string {
   const dir = notebookDir(notebook);
   requireName(run, splitRunFolders(dir).runs, `run in ${notebook}`);

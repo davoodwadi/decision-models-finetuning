@@ -10,6 +10,10 @@ pnpm dev   # http://localhost:3210
 
 Or start the `run-viewer` entry in `.claude/launch.json`.
 
+Built with shadcn/ui (Radix + Tailwind) for components, TanStack Table for sortable tables and Apache ECharts for plots.
+Charts: drag to pan, ctrl + scroll to zoom, toolbar for box zoom / reset / PNG, click a legend entry to hide a series, log-y switch.
+Validation charts of one run are linked (shared crosshair, zoom and legend). Add components with `pnpm dlx shadcn@4.23.0 add <name>`.
+
 - Runs folder: `../train-notebooks/beta-training/runs` relative to this folder; set `RUNS_DIR` (for example in `.env.local`) to read another one, such as the main checkout's runs from a git worktree.
 - Validators and metrics come from the `val_history.csv` header (`<validator>/<metric>` columns).
 - A last CSV line without a newline is a partial write and is skipped; an empty or header-only file means no rows yet. Any other malformed row is shown as an error.
