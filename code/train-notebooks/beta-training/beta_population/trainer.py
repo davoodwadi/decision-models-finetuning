@@ -1,12 +1,14 @@
 """The beta-only training run: like `beta_train.trainer.run_training`, but the loss is the population beta loss.
 
 Differences from `run_training`:
-- the gradient comes from `ProbabilityCache.population_loss` only (no KL, no per-sample human betas, no y);
-- step 0 fills each training dataset's probability cache (no-grad forward of every item); every step refreshes the
-  sampled tasks' entries; the caches are saved in last.pt, so a resumed run continues with them;
-- the logit gradient is scaled by N / S (items of the dataset / items of the sample), see `beta_population.loss`;
+- the gradient comes from `FrozenBaseEstimator.cross_loss` only (no KL, no per-sample human betas, no y);
+- at the start, each training dataset's frozen base probabilities p0 are computed (eval-mode no-grad forward of every
+  item); p0 is saved in last.pt, so a resumed run uses the same p0;
 - `<validator>/val_loss` = that validator's std beta MSE (the training loss form here; no KL term);
-- per step, the sample's KL against the respondents' y is logged as `monitor_kl` (never in the gradient).
+- per step, the sample's KL against the respondents' y is logged as `monitor_kl` (never in the gradient), and the
+  squared error of the full-sample beta estimate as `sample_beta_mse` (never in the gradient);
+- the cross loss needs at least 2 tasks per sample: when a dataset's N mod S == 1, its one-task sample is added to
+  another sample of the same dataset (one sample of S + 1 per epoch; `build_population_epoch_samples`).
 Everything else (sampling, validation intervals, run folder, best.pt, held-out check of best.pt, resume) is the same
 and reuses `beta_train` through imports.
 """
@@ -33,7 +35,7 @@ from beta_train.trainer import RunResult, json_ready, make_scheduler, resume_sta
 from beta_train.validation import METRIC_NAMES, validate_all
 
 from beta_population.config import PopulationTrainConfig
-from beta_population.loss import ProbabilityCache, sample_num_options, task_log_probs
+from beta_population.loss import FrozenBaseEstimator, sample_num_options, task_log_probs
 
 
 def population_validation_losses(validators: dict, validation: dict) -> dict[str, float]:
@@ -50,10 +52,59 @@ def population_validation_losses(validators: dict, validation: dict) -> dict[str
     return losses
 
 
-def population_step(model, sample_items: list[dict], cache: ProbabilityCache, micro_chunk: int, chunk_bar) -> tuple[dict, dict]:
-    # Fill every trainable parameter's .grad with the N / S-scaled gradient of the population loss, by two-pass
-    # micro-chunking (`beta_train.step` explains why the two passes give the exact gradient). Refreshes the
-    # sample's cache entries. Returns (loss_out, timings_ms).
+def single_task_datasets(items_by_dataset: dict[str, list[dict]], config: PopulationTrainConfig) -> list[str]:
+    # Training datasets whose epoch would end in a one-task sample (N mod S == 1), which the cross loss cannot split
+    datasets = []
+    for dataset_name in config.train_datasets:
+        num_items = len(items_by_dataset[dataset_name])
+        if num_items % config.sample_size_by_dataset[dataset_name] == 1:
+            datasets.append(dataset_name)
+    return datasets
+
+
+def population_steps_per_epoch(items_by_dataset: dict[str, list[dict]], config: PopulationTrainConfig) -> int:
+    # The shared steps per epoch, minus one per dataset whose one-task sample is merged into another sample
+    return steps_per_epoch(items_by_dataset, config) - len(single_task_datasets(items_by_dataset, config))
+
+
+def build_population_epoch_samples(
+    rng: random.Random, items_by_dataset: dict[str, list[dict]], config: PopulationTrainConfig
+) -> list[tuple[str, list[dict]]]:
+    # The shared epoch plan (same shuffles, same RNG use), then every one-task sample is added to the first other
+    # sample of its dataset in epoch order (one sample of S + 1 tasks); every task is still seen once per epoch
+    epoch_samples = build_epoch_samples(rng, items_by_dataset, config)
+    single_positions = []
+    for position, (_, sample_items) in enumerate(epoch_samples):
+        if len(sample_items) == 1:
+            single_positions.append(position)
+    expected_singles = single_task_datasets(items_by_dataset, config)
+    single_datasets = [epoch_samples[position][0] for position in single_positions]
+    if sorted(single_datasets) != sorted(expected_singles):
+        raise AssertionError(f"One-task samples for {single_datasets}, expected {expected_singles}")
+
+    merged_samples = list(epoch_samples)
+    for single_position in single_positions:
+        single_dataset, single_items = epoch_samples[single_position]
+        target_position = None
+        for position, (dataset_name, _) in enumerate(merged_samples):
+            if dataset_name == single_dataset and position != single_position:
+                target_position = position
+                break
+        if target_position is None:
+            raise ValueError(f"{single_dataset}: no other sample to merge its one-task sample into")
+        target_dataset, target_items = merged_samples[target_position]
+        merged_samples[target_position] = (target_dataset, list(target_items) + list(single_items))
+
+    kept_samples = []
+    for position, sample in enumerate(merged_samples):
+        if position not in single_positions:
+            kept_samples.append(sample)
+    return kept_samples
+
+
+def population_step(model, sample_items: list[dict], estimator: FrozenBaseEstimator, micro_chunk: int, chunk_bar) -> tuple[dict, dict]:
+    # Fill every trainable parameter's .grad with the gradient of the split-sample cross loss, by two-pass
+    # micro-chunking (`beta_train.step` explains why the two passes give the exact gradient). Returns (loss_out, timings_ms).
     chunks = split_into_chunks(sample_items, micro_chunk)
     chunk_bar.reset(total=2 * len(chunks))
     chunk_bar.set_description("pass 1 (forward)")
@@ -73,20 +124,17 @@ def population_step(model, sample_items: list[dict], cache: ProbabilityCache, mi
     torch.cuda.synchronize()
     t_after_forward = time.perf_counter()
 
-    # 2. Population loss with the fresh sample probabilities in the cache; backward of the N / S-scaled loss fills
-    #    flat_logits.grad
+    # 2. Cross loss of the two half-sample beta estimates; its backward fills flat_logits.grad
     flat_logits.requires_grad_(True)
     num_options = sample_num_options(sample_items)
     log_probs = task_log_probs(flat_logits, num_options)
     probs = log_probs.exp()
-    loss, group_mse = cache.population_loss(probs, sample_items)
-    gradient_scale = cache.num_items / len(sample_items)
-    (gradient_scale * loss).backward()
+    loss, loss_logs = estimator.cross_loss(probs, sample_items)
+    loss.backward()
     # Monitor only (not in the gradient): KL of the sample against the respondents' choices
     with torch.no_grad():
         y_flat = torch.cat([item["y_flat"] for item in sample_items]).to(device=log_probs.device, dtype=torch.float64)
         monitor_kl = float(-(y_flat * log_probs.detach()).sum() / len(num_options))
-    cache.update(sample_items, probs.detach())
     options_per_chunk = [int(chunk_logits.shape[0]) for chunk_logits in chunk_logits_list]
     grad_per_chunk = flat_logits.grad.split(options_per_chunk, dim=0)
     torch.cuda.synchronize()
@@ -99,10 +147,11 @@ def population_step(model, sample_items: list[dict], cache: ProbabilityCache, mi
     t_after_backward = time.perf_counter()
 
     loss_out = {
-        "population_loss": float(loss.detach()),
-        "group_beta_mse": group_mse,
+        "cross_loss": float(loss.detach()),
+        "group_cross_loss": loss_logs["group_cross_loss"],
+        "sample_beta_mse": loss_logs["sample_beta_mse"],
+        "half_sizes": loss_logs["half_sizes"],
         "monitor_kl": monitor_kl,
-        "gradient_scale": gradient_scale,
     }
     timings_ms = {
         "fwd_ms": (t_after_forward - t_start) * 1000.0,
@@ -113,7 +162,7 @@ def population_step(model, sample_items: list[dict], cache: ProbabilityCache, mi
 
 
 def per_dataset_summary(step_df: pd.DataFrame, config: PopulationTrainConfig) -> pd.DataFrame:
-    # Population loss and monitor KL over the first and last 15% of each training dataset's steps
+    # Cross loss, full-sample beta MSE, and monitor KL over the first and last 15% of each training dataset's steps
     summary_rows = []
     for dataset_name in config.train_datasets:
         dataset_steps = step_df[step_df["dataset"] == dataset_name]
@@ -123,8 +172,10 @@ def per_dataset_summary(step_df: pd.DataFrame, config: PopulationTrainConfig) ->
                 "dataset": dataset_name,
                 "sample_size": config.sample_size_by_dataset[dataset_name],
                 "steps": len(dataset_steps),
-                "population_loss_first15pct": float(dataset_steps["population_loss"].iloc[:edge_window].mean()),
-                "population_loss_last15pct": float(dataset_steps["population_loss"].iloc[-edge_window:].mean()),
+                "cross_loss_first15pct": float(dataset_steps["cross_loss"].iloc[:edge_window].mean()),
+                "cross_loss_last15pct": float(dataset_steps["cross_loss"].iloc[-edge_window:].mean()),
+                "sample_beta_mse_first15pct": float(dataset_steps["sample_beta_mse"].iloc[:edge_window].mean()),
+                "sample_beta_mse_last15pct": float(dataset_steps["sample_beta_mse"].iloc[-edge_window:].mean()),
                 "monitor_kl_first15pct": float(dataset_steps["monitor_kl"].iloc[:edge_window].mean()),
                 "monitor_kl_last15pct": float(dataset_steps["monitor_kl"].iloc[-edge_window:].mean()),
             }
@@ -259,15 +310,25 @@ def run_population_training(
     torch.backends.cudnn.allow_tf32 = True
     rng = random.Random(config.seed)
 
-    epoch_steps = steps_per_epoch(items_by_dataset, config)
+    for dataset_name in config.train_datasets:
+        if len(items_by_dataset[dataset_name]) < 2:
+            raise ValueError(f"{dataset_name}: the cross loss needs at least 2 tasks, the dataset has {len(items_by_dataset[dataset_name])}")
+    merged_datasets = single_task_datasets(items_by_dataset, config)
+    for dataset_name in merged_datasets:
+        print(
+            f"{dataset_name}: {len(items_by_dataset[dataset_name]):,} tasks mod sample size "
+            f"{config.sample_size_by_dataset[dataset_name]} = 1, so each epoch has one sample of "
+            f"{config.sample_size_by_dataset[dataset_name] + 1} tasks"
+        )
+    epoch_steps = population_steps_per_epoch(items_by_dataset, config)
     total_steps = epoch_steps * config.num_epochs
     postfix_every = max(1, epoch_steps // 30)
     rolling_steps = max(1, epoch_steps // 20)
 
-    # One probability cache per training dataset (operators and targets now; probabilities filled or loaded below)
-    caches = {}
+    # One estimator per training dataset (operators and targets now; p0 computed or loaded below)
+    estimators = {}
     for dataset_name in config.train_datasets:
-        caches[dataset_name] = ProbabilityCache(
+        estimators[dataset_name] = FrozenBaseEstimator(
             dataset_name,
             items_by_dataset[dataset_name],
             specs_by_dataset[dataset_name],
@@ -289,9 +350,9 @@ def run_population_training(
         trainable_params = list(model.trainable_parameters())
         optimizer = torch.optim.AdamW(trainable_params, lr=config.lr, weight_decay=config.weight_decay, fused=True)
         scheduler = make_scheduler(optimizer, config, total_steps)
-        # The micro-chunk bar is created before the step loop because the step-0 cache fill also uses it
+        # The micro-chunk bar is created before the step loop because computing p0 also uses it
         chunk_bar = HtmlProgress(
-            total=0, initial=0, description="cache fill", unit="pass", min_interval_sec=PROGRESS_INTERVAL_SEC
+            total=0, initial=0, description="p0", unit="pass", min_interval_sec=PROGRESS_INTERVAL_SEC
         )
         if resume:
             state = runs.load_last(run_dir)
@@ -299,10 +360,10 @@ def run_population_training(
             optimizer.load_state_dict(state["optimizer"])
             scheduler.load_state_dict(state["scheduler"])
             runs.restore_rng_states(rng, state["rng"])
-            if set(state["prob_caches"]) != set(caches):
-                raise ValueError(f"Saved caches for {sorted(state['prob_caches'])}, training datasets are {sorted(caches)}")
-            for dataset_name, cache in caches.items():
-                cache.load(state["prob_caches"][dataset_name])
+            if set(state["p0_by_dataset"]) != set(estimators):
+                raise ValueError(f"Saved p0 for {sorted(state['p0_by_dataset'])}, training datasets are {sorted(estimators)}")
+            for dataset_name, estimator in estimators.items():
+                estimator.load_p0(state["p0_by_dataset"][dataset_name])
             start_step = state["step"] + 1
             if state["epoch_plan"] is None:
                 epoch_samples = None
@@ -322,10 +383,10 @@ def run_population_training(
         else:
             torch.manual_seed(config.seed)
             torch.cuda.manual_seed_all(config.seed)
-            # Step-0 cache fill (training mode, like every step's fresh entries), timed as training
+            # Frozen base probabilities p0 of the snapshot weights (eval mode), timed as training
             t_fill0 = time.perf_counter()
-            for dataset_name, cache in caches.items():
-                cache.fill(model, items_by_dataset[dataset_name], config.cache_fill_chunk, chunk_bar)
+            for dataset_name, estimator in estimators.items():
+                estimator.compute_p0(model, items_by_dataset[dataset_name], config.p0_chunk, chunk_bar)
             start_step = 1
             epoch_samples = None
             step_rows = []
@@ -348,9 +409,9 @@ def run_population_training(
                 epoch_plan = None
             else:
                 epoch_plan = runs.epoch_plan_positions(epoch_samples, items_by_dataset)
-            cache_states = {}
-            for dataset_name, cache in caches.items():
-                cache_states[dataset_name] = cache.state()
+            p0_states = {}
+            for dataset_name, estimator in estimators.items():
+                p0_states[dataset_name] = estimator.p0_state()
             progress = {
                 "step_rows": step_rows,
                 "val_rows": val_rows,
@@ -361,7 +422,7 @@ def run_population_training(
                 "best": best,
                 "best_validation": best_validation,
                 "final_validation": final_validation,
-                "prob_caches": cache_states,
+                "p0_by_dataset": p0_states,
             }
             runs.save_last(run_dir, resume_state(step, model, optimizer, scheduler, rng, epoch_plan, progress))
 
@@ -383,16 +444,16 @@ def run_population_training(
             epoch_idx = (step_idx - 1) // epoch_steps + 1
             step_in_epoch = (step_idx - 1) % epoch_steps + 1
             if step_in_epoch == 1:
-                epoch_samples = build_epoch_samples(rng, items_by_dataset, config)
+                epoch_samples = build_population_epoch_samples(rng, items_by_dataset, config)
                 if len(epoch_samples) != epoch_steps:
                     raise AssertionError(f"Expected {epoch_steps} samples per epoch, got {len(epoch_samples)}")
             sample_dataset, sample_items = epoch_samples[step_in_epoch - 1]
             rows_seen += len(sample_items)
 
-            # 3. Population-loss gradient by two-pass micro-chunking; refreshes the sample's cache entries
+            # 3. Cross-loss gradient by two-pass micro-chunking
             t_step0 = time.perf_counter()
             optimizer.zero_grad(set_to_none=True)
-            loss_out, timings_ms = population_step(model, sample_items, caches[sample_dataset], config.micro_chunk, chunk_bar)
+            loss_out, timings_ms = population_step(model, sample_items, estimators[sample_dataset], config.micro_chunk, chunk_bar)
 
             # 4. Clip, update, advance the LR schedule
             grad_norm = torch.nn.utils.clip_grad_norm_(trainable_params, config.grad_clip)
@@ -407,17 +468,19 @@ def run_population_training(
             step_ms = (time.perf_counter() - t_step0) * 1000.0
             cum_train_sec += step_ms / 1000.0
 
-            # 5. Log the step (total_loss = population loss, the name the live display plots)
+            # 5. Log the step (total_loss = cross loss, the training objective and the name the live display plots)
             step_row = {
                 "step": step_idx,
                 "epoch": epoch_idx,
                 "dataset": sample_dataset,
                 "num_rows": len(sample_items),
                 "rows_seen": rows_seen,
-                "population_loss": loss_out["population_loss"],
-                "total_loss": loss_out["population_loss"],
+                "half_1_rows": loss_out["half_sizes"][0],
+                "half_2_rows": loss_out["half_sizes"][1],
+                "cross_loss": loss_out["cross_loss"],
+                "total_loss": loss_out["cross_loss"],
+                "sample_beta_mse": loss_out["sample_beta_mse"],
                 "monitor_kl": loss_out["monitor_kl"],
-                "gradient_scale": loss_out["gradient_scale"],
                 "grad_norm": float(grad_norm.detach().cpu()),
                 "lr": step_lr,
                 "fwd_ms": timings_ms["fwd_ms"],
@@ -426,14 +489,15 @@ def run_population_training(
                 "step_ms": step_ms,
                 "ms_per_row": step_ms / len(sample_items),
             }
-            for group, group_mse in loss_out["group_beta_mse"].items():
-                step_row[f"population_beta_mse | {group}"] = group_mse
+            for group, group_cross in loss_out["group_cross_loss"].items():
+                step_row[f"cross_loss | {group}"] = group_cross
             step_rows.append(step_row)
 
             if step_idx % postfix_every == 0 or step_idx == total_steps:
                 recent = step_rows[-rolling_steps:]
                 step_bar.set_postfix(
-                    pop_beta=f"{float(np.mean([r['population_loss'] for r in recent])):.5f}",
+                    cross=f"{float(np.mean([r['cross_loss'] for r in recent])):.5f}",
+                    sample_beta=f"{float(np.mean([r['sample_beta_mse'] for r in recent])):.5f}",
                     monitor_kl=f"{float(np.mean([r['monitor_kl'] for r in recent])):.3f}",
                     step_ms=f"{float(np.mean([r['step_ms'] for r in recent])):.1f}",
                 )
@@ -517,7 +581,7 @@ def run_population_training(
         trainable_params = None
         optimizer = None
         scheduler = None
-        caches = None
+        estimators = None
         if chunk_bar is not None:
             chunk_bar.close()
         if step_bar is not None:

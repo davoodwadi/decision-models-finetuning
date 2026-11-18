@@ -24,7 +24,7 @@ class PopulationTrainConfig:
     lr_schedule: str                         # "onecycle" or "constant"
     weight_decay: float                      # AdamW weight decay
     micro_chunk: int                         # items per forward/backward chunk of a step (VRAM), does not change gradients
-    cache_fill_chunk: int                    # items per no-grad forward when the cache is filled at step 0
+    p0_chunk: int                            # items per no-grad forward when p0 is computed at the start
     gradient_checkpointing: bool             # recompute activations in backward (less VRAM, slower)
     grad_clip: float                         # max global gradient norm
     seed: int                                # sample order and dropout RNG seed
@@ -36,14 +36,15 @@ class PopulationTrainConfig:
             raise ValueError(f"train_datasets has duplicates: {self.train_datasets!r}")
         for dataset_name in self.train_datasets:
             sample_size = self.sample_size_by_dataset[dataset_name]
-            if not isinstance(sample_size, int) or isinstance(sample_size, bool) or sample_size < 1:
-                raise ValueError(f"sample size for {dataset_name} must be a positive integer, got {sample_size!r}")
-        for name in ("num_epochs", "micro_chunk", "cache_fill_chunk", "seed"):
+            # The cross loss splits every sample into two halves, so a sample needs at least 2 tasks
+            if not isinstance(sample_size, int) or isinstance(sample_size, bool) or sample_size < 2:
+                raise ValueError(f"sample size for {dataset_name} must be an integer >= 2, got {sample_size!r}")
+        for name in ("num_epochs", "micro_chunk", "p0_chunk", "seed"):
             value = getattr(self, name)
             if not isinstance(value, int) or isinstance(value, bool):
                 raise ValueError(f"{name} must be an integer, got {value!r}")
-        if self.num_epochs < 1 or self.micro_chunk < 1 or self.cache_fill_chunk < 1:
-            raise ValueError("num_epochs, micro_chunk and cache_fill_chunk must be positive")
+        if self.num_epochs < 1 or self.micro_chunk < 1 or self.p0_chunk < 1:
+            raise ValueError("num_epochs, micro_chunk and p0_chunk must be positive")
         if not isinstance(self.eval_every_by_validator, dict) or len(self.eval_every_by_validator) == 0:
             raise ValueError(f"eval_every_by_validator must be a non-empty dict, got {self.eval_every_by_validator!r}")
         for validator_name, eval_every in self.eval_every_by_validator.items():
