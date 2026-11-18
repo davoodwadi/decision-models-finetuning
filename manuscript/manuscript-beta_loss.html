@@ -1,0 +1,2045 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.11.9">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Davood Wadi">
+<meta name="author" content="Yu Ma">
+
+<title>Training decision models from choice microdata and published regression tables for silicon sampling</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+  margin-bottom: 0em;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="manuscript-beta_loss_files/libs/clipboard/clipboard.min.js"></script>
+<script src="manuscript-beta_loss_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="manuscript-beta_loss_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="manuscript-beta_loss_files/libs/quarto-html/scrollable-regions/scrollable-regions.js" type="module"></script>
+<script src="manuscript-beta_loss_files/libs/quarto-html/popper.min.js"></script>
+<script src="manuscript-beta_loss_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="manuscript-beta_loss_files/libs/quarto-html/anchor.min.js"></script>
+<link href="manuscript-beta_loss_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="manuscript-beta_loss_files/libs/quarto-html/quarto-syntax-highlighting-63b5708e65d6cd79cd7618c58d0c21e7.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="manuscript-beta_loss_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="manuscript-beta_loss_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="manuscript-beta_loss_files/libs/bootstrap/bootstrap-943e08653f4bd8ac7ab9292bfc489267.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="quarto-light"><a id="quarto-skip-link" class="visually-hidden-focusable" href="#quarto-document-content">Skip to main content</a>
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="manuscript-beta_loss.docx"><i class="bi bi-file-word"></i>MS Word</a></li><li><a href="manuscript-beta_loss.pdf"><i class="bi bi-file-pdf"></i>PDF</a></li></ul></div></div>
+<main class="content" id="quarto-document-content" tabindex="-1">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Training decision models from choice microdata and published regression tables for silicon sampling</h1>
+</div>
+
+
+<div class="quarto-title-meta-author">
+  <div class="quarto-title-meta-heading">Authors</div>
+  <div class="quarto-title-meta-heading">Affiliation</div>
+  
+    <div class="quarto-title-meta-contents">
+    <p class="author">Davood Wadi <a href="mailto:davood.wadi@hec.ca" class="quarto-title-author-email"><i class="bi bi-envelope"></i></a> </p>
+  </div>
+  <div class="quarto-title-meta-contents">
+        <p class="affiliation">
+            McGill University
+          </p>
+      </div>
+    <div class="quarto-title-meta-contents">
+    <p class="author">Yu Ma <a href="mailto:yu.ma@mcgill.ca" class="quarto-title-author-email"><i class="bi bi-envelope"></i></a> </p>
+  </div>
+  <div class="quarto-title-meta-contents">
+        <p class="affiliation">
+            McGill University
+          </p>
+      </div>
+  </div>
+
+<div class="quarto-title-meta">
+
+      
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<!-- To submit to Marketing Science: Frontiers track -->
+<!-- **** Strictly 6,000 words total (including references, tables, figures; online appendix excluded). -->
+<!--  -->
+<p><strong>Abstract</strong><br>
+Using off-the-shelf generative large language models (LLMs) to simulate human respondents (silicon sampling) severely biases downstream econometric inference, while standard fine-tuning requires individual choice microdata that most published studies never release. We align single-pass decision models that output normalized choice probabilities directly over valid options without text generation, making linear regression estimators directly differentiable in model weights. To unlock studies that report only experimental designs and aggregate regression tables, we derive an unbiased mini-batch population-<span class="math inline">\(\boldsymbol{\beta}\)</span> loss that pairs a frozen base-probability control variate with split-sample cross-products, stabilized by a Kullback-Leibler anchor on table-only data or respondent-level cross-entropy (CE) on available microdata. We evaluate open-weight decision models across five data-access regimes trained on consumer delivery and electricity-plan choice studies and tested zero-shot on an airline conjoint experiment and a six-arm nutrition-labeling randomized trial. Microdata CE fine-tuning substantially lowers out-of-sample treatment-effect mean squared error (MSE), table-only training beats the off-the-shelf baseline without a single respondent choice, and hybrid microdata-plus-table training transfers missing price and green-energy trade-offs to close [TBD]% to [TBD]% of the gap toward a full-microdata oracle.</p>
+<p><strong>Keywords.</strong> Decision models, Silicon sampling, Econometric inference, Conjoint analysis, Marketing research</p>
+<section id="sec-intro" class="level1">
+<h1>Introduction</h1>
+<p>Simulating consumer choices, attitudes, and survey responses with foundation models, commonly referred to as silicon sampling, has attracted growing interest in marketing and behavioral research. In marketing research, the primary goal is downstream econometric inference, such as estimating attribute slopes in conjoint analysis or causal treatment effects in randomized experiments. Currently, research relies on off-the-shelf generative large language models (LLMs) that generate text autoregressively. However, replacing human respondents with off-the-shelf generative LLM outputs severely biases downstream regressions because post-training for deterministic reasoning and safety compliance collapses choice uncertainty and triggers safety refusals on sensitive options <span class="citation" data-cites="goli2024frontiers leng2026reducing wang2026large">(<a href="#ref-goli2024frontiers" role="doc-biblioref">Goli and Singh 2024</a>, <a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>, <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>. Whereas existing post-inference methods adjust or reweight fixed model outputs using target-study human data <span class="citation" data-cites="leng2026reducing wang2026large">(<a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>, <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>, we align models before inference through their output architecture and training supervision.</p>
+<p>Architecturally, we adopt single-pass decision models <span class="citation" data-cites="palmer2026kev">(<a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>. Instead of generating text tokens, a decision model takes a respondent persona and a structured choice task and outputs a normalized probability distribution over the valid options in one forward pass. This readout eliminates sampling variance and safety refusals while making linear regression estimators, such as ordinary least squares (OLS), directly differentiable in the model weights. Yet architecture alone is insufficient because off-the-shelf decision models are pretrained on single-label objective benchmarks, treating disagreement among respondents who share a persona as classification error and biasing regression estimates. Minimizing cross-entropy (CE) on individual choice microdata resolves this miscalibration when respondent choices are observed. In practice, however, raw choice microdata is scarce, proprietary, or privacy-restricted, whereas thousands of published marketing studies release only experimental designs and aggregate regression tables.</p>
+<p>Training a decision model directly on published regression coefficients <span class="math inline">\(\boldsymbol{\beta}^*\)</span> via mini-batch gradient descent presents two statistical challenges. First, population OLS slopes depend on choice probabilities across all tasks in a study rather than one mini-batch; fitting OLS within small batches chases finite-sample noise, whereas squaring a single-batch estimate of the population slopes introduces variance bias that penalizes persona heterogeneity. Second, matching a small vector of aggregate slopes leaves individual choice entropy unconstrained, allowing predicted probabilities to drift toward zero or one. We address the first challenge with an unbiased population-<span class="math inline">\(\boldsymbol{\beta}\)</span> loss that uses frozen base-model probabilities as a control variate and multiplies estimation errors across two disjoint half-batches without using respondent choices. We address the second challenge by pairing this loss with an entropy anchor, using Kullback-Leibler (KL) divergence toward base probabilities for table-only training or respondent-level CE on available microdata for hybrid training.</p>
+<p>We evaluate this framework across a five-regime data-access ladder using open-weight decision models <span class="citation" data-cites="palmer2026kev">(<a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span> trained on a US drone-delivery discrete-choice experiment <span class="citation" data-cites="berke2023drone">(<a href="#ref-berke2023drone" role="doc-biblioref">Berke et al. 2023</a>)</span> and an electricity-plan conjoint study <span class="citation" data-cites="wu2025partisan">(<a href="#ref-wu2025partisan" role="doc-biblioref">Wu 2025</a>)</span>, and evaluated zero-shot on an unseen sustainable-aviation-fuel flight conjoint <span class="citation" data-cites="goldfarb2026comfort">(<a href="#ref-goldfarb2026comfort" role="doc-biblioref">Goldfarb et al. 2026</a>)</span> and a six-arm nutrition-labeling randomized trial <span class="citation" data-cites="grummon2025nutrition">(<a href="#ref-grummon2025nutrition" role="doc-biblioref">Grummon et al. 2025</a>)</span>. Our design establishes three contributions. First, CE fine-tuning on respondent microdata substantially lowers zero-shot treatment-effect mean squared error (MSE) on unseen experiments relative to the off-the-shelf model, whether training on single-study delivery microdata or on full microdata across both studies as an upper-bound oracle. Second, without access to respondent choices, training solely on the eight published electricity slopes of <span class="citation" data-cites="wu2025partisan">Wu (<a href="#ref-wu2025partisan" role="doc-biblioref">2025</a>)</span> improves out-of-sample MSE over the off-the-shelf baseline, and combining those published slopes with <span class="citation" data-cites="berke2023drone">Berke et al. (<a href="#ref-berke2023drone" role="doc-biblioref">2023</a>)</span> delivery microdata transfers household price and green-energy trade-offs that delivery microdata alone lacks. Third, progressing from table-only to hybrid training closes [TBD]% to [TBD]% of the out-of-sample MSE gap toward the unattainable full-microdata oracle.</p>
+</section>
+<section id="sec-lit" class="level1">
+<h1>Literature review</h1>
+<p>Early work in silicon sampling prompted generative LLMs with demographic profiles to simulate human responses in political, economic, and marketing surveys <span class="citation" data-cites="argyle2023out horton2023large brand2023using goli2024frontiers sarstedt2024using pmlr-v202-santurkar23a durmus2024towards">(<a href="#ref-argyle2023out" role="doc-biblioref">Argyle et al. 2023</a>, <a href="#ref-brand2023using" role="doc-biblioref">Brand et al. 2023</a>, <a href="#ref-horton2023large" role="doc-biblioref">Horton et al. 2023</a>, <a href="#ref-pmlr-v202-santurkar23a" role="doc-biblioref">Santurkar et al. 2023</a>, <a href="#ref-durmus2024towards" role="doc-biblioref">Durmus et al. 2024</a>, <a href="#ref-goli2024frontiers" role="doc-biblioref">Goli and Singh 2024</a>, <a href="#ref-sarstedt2024using" role="doc-biblioref">Sarstedt et al. 2024</a>)</span>. Although generative LLMs often capture the direction of average preferences, prior studies document systematic discrepancies from human populations, including mode collapse onto a single option, attenuated within-group variance, demographic stereotyping, and prompt sensitivity <span class="citation" data-cites="pmlr-v202-santurkar23a shu-etal-2024-dont koo2024benchmarking kabir-etal-2025-break deas-mckeown-2025-artificial jung-etal-2026-psychometric wadi2025monte zahradnickova2026ai">(<a href="#ref-pmlr-v202-santurkar23a" role="doc-biblioref">Santurkar et al. 2023</a>, <a href="#ref-koo2024benchmarking" role="doc-biblioref">Koo et al. 2024</a>, <a href="#ref-shu-etal-2024-dont" role="doc-biblioref">Shu et al. 2024</a>, <a href="#ref-wadi2025monte" role="doc-biblioref">Wadi and Fredette 2025</a>, <a href="#ref-deas-mckeown-2025-artificial" role="doc-biblioref">Deas and McKeown 2025</a>, <a href="#ref-kabir-etal-2025-break" role="doc-biblioref">Kabir et al. 2025</a>, <a href="#ref-zahradnickova2026ai" role="doc-biblioref">Zahradnickova et al. 2026</a>, <a href="#ref-jung-etal-2026-psychometric" role="doc-biblioref">Jung et al. 2026</a>)</span>. In marketing applications, these distortions severely bias downstream econometric estimation <span class="citation" data-cites="goli2024frontiers leng2026reducing wang2026large">(<a href="#ref-goli2024frontiers" role="doc-biblioref">Goli and Singh 2024</a>, <a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>, <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>. In choice-based conjoint analysis, relying on simulated choices or naively pooling them with human data biases preference estimates, while scaling model capability or chain-of-thought reasoning worsens error by inducing overly deterministic choices <span class="citation" data-cites="wang2026large">(<a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>. Recent marketing studies address these discrepancies after inference by treating the language model as a fixed generator, using target-study human benchmark data to statistically debias downstream regression parameters <span class="citation" data-cites="wang2026large angelopoulos2023prediction">(<a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>, <a href="#ref-angelopoulos2023prediction" role="doc-biblioref">Angelopoulos et al. 2023</a>; AAE)</span> or optimally reweight ensembles of candidate prompts, personas, and model checkpoints <span class="citation" data-cites="leng2026reducing">(<a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>; HuMCal)</span>. Complementing these post-inference methods, we align predictions inside the model before inference through both output architecture and training supervision.</p>
+<p>Architecturally, several studies avoid the cost and sampling variance of repeated Monte Carlo text generation by extracting next-token probabilities over option symbols (e.g., A, B, and C) from causal LLMs <span class="citation" data-cites="kadavath2022language kuribayashi-etal-2024-psychometric bentegeac2025token wadi2026every">(<a href="#ref-kadavath2022language" role="doc-biblioref"><span class="nocase">Kadavath et al.</span> 2022</a>, <a href="#ref-kuribayashi-etal-2024-psychometric" role="doc-biblioref">Kuribayashi et al. 2024</a>, <a href="#ref-bentegeac2025token" role="doc-biblioref">Bentegeac et al. 2025</a>, <a href="#ref-wadi2026every" role="doc-biblioref">Wadi et al. 2026</a>)</span>. Yet symbol-level readouts remain sensitive to vocabulary and token-frequency priors. Decision models, also known as System One architectures, resolve this sensitivity via a single-pass scoring head <span class="citation" data-cites="palmer2026kev deusser2026evaluatingbenchmarkingmodeljev geuter2026releasinginnerjevsimple li2026llmasjevllmsjevstyledecision asseri2026calibratedwhompersonalanguage li2026kitescalingjevpopulation">(<a href="#ref-asseri2026calibratedwhompersonalanguage" role="doc-biblioref">Asseri and Asseri 2026</a>, <a href="#ref-deusser2026evaluatingbenchmarkingmodeljev" role="doc-biblioref">Deußer et al. 2026</a>, <a href="#ref-geuter2026releasinginnerjevsimple" role="doc-biblioref">Geuter et al. 2026</a>, <a href="#ref-li2026kitescalingjevpopulation" role="doc-biblioref">Li 2026</a>, <a href="#ref-li2026llmasjevllmsjevstyledecision" role="doc-biblioref">Li and Wagle 2026</a>, <a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>. This head evaluates each supplied option directly in representation space and restricts probability mass strictly to the valid options without open-ended generation or safety refusals. Crucially for econometric training, outputting exact choice probabilities in a single forward pass makes linear regression operators over experimental designs directly differentiable with respect to model parameters. However, existing decision models are pretrained on single-label objective benchmarks such as mathematics, code verification, and factual question answering, causing severe probability miscalibration on subjective choice tasks <span class="citation" data-cites="gao2026choicesfewerdecisionsordinalscale">(<a href="#ref-gao2026choicesfewerdecisionsordinalscale" role="doc-biblioref">Gao et al. 2026</a>)</span>.</p>
+<p>On the training dimension, existing fine-tuning approaches for silicon sampling require access to unreleased response data. At the token level, <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span> fine-tuned GPT-4o on 50 target-study conjoint tasks under a generic persona to emit a single choice letter, finding that small-sample single-token supervision worsened standalone parameter error relative to the human benchmark. Recent studies improve calibration by supervising causal language models or decision heads on large-scale survey microdata and subgroup response histograms <span class="citation" data-cites="suh-etal-2025-language huang-etal-2026-distribution ku2026siliconsamplingcrosssurveytransfer">(<a href="#ref-suh-etal-2025-language" role="doc-biblioref">Suh et al. 2025</a>, <a href="#ref-ku2026siliconsamplingcrosssurveytransfer" role="doc-biblioref">Ku et al. 2026</a>, <a href="#ref-huang-etal-2026-distribution" role="doc-biblioref">Huang et al. 2026</a>)</span>. When respondent-level choice microdata is available, minimizing CE on a probabilistic decision head effectively calibrates conditional choice probabilities across personas. Yet across conjoint analysis, discrete-choice modeling <span class="citation" data-cites="mcfadden1972conditional train2009discrete">(<a href="#ref-mcfadden1972conditional" role="doc-biblioref">McFadden 1972</a>, <a href="#ref-train2009discrete" role="doc-biblioref">Train 2009</a>)</span>, and randomized online or field trials, published articles and archival industry reports rarely disclose raw respondent choices, reporting instead experimental designs and estimated regression tables. We bridge this data gap by supervising decision models directly on published population OLS coefficients via an unbiased split-sample moment loss, deployed either standalone with a base-distribution KL anchor when no microdata exists or jointly alongside respondent-level CE when augmenting in-house microdata with external literature tables.</p>
+</section>
+<section id="sec-methodology" class="level1">
+<h1>Methodology</h1>
+<p><strong>Decision model architecture and choice probabilities.</strong> Consider an experimental or survey study consisting of <span class="math inline">\(N\)</span> discrete-choice tasks indexed by <span class="math inline">\(t \in \{1, \dots, N\}\)</span>. Each task <span class="math inline">\(t\)</span> pairs a respondent’s multi-attribute persona state <span class="math inline">\(\mathbf{s}_t\)</span> (e.g., sex, age, education, income, political party, and race) with a question stem presenting <span class="math inline">\(K_t\)</span> discrete answer options <span class="math inline">\(\{1, \dots, K_t\}\)</span>. When individual choice microdata is available, let <span class="math inline">\(\mathbf{y}_t = (y_{t,1}, \dots, y_{t,K_t})^\top \in \{0, 1\}^{K_t}\)</span> denote the observed one-hot choice vector on task <span class="math inline">\(t\)</span>, where <span class="math inline">\(y_{t,k} = 1\)</span> if the respondent selected option <span class="math inline">\(k\)</span> and <span class="math inline">\(0\)</span> otherwise.</p>
+<p>Given persona state <span class="math inline">\(\mathbf{s}_t\)</span>, a single-pass decision model <span class="citation" data-cites="palmer2026kev">(<a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span> scores all <span class="math inline">\(K_t\)</span> options in one causal forward pass without a vocabulary generation head. The prompt places <span class="math inline">\(\mathbf{s}_t\)</span> in a state segment, followed by the question stem, each option <span class="math inline">\(k\)</span> enclosed in dedicated option delimiters, and a terminal decision token appended after the final option. Because the terminal decision token follows all <span class="math inline">\(K_t\)</span> options, its final-layer hidden state <span class="math inline">\(\mathbf{h}^{\mathrm{dec}}_t(\mathbf{s}_t) \in \mathbb{R}^{d_{\mathrm{model}}}\)</span> causally attends to the persona, the question stem, and the full option set. Let <span class="math inline">\(\mathbf{h}_{t,k}(\mathbf{s}_t) \in \mathbb{R}^{d_{\mathrm{model}}}\)</span> denote the final-layer hidden state at the closing delimiter of option <span class="math inline">\(k\)</span>. Using learned affine projections <span class="math inline">\((\mathbf{W}_q, \mathbf{b}_q)\)</span> and <span class="math inline">\((\mathbf{W}_k, \mathbf{b}_k)\)</span> with <span class="math inline">\(\mathbf{W}_q, \mathbf{W}_k \in \mathbb{R}^{d_{\mathrm{head}} \times d_{\mathrm{model}}}\)</span> and <span class="math inline">\(\mathbf{b}_q, \mathbf{b}_k \in \mathbb{R}^{d_{\mathrm{head}}}\)</span>, the decision head computes a scalar score <span class="math inline">\(z_{t,k}(\mathbf{s}_t; \theta)\)</span> for each option <span class="math inline">\(k\)</span>: <span id="eq-pointer-head"><span class="math display">\[
+z_{t,k}(\mathbf{s}_t; \theta) = \frac{\big(\mathbf{W}_q \mathbf{h}^{\mathrm{dec}}_t(\mathbf{s}_t) + \mathbf{b}_q\big)^\top \big(\mathbf{W}_k \mathbf{h}_{t,k}(\mathbf{s}_t) + \mathbf{b}_k\big)}{\sqrt{d_{\mathrm{head}}}}.
+\tag{1}\]</span></span> Applying a softmax function with readout temperature <span class="math inline">\(T &gt; 0\)</span> yields the normalized choice probability vector <span class="math inline">\(\mathbf{p}_t(\theta) = (p_{t,1}(\theta), \dots, p_{t,K_t}(\theta))^\top\)</span> in a single pass: <span id="eq-model-pmf"><span class="math display">\[
+p_{t,k}(\theta) = P_{\mathrm{model}}(Y_t = k \mid \mathbf{s}_t; \theta) = \frac{\exp\!\big(z_{t,k}(\mathbf{s}_t; \theta) / T\big)}{\sum_{m=1}^{K_t} \exp\!\big(z_{t,m}(\mathbf{s}_t; \theta) / T\big)}.
+\tag{2}\]</span></span> When respondent choices <span class="math inline">\(\mathbf{y}_t\)</span> are observed, model parameters <span class="math inline">\(\theta\)</span> can be supervised directly via mini-batch cross-entropy over a sampled task batch <span class="math inline">\(S \subset \{1, \dots, N\}\)</span>: <span id="eq-resp-ce"><span class="math display">\[
+\mathcal{L}_{\mathrm{CE}}(\theta; S) = -\frac{1}{|S|} \sum_{t \in S} \sum_{k=1}^{K_t} y_{t,k} \log p_{t,k}(\theta).
+\tag{3}\]</span></span></p>
+<p><strong>Population OLS operators and published targets.</strong> Concatenating option probabilities across all <span class="math inline">\(N\)</span> tasks in a study yields the flat vector <span class="math inline">\(\mathbf{p}(\theta) = (\mathbf{p}_1(\theta)^\top, \dots, \mathbf{p}_N(\theta)^\top)^\top \in [0, 1]^M\)</span>, where <span class="math inline">\(M = \sum_{t=1}^N K_t\)</span>, with corresponding stacked human choices <span class="math inline">\(\mathbf{y} \in \{0, 1\}^M\)</span>. Any linear econometric specification estimated on the study can be written over <span class="math inline">\(R\)</span> regression rows via a full-column-rank design matrix <span class="math inline">\(\mathbf{X} \in \mathbb{R}^{R \times c}\)</span> (comprising an intercept, any nuisance controls, and <span class="math inline">\(d\)</span> focal treatment columns indexed by <span class="math inline">\(\mathcal{T} \subset \{1, \dots, c\}\)</span>) and a fixed sparse weight matrix <span class="math inline">\(\mathbf{W} \in \mathbb{R}^{R \times M}\)</span> that maps option probabilities to regression outcomes <span class="math inline">\(\mathbf{W}\mathbf{p}(\theta) \in \mathbb{R}^R\)</span> (e.g., selecting each displayed profile’s choice probability in conjoint average marginal component effects or the healthier item’s choice probability in a randomized trial). Dividing by the human outcome standard deviation <span class="math inline">\(\sigma &gt; 0\)</span> places coefficients across studies on a common dimensionless scale. Using the Moore-Penrose pseudoinverse <span class="math inline">\(\mathbf{X}^\dagger = (\mathbf{X}^\top \mathbf{X})^{-1}\mathbf{X}^\top\)</span>, define the fixed standardized population slope operator: <span id="eq-pop-operator"><span class="math display">\[
+\mathbf{B} = \frac{1}{\sigma} \big(\mathbf{X}^\dagger\big)_{\mathcal{T}, :} \mathbf{W} \in \mathbb{R}^{d \times M},
+\tag{4}\]</span></span> partitioned by task into column blocks <span class="math inline">\(\mathbf{B} = [\mathbf{B}_1, \dots, \mathbf{B}_N]\)</span> with <span class="math inline">\(\mathbf{B}_t \in \mathbb{R}^{d \times K_t}\)</span>. Under <a href="#eq-pop-operator" class="quarto-xref">Equation&nbsp;4</a>, the model’s standardized population OLS slopes are an exact linear map of its single-pass probabilities, <span class="math inline">\(\boldsymbol{\beta}(\theta) = \mathbf{B}\mathbf{p}(\theta) = \sum_{t=1}^N \mathbf{B}_t \mathbf{p}_t(\theta)\)</span>, and a published regression table supplies the standardized human target <span class="math inline">\(\boldsymbol{\beta}^* \in \mathbb{R}^d\)</span> (which equals <span class="math inline">\(\mathbf{B}\mathbf{y}\)</span> without requiring individual choices <span class="math inline">\(\mathbf{y}\)</span>). When a study estimates <span class="math inline">\(G &gt; 1\)</span> regressions, we construct <span class="math inline">\((\mathbf{B}^{(g)}, \boldsymbol{\beta}^{*(g)})\)</span> for each <span class="math inline">\(g \in \{1, \dots, G\}\)</span> and average the resulting regression losses equally across <span class="math inline">\(g\)</span>.</p>
+<p><strong>Unbiased split-sample population-beta loss.</strong> To align model-implied slopes <span class="math inline">\(\boldsymbol{\beta}(\theta)\)</span> with a published table <span class="math inline">\(\boldsymbol{\beta}^*\)</span>, our target population objective is the standardized slope MSE: <span id="eq-pop-mse"><span class="math display">\[
+\mathcal{L}_{\mathrm{pop}}(\theta) = \frac{1}{d} \left\lVert \mathbf{B}\mathbf{p}(\theta) - \boldsymbol{\beta}^* \right\rVert_2^2.
+\tag{5}\]</span></span> Evaluating <a href="#eq-pop-mse" class="quarto-xref">Equation&nbsp;5</a> directly per optimization step is intractable because <span class="math inline">\(\mathbf{B}\mathbf{p}(\theta)\)</span> sums over all <span class="math inline">\(N\)</span> tasks whereas stochastic gradient descent evaluates a mini-batch <span class="math inline">\(S\)</span> of <span class="math inline">\(|S| \ll N\)</span> tasks. Naive mini-batch surrogates fail for two reasons. Refitting OLS inside a small batch <span class="math inline">\(S\)</span> requires unreleased choices <span class="math inline">\(\mathbf{y}_t\)</span> and squares ill-conditioned small-sample design inverses, whereas substituting a single-batch estimate <span class="math inline">\(\hat{\boldsymbol{\beta}}_S(\theta)\)</span> into <span class="math inline">\(\frac{1}{d}\lVert \hat{\boldsymbol{\beta}}_S(\theta) - \boldsymbol{\beta}^* \rVert_2^2\)</span> adds positive variance bias <span class="math inline">\(\frac{1}{d}\mathrm{tr}\,\mathrm{Cov}(\hat{\boldsymbol{\beta}}_S(\theta))\)</span>, which increases with across-persona heterogeneity in <span class="math inline">\(\mathbf{p}_t(\theta)\)</span> and penalizes the model for conditioning on respondent personas.</p>
+<p>To construct an unbiased, low-variance gradient estimator without respondent choices or stale cached predictions, we run a single no-gradient evaluation pass at initialization <span class="math inline">\(\theta_0\)</span> to record frozen base probabilities <span class="math inline">\(\mathbf{p}_0 = \mathbf{p}(\theta_0)\)</span> and base slopes <span class="math inline">\(\boldsymbol{\beta}_0 = \mathbf{B}\mathbf{p}_0\)</span>. Rewriting <span class="math inline">\(\boldsymbol{\beta}(\theta) = \boldsymbol{\beta}_0 + \sum_{t=1}^N \mathbf{B}_t (\mathbf{p}_t(\theta) - \mathbf{p}_{0,t})\)</span>, any uniform subsample <span class="math inline">\(S_m \subset \{1, \dots, N\}\)</span> yields an exact control-variate estimator of the current population slopes: <span id="eq-cv-beta"><span class="math display">\[
+\hat{\boldsymbol{\beta}}_m(\theta) = \boldsymbol{\beta}_0 + \frac{N}{|S_m|} \sum_{t \in S_m} \mathbf{B}_t \big(\mathbf{p}_t(\theta) - \mathbf{p}_{0,t}\big).
+\tag{6}\]</span></span> Because <span class="math inline">\(\mathbf{p}_0\)</span> is fixed, <span class="math inline">\(\mathbf{p}_{0,t}\)</span> cancels in expectation at every step so <span class="math inline">\(\mathbb{E}_{S_m}[\hat{\boldsymbol{\beta}}_m(\theta)] = \boldsymbol{\beta}(\theta)\)</span> without staleness bias, while subtracting <span class="math inline">\(\mathbf{p}_{0,t}\)</span> reduces mini-batch variance. Partitioning each shuffled batch <span class="math inline">\(S\)</span> (<span class="math inline">\(|S| \ge 2\)</span>) into two disjoint halves <span class="math inline">\(S_1\)</span> and <span class="math inline">\(S_2\)</span> of sizes <span class="math inline">\(\lfloor |S| / 2 \rfloor\)</span> and <span class="math inline">\(\lceil |S| / 2 \rceil\)</span>, we define the split-sample cross loss as the inner product of their estimation errors: <span id="eq-cross-loss"><span class="math display">\[
+\mathcal{L}_{\beta\text{-cross}}(\theta; S_1, S_2) = \frac{1}{d} \big(\hat{\boldsymbol{\beta}}_1(\theta) - \boldsymbol{\beta}^*\big)^\top \big(\hat{\boldsymbol{\beta}}_2(\theta) - \boldsymbol{\beta}^*\big).
+\tag{7}\]</span></span> Up to negligible <span class="math inline">\(\mathcal{O}(1/N)\)</span> finite-population sampling covariance without replacement, <span class="math inline">\(\hat{\boldsymbol{\beta}}_1(\theta)\)</span> and <span class="math inline">\(\hat{\boldsymbol{\beta}}_2(\theta)\)</span> are independent unbiased estimators of <span class="math inline">\(\boldsymbol{\beta}(\theta)\)</span>, implying <span class="math inline">\(\mathbb{E}[\mathcal{L}_{\beta\text{-cross}}(\theta; S_1, S_2)] = \mathcal{L}_{\mathrm{pop}}(\theta)\)</span> and <span class="math inline">\(\mathbb{E}[\nabla_\theta \mathcal{L}_{\beta\text{-cross}}(\theta; S_1, S_2)] = \nabla_\theta \mathcal{L}_{\mathrm{pop}}(\theta)\)</span> (individual step realizations of <a href="#eq-cross-loss" class="quarto-xref">Equation&nbsp;7</a> may be negative).</p>
+<p><strong>Entropy anchoring across training regimes.</strong> Because <span class="math inline">\(d \ll M\)</span>, minimizing <a href="#eq-cross-loss" class="quarto-xref">Equation&nbsp;7</a> alone constrains only <span class="math inline">\(d\)</span> linear projections of <span class="math inline">\(\mathbf{p}(\theta)\)</span> and leaves the <span class="math inline">\((M - d)\)</span>-dimensional nullspace <span class="math inline">\(\ker(\mathbf{B})\)</span> unconstrained. Without an entropy anchor, prolonged optimization can sharpen logits along unconstrained directions, driving task probabilities toward zero or one while maintaining <span class="math inline">\(\mathbf{B}\mathbf{p}(\theta) \approx \boldsymbol{\beta}^*\)</span> and inflating out-of-sample treatment-effect magnitudes. In the table-only regime, where no microdata is available for any study, we regularize predicted probabilities toward the frozen base distribution <span class="math inline">\(\mathbf{p}_{0,t}\)</span> via a forward KL penalty with weight <span class="math inline">\(\alpha &gt; 0\)</span>: <span id="eq-table-loss"><span class="math display">\[
+\mathcal{L}_{\mathrm{table}}(\theta; S) = \mathcal{L}_{\beta\text{-cross}}(\theta; S_1, S_2) + \alpha \, \frac{1}{|S|} \sum_{t \in S} \sum_{k=1}^{K_t} p_{0,t,k} \log \frac{p_{0,t,k}}{p_{t,k}(\theta)}.
+\tag{8}\]</span></span> Evaluating the KL anchor requires zero additional forward passes because <span class="math inline">\(\mathbf{p}_{0,t}\)</span> is already stored in memory, and its logit gradient <span class="math inline">\(\mathbf{p}_t(\theta) - \mathbf{p}_{0,t}\)</span> prevents probabilities from collapsing onto zero or one. In the hybrid regime, where in-house choice microdata <span class="math inline">\(\mathcal{D}_{\mathrm{micro}}\)</span> is paired with external table-only studies <span class="math inline">\(\mathcal{D}_{\mathrm{table}}\)</span>, we interleave single-study mini-batches and jointly minimize respondent-level CE on <span class="math inline">\(\mathcal{D}_{\mathrm{micro}}\)</span> alongside weighted population-<span class="math inline">\(\boldsymbol{\beta}\)</span> supervision (<span class="math inline">\(\lambda &gt; 0\)</span>) on <span class="math inline">\(\mathcal{D}_{\mathrm{table}}\)</span>: <span id="eq-hybrid-loss"><span class="math display">\[
+\mathcal{L}_{\mathrm{hybrid}}(\theta; S) = \mathbb{I}(S \subset \mathcal{D}_{\mathrm{micro}}) \, \mathcal{L}_{\mathrm{CE}}(\theta; S) + \mathbb{I}(S \subset \mathcal{D}_{\mathrm{table}}) \, \lambda \, \mathcal{L}_{\beta\text{-cross}}(\theta; S_1, S_2).
+\tag{9}\]</span></span> Under <a href="#eq-hybrid-loss" class="quarto-xref">Equation&nbsp;9</a>, <span class="math inline">\(\mathcal{L}_{\mathrm{CE}}\)</span> calibrates global logit scale and choice uncertainty to empirical human randomness, while <span class="math inline">\(\mathcal{L}_{\beta\text{-cross}}\)</span> transfers missing attribute trade-offs from external regression tables.</p>
+</section>
+<section id="sec-training" class="level1">
+<h1>Survey Training and Validation</h1>
+<p><strong>Survey microdata and question split.</strong> We construct a harmonized training corpus from two public US survey microdata sources (<a href="#tbl-datasets" class="quarto-xref">Table&nbsp;1</a>). The first comprises <span class="math inline">\(10\)</span> consecutive US waves of the International Social Survey Programme (<code>US ISSP</code>, 2015 to 2024; <a href="#apptbl-issp-waves" class="quarto-xref">Table W1</a>), spanning modules on work, government, social networks, religion, inequality, the environment, health, family, national identity, and digital societies (767,484 responses from 14,356 respondents across <span class="math inline">\(616\)</span> questions). The second is the <code>Twin-2K-500</code> panel <span class="citation" data-cites="toubia2025database">(<a href="#ref-toubia2025database" role="doc-biblioref">Toubia et al. 2025</a>)</span>, covering psychological, economic, and behavioral items (1,127,649 responses from 2,058 participants across <span class="math inline">\(974\)</span> questions). Combined, the corpus contains 1,895,133 responses from 16,414 respondents across 1,590 questions (<span class="math inline">\(761\)</span> Likert <code>score</code> items and <span class="math inline">\(829\)</span> categorical <code>choice</code> items). We partition the corpus strictly by question into 1,572 training items (1,881,950 observations) and <span class="math inline">\(18\)</span> unseen validation items (13,183 observations across <span class="math inline">\(4\)</span> <code>US ISSP</code> and <span class="math inline">\(14\)</span> <code>Twin-2K-500</code> questions).</p>
+<p><strong>Harmonized persona attributes.</strong> Respondents are represented by up to <span class="math inline">\(17\)</span> harmonized demographic and attitudinal attributes (<a href="#apptbl-attributes" class="quarto-xref">Table W2</a>). Eleven attributes appear in both surveys (sex, age, education, religion, religious attendance, political ideology, marital status, main activity, political party, household income, and US census region), four appear only in <code>US ISSP</code> (prior voting, urban-rural residence, union membership, and ancestry), and two appear only in <code>Twin-2K-500</code> (race and household size). The 16,414 respondents span 16,338 distinct full-persona configurations, and unrecorded attributes for any respondent are omitted from the state prompt.</p>
+<p><strong>Decision models and optimization.</strong> We evaluate the <code>Kev</code> decision-model family <span class="citation" data-cites="palmer2026kev gao2026choicesfewerdecisionsordinalscale">(<a href="#ref-gao2026choicesfewerdecisionsordinalscale" role="doc-biblioref">Gao et al. 2026</a>, <a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span> across three scales (<code>Kev 0.8B</code>, <code>Kev 4B</code>, and <code>Kev 9B</code>), comparing each off-the-shelf <code>base</code> checkpoint against its fine-tuned <code>FT</code> counterpart. Each base model is trained in <code>bfloat16</code> precision using Low-Rank Adaptation (<code>LoRA</code>, rank <span class="math inline">\(r = 64\)</span>, <span class="math inline">\(\alpha = 128\)</span>) across all linear backbone projections alongside the trainable decision head. We optimize <a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;3</a> using AdamW (peak learning rate <span class="math inline">\(5 \times 10^{-5}\)</span>, weight decay <span class="math inline">\(0.01\)</span>, a <span class="math inline">\(10\%\)</span> cosine warmup with cosine decay, and gradient clipping at <span class="math inline">\(1.0\)</span>). Throughout training and held-out evaluation, validation cross-entropy is computed against observed individual one-hot responses <span class="math inline">\(\mathbf{y}_{i,q}\)</span> under respondent <span class="math inline">\(i\)</span>’s full persona <span class="math inline">\(\mathbf{s}_i\)</span>, and the lowest-validation-loss checkpoint is selected. At evaluation, off-the-shelf models use their released calibration temperatures (<span class="math inline">\(T = 2.35\)</span> for <code>0.8B</code>, <span class="math inline">\(T = 2.41\)</span> for <code>4B</code>, and <span class="math inline">\(T = 2.19\)</span> for <code>9B</code>), whereas all fine-tuned models use unit temperature (<span class="math inline">\(T = 1.00\)</span>) without post-hoc tuning.</p>
+<div id="tbl-datasets" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-datasets-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;1: Summary of the survey training corpus, validation split, and held-out evaluation studies
+</figcaption>
+<div aria-describedby="tbl-datasets-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table" data-custom-style="APATable">
+<colgroup>
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Split</th>
+<th style="text-align: left;">Dataset</th>
+<th style="text-align: right;">Attributes</th>
+<th style="text-align: right;">Questions</th>
+<th style="text-align: right;">Likert (<code>score</code>)</th>
+<th style="text-align: right;">Categorical (<code>choice</code>)</th>
+<th style="text-align: right;">Respondents</th>
+<th style="text-align: right;">Observations</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Training</td>
+<td style="text-align: left;">US ISSP (2015 to 2024)</td>
+<td style="text-align: right;">15</td>
+<td style="text-align: right;">612</td>
+<td style="text-align: right;">470</td>
+<td style="text-align: right;">142</td>
+<td style="text-align: right;">14,356</td>
+<td style="text-align: right;">760,473</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Training</td>
+<td style="text-align: left;">Twin-2K-500</td>
+<td style="text-align: right;">13</td>
+<td style="text-align: right;">960</td>
+<td style="text-align: right;">287</td>
+<td style="text-align: right;">673</td>
+<td style="text-align: right;">2,058</td>
+<td style="text-align: right;">1,121,477</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Training</td>
+<td style="text-align: left;">Combined</td>
+<td style="text-align: right;">17</td>
+<td style="text-align: right;">1,572</td>
+<td style="text-align: right;">757</td>
+<td style="text-align: right;">815</td>
+<td style="text-align: right;">16,414</td>
+<td style="text-align: right;">1,881,950</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Validation</td>
+<td style="text-align: left;">US ISSP (2015 to 2024)</td>
+<td style="text-align: right;">15</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1,827</td>
+<td style="text-align: right;">7,011</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Validation</td>
+<td style="text-align: left;">Twin-2K-500</td>
+<td style="text-align: right;">13</td>
+<td style="text-align: right;">14</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">14</td>
+<td style="text-align: right;">2,058</td>
+<td style="text-align: right;">6,172</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Validation</td>
+<td style="text-align: left;">Combined</td>
+<td style="text-align: right;">17</td>
+<td style="text-align: right;">18</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">14</td>
+<td style="text-align: right;">3,885</td>
+<td style="text-align: right;">13,183</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Held-out study</td>
+<td style="text-align: left;">COVID-19 vaccine conjoint (full / eval subsample)</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">5 / 5</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">5 / 5</td>
+<td style="text-align: right;">1,971 / 200</td>
+<td style="text-align: right;">9,855 / 1,000</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Held-out study</td>
+<td style="text-align: left;">Nutrition labeling RCT (full / eval subsample)</td>
+<td style="text-align: right;">13</td>
+<td style="text-align: right;">36 / 36</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">36 / 36</td>
+<td style="text-align: right;">5,633 / 200</td>
+<td style="text-align: right;">33,798 / 1,200</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<div data-custom-style="Table Note">
+<p><em>Note.</em> Training and validation splits partition the harmonized <code>US ISSP</code> (10 waves, 2015 to 2024) and <code>Twin-2K-500</code> <span class="citation" data-cites="toubia2025database">(<a href="#ref-toubia2025database" role="doc-biblioref">Toubia et al. 2025</a>)</span> microdata strictly by survey question. Held-out study rows report <code>full / evaluation subsample</code> counts for Study 1 <span class="citation" data-cites="kreps2020factors wang2026large">(<a href="#ref-kreps2020factors" role="doc-biblioref">Kreps et al. 2020</a>, <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span> and Study 2 <span class="citation" data-cites="grummon2025nutrition">(<a href="#ref-grummon2025nutrition" role="doc-biblioref">Grummon et al. 2025</a>)</span>.</p>
+</div>
+<section id="held-out-survey-validation" class="level2">
+<h2 class="anchored" data-anchor-id="held-out-survey-validation">Held-Out Survey Validation</h2>
+<p>Off-the-shelf decision models exhibit high cross-entropy on the <span class="math inline">\(18\)</span> unseen validation questions, and larger models do not reliably perform better (<code>2.4262</code> bits on <code>Kev 0.8B</code>, <code>2.3586</code> bits on <code>Kev 4B</code>, and <code>2.3983</code> bits on <code>Kev 9B</code>; <a href="#tbl-validation" class="quarto-xref">Table&nbsp;2</a> and <a href="#fig-validation-curves" class="quarto-xref">Figure&nbsp;1</a>). Distributional fine-tuning reduces held-out validation cross-entropy by <span class="math inline">\(26.0\%\)</span> to <span class="math inline">\(27.5\%\)</span> and improves accuracy steadily with model scale, reaching <code>1.7963</code> bits on <code>Kev 0.8B</code> (<span class="math inline">\(0.34\)</span> epochs), <code>1.7431</code> bits on <code>Kev 4B</code> (<span class="math inline">\(0.67\)</span> epochs), and <code>1.7377</code> bits on <code>Kev 9B</code> (<span class="math inline">\(0.60\)</span> epochs). Most of the reduction occurs within the first <span class="math inline">\(0.10\)</span> epochs as the decision head adapts to subjective response distributions, followed by steady gains from persona conditioning.</p>
+<div id="tbl-validation" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-validation-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;2: Choice cross-entropy on the held-out survey validation split
+</figcaption>
+<div aria-describedby="tbl-validation-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table" data-custom-style="APATable">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Model</th>
+<th style="text-align: right;">Base valid CE</th>
+<th style="text-align: right;">FT valid CE</th>
+<th style="text-align: right;">Valid CE change</th>
+<th style="text-align: right;">Best ckpt (epoch)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Kev 0.8B</td>
+<td style="text-align: right;">2.4262</td>
+<td style="text-align: right;">1.7963</td>
+<td style="text-align: right;">-26.0%</td>
+<td style="text-align: right;">0.34</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Kev 4B</td>
+<td style="text-align: right;">2.3586</td>
+<td style="text-align: right;">1.7431</td>
+<td style="text-align: right;">-26.1%</td>
+<td style="text-align: right;">0.67</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Kev 9B</td>
+<td style="text-align: right;">2.3983</td>
+<td style="text-align: right;">1.7377</td>
+<td style="text-align: right;">-27.5%</td>
+<td style="text-align: right;">0.60</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<div data-custom-style="Table Note">
+<p><em>Note.</em> Cross-entropy (CE) is reported in bits (<span class="math inline">\(\log_2\)</span>) across 13,183 observations on 18 unseen <code>US ISSP</code> and <code>Twin-2K-500</code> items. Off-the-shelf (<code>Base</code>) models use released calibration temperatures (<span class="math inline">\(T = 2.35\)</span>, <span class="math inline">\(2.41\)</span>, and <span class="math inline">\(2.19\)</span>); fine-tuned (<code>FT</code>) models use unit temperature (<span class="math inline">\(T = 1.00\)</span>) at the lowest-validation-CE checkpoint and at Epoch 1 completion.</p>
+</div>
+<div id="fig-validation-curves" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-validation-curves-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/validation_trajectories.png" class="img-fluid figure-img" style="width:68.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-validation-curves-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: Epoch 1 validation cross-entropy trajectories across model scales
+</figcaption>
+</figure>
+</div>
+<div data-custom-style="Table Note">
+<p><em>Note.</em> Cross-entropy (in bits) across Epoch 1 on the held-out survey validation split (18 unseen <code>US ISSP</code> and <code>Twin-2K-500</code> questions, <em>n</em> = 13,183; evaluated every 50 steps on <code>0.8B</code> and <code>9B</code> and every 200 steps on <code>4B</code>). Circles denote the selected lowest-validation-CE checkpoint for each scale.</p>
+</div>
+</section>
+</section>
+<section id="sec-study1" class="level1">
+<h1>Study 1: Choice-Based Conjoint Analysis</h1>
+<p>To test whether fine-tuning on human response distributions generalizes to out-of-sample human studies, we estimate each held-out study’s econometric model on the predicted responses and compare the resulting regression parameters against the human estimates.</p>
+<section id="experimental-design-and-multinomial-logit-specification" class="level2">
+<h2 class="anchored" data-anchor-id="experimental-design-and-multinomial-logit-specification">Experimental Design and Multinomial Logit Specification</h2>
+<p>For our first held-out study, following the benchmark protocol of <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span>, we use a COVID-19 vaccine conjoint dataset <span class="citation" data-cites="kreps2020factors">(<a href="#ref-kreps2020factors" role="doc-biblioref">Kreps et al. 2020</a>)</span>, summarized in <a href="#tbl-datasets" class="quarto-xref">Table&nbsp;1</a>, to investigate part-worth utility recovery. In this study, 1,971 US respondents each complete <span class="math inline">\(t \in \{1, \dots, 5\}\)</span> paired choice tasks (9,855 observations). Each task presents two hypothetical vaccine profiles (<code>Option A</code> and <code>Option B</code>) with binary attribute vectors <span class="math inline">\(\mathbf{x}_{i,t,A}, \mathbf{x}_{i,t,B} \in \{0, 1\}^d\)</span>, alongside a no-vaccine outside option (<code>Option C</code>) whose utility is normalized to zero. Profiles vary across <span class="math inline">\(7\)</span> attributes coded as <span class="math inline">\(d = 11\)</span> non-reference binary indicators (<a href="#apptbl-wang-coefs" class="quarto-xref">Table W3</a>).</p>
+<p>Under the standard Multinomial Logit (MNL) model <span class="citation" data-cites="wang2026large">(<a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>, choice probabilities for parameter vector <span class="math inline">\(\boldsymbol{\beta} \in \mathbb{R}^d\)</span> are: <span id="eq-mnl-probs"><span class="math display">\[
+P_m(\mathbf{x}_{i,t}; \boldsymbol{\beta}) = \frac{\exp(\mathbf{x}_{i,t,m}^\top \boldsymbol{\beta})}{1 + \exp(\mathbf{x}_{i,t,A}^\top \boldsymbol{\beta}) + \exp(\mathbf{x}_{i,t,B}^\top \boldsymbol{\beta})}, \qquad m \in \{A, B\},
+\tag{10}\]</span></span> with <span class="math inline">\(P_C(\mathbf{x}_{i,t}; \boldsymbol{\beta}) = 1 - P_A(\mathbf{x}_{i,t}; \boldsymbol{\beta}) - P_B(\mathbf{x}_{i,t}; \boldsymbol{\beta})\)</span>. Given observed or predicted choice shares <span class="math inline">\((p_{i,t,A}, p_{i,t,B}, p_{i,t,C})\)</span> across <span class="math inline">\(n\)</span> choice sets, we estimate <span class="math inline">\(\hat{\boldsymbol{\beta}}\)</span> via Newton-CG maximum likelihood: <span id="eq-mnl-mle"><span class="math display">\[
+\hat{\boldsymbol{\beta}} = \arg\min_{\boldsymbol{\beta} \in \mathbb{R}^d} -\frac{1}{n} \sum_{(i,t)} \sum_{m \in \{A, B, C\}} p_{i,t,m} \log P_m(\mathbf{x}_{i,t}; \boldsymbol{\beta}).
+\tag{11}\]</span></span> Human respondents and generative LLMs supply one-hot choices, whereas decision models supply continuous probabilities from <a href="#eq-model-pmf" class="quarto-xref">Equation&nbsp;2</a>. Let <span class="math inline">\(\boldsymbol{\beta}^* \in \mathbb{R}^{11}\)</span> denote the ground-truth MNL vector estimated on all 9,855 human choices. Following <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span>, we evaluate models on a 200-respondent subsample (<em>n</em> = 1,000 choice sets) using Mean Absolute Percentage Error (<span class="math inline">\(\mathrm{MAPE}\)</span>) and Mean Squared Error (<span class="math inline">\(\mathrm{MSE}\)</span>): <span id="eq-wang-mape"><span class="math display">\[
+\mathrm{MAPE}(\hat{\boldsymbol{\beta}}, \boldsymbol{\beta}^*) = \frac{1}{d} \sum_{j=1}^{d} \frac{|\hat{\beta}_j - \beta^*_j|}{|\beta^*_j|} \times 100\%,
+\tag{12}\]</span></span> <span id="eq-wang-mse"><span class="math display">\[
+\mathrm{MSE}(\hat{\boldsymbol{\beta}}, \boldsymbol{\beta}^*) = \frac{1}{d} \sum_{j=1}^{d} (\hat{\beta}_j - \beta^*_j)^2.
+\tag{13}\]</span></span></p>
+<p>We test both unconditioned random personas and <span class="math inline">\(9\)</span>-attribute respondent personas (US region, gender, age, education, race, income, religion, political party, and ideology; <a href="#apptbl-attributes" class="quarto-xref">Table W2</a>). Decision models score the verbatim survey instrument <span class="citation" data-cites="kreps2020factors">(<a href="#ref-kreps2020factors" role="doc-biblioref">Kreps et al. 2020</a>)</span>, whereas generative LLMs (<code>Gemini 3.5 Flash-Lite</code> at <code>minimal</code> and <code>high</code> thinking; <code>Gemini 4 Argon</code> at <code>low</code> and <code>high</code> thinking) use the <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span> prompt format (which additionally states country). Unlike <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span>, who excluded vaccine opt-out respondents due to LLM safety refusals, we retain the full untruncated respondent population and benchmark against MNL estimated directly on the 200 sampled humans.</p>
+</section>
+<section id="conjoint-estimation-results" class="level2">
+<h2 class="anchored" data-anchor-id="conjoint-estimation-results">Conjoint Estimation Results</h2>
+<p><strong>Generative LLM bias.</strong> Estimating MNL on the 200 sampled humans yields a finite-sample benchmark of <span class="math inline">\(\mathrm{MSE} = 0.0065\)</span> (<a href="#tbl-wang-mnl" class="quarto-xref">Table&nbsp;3</a>; <a href="#appfig-wang-random" class="quarto-xref">Figure W1</a> and <a href="#appfig-wang-persona" class="quarto-xref">Figure W2</a>). Consistent with <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span>, generative LLMs exhibit severe bias under random personas (<span class="math inline">\(\mathrm{MSE} = 3.2073\)</span> to <span class="math inline">\(26.2179\)</span>). Conditioning on the <span class="math inline">\(9\)</span> respondent attributes cuts error substantially (<span class="math inline">\(\mathrm{MSE} = 0.5925\)</span> to <span class="math inline">\(2.1687\)</span>), yet estimates remain far from the human benchmark. Moreover, higher reasoning budgets and model scale worsen parameter recovery. Under respondent personas, raising <code>Gemini 3.5 Flash-Lite</code> thinking from <code>minimal</code> to <code>high</code> doubles MSE (<span class="math inline">\(0.5925\)</span> to <span class="math inline">\(1.1984\)</span>), while <code>Gemini 4 Argon</code> degrades further (<span class="math inline">\(1.7637\)</span> at <code>low</code> and <span class="math inline">\(2.1687\)</span> at <code>high</code>).</p>
+<p><strong>Why choice probabilities matter.</strong> Generative LLMs bias conjoint estimation because discrete text generation collapses choice uncertainty and triggers safety refusals. Under random personas, generative LLMs rarely select the no-vaccine option (<span class="math inline">\(0.0\%\)</span> to <span class="math inline">\(3.0\%\)</span> vs.&nbsp;<span class="math inline">\(20.3\%\)</span> for humans), while <code>Gemini 4 Argon (high)</code> refuses <span class="math inline">\(16\)</span> of <span class="math inline">\(1,000\)</span> tasks. Even under respondent personas, near-deterministic profile selection pushes conditional choice shares toward zero or one, causing severe MNL scale inflation (<a href="#fig-wang-coefs" class="quarto-xref">Figure&nbsp;2</a>, Panel B; <a href="#apptbl-wang-coefs" class="quarto-xref">Table W3</a>): <code>Efficacy: 90%</code> reaches <span class="math inline">\(+1.846\)</span> to <span class="math inline">\(+3.538\)</span> versus <span class="math inline">\(+0.746\)</span> for humans. Scoring options directly via <code>Kev 9B (base)</code> (<span class="math inline">\(T = 2.19\)</span>) eliminates refusals and cuts MSE by an order of magnitude (<span class="math inline">\(0.2449\)</span> random; <span class="math inline">\(0.0815\)</span> respondent). Collapsing those same <code>Kev 9B (base)</code> probabilities into one-hot top choices inflates respondent-persona MSE nearly <span class="math inline">\(23\)</span>-fold (<span class="math inline">\(0.0815\)</span> to <span class="math inline">\(1.8678\)</span>), showing that continuous probability readouts–rather than discrete choices–are essential to prevent scale distortion.</p>
+<p><strong>Distributional survey fine-tuning.</strong> Evaluated zero-shot–without training or calibration on conjoint data–<code>Kev 9B (FT)</code> reduces MNL MSE relative to <code>Kev 9B (base)</code> by <span class="math inline">\(64.3\%\)</span> under random personas (<span class="math inline">\(0.2449\)</span> to <span class="math inline">\(0.0875\)</span>) and by <span class="math inline">\(67.2\%\)</span> under respondent personas (<span class="math inline">\(0.0815\)</span> to <span class="math inline">\(0.0267\)</span>; <a href="#tbl-wang-mnl" class="quarto-xref">Table&nbsp;3</a>). Fine-tuning also lowers choice cross-entropy (<code>1.6370</code> to <code>1.5192</code> bits under random personas; <code>1.5255</code> to <code>1.4449</code> bits under respondent personas) and raises predicted no-vaccine shares (<span class="math inline">\(19.0\%\)</span> and <span class="math inline">\(28.1\%\)</span>, up from <span class="math inline">\(11.9\%\)</span> and <span class="math inline">\(16.4\%\)</span> for <code>Kev 9B (base)</code>). At the attribute level (<a href="#fig-wang-coefs" class="quarto-xref">Figure&nbsp;2</a>, Panel A; <a href="#apptbl-wang-coefs" class="quarto-xref">Table W3</a>), <code>Kev 9B (base)</code> overestimates the part-worths of vaccine efficacy and institutional endorsements, with only <span class="math inline">\(5\)</span> of <span class="math inline">\(11\)</span> estimates falling within the human subsample’s <span class="math inline">\(95\%\)</span> confidence intervals. By contrast, <code>Kev 9B (FT)</code> recovers <span class="math inline">\(8\)</span> of <span class="math inline">\(11\)</span> estimates within those <span class="math inline">\(95\%\)</span> confidence intervals, closely aligning with full-sample human part-worths on efficacy, FDA Emergency Use Authorization, country of origin, and endorsements while attenuating protection duration and rare major side effects toward zero.</p>
+<div id="tbl-wang-mnl" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-wang-mnl-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;3: Multinomial logit part-worth parameter recovery on the COVID-19 vaccine conjoint benchmark
+</figcaption>
+<div aria-describedby="tbl-wang-mnl-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table" data-custom-style="APATable">
+<colgroup>
+<col style="width: 26%">
+<col style="width: 20%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+</colgroup>
+<thead>
+<tr class="header">
+<th rowspan="2" style="text-align: left;">Estimator</th>
+<th rowspan="2" style="text-align: left;">Configuration</th>
+<th colspan="2" style="text-align: center;">Random Persona</th>
+<th colspan="2" style="text-align: center;">Respondent Persona</th>
+</tr>
+<tr class="even">
+<th style="text-align: right;">MAPE (%)</th>
+<th style="text-align: right;">MSE</th>
+<th style="text-align: right;">MAPE (%)</th>
+<th style="text-align: right;">MSE</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td colspan="6" style="text-align: center;"><em>Human benchmark</em></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Survey subsample</td>
+<td style="text-align: left;">Observed choices</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">22.1</td>
+<td style="text-align: right;">0.0065</td>
+</tr>
+<tr class="odd">
+<td colspan="6" style="text-align: center;"><em>Decision model</em></td>
+</tr>
+<tr class="even">
+<td rowspan="2" style="text-align: left;">Kev 9B</td>
+<td style="text-align: left;">Fine-tuned</td>
+<td style="text-align: right;">84.0</td>
+<td style="text-align: right;">0.0875</td>
+<td style="text-align: right;">56.4</td>
+<td style="text-align: right;">0.0267</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Off-the-shelf</td>
+<td style="text-align: right;">135.4</td>
+<td style="text-align: right;">0.2449</td>
+<td style="text-align: right;">93.5</td>
+<td style="text-align: right;">0.0815</td>
+</tr>
+<tr class="even">
+<td colspan="6" style="text-align: center;"><em>Generative LLMs</em></td>
+</tr>
+<tr class="odd">
+<td rowspan="2" style="text-align: left;">Gemini 3.5 Flash-Lite</td>
+<td style="text-align: left;">Minimal thinking</td>
+<td style="text-align: right;">531.7</td>
+<td style="text-align: right;">3.2073</td>
+<td style="text-align: right;">203.6</td>
+<td style="text-align: right;">0.5925</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">High thinking</td>
+<td style="text-align: right;">998.2</td>
+<td style="text-align: right;">14.4555</td>
+<td style="text-align: right;">335.8</td>
+<td style="text-align: right;">1.1984</td>
+</tr>
+<tr class="odd">
+<td rowspan="2" style="text-align: left;">Gemini 4 Argon</td>
+<td style="text-align: left;">Low thinking</td>
+<td style="text-align: right;">1,394.3</td>
+<td style="text-align: right;">23.3998</td>
+<td style="text-align: right;">376.7</td>
+<td style="text-align: right;">1.7637</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">High thinking<sup>a</sup></td>
+<td style="text-align: right;">1,507.7</td>
+<td style="text-align: right;">26.2179</td>
+<td style="text-align: right;">395.1</td>
+<td style="text-align: right;">2.1687</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<div data-custom-style="Table Note">
+<p><em>Note.</em> Mean Absolute Percentage Error (MAPE) and Mean Squared Error (MSE) are computed across <span class="math inline">\(d = 11\)</span> vaccine attribute indicators on the 200-respondent evaluation subsample (<em>n</em> = 1,000 choice sets), benchmarked against full-sample human <span class="math inline">\(\boldsymbol{\beta}^*\)</span> [<em>N</em> = 1,971 respondents, 9,855 choice sets; <span class="citation" data-cites="kreps2020factors">Kreps et al. (<a href="#ref-kreps2020factors" role="doc-biblioref">2020</a>)</span>; <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span>]. Under <code>Kev 9B</code>, <code>Fine-tuned</code> (<code>FT</code>) uses unit temperature (<span class="math inline">\(T = 1.00\)</span>) and <code>Off-the-shelf</code> (<code>base</code>) uses released calibration temperature (<span class="math inline">\(T = 2.19\)</span>). <sup>a</sup>Under random personas, <em>n</em> = 984 choice sets due to 16 safety refusals.</p>
+</div>
+<div id="fig-wang-coefs" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-wang-coefs-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/wang_mnl_coefs.png" class="img-fluid figure-img" style="width:95.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-wang-coefs-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2: Estimated multinomial logit part-worth coefficients across COVID-19 vaccine attributes
+</figcaption>
+</figure>
+</div>
+<div data-custom-style="Table Note">
+<p><em>Note.</em> Estimates <span class="math inline">\(\hat{\boldsymbol{\beta}}\)</span> and 95% asymptotic confidence intervals across the 11 non-reference vaccine indicators under 9-attribute respondent personas (<em>n</em> = 1,000 choice sets; generative LLM prompts additionally state country), benchmarked against full-sample (<em>N</em> = 9,855) and subsample (<em>n</em> = 1,000) human estimates <span class="citation" data-cites="kreps2020factors wang2026large">(<a href="#ref-kreps2020factors" role="doc-biblioref">Kreps et al. 2020</a>, <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>. Panel A compares <code>Kev 9B (base)</code> and <code>Kev 9B (FT)</code> against human benchmarks; Panel B shows coefficient inflation in generative LLMs across reasoning budgets.</p>
+</div>
+</section>
+</section>
+<section id="sec-study2" class="level1">
+<h1>Study 2: Front-of-Package Nutrition Labeling Trial</h1>
+<section id="experimental-design-and-ols-specification" class="level2">
+<h2 class="anchored" data-anchor-id="experimental-design-and-ols-specification">Experimental Design and OLS Specification</h2>
+<p>Our second held-out study evaluates causal treatment-effect recovery in a front-of-package nutrition labeling trial <span class="citation" data-cites="grummon2025nutrition">(<a href="#ref-grummon2025nutrition" role="doc-biblioref">Grummon et al. 2025</a>)</span>. In this experiment, <em>N</em> = 5,633 US grocery shoppers are randomized to one of six between-subjects labeling arms (<code>Positive</code> serves as the reference arm; <a href="#apptbl-grummon2025-coefs" class="quarto-xref">Table W4</a>). Each shopper completes <span class="math inline">\(q \in \{1, \dots, 6\}\)</span> three-option product choice tasks across food and beverage categories, where <span class="math inline">\(y_1\)</span> denotes the objectively healthier option.</p>
+<p>For each shopper <span class="math inline">\(i\)</span>, we compute the mean probability of selecting the healthier product across the six tasks, <span class="math inline">\(\bar{p}_i = \frac{1}{6} \sum_{q=1}^6 p_{i,q,1}\)</span>, where <span class="math inline">\(p_{i,q,1}\)</span> is the binary choice indicator <span class="math inline">\(y_{i,q,1}\)</span> for human shoppers and the predicted probability <span class="math inline">\(P_{\mathrm{model}}(Y_{i,q} = y_1 \mid \mathbf{s}_i; \theta)\)</span> under the assigned arm for decision models. Following <span class="citation" data-cites="grummon2025nutrition">Grummon et al. (<a href="#ref-grummon2025nutrition" role="doc-biblioref">2025</a>)</span>, we regress <span class="math inline">\(\bar{p}_i\)</span> on the five treatment-arm indicators via ordinary least squares (OLS) with HC1 heteroskedasticity-robust standard errors to obtain <span class="math inline">\(\hat{\boldsymbol{\beta}} \in \mathbb{R}^5\)</span> relative to <code>Positive</code>. We evaluate models on a 200-shopper subsample (<em>n</em> = 1,200 choices) against the full-sample human vector <span class="math inline">\(\boldsymbol{\beta}^*\)</span> (<em>N</em> = 5,633). Each shopper profile contains <span class="math inline">\(13\)</span> attributes (<a href="#apptbl-attributes" class="quarto-xref">Table W2</a>): <span class="math inline">\(6\)</span> demographic attributes seen in survey training (sex, age, education, income, race, and household size) and <span class="math inline">\(7\)</span> covariates completely unseen during training (Hispanic ethnicity, number of children, SNAP receipt, WIC receipt, Nutrition Facts label usage, online grocery share, and nutrition literacy score).</p>
+</section>
+<section id="trial-estimation-and-attribute-generalization-results" class="level2">
+<h2 class="anchored" data-anchor-id="trial-estimation-and-attribute-generalization-results">Trial Estimation and Attribute Generalization Results</h2>
+<p><strong>Treatment-effect recovery.</strong> Under <span class="math inline">\(13\)</span>-attribute shopper personas, scaling off-the-shelf models from <code>0.8B</code> to <code>9B</code> worsens choice cross-entropy (<code>1.4770</code> to <code>1.5405</code> bits; <a href="#tbl-grummon2025-ols" class="quarto-xref">Table&nbsp;4</a>) and yields higher OLS MSE than unconditioned random prompts at every scale (<a href="#appfig-grummon2025-random" class="quarto-xref">Figure W3</a>; <a href="#appfig-grummon2025-persona" class="quarto-xref">Figure W4</a>). Survey fine-tuning reverses this scaling pattern, steadily lowering cross-entropy from <code>1.5536</code> bits (<code>0.8B</code>) to <code>1.3479</code> bits (<code>9B</code>). Whereas smaller fine-tuned models (<code>0.8B</code> and <code>4B</code>) improve arm rank ordering or MAPE without reducing OLS MSE, <code>Kev 9B (FT)</code> improves every metric. It reaches a Spearman rank correlation of <span class="math inline">\(\rho = +0.90\)</span>, lowers respondent-persona MAPE from <span class="math inline">\(63.7\%\)</span> to <span class="math inline">\(44.3\%\)</span>, and reduces OLS MSE by <span class="math inline">\(53.2\%\)</span> (<span class="math inline">\(0.0047\)</span> to <span class="math inline">\(0.0022\)</span>; and by <span class="math inline">\(44.1\%\)</span> to <span class="math inline">\(0.0019\)</span> under random prompts), approaching the 200-shopper human benchmark (<span class="math inline">\(\mathrm{MSE} = 0.0016\)</span>, <span class="math inline">\(\mathrm{MAPE} = 22.7\%\)</span>). At the arm level (<a href="#fig-grummon2025-coefs" class="quarto-xref">Figure&nbsp;3</a>, Panel A; <a href="#apptbl-grummon2025-coefs" class="quarto-xref">Table W4</a>), <code>Kev 9B (FT)</code> places all five estimates within the human subsample’s <span class="math inline">\(95\%\)</span> confidence intervals, closely matching full-sample effects on the three symmetrical interpretive labels (<code>Nutrition Info</code>, <code>Positive + Nutrition Info</code>, and <code>Spectrum</code>). Remaining error concentrates in the two asymmetric <code>High In</code> arms, where graphical warning shields in <span class="citation" data-cites="grummon2025nutrition">Grummon et al. (<a href="#ref-grummon2025nutrition" role="doc-biblioref">2025</a>)</span> were serialized into text without visual warning cues.</p>
+<p><strong>Generalization to unseen shopper attributes.</strong> To test whether fine-tuning merely memorizes training-corpus demographics, we evaluate each model when prompted with one shopper attribute at a time across the <span class="math inline">\(6\)</span> seen demographics and the <span class="math inline">\(7\)</span> unseen covariates (<a href="#fig-grummon2025-coefs" class="quarto-xref">Figure&nbsp;3</a>, Panel B; <a href="#apptbl-grummon2025-personas" class="quarto-xref">Table W5</a>). Across individual attributes, off-the-shelf <code>Kev 9B (base)</code> varies widely in cross-entropy (<code>1.3935</code> to <code>1.6661</code> bits) and performs worse than uniform guessing (<code>1.5850</code> bits) on <code>Nutrition Facts label usage</code> (<code>1.6661</code>) and <code>Share of groceries bought online</code> (<code>1.6016</code>). If survey fine-tuning memorized only in-corpus demographics, improvements would be confined to the <span class="math inline">\(6\)</span> seen attributes. Instead, <code>Kev 9B (FT)</code> lowers cross-entropy on every attribute, converging to virtually identical mean cross-entropy on the <span class="math inline">\(7\)</span> unseen covariates (<code>1.3473</code> bits, vs.&nbsp;<code>1.5328</code> for <code>Kev 9B (base)</code>) and the <span class="math inline">\(6\)</span> seen demographics (<code>1.3477</code> bits, vs.&nbsp;<code>1.4866</code> for <code>Kev 9B (base)</code>).</p>
+<div id="tbl-grummon2025-ols" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-grummon2025-ols-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;4: Choice cross-entropy and OLS treatment-effect recovery on the nutrition labeling randomized trial
+</figcaption>
+<div aria-describedby="tbl-grummon2025-ols-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table" data-custom-style="APATable">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Estimator</th>
+<th style="text-align: right;">CE (bits)</th>
+<th style="text-align: right;">MAPE (%)</th>
+<th style="text-align: right;">MSE</th>
+<th style="text-align: right;">Spearman <span class="math inline">\(\rho\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Human subsample (<em>N</em> = 200, <em>n</em> = 1,200)</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">22.7%</td>
+<td style="text-align: right;">0.0016</td>
+<td style="text-align: right;">+0.40</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Kev 0.8B (base)</td>
+<td style="text-align: right;">1.4770</td>
+<td style="text-align: right;">58.5%</td>
+<td style="text-align: right;">0.0074</td>
+<td style="text-align: right;">+0.50</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Kev 0.8B (FT)</td>
+<td style="text-align: right;">1.5536</td>
+<td style="text-align: right;">66.5%</td>
+<td style="text-align: right;">0.0078</td>
+<td style="text-align: right;">+0.70</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Kev 4B (base)</td>
+<td style="text-align: right;">1.5124</td>
+<td style="text-align: right;">95.9%</td>
+<td style="text-align: right;">0.0088</td>
+<td style="text-align: right;">+0.80</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Kev 4B (FT)</td>
+<td style="text-align: right;">1.4659</td>
+<td style="text-align: right;">83.0%</td>
+<td style="text-align: right;">0.0099</td>
+<td style="text-align: right;">+0.80</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Kev 9B (base)</td>
+<td style="text-align: right;">1.5405</td>
+<td style="text-align: right;">63.7%</td>
+<td style="text-align: right;">0.0047</td>
+<td style="text-align: right;">+0.80</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Kev 9B (FT)</td>
+<td style="text-align: right;">1.3479</td>
+<td style="text-align: right;">44.3%</td>
+<td style="text-align: right;">0.0022</td>
+<td style="text-align: right;">+0.90</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<div data-custom-style="Table Note">
+<p><em>Note.</em> Three-option choice cross-entropy (CE, in bits; uniform baseline <span class="math inline">\(\log_2 3 = 1.5850\)</span> bits) and participant-level HC1 OLS treatment-effect error across <span class="math inline">\(d = 5\)</span> labeling arms (relative to <code>Positive</code>) under 13-attribute respondent personas on the evaluation subsample (<em>N</em> = 200 shoppers, <em>n</em> = 1,200 choices), benchmarked against full-sample human <span class="math inline">\(\boldsymbol{\beta}^*\)</span> (<em>N</em> = 5,633, 33,798 choices; <span class="citation" data-cites="grummon2025nutrition">Grummon et al. (<a href="#ref-grummon2025nutrition" role="doc-biblioref">2025</a>)</span>). Off-the-shelf (<code>base</code>) models use released calibration temperatures (<span class="math inline">\(T = 2.35\)</span>, <span class="math inline">\(2.41\)</span>, and <span class="math inline">\(2.19\)</span>); fine-tuned (<code>FT</code>) models use unit temperature (<span class="math inline">\(T = 1.00\)</span>).</p>
+</div>
+<div id="fig-grummon2025-coefs" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-grummon2025-coefs-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/grummon2025_ols_coefs.png" class="img-fluid figure-img" style="width:95.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-grummon2025-coefs-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: Causal treatment-effect recovery and shopper-attribute generalization on the nutrition labeling randomized trial
+</figcaption>
+</figure>
+</div>
+<div data-custom-style="Table Note">
+<p><em>Note.</em> Evaluation on the 200-shopper subsample (<em>n</em> = 1,200 choices) of <span class="citation" data-cites="grummon2025nutrition">Grummon et al. (<a href="#ref-grummon2025nutrition" role="doc-biblioref">2025</a>)</span>. Panel A compares participant-level HC1 OLS treatment-effect estimates <span class="math inline">\(\hat{\boldsymbol{\beta}}\)</span> and 95% confidence intervals across the 5 labeling arms (relative to <code>Positive</code>) under 13-attribute respondent personas against full-sample (<em>N</em> = 5,633) and subsample (<em>N</em> = 200) human benchmarks. Panel B compares single-attribute choice cross-entropy (in bits, relative to uniform guessing at <span class="math inline">\(\log_2 3 = 1.585\)</span> bits) across 6 seen demographic attributes and 7 unseen shopper attributes.</p>
+</div>
+</section>
+</section>
+<section id="sec-discussion" class="level1">
+<h1>Discussion and Conclusion</h1>
+<p>Our findings show that the severe econometric biases in generative LLM silicon sampling <span class="citation" data-cites="goli2024frontiers leng2026reducing wang2026large">(<a href="#ref-goli2024frontiers" role="doc-biblioref">Goli and Singh 2024</a>, <a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>, <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span> stem from discrete text generation and single-label post-training rather than fundamental limits of foundation models. Whereas recent marketing methods correct fixed LLM outputs after inference using target-study human data <span class="citation" data-cites="wang2026large leng2026reducing">(<a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>, <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>, aligning models before inference requires pairing a probabilistic readout with distributional supervision. Architecturally, single-pass decision heads output normalized probabilities directly over valid options, eliminating free-text parsing errors, Monte Carlo sampling variance, safety refusals on sensitive opt-out choices, and the nearly <span class="math inline">\(23\)</span>-fold MNL error inflation caused by discretizing choices. Substantively, minimizing cross-entropy against empirical sample distributions across 1.88 million general survey responses (<code>US ISSP</code> and <code>Twin-2K-500</code>) calibrates conditional choice probabilities at unit temperature (<span class="math inline">\(T = 1.00\)</span>), generalizing zero-shot across unseen respondent covariates and substantially improving conjoint MNL and experimental OLS parameter recovery.</p>
+<p>For marketing researchers, distributionally aligned decision models enable fast, deterministic pre-testing before primary data collection (e.g., screening candidate conjoint attributes, auditing survey instruments, or evaluating policy messaging across demographic subgroups in a single forward pass per task). At the same time, zero-shot simulation complements rather than replaces human experimentation for high-stakes managerial or regulatory decisions, as <code>Kev 9B (FT)</code> still exhibits higher estimation error than a 200-participant human sample (<span class="math inline">\(\mathrm{MSE} = 0.0267\)</span> vs.&nbsp;<span class="math inline">\(0.0065\)</span> in conjoint MNL; <span class="math inline">\(0.0022\)</span> vs.&nbsp;<span class="math inline">\(0.0016\)</span> in trial OLS). When researchers do collect primary human responses in the target study, upstream distributional alignment and downstream statistical calibration <span class="citation" data-cites="wang2026large leng2026reducing">(<a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>, <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span> are naturally complementary. Passing refusal-free, persona-conditioned probability vectors from <code>Kev 9B (FT)</code> into AI-augmented estimators <span class="citation" data-cites="wang2026large">(<a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span> or checkpoint ensembles <span class="citation" data-cites="leng2026reducing">(<a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>)</span> could inject calibrated respondent-level variation while reducing reliance on large human calibration samples.</p>
+<p>Three boundary conditions define priorities for future research. First, our nutrition trial highlights a modality boundary of text-only silicon sampling, as serializing graphical <code>High In</code> warning shields into text loses visual salience cues. Extending distributional training to multimodal vision-language decision heads that score package mockups and advertisements directly is an immediate next step. Second, because our training corpus centers on general US social and behavioral attitudes, <code>Kev 9B (FT)</code> attenuates unfamiliar clinical attributes (<code>Duration</code> and <code>Major side effects</code>) toward zero, and smaller models (<code>0.8B</code> and <code>4B</code>) do not improve OLS MSE. Incorporating historical commercial conjoint studies, scanner panels, and cross-national surveys would broaden domain transfer. Third, conditioning solely on static persona covariates <span class="math inline">\(\mathbf{s}_i\)</span> treats repeated choices per respondent as conditionally independent, motivating sequential conditioning on prior choices or integration with mixed-logit random-coefficients models. Together, single-pass decision architectures and distributional survey training provide a practical, extensible foundation for behavioral simulation in marketing science.</p>
+</section>
+<section id="declarations" class="level1 unnumbered">
+<h1 class="unnumbered">Declarations</h1>
+<section id="funding-and-competing-interests" class="level2 unnumbered">
+<h2 class="unnumbered anchored" data-anchor-id="funding-and-competing-interests">Funding and Competing Interests</h2>
+<p>All authors certify that they have no affiliations with or involvement in any organization or entity with any financial interest or non-financial interest in the subject matter or materials discussed in this manuscript. The authors have no funding to report.</p>
+</section>
+</section>
+<section id="references" class="level1 unnumbered">
+<h1 class="unnumbered">References</h1>
+<div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" role="list">
+<div id="ref-angelopoulos2023prediction" class="csl-entry" role="listitem">
+Angelopoulos AN, Bates S, Fannjiang C, Jordan MI, Zrnic T (2023) Prediction-powered inference. <em>Science</em> 382(6671):669–674.
+</div>
+<div id="ref-argyle2023out" class="csl-entry" role="listitem">
+Argyle LP, Busby EC, Fulda N, Gubler JR, Rytting C, Wingate D (2023) Out of one, many: Using language models to simulate human samples. <em>Political Analysis</em> 31(3):337–351.
+</div>
+<div id="ref-asseri2026calibratedwhompersonalanguage" class="csl-entry" role="listitem">
+Asseri B, Asseri A (2026) <a href="https://arxiv.org/abs/2609.36399">Calibrated to whom? Persona and language effects on cultural values in <span>JEV</span></a>. <em>arXiv preprint arXiv:2609.36399</em>.
+</div>
+<div id="ref-bentegeac2025token" class="csl-entry" role="listitem">
+Bentegeac R, Le Guellec B, Kuchcinski G, Amouyel P, Hamroun A (2025) Token probabilities to mitigate large language models overconfidence in answering medical questions: Quantitative study. <em>Journal of Medical Internet Research</em> 27:e64348.
+</div>
+<div id="ref-berke2023drone" class="csl-entry" role="listitem">
+Berke A, Ding G, Chin C, Gopalakrishnan K, Larson K, Balakrishnan H, Li MZ (2023) Drone delivery and the value of customer privacy: A discrete choice experiment with US consumers. <em>Transportation Research Part C: Emerging Technologies</em> 157:104391.
+</div>
+<div id="ref-brand2023using" class="csl-entry" role="listitem">
+Brand J, Israeli A, Ngwe D (2023) <em>Using <span>LLMs</span> for market research</em>. Working Paper 23-062 (Harvard Business School).
+</div>
+<div id="ref-deas-mckeown-2025-artificial" class="csl-entry" role="listitem">
+Deas N, McKeown K (2025) <a href="https://doi.org/10.18653/v1/2025.emnlp-main.981">Artificial impressions: Evaluating large language model behavior through the lens of trait impressions</a>. <em>Proceedings of the 2025 conference on <span class="nocase">Empirical Methods in Natural Language Processing</span></em>, 19418–19444.
+</div>
+<div id="ref-deusser2026evaluatingbenchmarkingmodeljev" class="csl-entry" role="listitem">
+Deußer T, Sparrenberg L, Sifa R (2026) <a href="https://arxiv.org/abs/2609.37647">Evaluating and benchmarking the system one model <span>Jev</span></a>. <em>arXiv preprint arXiv:2609.37647</em>.
+</div>
+<div id="ref-durmus2024towards" class="csl-entry" role="listitem">
+Durmus E, Nguyen K, Liao T, Schiefer N, Askell A, Bakhtin A, Chen C, et al. (2024) <a href="https://openreview.net/forum?id=zl16jLb91v">Towards measuring the representation of subjective global opinions in language models</a>. <em>First <span class="nocase">Conference on Language Modeling</span></em>.
+</div>
+<div id="ref-gao2026choicesfewerdecisionsordinalscale" class="csl-entry" role="listitem">
+Gao T, Li J, Li Z, Chang Y, Wu Y (2026) <a href="https://arxiv.org/abs/2609.38827">More choices, fewer decisions: Ordinal-scale bias in <span>JEV</span>-like direct-decision models</a>. <em>arXiv preprint arXiv:2609.38827</em>.
+</div>
+<div id="ref-geuter2026releasinginnerjevsimple" class="csl-entry" role="listitem">
+Geuter J, Cheng A, Alvarez-Melis D (2026) <a href="https://arxiv.org/abs/2610.17205">Releasing the inner <span>Jev</span>: A simple recipe for open decision models</a>. <em>arXiv preprint arXiv:2610.17205</em>.
+</div>
+<div id="ref-goldfarb2026comfort" class="csl-entry" role="listitem">
+Goldfarb JL, Bhujle TR, Tester JW, Kriner DL (2026) Comfort or climate? Consumer trade-offs between sustainable aviation fuel and flight amenities. <em>Journal of Cleaner Production</em> 577:149406.
+</div>
+<div id="ref-goli2024frontiers" class="csl-entry" role="listitem">
+Goli A, Singh A (2024) Frontiers: Can large language models capture human preferences? <em>Marketing Science</em> 43(4):709–722.
+</div>
+<div id="ref-grummon2025nutrition" class="csl-entry" role="listitem">
+Grummon AH, O’Sullivan K, Petimar J, Lee CJY, Zeitlin AB, Cleveland LP, Collis C, et al. (2025) Nutrition info and other front-of-package labels and simulated food and beverage purchases: A randomized clinical trial. <em>JAMA Network Open</em> 8(10):e2537389. <a href="https://doi.org/10.1001/jamanetworkopen.2025.37389">https://doi.org/10.1001/jamanetworkopen.2025.37389</a>.
+</div>
+<div id="ref-horton2023large" class="csl-entry" role="listitem">
+Horton JJ, Filippas A, Manning BS (2023) <em>Large language models as simulated economic agents: What can we learn from <span>Homo Silicus</span>?</em> Working Paper 31122 (National Bureau of Economic Research).
+</div>
+<div id="ref-huang-etal-2026-distribution" class="csl-entry" role="listitem">
+Huang J, Li M, Shao S (2026) <a href="https://doi.org/10.18653/v1/2026.findings-acl.457">Distribution shift alignment helps <span>LLM</span>s simulate survey response distributions</a>. <em>Findings of the <span>A</span>ssociation for <span>C</span>omputational <span>L</span>inguistics: <span>ACL</span> 2026</em>, 9395–9409.
+</div>
+<div id="ref-jung-etal-2026-psychometric" class="csl-entry" role="listitem">
+Jung J, Lutz M, Sen I, Strohmaier M (2026) <a href="https://doi.org/10.18653/v1/2026.eacl-long.380">Do psychometric tests work for large language models? Evaluation of tests on sexism, racism, and morality</a>. <em>Proceedings of the 19th conference of the <span class="nocase">European Chapter of the Association for Computational Linguistics</span> (volume 1: Long papers)</em>, 8143–8173.
+</div>
+<div id="ref-kabir-etal-2025-break" class="csl-entry" role="listitem">
+Kabir M, Abrar A, Ananiadou S (2025) <a href="https://doi.org/10.18653/v1/2025.emnlp-main.2">Break the checkbox: Challenging closed-style evaluations of cultural alignment in <span>LLM</span>s</a>. <em>Proceedings of the 2025 conference on <span class="nocase">Empirical Methods in Natural Language Processing</span></em>, 24–51.
+</div>
+<div id="ref-kadavath2022language" class="csl-entry" role="listitem">
+<span class="nocase">Kadavath S, Conerly T, Askell A, Henighan T, Drain D, Perez E, Schiefer N, et al.</span> (2022) Language models (mostly) know what they know. <em>arXiv preprint arXiv:2207.05221</em>.
+</div>
+<div id="ref-koo2024benchmarking" class="csl-entry" role="listitem">
+Koo R, Lee M, Raheja V, Park JI, Kim ZM, Kang D (2024) Benchmarking cognitive biases in large language models as evaluators. <em>Findings of the <span class="nocase">Association for Computational Linguistics</span>: <span>ACL</span> 2024</em>, 517–545.
+</div>
+<div id="ref-kreps2020factors" class="csl-entry" role="listitem">
+Kreps S, Prasad S, Brownstein JS, Hswen Y, Garibaldi BT, Zhang B, Kriner DL (2020) Factors associated with <span>US</span> adults’ likelihood of accepting COVID-19 vaccination. <em>JAMA Network Open</em> 3(10):e2025594.
+</div>
+<div id="ref-ku2026siliconsamplingcrosssurveytransfer" class="csl-entry" role="listitem">
+Ku CT, Hsu C, Huang PC, Liu FC, Cheng IL, Kang Y (2026) <a href="https://arxiv.org/abs/2607.03091">Silicon sampling via cross-survey transfer</a>. <em>arXiv preprint arXiv:2607.03091</em>.
+</div>
+<div id="ref-kuribayashi-etal-2024-psychometric" class="csl-entry" role="listitem">
+Kuribayashi T, Oseki Y, Baldwin T (2024) <a href="https://doi.org/10.18653/v1/2024.findings-naacl.129">Psychometric predictive power of large language models</a>. <em>Findings of the <span class="nocase">Association for Computational Linguistics</span>: <span>NAACL</span> 2024</em>, 1983–2005.
+</div>
+<div id="ref-leng2026reducing" class="csl-entry" role="listitem">
+Leng Y, Sang Y, Agarwal A (2026) Reducing disparity between <span>LLM</span>s and humans: Optimal <span>LLM</span> sample calibration. <em>Marketing Science</em>. <a href="https://doi.org/10.1287/mksc.2024.0983">https://doi.org/10.1287/mksc.2024.0983</a>.
+</div>
+<div id="ref-li2026kitescalingjevpopulation" class="csl-entry" role="listitem">
+Li H (2026) <a href="https://arxiv.org/abs/2609.27535"><span>KITE</span>: Scaling <span>Jev</span> population experiments with sparse flagship calibration</a>. <em>arXiv preprint arXiv:2609.27535</em>.
+</div>
+<div id="ref-li2026llmasjevllmsjevstyledecision" class="csl-entry" role="listitem">
+Li Y, Wagle J (2026) <a href="https://arxiv.org/abs/2610.02076"><span class="nocase">LLM-as-Jev</span>: <span>LLMs</span> are already <span>Jev</span>-style decision models – when and how to fine-tune them</a>. <em>arXiv preprint arXiv:2610.02076</em>.
+</div>
+<div id="ref-mcfadden1972conditional" class="csl-entry" role="listitem">
+McFadden D (1972) Conditional logit analysis of qualitative choice behavior.
+</div>
+<div id="ref-palmer2026kev" class="csl-entry" role="listitem">
+Palmer J (2026) Kev: Small <span>Jev</span>-like decision models. <a href="https://github.com/jaredpalmer/kev">https://github.com/jaredpalmer/kev</a>.
+</div>
+<div id="ref-pmlr-v202-santurkar23a" class="csl-entry" role="listitem">
+Santurkar S, Durmus E, Ladhak F, Lee C, Liang P, Hashimoto T (2023) <a href="https://proceedings.mlr.press/v202/santurkar23a.html">Whose opinions do language models reflect?</a> <em>Proceedings of the 40th <span class="nocase">International Conference on Machine Learning</span></em>, 29971–30004.
+</div>
+<div id="ref-sarstedt2024using" class="csl-entry" role="listitem">
+Sarstedt M, Adler SJ, Rau L, Schmitt B (2024) Using large language models to generate silicon samples in consumer and marketing research: Challenges, opportunities, and guidelines. <em>Psychology &amp; Marketing</em> 41(6):1254–1270.
+</div>
+<div id="ref-shu-etal-2024-dont" class="csl-entry" role="listitem">
+Shu B, Zhang L, Choi M, Dunagan L, Logeswaran L, Lee M, Card D, Jurgens D (2024) <a href="https://doi.org/10.18653/v1/2024.naacl-long.295">You don<span>’</span>t need a personality test to know these models are unreliable: Assessing the reliability of large language models on psychometric instruments</a>. <em>Proceedings of the 2024 conference of the <span class="nocase">North American Chapter of the Association for Computational Linguistics</span>: <span>Human Language Technologies</span> (volume 1: Long papers)</em>, 5263–5281.
+</div>
+<div id="ref-suh-etal-2025-language" class="csl-entry" role="listitem">
+Suh J, Jahanparast E, Moon S, Kang M, Chang S (2025) <a href="https://doi.org/10.18653/v1/2025.acl-long.1028">Language model fine-tuning on scaled survey data for predicting distributions of public opinions</a>. <em>Proceedings of the 63rd annual meeting of the <span>A</span>ssociation for <span>C</span>omputational <span>L</span>inguistics (volume 1: Long papers)</em>, 21147–21170.
+</div>
+<div id="ref-toubia2025database" class="csl-entry" role="listitem">
+Toubia O, Gui GZ, Peng T, Merlau DJ, Li A, Chen H (2025) Database report: <span>Twin-2K-500</span>: A data set for building digital twins of over 2,000 people based on their answers to over 500 questions. <em>Marketing Science</em> 44(6):1446–1455.
+</div>
+<div id="ref-train2009discrete" class="csl-entry" role="listitem">
+Train KE (2009) <em>Discrete choice methods with simulation</em> (Cambridge university press).
+</div>
+<div id="ref-wadi2025monte" class="csl-entry" role="listitem">
+Wadi D, Fredette M (2025) A <span>Monte-Carlo</span> sampling framework for reliable evaluation of large language models using behavioral analysis. <em>Findings of the <span class="nocase">Association for Computational Linguistics</span>: <span>EMNLP</span> 2025</em>, 9414–9432.
+</div>
+<div id="ref-wadi2026every" class="csl-entry" role="listitem">
+Wadi D, Ghodrat M, Philp M (2026) Every token counts: Exact <span>Likert</span>-scale distributions for measuring LLM attitudes and biases. <em>arXiv preprint arXiv:2608.10503</em>.
+</div>
+<div id="ref-wang2026large" class="csl-entry" role="listitem">
+Wang M, Zhang DJ, Zhang H (2026) Large language models for market research: A data-augmentation approach. <em>Marketing Science</em> 45(4):728–751. <a href="https://doi.org/10.1287/mksc.2025.0009">https://doi.org/10.1287/mksc.2025.0009</a>.
+</div>
+<div id="ref-wu2025partisan" class="csl-entry" role="listitem">
+Wu VY (2025) Partisan energy preferences in the united states: Republicans prioritize price, democrats also consider renewables. <em>Energy Research &amp; Social Science</em> 123:103997.
+</div>
+<div id="ref-zahradnickova2026ai" class="csl-entry" role="listitem">
+Zahradnickova K, Polisensky J, Lukeš M, Hranický R, Pouč P (2026) Which AI? A comparative evaluation of generative AI and neuro-symbolic AI for silicon sampling. <em>Psychology &amp; Marketing</em>. <a href="https://doi.org/10.1002/mar.70272">https://doi.org/10.1002/mar.70272</a>.
+</div>
+</div>
+<div style="page-break-after: always;"></div>
+</section>
+<section id="web-appendix" class="level1 unnumbered">
+<h1 class="unnumbered">Web Appendix</h1>
+<div id="apptbl-issp-waves" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-apptbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-apptbl" id="apptbl-issp-waves-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table W1: Summary of the 10 US waves of the International Social Survey Programme (2015 to 2024)
+</figcaption>
+<div aria-describedby="apptbl-issp-waves-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table" data-custom-style="APATable">
+<colgroup>
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Wave</th>
+<th style="text-align: left;">Thematic module</th>
+<th style="text-align: right;">Questions</th>
+<th style="text-align: right;">Likert (<code>score</code>)</th>
+<th style="text-align: right;">Categorical (<code>choice</code>)</th>
+<th style="text-align: right;">Respondents</th>
+<th style="text-align: right;">Mean Qs / respondent</th>
+<th style="text-align: right;">Responses</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">2015</td>
+<td style="text-align: left;">Work orientations IV</td>
+<td style="text-align: right;">82</td>
+<td style="text-align: right;">68</td>
+<td style="text-align: right;">14</td>
+<td style="text-align: right;">1,474</td>
+<td style="text-align: right;">49.1</td>
+<td style="text-align: right;">72,416</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">2016</td>
+<td style="text-align: left;">Role of government V</td>
+<td style="text-align: right;">60</td>
+<td style="text-align: right;">52</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">1,384</td>
+<td style="text-align: right;">58.6</td>
+<td style="text-align: right;">81,043</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">2017</td>
+<td style="text-align: left;">Social networks and social resources</td>
+<td style="text-align: right;">60</td>
+<td style="text-align: right;">32</td>
+<td style="text-align: right;">28</td>
+<td style="text-align: right;">1,173</td>
+<td style="text-align: right;">59.2</td>
+<td style="text-align: right;">69,500</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">2018</td>
+<td style="text-align: left;">Religion IV</td>
+<td style="text-align: right;">62</td>
+<td style="text-align: right;">50</td>
+<td style="text-align: right;">12</td>
+<td style="text-align: right;">1,175</td>
+<td style="text-align: right;">60.2</td>
+<td style="text-align: right;">70,719</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">2019</td>
+<td style="text-align: left;">Social inequality V</td>
+<td style="text-align: right;">49</td>
+<td style="text-align: right;">44</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">1,852</td>
+<td style="text-align: right;">45.9</td>
+<td style="text-align: right;">84,963</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">2020</td>
+<td style="text-align: left;">Environment IV</td>
+<td style="text-align: right;">55</td>
+<td style="text-align: right;">45</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">1,847</td>
+<td style="text-align: right;">52.3</td>
+<td style="text-align: right;">96,598</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">2021</td>
+<td style="text-align: left;">Health and health care II</td>
+<td style="text-align: right;">58</td>
+<td style="text-align: right;">50</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">1,146</td>
+<td style="text-align: right;">54.8</td>
+<td style="text-align: right;">62,793</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">2022</td>
+<td style="text-align: left;">Family and changing gender roles V</td>
+<td style="text-align: right;">55</td>
+<td style="text-align: right;">32</td>
+<td style="text-align: right;">23</td>
+<td style="text-align: right;">1,126</td>
+<td style="text-align: right;">45.6</td>
+<td style="text-align: right;">51,303</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">2023</td>
+<td style="text-align: left;">National identity and citizenship</td>
+<td style="text-align: right;">60</td>
+<td style="text-align: right;">56</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">1,589</td>
+<td style="text-align: right;">56.3</td>
+<td style="text-align: right;">89,391</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">2024</td>
+<td style="text-align: left;">Digital societies</td>
+<td style="text-align: right;">75</td>
+<td style="text-align: right;">45</td>
+<td style="text-align: right;">30</td>
+<td style="text-align: right;">1,590</td>
+<td style="text-align: right;">55.8</td>
+<td style="text-align: right;">88,758</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Total</td>
+<td style="text-align: left;">All 10 US waves (2015 to 2024)</td>
+<td style="text-align: right;">616</td>
+<td style="text-align: right;">474</td>
+<td style="text-align: right;">142</td>
+<td style="text-align: right;">14,356</td>
+<td style="text-align: right;">53.5</td>
+<td style="text-align: right;">767,484</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<div data-custom-style="Table Note">
+<p><em>Note.</em> Counts combine training and held-out validation items extracted from the US subsample of each annual ISSP thematic module. Four ordinal Likert (<code>score</code>) items from the 2020 Environment IV wave (7,011 responses across 1,827 respondents) are held out for validation; all remaining 612 items (760,473 responses) enter training.</p>
+</div>
+<div id="apptbl-attributes" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-apptbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-apptbl" id="apptbl-attributes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table W2: Harmonized respondent persona attributes across training and evaluation datasets
+</figcaption>
+<div aria-describedby="apptbl-attributes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table" data-custom-style="APATable">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Prompt attribute</th>
+<th style="text-align: left;">Harmonized levels</th>
+<th style="text-align: left;">Datasets</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Sex</td>
+<td style="text-align: left;">3 (Male, Female, Non-binary)</td>
+<td style="text-align: left;">ISSP, Twin-2K, Conjoint, Nutrition RCT</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Age</td>
+<td style="text-align: left;">4 (18-29, 30-49, 50-64, 65+)</td>
+<td style="text-align: left;">ISSP, Twin-2K, Conjoint, Nutrition RCT</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Education</td>
+<td style="text-align: left;">4 (Less than high school, High school or some college, Associate’s degree, College graduate/some postgrad)</td>
+<td style="text-align: left;">ISSP, Twin-2K, Conjoint, Nutrition RCT</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Religion</td>
+<td style="text-align: left;">12 (Protestant, Catholic, Orthodox, …, Other)</td>
+<td style="text-align: left;">ISSP, Twin-2K, Conjoint</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Attendance of religious services</td>
+<td style="text-align: left;">6 (More than once a week, Once a week, Once or twice a month, A few times a year, Seldom, Never)</td>
+<td style="text-align: left;">ISSP, Twin-2K</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Political ideology</td>
+<td style="text-align: left;">8 (Very liberal, Liberal, Somewhat liberal, …, Other)</td>
+<td style="text-align: left;">ISSP, Twin-2K, Conjoint</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Voted in the last general election</td>
+<td style="text-align: left;">2 (Yes, No)</td>
+<td style="text-align: left;">ISSP</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Place of living</td>
+<td style="text-align: left;">5 (A big city, The suburbs or outskirts of a big city, A town or a small city, A country village, A farm or home in the country)</td>
+<td style="text-align: left;">ISSP</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Marital status</td>
+<td style="text-align: left;">6 (Married, Living with a partner, Divorced, Separated, Widowed, Never been married)</td>
+<td style="text-align: left;">ISSP, Twin-2K</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Main activity</td>
+<td style="text-align: left;">10 (Full-time employment, Part-time employment, Self-employed, …, Other)</td>
+<td style="text-align: left;">ISSP, Twin-2K</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Trade union membership</td>
+<td style="text-align: left;">2 (Yes, No)</td>
+<td style="text-align: left;">ISSP</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Political party</td>
+<td style="text-align: left;">5 (Democrat, Republican, Independent, Something else, Other candidate)</td>
+<td style="text-align: left;">ISSP, Twin-2K, Conjoint</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Income</td>
+<td style="text-align: left;">15 (Less than $30,000, $30,000 - $50,000, $50,000 - $75,000, …, $35,000 - $49,999)</td>
+<td style="text-align: left;">ISSP, Twin-2K, Conjoint, Nutrition RCT</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Region</td>
+<td style="text-align: left;">4 (Northeast, Midwest, South, West)</td>
+<td style="text-align: left;">ISSP, Twin-2K, Conjoint</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Ancestry</td>
+<td style="text-align: left;">96 (Algeria, American Indian, American only, …, Yugoslavia)</td>
+<td style="text-align: left;">ISSP</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Race</td>
+<td style="text-align: left;">5 (White, Black, Asian, Hispanic, Other)</td>
+<td style="text-align: left;">Twin-2K, Conjoint, Nutrition RCT</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">How many people, including yourself, live in your household?</td>
+<td style="text-align: left;">5 (1, 2, 3, 4, More than 4)</td>
+<td style="text-align: left;">Twin-2K, Nutrition RCT</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Hispanic or Latino</td>
+<td style="text-align: left;">2 (No, Yes)</td>
+<td style="text-align: left;">Nutrition RCT</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">How many children (ages 0-18) currently live in your household?</td>
+<td style="text-align: left;">4 (0, 1, 2, 3 or more)</td>
+<td style="text-align: left;">Nutrition RCT</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">SNAP / Food Stamps recipient</td>
+<td style="text-align: left;">3 (Don’t know, No, Yes)</td>
+<td style="text-align: left;">Nutrition RCT</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Do you or anyone else in your household currently receive WIC benefits?</td>
+<td style="text-align: left;">3 (Don’t know, No, Yes)</td>
+<td style="text-align: left;">Nutrition RCT</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Nutrition Facts label usage</td>
+<td style="text-align: left;">5 (Always, Most of the time, Never, Rarely, Sometimes)</td>
+<td style="text-align: left;">Nutrition RCT</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Share of groceries bought online</td>
+<td style="text-align: left;">4 (25-49%, 50-74%, 75% or more, Less than 25%)</td>
+<td style="text-align: left;">Nutrition RCT</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Nutrition literacy score</td>
+<td style="text-align: left;">5 (0 out of 4, 1 out of 4, 2 out of 4, 3 out of 4, 4 out of 4)</td>
+<td style="text-align: left;">Nutrition RCT</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<div data-custom-style="Table Note">
+<p><em>Note.</em> Attribute levels show the harmonized natural-language categories rendered in each respondent’s persona state <span class="math inline">\(\mathbf{s}_i\)</span> (abbreviated with ellipses where category lists exceed six values). The bottom seven attributes appear exclusively in the held-out nutrition labeling randomized clinical trial <span class="citation" data-cites="grummon2025nutrition">(<a href="#ref-grummon2025nutrition" role="doc-biblioref">Grummon et al. 2025</a>)</span> and are never observed during survey training.</p>
+</div>
+<div id="apptbl-wang-coefs" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-apptbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-apptbl" id="apptbl-wang-coefs-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table W3: Estimated multinomial logit part-worth coefficients on the COVID-19 vaccine conjoint benchmark
+</figcaption>
+<div aria-describedby="apptbl-wang-coefs-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table" data-custom-style="APATable">
+<colgroup>
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 11%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Vaccine attribute level</th>
+<th style="text-align: right;">Full human (<em>N</em> = 9,855)</th>
+<th style="text-align: right;">Human subsample (<em>n</em> = 1,000)</th>
+<th style="text-align: right;">Kev 9B (FT)</th>
+<th style="text-align: right;">Kev 9B (base)</th>
+<th style="text-align: right;">Gemini 3.5 Flash-Lite (high)</th>
+<th style="text-align: right;">Gemini 3.5 Flash-Lite (minimal)</th>
+<th style="text-align: right;">Gemini 4 Argon (high)</th>
+<th style="text-align: right;">Gemini 4 Argon (low)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Efficacy: 70% (vs.&nbsp;50%)</td>
+<td style="text-align: right;">+0.361 (0.035)</td>
+<td style="text-align: right;">+0.280 (0.112)</td>
+<td style="text-align: right;">+0.217 (0.113)</td>
+<td style="text-align: right;">+0.565 (0.115)</td>
+<td style="text-align: right;">+1.344 (0.158)</td>
+<td style="text-align: right;">+0.688 (0.135)</td>
+<td style="text-align: right;">+1.940 (0.176)</td>
+<td style="text-align: right;">+1.671 (0.163)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Efficacy: 90% (vs.&nbsp;50%)</td>
+<td style="text-align: right;">+0.746 (0.035)</td>
+<td style="text-align: right;">+0.679 (0.110)</td>
+<td style="text-align: right;">+0.562 (0.111)</td>
+<td style="text-align: right;">+1.074 (0.116)</td>
+<td style="text-align: right;">+2.764 (0.188)</td>
+<td style="text-align: right;">+1.846 (0.145)</td>
+<td style="text-align: right;">+3.538 (0.218)</td>
+<td style="text-align: right;">+3.148 (0.196)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Duration: 5 years (vs.&nbsp;1 year)</td>
+<td style="text-align: right;">+0.261 (0.029)</td>
+<td style="text-align: right;">+0.277 (0.092)</td>
+<td style="text-align: right;">+0.035 (0.093)</td>
+<td style="text-align: right;">+0.105 (0.095)</td>
+<td style="text-align: right;">+0.940 (0.131)</td>
+<td style="text-align: right;">+0.592 (0.114)</td>
+<td style="text-align: right;">+0.948 (0.140)</td>
+<td style="text-align: right;">+0.830 (0.133)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Major side effects: 1 in 1,000,000 (vs.&nbsp;1 in 10,000)</td>
+<td style="text-align: right;">+0.304 (0.029)</td>
+<td style="text-align: right;">+0.389 (0.091)</td>
+<td style="text-align: right;">+0.043 (0.092)</td>
+<td style="text-align: right;">+0.152 (0.093)</td>
+<td style="text-align: right;">+2.353 (0.154)</td>
+<td style="text-align: right;">+1.103 (0.114)</td>
+<td style="text-align: right;">+1.647 (0.146)</td>
+<td style="text-align: right;">+1.634 (0.140)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Minor side effects: 1 in 30 (vs.&nbsp;1 in 10)</td>
+<td style="text-align: right;">+0.076 (0.029)</td>
+<td style="text-align: right;">+0.085 (0.090)</td>
+<td style="text-align: right;">-0.043 (0.092)</td>
+<td style="text-align: right;">+0.024 (0.093)</td>
+<td style="text-align: right;">+0.341 (0.124)</td>
+<td style="text-align: right;">+0.051 (0.109)</td>
+<td style="text-align: right;">+0.282 (0.128)</td>
+<td style="text-align: right;">+0.389 (0.124)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">FDA: Emergency Use Authorization (vs.&nbsp;Full approval)</td>
+<td style="text-align: right;">-0.115 (0.029)</td>
+<td style="text-align: right;">-0.113 (0.092)</td>
+<td style="text-align: right;">-0.123 (0.093)</td>
+<td style="text-align: right;">-0.068 (0.095)</td>
+<td style="text-align: right;">-1.089 (0.136)</td>
+<td style="text-align: right;">-0.978 (0.115)</td>
+<td style="text-align: right;">-1.223 (0.141)</td>
+<td style="text-align: right;">-1.329 (0.137)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Origin: United Kingdom (vs.&nbsp;United States)</td>
+<td style="text-align: right;">-0.140 (0.035)</td>
+<td style="text-align: right;">-0.026 (0.109)</td>
+<td style="text-align: right;">-0.192 (0.110)</td>
+<td style="text-align: right;">-0.173 (0.113)</td>
+<td style="text-align: right;">-0.234 (0.151)</td>
+<td style="text-align: right;">-0.402 (0.127)</td>
+<td style="text-align: right;">-0.527 (0.157)</td>
+<td style="text-align: right;">-0.710 (0.151)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Origin: China (vs.&nbsp;United States)</td>
+<td style="text-align: right;">-0.570 (0.036)</td>
+<td style="text-align: right;">-0.425 (0.113)</td>
+<td style="text-align: right;">-0.553 (0.114)</td>
+<td style="text-align: right;">-0.624 (0.118)</td>
+<td style="text-align: right;">-1.908 (0.179)</td>
+<td style="text-align: right;">-2.449 (0.164)</td>
+<td style="text-align: right;">-3.556 (0.227)</td>
+<td style="text-align: right;">-3.341 (0.210)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Endorsed: Joe Biden (vs.&nbsp;Donald Trump)</td>
+<td style="text-align: right;">+0.095 (0.040)</td>
+<td style="text-align: right;">+0.100 (0.123)</td>
+<td style="text-align: right;">+0.135 (0.126)</td>
+<td style="text-align: right;">+0.441 (0.128)</td>
+<td style="text-align: right;">+0.600 (0.171)</td>
+<td style="text-align: right;">+0.325 (0.148)</td>
+<td style="text-align: right;">+0.531 (0.178)</td>
+<td style="text-align: right;">+0.385 (0.170)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Endorsed: US CDC (vs.&nbsp;Donald Trump)</td>
+<td style="text-align: right;">+0.416 (0.039)</td>
+<td style="text-align: right;">+0.287 (0.123)</td>
+<td style="text-align: right;">+0.621 (0.124)</td>
+<td style="text-align: right;">+1.017 (0.127)</td>
+<td style="text-align: right;">+1.045 (0.172)</td>
+<td style="text-align: right;">+0.635 (0.148)</td>
+<td style="text-align: right;">+1.175 (0.179)</td>
+<td style="text-align: right;">+0.784 (0.169)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Endorsed: WHO (vs.&nbsp;Donald Trump)</td>
+<td style="text-align: right;">+0.273 (0.040)</td>
+<td style="text-align: right;">+0.327 (0.124)</td>
+<td style="text-align: right;">+0.516 (0.126)</td>
+<td style="text-align: right;">+0.730 (0.129)</td>
+<td style="text-align: right;">+0.166 (0.173)</td>
+<td style="text-align: right;">+0.334 (0.152)</td>
+<td style="text-align: right;">+0.699 (0.181)</td>
+<td style="text-align: right;">+0.411 (0.173)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<div data-custom-style="Table Note">
+<p><em>Note.</em> Point estimates and asymptotic standard errors (in parentheses) across the 11 binary vaccine attribute indicators on the 200-respondent subsample (<em>n</em> = 1,000 choice sets) under respondent-persona conditioning, alongside full-sample human estimates (<em>N</em> = 1,971 respondents, 9,855 choice sets; <span class="citation" data-cites="kreps2020factors">Kreps et al. (<a href="#ref-kreps2020factors" role="doc-biblioref">2020</a>)</span>; <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span>). Respondent personas comprise 9 demographic and political attributes (generative LLM prompts additionally state country). Kev rows use the question wording, option labels, and attribute descriptions of the original survey instrument <span class="citation" data-cites="kreps2020factors">(<a href="#ref-kreps2020factors" role="doc-biblioref">Kreps et al. 2020</a>)</span>; the generative LLMs are prompted with the <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span> wording.</p>
+</div>
+<div id="appfig-wang-random" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-appfig figure">
+<div aria-describedby="appfig-wang-random-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/wang_mnl_random.png" class="img-fluid figure-img" style="width:90.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-appfig" id="appfig-wang-random-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure W1: Multinomial logit part-worth estimation error under unconditioned random-persona prompts
+</figcaption>
+</figure>
+</div>
+<div data-custom-style="Table Note">
+<p><em>Note.</em> Panel A reports Mean Absolute Percentage Error (MAPE) and Panel B reports Mean Squared Error (MSE) across the <span class="math inline">\(d = 11\)</span> vaccine attribute levels on the 200-respondent COVID-19 conjoint subsample (<em>n</em> = 1,000 choice sets; <em>n</em> = 984 for <code>Gemini 4 Argon (high)</code> after 16 neutrality refusals) relative to full-sample human <span class="math inline">\(\boldsymbol{\beta}^*\)</span> (<em>N</em> = 9,855; <span class="citation" data-cites="kreps2020factors">Kreps et al. (<a href="#ref-kreps2020factors" role="doc-biblioref">2020</a>)</span>; <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span>).</p>
+</div>
+<div id="appfig-wang-persona" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-appfig figure">
+<div aria-describedby="appfig-wang-persona-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/wang_mnl_persona.png" class="img-fluid figure-img" style="width:90.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-appfig" id="appfig-wang-persona-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure W2: Multinomial logit part-worth estimation error under respondent-persona conditioning
+</figcaption>
+</figure>
+</div>
+<div data-custom-style="Table Note">
+<p><em>Note.</em> Panel A reports Mean Absolute Percentage Error (MAPE) and Panel B reports Mean Squared Error (MSE) across the <span class="math inline">\(d = 11\)</span> vaccine attribute levels on the 200-respondent COVID-19 conjoint subsample (<em>n</em> = 1,000 choice sets) under 9-attribute respondent personas (generative LLM prompts additionally state country) relative to full-sample human <span class="math inline">\(\boldsymbol{\beta}^*\)</span> (<em>N</em> = 9,855; <span class="citation" data-cites="kreps2020factors">Kreps et al. (<a href="#ref-kreps2020factors" role="doc-biblioref">2020</a>)</span>; <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span>).</p>
+</div>
+<div id="apptbl-grummon2025-coefs" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-apptbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-apptbl" id="apptbl-grummon2025-coefs-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table W4: Participant-level OLS treatment-effect estimates on the nutrition labeling randomized trial
+</figcaption>
+<div aria-describedby="apptbl-grummon2025-coefs-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table" data-custom-style="APATable">
+<colgroup>
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 11%">
+<col style="width: 11%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Trial arm (vs.&nbsp;Positive)</th>
+<th style="text-align: right;">Full human (<em>N</em> = 5,633)</th>
+<th style="text-align: right;">Human subsample (<em>N</em> = 200)</th>
+<th style="text-align: right;">Kev 0.8B (base)</th>
+<th style="text-align: right;">Kev 0.8B (FT)</th>
+<th style="text-align: right;">Kev 4B (base)</th>
+<th style="text-align: right;">Kev 4B (FT)</th>
+<th style="text-align: right;">Kev 9B (base)</th>
+<th style="text-align: right;">Kev 9B (FT)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Nutrition Info label (vs.&nbsp;Positive)</td>
+<td style="text-align: right;">+0.184 (0.012)</td>
+<td style="text-align: right;">+0.103 (0.076)</td>
+<td style="text-align: right;">+0.076 (0.002)</td>
+<td style="text-align: right;">+0.116 (0.003)</td>
+<td style="text-align: right;">+0.124 (0.003)</td>
+<td style="text-align: right;">+0.065 (0.004)</td>
+<td style="text-align: right;">+0.224 (0.005)</td>
+<td style="text-align: right;">+0.177 (0.003)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Positive + Nutrition Info (vs.&nbsp;Positive)</td>
+<td style="text-align: right;">+0.179 (0.012)</td>
+<td style="text-align: right;">+0.203 (0.066)</td>
+<td style="text-align: right;">+0.094 (0.002)</td>
+<td style="text-align: right;">+0.105 (0.003)</td>
+<td style="text-align: right;">+0.146 (0.003)</td>
+<td style="text-align: right;">+0.069 (0.004)</td>
+<td style="text-align: right;">+0.229 (0.004)</td>
+<td style="text-align: right;">+0.168 (0.004)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Positive + High In (vs.&nbsp;Positive)</td>
+<td style="text-align: right;">+0.119 (0.012)</td>
+<td style="text-align: right;">+0.132 (0.067)</td>
+<td style="text-align: right;">+0.011 (0.002)</td>
+<td style="text-align: right;">-0.038 (0.003)</td>
+<td style="text-align: right;">+0.000 (0.003)</td>
+<td style="text-align: right;">-0.002 (0.004)</td>
+<td style="text-align: right;">+0.023 (0.005)</td>
+<td style="text-align: right;">+0.042 (0.003)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Spectrum 1-to-5 star label (vs.&nbsp;Positive)</td>
+<td style="text-align: right;">+0.108 (0.012)</td>
+<td style="text-align: right;">+0.122 (0.070)</td>
+<td style="text-align: right;">+0.032 (0.003)</td>
+<td style="text-align: right;">+0.057 (0.003)</td>
+<td style="text-align: right;">+0.038 (0.003)</td>
+<td style="text-align: right;">+0.057 (0.004)</td>
+<td style="text-align: right;">+0.109 (0.005)</td>
+<td style="text-align: right;">+0.139 (0.003)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">High In warning label (vs.&nbsp;Positive)</td>
+<td style="text-align: right;">+0.054 (0.012)</td>
+<td style="text-align: right;">+0.036 (0.069)</td>
+<td style="text-align: right;">+0.067 (0.002)</td>
+<td style="text-align: right;">+0.014 (0.003)</td>
+<td style="text-align: right;">-0.088 (0.003)</td>
+<td style="text-align: right;">-0.022 (0.004)</td>
+<td style="text-align: right;">-0.047 (0.005)</td>
+<td style="text-align: right;">-0.010 (0.003)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<div data-custom-style="Table Note">
+<p><em>Note.</em> Ordinary least squares (OLS) point estimates and HC1 heteroskedasticity-robust standard errors (in parentheses) for the 5 front-of-package labeling arms relative to the <code>Positive</code> reference arm under respondent-persona conditioning (<em>N</em> = 200 shoppers, <em>n</em> = 1,200 choices), alongside full-sample human estimates (<em>N</em> = 5,633 shoppers, 33,798 choices; <span class="citation" data-cites="grummon2025nutrition">Grummon et al. (<a href="#ref-grummon2025nutrition" role="doc-biblioref">2025</a>)</span>). Kev rows use prompts built from the audited survey items with 13-attribute respondent personas.</p>
+</div>
+<div id="apptbl-grummon2025-personas" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-apptbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-apptbl" id="apptbl-grummon2025-personas-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table W5: Single-attribute choice cross-entropy across seen and unseen shopper covariates
+</figcaption>
+<div aria-describedby="apptbl-grummon2025-personas-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table" data-custom-style="APATable">
+<colgroup>
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Attribute group</th>
+<th style="text-align: left;">Shopper attribute</th>
+<th style="text-align: right;">Kev 0.8B (base)</th>
+<th style="text-align: right;">Kev 0.8B (FT)</th>
+<th style="text-align: right;">Kev 4B (base)</th>
+<th style="text-align: right;">Kev 4B (FT)</th>
+<th style="text-align: right;">Kev 9B (base)</th>
+<th style="text-align: right;">Kev 9B (FT)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Seen in training</td>
+<td style="text-align: left;">Sex</td>
+<td style="text-align: right;">1.5253</td>
+<td style="text-align: right;">1.5472</td>
+<td style="text-align: right;">1.3948</td>
+<td style="text-align: right;">1.4341</td>
+<td style="text-align: right;">1.4902</td>
+<td style="text-align: right;">1.3468</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Seen in training</td>
+<td style="text-align: left;">Age</td>
+<td style="text-align: right;">1.4806</td>
+<td style="text-align: right;">1.5426</td>
+<td style="text-align: right;">1.3974</td>
+<td style="text-align: right;">1.4366</td>
+<td style="text-align: right;">1.5011</td>
+<td style="text-align: right;">1.3532</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Seen in training</td>
+<td style="text-align: left;">Education</td>
+<td style="text-align: right;">1.5152</td>
+<td style="text-align: right;">1.5475</td>
+<td style="text-align: right;">1.3897</td>
+<td style="text-align: right;">1.4267</td>
+<td style="text-align: right;">1.5375</td>
+<td style="text-align: right;">1.3478</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Seen in training</td>
+<td style="text-align: left;">Income</td>
+<td style="text-align: right;">1.4764</td>
+<td style="text-align: right;">1.5214</td>
+<td style="text-align: right;">1.4416</td>
+<td style="text-align: right;">1.4362</td>
+<td style="text-align: right;">1.4908</td>
+<td style="text-align: right;">1.3462</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Seen in training</td>
+<td style="text-align: left;">Race</td>
+<td style="text-align: right;">1.4746</td>
+<td style="text-align: right;">1.5389</td>
+<td style="text-align: right;">1.4243</td>
+<td style="text-align: right;">1.4258</td>
+<td style="text-align: right;">1.5054</td>
+<td style="text-align: right;">1.3437</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Seen in training</td>
+<td style="text-align: left;">How many people, including yourself, live in your household?</td>
+<td style="text-align: right;">1.5395</td>
+<td style="text-align: right;">1.5477</td>
+<td style="text-align: right;">1.5033</td>
+<td style="text-align: right;">1.4343</td>
+<td style="text-align: right;">1.3946</td>
+<td style="text-align: right;">1.3486</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>Seen mean</strong></td>
+<td style="text-align: left;">—</td>
+<td style="text-align: right;"><strong>1.5019</strong> (6)</td>
+<td style="text-align: right;"><strong>1.5409</strong> (6)</td>
+<td style="text-align: right;"><strong>1.4252</strong> (6)</td>
+<td style="text-align: right;"><strong>1.4323</strong> (6)</td>
+<td style="text-align: right;"><strong>1.4866</strong> (6)</td>
+<td style="text-align: right;"><strong>1.3477</strong> (6)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Unseen in training</td>
+<td style="text-align: left;">Hispanic or Latino</td>
+<td style="text-align: right;">1.5420</td>
+<td style="text-align: right;">1.5527</td>
+<td style="text-align: right;">1.3834</td>
+<td style="text-align: right;">1.4314</td>
+<td style="text-align: right;">1.5001</td>
+<td style="text-align: right;">1.3497</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Unseen in training</td>
+<td style="text-align: left;">How many children (ages 0-18) currently live in your household?</td>
+<td style="text-align: right;">1.5658</td>
+<td style="text-align: right;">1.5499</td>
+<td style="text-align: right;">1.5430</td>
+<td style="text-align: right;">1.4370</td>
+<td style="text-align: right;">1.3935</td>
+<td style="text-align: right;">1.3420</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Unseen in training</td>
+<td style="text-align: left;">SNAP / Food Stamps recipient</td>
+<td style="text-align: right;">1.5709</td>
+<td style="text-align: right;">1.5419</td>
+<td style="text-align: right;">1.4581</td>
+<td style="text-align: right;">1.4295</td>
+<td style="text-align: right;">1.5669</td>
+<td style="text-align: right;">1.3507</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Unseen in training</td>
+<td style="text-align: left;">Do you or anyone else in your household currently receive WIC benefits?</td>
+<td style="text-align: right;">1.4839</td>
+<td style="text-align: right;">1.5286</td>
+<td style="text-align: right;">1.5181</td>
+<td style="text-align: right;">1.4360</td>
+<td style="text-align: right;">1.4193</td>
+<td style="text-align: right;">1.3404</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Unseen in training</td>
+<td style="text-align: left;">Nutrition Facts label usage</td>
+<td style="text-align: right;">1.4756</td>
+<td style="text-align: right;">1.5366</td>
+<td style="text-align: right;">1.4982</td>
+<td style="text-align: right;">1.4372</td>
+<td style="text-align: right;">1.6661</td>
+<td style="text-align: right;">1.3576</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Unseen in training</td>
+<td style="text-align: left;">Share of groceries bought online</td>
+<td style="text-align: right;">1.4754</td>
+<td style="text-align: right;">1.5311</td>
+<td style="text-align: right;">1.4355</td>
+<td style="text-align: right;">1.4494</td>
+<td style="text-align: right;">1.6016</td>
+<td style="text-align: right;">1.3518</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Unseen in training</td>
+<td style="text-align: left;">Nutrition literacy score</td>
+<td style="text-align: right;">1.4679</td>
+<td style="text-align: right;">1.5418</td>
+<td style="text-align: right;">1.4095</td>
+<td style="text-align: right;">1.4387</td>
+<td style="text-align: right;">1.5824</td>
+<td style="text-align: right;">1.3391</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>Unseen mean</strong></td>
+<td style="text-align: left;">—</td>
+<td style="text-align: right;"><strong>1.5117</strong> (7)</td>
+<td style="text-align: right;"><strong>1.5404</strong> (7)</td>
+<td style="text-align: right;"><strong>1.4637</strong> (7)</td>
+<td style="text-align: right;"><strong>1.4370</strong> (7)</td>
+<td style="text-align: right;"><strong>1.5328</strong> (7)</td>
+<td style="text-align: right;"><strong>1.3473</strong> (7)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<div data-custom-style="Table Note">
+<p><em>Note.</em> Three-option choice cross-entropy (in bits; uniform baseline <span class="math inline">\(\log_2 3 = 1.5850\)</span> bits) on the evaluation subsample (<em>N</em> = 200 shoppers, <em>n</em> = 1,200 choices) of <span class="citation" data-cites="grummon2025nutrition">Grummon et al. (<a href="#ref-grummon2025nutrition" role="doc-biblioref">2025</a>)</span> when conditioning each model on a single shopper attribute at a time, grouped into demographic covariates present in the survey training corpus and food-shopping and nutrition covariates unseen during training. Kev runs cover 6 seen and 7 unseen attributes. Group means average over the attributes in each group (count in parentheses).</p>
+</div>
+<div id="appfig-grummon2025-random" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-appfig figure">
+<div aria-describedby="appfig-grummon2025-random-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/grummon2025_ols_random.png" class="img-fluid figure-img" style="width:90.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-appfig" id="appfig-grummon2025-random-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure W3: OLS treatment-effect estimation error on the nutrition labeling trial under random-persona prompts
+</figcaption>
+</figure>
+</div>
+<div data-custom-style="Table Note">
+<p><em>Note.</em> Panel A reports Mean Absolute Percentage Error (MAPE) and Panel B reports Mean Squared Error (MSE) for participant-level HC1 OLS treatment effects across the <span class="math inline">\(d = 5\)</span> front-of-package labeling arms (relative to <code>Positive</code>) under unconditioned random-persona prompts (<em>N</em> = 200 shoppers, <em>n</em> = 1,200 choices) relative to full-sample human <span class="math inline">\(\boldsymbol{\beta}^*\)</span> (<em>N</em> = 5,633; <span class="citation" data-cites="grummon2025nutrition">Grummon et al. (<a href="#ref-grummon2025nutrition" role="doc-biblioref">2025</a>)</span>).</p>
+</div>
+<div id="appfig-grummon2025-persona" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-appfig figure">
+<div aria-describedby="appfig-grummon2025-persona-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/grummon2025_ols_persona.png" class="img-fluid figure-img" style="width:90.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-appfig" id="appfig-grummon2025-persona-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure W4: OLS treatment-effect estimation error on the nutrition labeling trial under respondent-persona conditioning
+</figcaption>
+</figure>
+</div>
+<div data-custom-style="Table Note">
+<p><em>Note.</em> Panel A reports Mean Absolute Percentage Error (MAPE) and Panel B reports Mean Squared Error (MSE) for participant-level HC1 OLS treatment effects across the <span class="math inline">\(d = 5\)</span> front-of-package labeling arms (relative to <code>Positive</code>) under 13-attribute respondent personas (<em>N</em> = 200 shoppers, <em>n</em> = 1,200 choices) relative to full-sample human <span class="math inline">\(\boldsymbol{\beta}^*\)</span> (<em>N</em> = 5,633; <span class="citation" data-cites="grummon2025nutrition">Grummon et al. (<a href="#ref-grummon2025nutrition" role="doc-biblioref">2025</a>)</span>).</p>
+</div>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+      window.quartoDecorateExternalLinks = function (root) {
+     var links = (root || window.document).querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+          if (!link.classList.contains('no-external-icon')) {
+          }
+        }
+      }
+      };
+      window.quartoDecorateExternalLinks(window.document);
+    // Esc closes the popup (WCAG 1.4.13) and focus leaving both trigger and
+    // popup closes it (WCAG 2.4.11); tippy handles neither for interactive popups.
+    const hideOnEscAndFocusOut = {
+      name: 'hideOnEscAndFocusOut',
+      defaultValue: true,
+      fn(instance) {
+        const dismiss = () => {
+          // A show scheduled by the trigger delay would otherwise reopen it
+          instance.clearDelayTimeouts();
+          instance.hide();
+        };
+        const onKeyDown = (event) => {
+          if (event.key !== 'Escape') {
+            return;
+          }
+          // Keep Esc from also reaching page handlers (e.g. reveal.js overview),
+          // except an open reveal.js slide menu, which Esc should close too.
+          // The menu handles keys only when its keyboard option is on.
+          const menuHandlesEsc = window.Reveal?.getPlugin?.('menu')?.isOpen() &&
+            window.Reveal.getConfig().menu?.keyboard !== false;
+          if (!menuHandlesEsc) {
+            event.stopPropagation();
+          }
+          if (instance.popper.contains(window.document.activeElement)) {
+            // Disabled while refocusing so the focus trigger does not reopen it
+            instance.disable();
+            instance.reference.focus();
+            instance.enable();
+          }
+          dismiss();
+        };
+        const onFocusOut = (event) => {
+          const target = event.relatedTarget;
+          if (target && !instance.reference.contains(target) &&
+              !instance.popper.contains(target)) {
+            dismiss();
+          }
+        };
+        // On the trigger too: a click trigger (code-annotations: select) has no
+        // blur handling. Attached for the instance's lifetime so leaving the
+        // trigger also cancels a show still pending on the trigger delay.
+        instance.reference.addEventListener('focusout', onFocusOut);
+        return {
+          onShow() {
+            window.document.addEventListener('keydown', onKeyDown, true);
+            instance.popper.addEventListener('focusout', onFocusOut);
+          },
+          onHide() {
+            window.document.removeEventListener('keydown', onKeyDown, true);
+            instance.popper.removeEventListener('focusout', onFocusOut);
+          },
+          onDestroy() {
+            instance.reference.removeEventListener('focusout', onFocusOut);
+          },
+        };
+      },
+    };
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+        plugins: [hideOnEscAndFocusOut],
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          // Each band is positioned against its own containing block, which is
+          // not the offsetParent of the lines, so place it from client rects.
+          const placeBand = (band, firstEl, lastEl, codeBlock) => {
+            const container = band.offsetParent;
+            if (container === null) {
+              return;
+            }
+            const containerRect = container.getBoundingClientRect();
+            // Reveal.js scales slides with a transform, so convert client
+            // pixels back to the CSS pixels of the container.
+            const scale = containerRect.height / container.offsetHeight || 1;
+            const firstRect = firstEl.getBoundingClientRect();
+            const lastRect = lastEl.getBoundingClientRect();
+            const top = (firstRect.top - containerRect.top) / scale - container.clientTop + container.scrollTop;
+            const height = (lastRect.bottom - firstRect.top) / scale;
+            band.style.top = top - 2 + "px";
+            band.style.height = height + 4 + "px";
+            if (codeBlock) {
+              // Without the copy button wrapper, the containing block is wider
+              // than the code block, so span the code block explicitly.
+              const blockRect = codeBlock.getBoundingClientRect();
+              band.style.left = (blockRect.left - containerRect.left) / scale - container.clientLeft + container.scrollLeft + "px";
+              band.style.width = blockRect.width / scale + "px";
+            }
+          };
+          if (lineIds.length > 0) {
+            const el = window.document.getElementById(lineIds[0]);
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const parent = el.parentElement.parentElement;
+            // cook up a div (if necessary) and position it
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            placeBand(div, el, lastEl, parent.closest("div.sourceCode") || parent);
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            placeBand(gutterDiv, el, lastEl);
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+  <script type="application/javascript">
+  window.quartoScrollableRegionsLabels = {"code":"Scrollable code","output":"Scrollable output"};
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

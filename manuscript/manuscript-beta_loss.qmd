@@ -1,5 +1,5 @@
 ---
-title: "Distributional Silicon Sampling: Training Decision Models to Predict Human Response Distributions"
+title: "Training decision models from choice microdata and published regression tables for silicon sampling"
 # Separate title page holds author details; authors don't show in the DOCX export
 author:
     - name: Davood Wadi
@@ -96,12 +96,11 @@ bibliography:
 <!--  -->
 
 **Abstract**  
-Using generative large language models (LLMs) to simulate human respondents (silicon sampling) severely biases downstream econometric inference.
-We propose distributional silicon sampling using single-pass decision models that output normalized choice probabilities directly over valid options without text generation.
-Because off-the-shelf decision models are trained on single-label objective benchmarks and remain overconfident on subjective choices, we fine-tune open-weight models (`Kev 0.8B`, `4B`, and `9B`) on 1.88 million US survey responses across 17 persona attributes by minimizing cross-entropy against empirical sample distributions.
-This training calibrates conditional probabilities, reducing validation cross-entropy by up to $27.5\%$ and generalizing zero-shot to two out-of-sample marketing studies.
-In COVID-19 vaccine conjoint analysis, the fine-tuned model eliminates safety refusals, outperforms generative LLMs by orders of magnitude, and reduces multinomial logit part-worth mean squared error (MSE) by $64\%$ to $67\%$ over its off-the-shelf baseline.
-In a six-arm nutrition labeling randomized trial, it reduces ordinary least squares treatment-effect MSE by $53\%$, calibrates predictions across seen and unseen shopper covariates, and recovers causal effects on interpretive labels while clarifying text-only limits on visual warnings.
+Using off-the-shelf generative large language models (LLMs) to simulate human respondents (silicon sampling) severely biases downstream econometric inference, while standard fine-tuning requires individual choice microdata that most published studies never release.
+We align single-pass decision models that output normalized choice probabilities directly over valid options without text generation, making linear regression estimators directly differentiable in model weights.
+To unlock studies that report only experimental designs and aggregate regression tables, we derive an unbiased mini-batch population-$\boldsymbol{\beta}$ loss that pairs a frozen base-probability control variate with split-sample cross-products, stabilized by a Kullback-Leibler anchor on table-only data or respondent-level cross-entropy (CE) on available microdata.
+We evaluate open-weight decision models across five data-access regimes trained on consumer delivery and electricity-plan choice studies and tested zero-shot on an airline conjoint experiment and a six-arm nutrition-labeling randomized trial.
+Microdata CE fine-tuning substantially lowers out-of-sample treatment-effect mean squared error (MSE), table-only training beats the off-the-shelf baseline without a single respondent choice, and hybrid microdata-plus-table training transfers missing price and green-energy trade-offs to close [TBD]% to [TBD]% of the gap toward a full-microdata oracle.
 
 
 **Keywords.** Decision models, Silicon sampling, Econometric inference, Conjoint analysis, Marketing research
@@ -109,88 +108,124 @@ In a six-arm nutrition labeling randomized trial, it reduces ordinary least squa
 
 # Introduction {#sec-intro}
 
-Simulating consumer choices, attitudes, and survey responses with foundation models, commonly referred to as silicon sampling, has attracted growing interest in marketing and behavioral research. 
-In marketing research, the primary goal is downstream econometric inference, such as estimating part-worth utilities in conjoint analysis or causal treatment effects in randomized experiments. 
-Currently, research relies on off-the-shelf generative large language models (LLMs) that generate text autoregressively. 
-However, replacing human respondents with off-the-shelf generative LLM outputs severely biases measurements and downstream regressions because post-training for deterministic reasoning and safety compliance collapses choice uncertainty and triggers safety refusals on sensitive options [@goli2024frontiers; @leng2026reducing; @wang2026large]. 
-Whereas existing post-inference methods adjust or reweight fixed model outputs after inference using human benchmark data [@leng2026reducing; @wang2026large], we explore whether aligning models before inference—by changing both their output architecture and their training weights—improves human approximation.
+Simulating consumer choices, attitudes, and survey responses with foundation models, commonly referred to as silicon sampling, has attracted growing interest in marketing and behavioral research.
+In marketing research, the primary goal is downstream econometric inference, such as estimating attribute slopes in conjoint analysis or causal treatment effects in randomized experiments.
+Currently, research relies on off-the-shelf generative large language models (LLMs) that generate text autoregressively.
+However, replacing human respondents with off-the-shelf generative LLM outputs severely biases downstream regressions because post-training for deterministic reasoning and safety compliance collapses choice uncertainty and triggers safety refusals on sensitive options [@goli2024frontiers; @leng2026reducing; @wang2026large].
+Whereas existing post-inference methods adjust or reweight fixed model outputs using target-study human data [@leng2026reducing; @wang2026large], we align models before inference through their output architecture and training supervision.
 
-Architecturally, we adopt the emerging family of single-pass decision models [@palmer2026kev]. 
-Instead of generating text tokens, a decision model takes a respondent persona and a structured question (e.g., a categorical choice task or an ordinal Likert scale) and outputs a normalized probability distribution over the valid options in one forward pass. 
-This readout eliminates sampling variance and safety refusals while integrating directly into maximum likelihood and ordinary least squares regressions. 
-Yet architecture alone is insufficient: off-the-shelf base decision models share the same training limitation as generative LLMs. 
-Because standard training pairs each prompt with a single ground-truth label, off-the-shelf models treat genuine disagreement among respondents who share a persona as classification error, yielding overconfident probabilities and biased regression estimates.
-To overcome this limitation, we fine-tune open-weight decision models (`Kev 0.8B`, `4B`, and `9B`; @palmer2026kev) via persona-conditioned distributional training on 1.88 million general US survey responses. 
-Our approach advances current silicon-sampling practice along two dimensions: replacing token generation with a probabilistic decision architecture and aligning model weights distributionally with empirical human populations.
+Architecturally, we adopt single-pass decision models [@palmer2026kev].
+Instead of generating text tokens, a decision model takes a respondent persona and a structured choice task and outputs a normalized probability distribution over the valid options in one forward pass.
+This readout eliminates sampling variance and safety refusals while making linear regression estimators, such as ordinary least squares (OLS), directly differentiable in the model weights.
+Yet architecture alone is insufficient because off-the-shelf decision models are pretrained on single-label objective benchmarks, treating disagreement among respondents who share a persona as classification error and biasing regression estimates.
+Minimizing cross-entropy (CE) on individual choice microdata resolves this miscalibration when respondent choices are observed.
+In practice, however, raw choice microdata is scarce, proprietary, or privacy-restricted, whereas thousands of published marketing studies release only experimental designs and aggregate regression tables.
 
-Zero-shot evaluations across two held-out marketing studies confirm both gains.
-First, on a COVID-19 vaccine conjoint benchmark [@kreps2020factors; @wang2026large], generative LLMs (`Gemini 3.5 Flash-Lite` and `Gemini 4 Argon`) suffer severe Multinomial Logit (MNL) bias ($\mathrm{MSE} = 0.59$ to $26.22$) that worsens under extended reasoning and triggers safety refusals. 
-Off-the-shelf `Kev 9B (base)` ($\mathrm{MSE} = 0.2449$ under random personas and $0.0815$ under respondent personas) already outperforms generative LLMs by over an order of magnitude, and `Kev 9B (FT)` reduces MNL MSE by a further $64\%$ to $67\%$ to $0.0875$ and $0.0267$, approaching the 200-respondent human subsample ($\mathrm{MSE} = 0.0065$). 
-Second, in a six-arm front-of-package nutrition labeling randomized trial [@grummon2025nutrition], `Kev 9B (FT)` lowers respondent-level choice cross-entropy, reduces OLS treatment-effect MSE by $53\%$ relative to `Kev 9B (base)` ($0.0022$ versus $0.0047$; human subsample $0.0016$), and recovers causal effects on interpretive labels even when conditioning on shopper nutrition covariates unseen during training.
+Training a decision model directly on published regression coefficients $\boldsymbol{\beta}^*$ via mini-batch gradient descent presents two statistical challenges.
+First, population OLS slopes depend on choice probabilities across all tasks in a study rather than one mini-batch; fitting OLS within small batches chases finite-sample noise, whereas squaring a single-batch estimate of the population slopes introduces variance bias that penalizes persona heterogeneity.
+Second, matching a small vector of aggregate slopes leaves individual choice entropy unconstrained, allowing predicted probabilities to drift toward zero or one.
+We address the first challenge with an unbiased population-$\boldsymbol{\beta}$ loss that uses frozen base-model probabilities as a control variate and multiplies estimation errors across two disjoint half-batches without using respondent choices.
+We address the second challenge by pairing this loss with an entropy anchor, using Kullback-Leibler (KL) divergence toward base probabilities for table-only training or respondent-level CE on available microdata for hybrid training.
 
-# Literature Review {#sec-lit}
+We evaluate this framework across a five-regime data-access ladder using open-weight decision models [@palmer2026kev] trained on a US drone-delivery discrete-choice experiment [@berke2023drone] and an electricity-plan conjoint study [@wu2025partisan], and evaluated zero-shot on an unseen sustainable-aviation-fuel flight conjoint [@goldfarb2026comfort] and a six-arm nutrition-labeling randomized trial [@grummon2025nutrition].
+Our design establishes three contributions.
+First, CE fine-tuning on respondent microdata substantially lowers zero-shot treatment-effect mean squared error (MSE) on unseen experiments relative to the off-the-shelf model, whether training on single-study delivery microdata or on full microdata across both studies as an upper-bound oracle.
+Second, without access to respondent choices, training solely on the eight published electricity slopes of @wu2025partisan improves out-of-sample MSE over the off-the-shelf baseline, and combining those published slopes with @berke2023drone delivery microdata transfers household price and green-energy trade-offs that delivery microdata alone lacks.
+Third, progressing from table-only to hybrid training closes [TBD]% to [TBD]% of the out-of-sample MSE gap toward the unattainable full-microdata oracle.
 
-Early work in silicon sampling prompted generative LLMs with demographic profiles to simulate human responses in political, economic, and marketing surveys [@argyle2023out; @horton2023large; @brand2023using; @goli2024frontiers; @sarstedt2024using; @pmlr-v202-santurkar23a; @durmus2024towards]. 
-Although generative LLMs often capture the direction of average preferences, prior studies document systematic discrepancies from human populations, including mode collapse onto a single option, attenuated within-group variance, demographic stereotyping, and prompt sensitivity [@pmlr-v202-santurkar23a; @shu-etal-2024-dont; @koo2024benchmarking; @kabir-etal-2025-break; @deas-mckeown-2025-artificial; @jung-etal-2026-psychometric; @wadi2025monte; @zahradnickova2026ai]. 
-In marketing applications, these distortions severely bias downstream econometric estimation [@goli2024frontiers; @leng2026reducing; @wang2026large]. 
-In choice-based conjoint analysis, relying on AI choices or naively pooling them with human data biases Multinomial Logit (MNL) part-worth estimates, while scaling model capability or chain-of-thought (`CoT`) reasoning worsens error by inducing overly deterministic choices [@wang2026large]. 
-Recent marketing studies address these discrepancies after inference by treating the language model as a fixed generator. 
-Specifically, they use human benchmark data to statistically debias downstream regression parameters [`AAE`\; @wang2026large; @angelopoulos2023prediction] or optimally reweight ensembles of candidate prompts, personas, and model checkpoints [`HuMCal`\; @leng2026reducing]. 
-Complementing these post-inference methods, we align predictions at the model level before inference along two dimensions: output architecture and training supervision.
+# Literature review {#sec-lit}
 
-Architecturally, several studies avoid the cost and sampling variance of repeated Monte Carlo text sampling by extracting exact next-token probabilities over option symbols (e.g., `"A"`, `"B"`, and `"C"`) from causal LLMs [@kadavath2022language; @kuribayashi-etal-2024-psychometric; @bentegeac2025token; @wadi2026every]. 
-Yet symbol-level readouts remain sensitive to vocabulary and token-frequency priors. 
-Decision models, also known as System One architectures, resolve this sensitivity via a single-pass scoring head [@palmer2026kev; @deusser2026evaluatingbenchmarkingmodeljev; @geuter2026releasinginnerjevsimple; @li2026llmasjevllmsjevstyledecision; @asseri2026calibratedwhompersonalanguage; @li2026kitescalingjevpopulation]. 
-This head evaluates each supplied option directly in representation space and restricts probability mass strictly to the valid options without open-ended generation or safety refusals. 
-However, existing decision models are pretrained on single-label objective benchmarks such as mathematics, code verification, and factual question answering, causing severe probability compression on subjective and ordinal tasks [@gao2026choicesfewerdecisionsordinalscale].
+Early work in silicon sampling prompted generative LLMs with demographic profiles to simulate human responses in political, economic, and marketing surveys [@argyle2023out; @horton2023large; @brand2023using; @goli2024frontiers; @sarstedt2024using; @pmlr-v202-santurkar23a; @durmus2024towards].
+Although generative LLMs often capture the direction of average preferences, prior studies document systematic discrepancies from human populations, including mode collapse onto a single option, attenuated within-group variance, demographic stereotyping, and prompt sensitivity [@pmlr-v202-santurkar23a; @shu-etal-2024-dont; @koo2024benchmarking; @kabir-etal-2025-break; @deas-mckeown-2025-artificial; @jung-etal-2026-psychometric; @wadi2025monte; @zahradnickova2026ai].
+In marketing applications, these distortions severely bias downstream econometric estimation [@goli2024frontiers; @leng2026reducing; @wang2026large].
+In choice-based conjoint analysis, relying on simulated choices or naively pooling them with human data biases preference estimates, while scaling model capability or chain-of-thought reasoning worsens error by inducing overly deterministic choices [@wang2026large].
+Recent marketing studies address these discrepancies after inference by treating the language model as a fixed generator, using target-study human benchmark data to statistically debias downstream regression parameters [@wang2026large; @angelopoulos2023prediction\; AAE] or optimally reweight ensembles of candidate prompts, personas, and model checkpoints [@leng2026reducing\; HuMCal].
+Complementing these post-inference methods, we align predictions inside the model before inference through both output architecture and training supervision.
 
-On the training dimension, prior fine-tuning in silicon sampling supervises models on one-hot individual responses. 
-For example, @wang2026large fine-tuned `GPT-4o` on 50 target-study conjoint tasks under a generic persona to emit a single choice token (`A`, `B`, or `C`), which increased parameter error relative to the human sample. 
-Even with a probabilistic output head, supervising on one-hot respondent labels treats disagreement among individuals who share a persona as label noise. 
-Prior research moves toward distributional supervision by fine-tuning causal language models on fixed group histograms [@suh-etal-2025-language; @huang-etal-2026-distribution; @ku2026siliconsamplingcrosssurveytransfer]. 
-We instead train decision models directly on empirical sample probability distributions aggregated across survey respondents matching subsets of persona attributes. 
-This supervision calibrates conditional choice distributions from broad demographic subgroups to full individual personas, which improves generalizability.
+Architecturally, several studies avoid the cost and sampling variance of repeated Monte Carlo text generation by extracting next-token probabilities over option symbols (e.g., A, B, and C) from causal LLMs [@kadavath2022language; @kuribayashi-etal-2024-psychometric; @bentegeac2025token; @wadi2026every].
+Yet symbol-level readouts remain sensitive to vocabulary and token-frequency priors.
+Decision models, also known as System One architectures, resolve this sensitivity via a single-pass scoring head [@palmer2026kev; @deusser2026evaluatingbenchmarkingmodeljev; @geuter2026releasinginnerjevsimple; @li2026llmasjevllmsjevstyledecision; @asseri2026calibratedwhompersonalanguage; @li2026kitescalingjevpopulation].
+This head evaluates each supplied option directly in representation space and restricts probability mass strictly to the valid options without open-ended generation or safety refusals.
+Crucially for econometric training, outputting exact choice probabilities in a single forward pass makes linear regression operators over experimental designs directly differentiable with respect to model parameters.
+However, existing decision models are pretrained on single-label objective benchmarks such as mathematics, code verification, and factual question answering, causing severe probability miscalibration on subjective choice tasks [@gao2026choicesfewerdecisionsordinalscale].
+
+On the training dimension, existing fine-tuning approaches for silicon sampling require access to unreleased response data.
+At the token level, @wang2026large fine-tuned GPT-4o on 50 target-study conjoint tasks under a generic persona to emit a single choice letter, finding that small-sample single-token supervision worsened standalone parameter error relative to the human benchmark.
+Recent studies improve calibration by supervising causal language models or decision heads on large-scale survey microdata and subgroup response histograms [@suh-etal-2025-language; @huang-etal-2026-distribution; @ku2026siliconsamplingcrosssurveytransfer].
+When respondent-level choice microdata is available, minimizing CE on a probabilistic decision head effectively calibrates conditional choice probabilities across personas.
+Yet across conjoint analysis, discrete-choice modeling [@mcfadden1972conditional; @train2009discrete], and randomized online or field trials, published articles and archival industry reports rarely disclose raw respondent choices, reporting instead experimental designs and estimated regression tables.
+We bridge this data gap by supervising decision models directly on published population OLS coefficients via an unbiased split-sample moment loss, deployed either standalone with a base-distribution KL anchor when no microdata exists or jointly alongside respondent-level CE when augmenting in-house microdata with external literature tables.
 
 # Methodology {#sec-methodology}
 
 **Decision model architecture and choice probabilities.**
-Consider a survey or experimental dataset of human respondents indexed by $i \in \{1, \dots, N\}$.
-Each respondent possesses a multi-attribute persona state $\mathbf{s}_i$ (e.g., sex, age, education, income, political party, and race) and answers a set of questions $\mathcal{Q}_i$.
-Each question $q \in \mathcal{Q}_i$ presents $K_q$ discrete answer options $\mathcal{Y}_q = \{y_1, \dots, y_{K_q}\}$.
-For categorical `choice` items, the options are unordered alternatives; for ordinal `score` items, the options are ordered rating levels $y_1 \prec y_2 \prec \dots \prec y_{K_q}$.
-Let $\mathbf{y}_{i,q} = (y_{i,q,1}, \dots, y_{i,q,K_q}) \in \{0, 1\}^{K_q}$ denote respondent $i$'s observed one-hot response on question $q$, where $y_{i,q,k} = 1$ if respondent $i$ selected option $y_k$ and $0$ otherwise.
+Consider an experimental or survey study consisting of $N$ discrete-choice tasks indexed by $t \in \{1, \dots, N\}$.
+Each task $t$ pairs a respondent's multi-attribute persona state $\mathbf{s}_t$ (e.g., sex, age, education, income, political party, and race) with a question stem presenting $K_t$ discrete answer options $\{1, \dots, K_t\}$.
+When individual choice microdata is available, let $\mathbf{y}_t = (y_{t,1}, \dots, y_{t,K_t})^\top \in \{0, 1\}^{K_t}$ denote the observed one-hot choice vector on task $t$, where $y_{t,k} = 1$ if the respondent selected option $k$ and $0$ otherwise.
 
-Given a conditioning persona profile $\mathbf{s}$, a decision model [@palmer2026kev] processes the prompt in one causal forward pass without a vocabulary generation head.
-The prompt places $\mathbf{s}$ in a state segment, followed by the question stem $q$, each option $y_k$ enclosed in dedicated option delimiters, and a terminal decision token appended after the final option.
-Because the terminal decision token follows all $K_q$ options, its final-layer hidden state $\mathbf{h}^{\mathrm{dec}}_q(\mathbf{s}) \in \mathbb{R}^{d_{\mathrm{model}}}$ causally attends to the persona, the question stem, and the full option set.
-Let $\mathbf{h}_{q,k}(\mathbf{s}) \in \mathbb{R}^{d_{\mathrm{model}}}$ denote the final-layer hidden state at the closing delimiter of option $k$.
-Using learned affine projections $(\mathbf{W}_q, \mathbf{b}_q)$ and $(\mathbf{W}_k, \mathbf{b}_k)$ with $\mathbf{W}_q, \mathbf{W}_k \in \mathbb{R}^{d_{\mathrm{head}} \times d_{\mathrm{model}}}$ and $\mathbf{b}_q, \mathbf{b}_k \in \mathbb{R}^{d_{\mathrm{head}}}$, the decision head computes a scalar score $z_{q,k}(\mathbf{s})$ for each option $k$:
+Given persona state $\mathbf{s}_t$, a single-pass decision model [@palmer2026kev] scores all $K_t$ options in one causal forward pass without a vocabulary generation head.
+The prompt places $\mathbf{s}_t$ in a state segment, followed by the question stem, each option $k$ enclosed in dedicated option delimiters, and a terminal decision token appended after the final option.
+Because the terminal decision token follows all $K_t$ options, its final-layer hidden state $\mathbf{h}^{\mathrm{dec}}_t(\mathbf{s}_t) \in \mathbb{R}^{d_{\mathrm{model}}}$ causally attends to the persona, the question stem, and the full option set.
+Let $\mathbf{h}_{t,k}(\mathbf{s}_t) \in \mathbb{R}^{d_{\mathrm{model}}}$ denote the final-layer hidden state at the closing delimiter of option $k$.
+Using learned affine projections $(\mathbf{W}_q, \mathbf{b}_q)$ and $(\mathbf{W}_k, \mathbf{b}_k)$ with $\mathbf{W}_q, \mathbf{W}_k \in \mathbb{R}^{d_{\mathrm{head}} \times d_{\mathrm{model}}}$ and $\mathbf{b}_q, \mathbf{b}_k \in \mathbb{R}^{d_{\mathrm{head}}}$, the decision head computes a scalar score $z_{t,k}(\mathbf{s}_t; \theta)$ for each option $k$:
 $$
-z_{q,k}(\mathbf{s}) = \frac{\big(\mathbf{W}_q \mathbf{h}^{\mathrm{dec}}_q(\mathbf{s}) + \mathbf{b}_q\big)^\top \big(\mathbf{W}_k \mathbf{h}_{q,k}(\mathbf{s}) + \mathbf{b}_k\big)}{\sqrt{d_{\mathrm{head}}}}.
+z_{t,k}(\mathbf{s}_t; \theta) = \frac{\big(\mathbf{W}_q \mathbf{h}^{\mathrm{dec}}_t(\mathbf{s}_t) + \mathbf{b}_q\big)^\top \big(\mathbf{W}_k \mathbf{h}_{t,k}(\mathbf{s}_t) + \mathbf{b}_k\big)}{\sqrt{d_{\mathrm{head}}}}.
 $$ {#eq-pointer-head}
-Applying a softmax function over the $K_q$ scores yields the normalized choice distribution in a single pass:
+Applying a softmax function with readout temperature $T > 0$ yields the normalized choice probability vector $\mathbf{p}_t(\theta) = (p_{t,1}(\theta), \dots, p_{t,K_t}(\theta))^\top$ in a single pass:
 $$
-P_{\mathrm{model}}(Y_q = y_k \mid \mathbf{s}; \theta) = \frac{\exp(z_{q,k}(\mathbf{s}) / T)}{\sum_{m=1}^{K_q} \exp(z_{q,m}(\mathbf{s}) / T)},
+p_{t,k}(\theta) = P_{\mathrm{model}}(Y_t = k \mid \mathbf{s}_t; \theta) = \frac{\exp\!\big(z_{t,k}(\mathbf{s}_t; \theta) / T\big)}{\sum_{m=1}^{K_t} \exp\!\big(z_{t,m}(\mathbf{s}_t; \theta) / T\big)}.
 $$ {#eq-model-pmf}
-where $T$ denotes the readout temperature.
-
-**Empirical sample-distribution training.**
-Rather than training on isolated one-hot responses, we supervise model parameters $\theta$ directly against empirical sample probability distributions constructed across subsets of persona attributes.
-Let $|\mathbf{s}_i|$ denote the number of recorded attributes in a respondent's full persona $\mathbf{s}_i$.
-At each training epoch, we draw a subset size $\kappa$ uniformly from a schedule $\mathcal{K} = (1, 2, 3, 4, 5, \text{"full"}, \text{"full"})$.
-Setting $\ell = |\mathbf{s}_i|$ when $\kappa = \text{"full"}$ and $\ell = \min(\kappa, |\mathbf{s}_i|)$ otherwise, we sample $\ell$ attributes without replacement from $\mathbf{s}_i$ to form a conditioning sub-persona $\mathbf{s}^{(\ell)} \subseteq \mathbf{s}_i$.
-Let $\mathcal{I}(q, \mathbf{s}^{(\ell)}) = \{j : \mathbf{s}_j \supseteq \mathbf{s}^{(\ell)},\; q \in \mathcal{Q}_j\}$ denote all training respondents who match $\mathbf{s}^{(\ell)}$ and answered question $q$, with sample size $n_{q, \mathbf{s}^{(\ell)}} = |\mathcal{I}(q, \mathbf{s}^{(\ell)})| \ge 1$.
-Aggregating their observed choices yields the empirical sample probability distribution $\hat{\mathbf{p}}_{q \mid \mathbf{s}^{(\ell)}} = (\hat{p}_{q,1 \mid \mathbf{s}^{(\ell)}}, \dots, \hat{p}_{q,K_q \mid \mathbf{s}^{(\ell)}})$:
+When respondent choices $\mathbf{y}_t$ are observed, model parameters $\theta$ can be supervised directly via mini-batch cross-entropy over a sampled task batch $S \subset \{1, \dots, N\}$:
 $$
-\hat{p}_{q,k \mid \mathbf{s}^{(\ell)}} = \frac{1}{n_{q, \mathbf{s}^{(\ell)}}} \sum_{j \in \mathcal{I}(q, \mathbf{s}^{(\ell)})} y_{j,q,k}, \qquad k \in \{1, \dots, K_q\}.
-$$ {#eq-sample-pmf}
-We optimize $\theta$ by minimizing the distributional cross-entropy loss against $\hat{\mathbf{p}}_{q \mid \mathbf{s}^{(\ell)}}$:
-$$
-\mathcal{L}_{q, \mathbf{s}^{(\ell)}}(\theta) = -\sum_{k=1}^{K_q} \hat{p}_{q,k \mid \mathbf{s}^{(\ell)}} \log_2 P_{\mathrm{model}}\!\left(Y_q = y_k \mid \mathbf{s}^{(\ell)}; \theta\right).
+\mathcal{L}_{\mathrm{CE}}(\theta; S) = -\frac{1}{|S|} \sum_{t \in S} \sum_{k=1}^{K_t} y_{t,k} \log p_{t,k}(\theta).
 $$ {#eq-resp-ce}
-Up to the constant entropy of $\hat{\mathbf{p}}_{q \mid \mathbf{s}^{(\ell)}}$, minimizing @eq-resp-ce directly minimizes the Kullback-Leibler divergence $D_{\mathrm{KL}}\!\left(\hat{\mathbf{p}}_{q \mid \mathbf{s}^{(\ell)}} \,\|\, P_{\mathrm{model}}(\cdot \mid \mathbf{s}^{(\ell)}; \theta)\right)$.
-Coarse sub-personas ($\ell \le 5$) pool multiple matching respondents to supply low-variance empirical choice shares, while full-persona draws ($\ell = |\mathbf{s}_i|$) preserve fine-grained individual conditioning.
-Sampling across $\mathcal{K}$ also trains the model to marginalize consistently when downstream studies provide partial persona profiles at test time.
+
+**Population OLS operators and published targets.**
+Concatenating option probabilities across all $N$ tasks in a study yields the flat vector $\mathbf{p}(\theta) = (\mathbf{p}_1(\theta)^\top, \dots, \mathbf{p}_N(\theta)^\top)^\top \in [0, 1]^M$, where $M = \sum_{t=1}^N K_t$, with corresponding stacked human choices $\mathbf{y} \in \{0, 1\}^M$.
+Any linear econometric specification estimated on the study can be written over $R$ regression rows via a full-column-rank design matrix $\mathbf{X} \in \mathbb{R}^{R \times c}$ (comprising an intercept, any nuisance controls, and $d$ focal treatment columns indexed by $\mathcal{T} \subset \{1, \dots, c\}$) and a fixed sparse weight matrix $\mathbf{W} \in \mathbb{R}^{R \times M}$ that maps option probabilities to regression outcomes $\mathbf{W}\mathbf{p}(\theta) \in \mathbb{R}^R$ (e.g., selecting each displayed profile's choice probability in conjoint average marginal component effects or the healthier item's choice probability in a randomized trial).
+Dividing by the human outcome standard deviation $\sigma > 0$ places coefficients across studies on a common dimensionless scale.
+Using the Moore-Penrose pseudoinverse $\mathbf{X}^\dagger = (\mathbf{X}^\top \mathbf{X})^{-1}\mathbf{X}^\top$, define the fixed standardized population slope operator:
+$$
+\mathbf{B} = \frac{1}{\sigma} \big(\mathbf{X}^\dagger\big)_{\mathcal{T}, :} \mathbf{W} \in \mathbb{R}^{d \times M},
+$$ {#eq-pop-operator}
+partitioned by task into column blocks $\mathbf{B} = [\mathbf{B}_1, \dots, \mathbf{B}_N]$ with $\mathbf{B}_t \in \mathbb{R}^{d \times K_t}$.
+Under @eq-pop-operator, the model's standardized population OLS slopes are an exact linear map of its single-pass probabilities, $\boldsymbol{\beta}(\theta) = \mathbf{B}\mathbf{p}(\theta) = \sum_{t=1}^N \mathbf{B}_t \mathbf{p}_t(\theta)$, and a published regression table supplies the standardized human target $\boldsymbol{\beta}^* \in \mathbb{R}^d$ (which equals $\mathbf{B}\mathbf{y}$ without requiring individual choices $\mathbf{y}$).
+When a study estimates $G > 1$ regressions, we construct $(\mathbf{B}^{(g)}, \boldsymbol{\beta}^{*(g)})$ for each $g \in \{1, \dots, G\}$ and average the resulting regression losses equally across $g$.
+
+**Unbiased split-sample population-beta loss.**
+To align model-implied slopes $\boldsymbol{\beta}(\theta)$ with a published table $\boldsymbol{\beta}^*$, our target population objective is the standardized slope MSE:
+$$
+\mathcal{L}_{\mathrm{pop}}(\theta) = \frac{1}{d} \left\lVert \mathbf{B}\mathbf{p}(\theta) - \boldsymbol{\beta}^* \right\rVert_2^2.
+$$ {#eq-pop-mse}
+Evaluating @eq-pop-mse directly per optimization step is intractable because $\mathbf{B}\mathbf{p}(\theta)$ sums over all $N$ tasks whereas stochastic gradient descent evaluates a mini-batch $S$ of $|S| \ll N$ tasks.
+Naive mini-batch surrogates fail for two reasons.
+Refitting OLS inside a small batch $S$ requires unreleased choices $\mathbf{y}_t$ and squares ill-conditioned small-sample design inverses, whereas substituting a single-batch estimate $\hat{\boldsymbol{\beta}}_S(\theta)$ into $\frac{1}{d}\lVert \hat{\boldsymbol{\beta}}_S(\theta) - \boldsymbol{\beta}^* \rVert_2^2$ adds positive variance bias $\frac{1}{d}\mathrm{tr}\,\mathrm{Cov}(\hat{\boldsymbol{\beta}}_S(\theta))$, which increases with across-persona heterogeneity in $\mathbf{p}_t(\theta)$ and penalizes the model for conditioning on respondent personas.
+
+To construct an unbiased, low-variance gradient estimator without respondent choices or stale cached predictions, we run a single no-gradient evaluation pass at initialization $\theta_0$ to record frozen base probabilities $\mathbf{p}_0 = \mathbf{p}(\theta_0)$ and base slopes $\boldsymbol{\beta}_0 = \mathbf{B}\mathbf{p}_0$.
+Rewriting $\boldsymbol{\beta}(\theta) = \boldsymbol{\beta}_0 + \sum_{t=1}^N \mathbf{B}_t (\mathbf{p}_t(\theta) - \mathbf{p}_{0,t})$, any uniform subsample $S_m \subset \{1, \dots, N\}$ yields an exact control-variate estimator of the current population slopes:
+$$
+\hat{\boldsymbol{\beta}}_m(\theta) = \boldsymbol{\beta}_0 + \frac{N}{|S_m|} \sum_{t \in S_m} \mathbf{B}_t \big(\mathbf{p}_t(\theta) - \mathbf{p}_{0,t}\big).
+$$ {#eq-cv-beta}
+Because $\mathbf{p}_0$ is fixed, $\mathbf{p}_{0,t}$ cancels in expectation at every step so $\mathbb{E}_{S_m}[\hat{\boldsymbol{\beta}}_m(\theta)] = \boldsymbol{\beta}(\theta)$ without staleness bias, while subtracting $\mathbf{p}_{0,t}$ reduces mini-batch variance.
+Partitioning each shuffled batch $S$ ($|S| \ge 2$) into two disjoint halves $S_1$ and $S_2$ of sizes $\lfloor |S| / 2 \rfloor$ and $\lceil |S| / 2 \rceil$, we define the split-sample cross loss as the inner product of their estimation errors:
+$$
+\mathcal{L}_{\beta\text{-cross}}(\theta; S_1, S_2) = \frac{1}{d} \big(\hat{\boldsymbol{\beta}}_1(\theta) - \boldsymbol{\beta}^*\big)^\top \big(\hat{\boldsymbol{\beta}}_2(\theta) - \boldsymbol{\beta}^*\big).
+$$ {#eq-cross-loss}
+Up to negligible $\mathcal{O}(1/N)$ finite-population sampling covariance without replacement, $\hat{\boldsymbol{\beta}}_1(\theta)$ and $\hat{\boldsymbol{\beta}}_2(\theta)$ are independent unbiased estimators of $\boldsymbol{\beta}(\theta)$, implying $\mathbb{E}[\mathcal{L}_{\beta\text{-cross}}(\theta; S_1, S_2)] = \mathcal{L}_{\mathrm{pop}}(\theta)$ and $\mathbb{E}[\nabla_\theta \mathcal{L}_{\beta\text{-cross}}(\theta; S_1, S_2)] = \nabla_\theta \mathcal{L}_{\mathrm{pop}}(\theta)$ (individual step realizations of @eq-cross-loss may be negative).
+
+**Entropy anchoring across training regimes.**
+Because $d \ll M$, minimizing @eq-cross-loss alone constrains only $d$ linear projections of $\mathbf{p}(\theta)$ and leaves the $(M - d)$-dimensional nullspace $\ker(\mathbf{B})$ unconstrained.
+Without an entropy anchor, prolonged optimization can sharpen logits along unconstrained directions, driving task probabilities toward zero or one while maintaining $\mathbf{B}\mathbf{p}(\theta) \approx \boldsymbol{\beta}^*$ and inflating out-of-sample treatment-effect magnitudes.
+In the table-only regime, where no microdata is available for any study, we regularize predicted probabilities toward the frozen base distribution $\mathbf{p}_{0,t}$ via a forward KL penalty with weight $\alpha > 0$:
+$$
+\mathcal{L}_{\mathrm{table}}(\theta; S) = \mathcal{L}_{\beta\text{-cross}}(\theta; S_1, S_2) + \alpha \, \frac{1}{|S|} \sum_{t \in S} \sum_{k=1}^{K_t} p_{0,t,k} \log \frac{p_{0,t,k}}{p_{t,k}(\theta)}.
+$$ {#eq-table-loss}
+Evaluating the KL anchor requires zero additional forward passes because $\mathbf{p}_{0,t}$ is already stored in memory, and its logit gradient $\mathbf{p}_t(\theta) - \mathbf{p}_{0,t}$ prevents probabilities from collapsing onto zero or one.
+In the hybrid regime, where in-house choice microdata $\mathcal{D}_{\mathrm{micro}}$ is paired with external table-only studies $\mathcal{D}_{\mathrm{table}}$, we interleave single-study mini-batches and jointly minimize respondent-level CE on $\mathcal{D}_{\mathrm{micro}}$ alongside weighted population-$\boldsymbol{\beta}$ supervision ($\lambda > 0$) on $\mathcal{D}_{\mathrm{table}}$:
+$$
+\mathcal{L}_{\mathrm{hybrid}}(\theta; S) = \mathbb{I}(S \subset \mathcal{D}_{\mathrm{micro}}) \, \mathcal{L}_{\mathrm{CE}}(\theta; S) + \mathbb{I}(S \subset \mathcal{D}_{\mathrm{table}}) \, \lambda \, \mathcal{L}_{\beta\text{-cross}}(\theta; S_1, S_2).
+$$ {#eq-hybrid-loss}
+Under @eq-hybrid-loss, $\mathcal{L}_{\mathrm{CE}}$ calibrates global logit scale and choice uncertainty to empirical human randomness, while $\mathcal{L}_{\beta\text{-cross}}$ transfers missing attribute trade-offs from external regression tables.
 
 # Survey Training and Validation {#sec-training}
 
