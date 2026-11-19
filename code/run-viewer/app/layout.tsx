@@ -8,7 +8,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Run viewer",
-  description: "Read-only viewer for beta-training runs",
+  description: "Read-only viewer for training runs",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -21,7 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <div className="mx-auto flex h-12 max-w-[1600px] items-center justify-between px-4">
                 <Link href="/" className="flex items-center gap-2 font-semibold">
                   <Activity className="size-4" /> Run viewer
-                  <span className="text-xs font-normal text-muted-foreground">read-only · beta-training/runs</span>
+                  <span className="text-xs font-normal text-muted-foreground">read-only</span>
                 </Link>
                 <ThemeToggle />
               </div>

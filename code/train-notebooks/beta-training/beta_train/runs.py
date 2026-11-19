@@ -166,7 +166,16 @@ def identity_differences(stored: dict, current: dict) -> list[str]:
 # ---------------------------------------------------------------- run.json
 
 def git_state(folder: Path) -> dict:
-    # Commit of the repository holding `folder`, and whether its working tree has uncommitted changes
+    # Commit of the repository holding `folder`, and whether its working tree has uncommitted changes.
+    # A copy without git history (e.g. code synced to a cluster without .git) records null for both;
+    # any other git failure still raises
+    inside_repo = subprocess.run(
+        ["git", "rev-parse", "--is-inside-work-tree"], cwd=folder, capture_output=True, text=True, check=False
+    )
+    if inside_repo.returncode != 0:
+        if "not a git repository" not in inside_repo.stderr:
+            raise RuntimeError(f"git failed in {folder}: {inside_repo.stderr.strip()}")
+        return {"commit": None, "uncommitted_changes": None}
     commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=folder, capture_output=True, text=True, check=True)
     status = subprocess.run(["git", "status", "--porcelain"], cwd=folder, capture_output=True, text=True, check=True)
     return {"commit": commit.stdout.strip(), "uncommitted_changes": len(status.stdout.strip()) > 0}

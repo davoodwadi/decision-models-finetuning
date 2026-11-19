@@ -4,14 +4,14 @@ import { XY } from "@/components/charts/line-chart";
 import PageHeader from "@/components/page-header";
 import { listRunNames, readRun, RunDetail } from "@/lib/runs";
 import { columnIndex, numberAt } from "@/lib/csv";
-import { MAX_SERIES, notebookHref } from "@/lib/format";
+import { MAX_SERIES, hyperparameterColumns, mainHyperparameters, notebookHref, sourceHref } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
 // Every <validator>/<metric> column of one run as (step, value) points; NaN cells (validator did not run) are skipped
 function metricColumns(detail: RunDetail): Record<string, XY[]> {
   const val = detail.val;
-  const file = `${detail.notebook}/${detail.summary.name}/val_history.csv`;
+  const file = `${detail.source}/${detail.notebook}/${detail.summary.name}/val_history.csv`;
   const result: Record<string, XY[]> = {};
   if (val.rows.length === 0) {
     return result;
@@ -42,13 +42,20 @@ export default async function ComparePage({
   params,
   searchParams,
 }: {
-  params: Promise<{ notebook: string }>;
+  params: Promise<{ source: string; notebook: string }>;
   searchParams: Promise<{ run?: string | string[]; metric?: string | string[] }>;
 }) {
-  const notebook = decodeURIComponent((await params).notebook);
+  const raw = await params;
+  const source = decodeURIComponent(raw.source);
+  const notebook = decodeURIComponent(raw.notebook);
   const query = await searchParams;
   const requested = query.run === undefined ? [] : Array.isArray(query.run) ? query.run : [query.run];
-  const crumbs = [{ label: "notebooks", href: "/" }, { label: notebook, href: notebookHref(notebook) }, { label: "compare" }];
+  const crumbs = [
+    { label: "runs", href: "/" },
+    { label: source, href: sourceHref(source) },
+    { label: notebook, href: notebookHref(source, notebook) },
+    { label: "compare" },
+  ];
   if (requested.length === 0) {
     return (
       <PageHeader crumbs={crumbs} title="Compare">
@@ -64,7 +71,7 @@ export default async function ComparePage({
   }
 
   // Runs in notebook order; color slot = position in the notebook when it fits the palette, else position in the selection
-  const allNames = listRunNames(notebook);
+  const allNames = listRunNames(source, notebook);
   const selected = allNames.filter((name) => requested.includes(name));
   for (const name of requested) {
     if (!allNames.includes(name)) {
@@ -76,7 +83,7 @@ export default async function ComparePage({
   const metricOptions: string[] = [];
   let firstBestMetric = "";
   selected.forEach((name, position) => {
-    const detail = readRun(notebook, name);
+    const detail = readRun(source, notebook, name);
     if (firstBestMetric === "") {
       firstBestMetric = detail.summary.bestMetric;
     }
@@ -91,6 +98,7 @@ export default async function ComparePage({
       slot: slotByNotebook ? allNames.indexOf(name) : position,
       status: detail.summary.status,
       bestStep: detail.summary.bestStep,
+      hyperparameters: mainHyperparameters(detail.summary.config),
       metrics,
     });
   });
@@ -108,7 +116,14 @@ export default async function ComparePage({
       {metricOptions.length === 0 ? (
         <p className="text-sm text-muted-foreground">The selected runs have no validation rows yet.</p>
       ) : (
-        <CompareView notebook={notebook} runs={runs} metricOptions={metricOptions} initialMetric={metric} />
+        <CompareView
+          source={source}
+          notebook={notebook}
+          runs={runs}
+          hyperparameterColumns={hyperparameterColumns(runs)}
+          metricOptions={metricOptions}
+          initialMetric={metric}
+        />
       )}
     </>
   );

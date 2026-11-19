@@ -12,7 +12,7 @@ import { Table as UiTable, TableBody, TableCell, TableRow } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, readBetas, readRun, validatorMetrics } from "@/lib/runs";
 import { columnIndex, numberAt } from "@/lib/csv";
-import { formatNumber, notebookHref } from "@/lib/format";
+import { formatNumber, notebookHref, sourceHref } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -99,13 +99,14 @@ function Stat({ label, children }: { label: string; children: React.ReactNode })
   );
 }
 
-export default async function RunPage({ params }: { params: Promise<{ notebook: string; run: string }> }) {
+export default async function RunPage({ params }: { params: Promise<{ source: string; notebook: string; run: string }> }) {
   const raw = await params;
+  const source = decodeURIComponent(raw.source);
   const notebook = decodeURIComponent(raw.notebook);
   const run = decodeURIComponent(raw.run);
-  const { summary, val, steps } = readRun(notebook, run);
-  const valFile = `${notebook}/${run}/val_history.csv`;
-  const stepsFile = `${notebook}/${run}/steps.csv`;
+  const { summary, val, steps } = readRun(source, notebook, run);
+  const valFile = `${source}/${notebook}/${run}/val_history.csv`;
+  const stepsFile = `${source}/${notebook}/${run}/steps.csv`;
 
   const { validators, metrics } = validatorMetrics(val.columns);
   const hasSteps = steps.rows.length > 0;
@@ -115,12 +116,20 @@ export default async function RunPage({ params }: { params: Promise<{ notebook: 
   const gradColumns = splitColumns.length > 0 ? [...splitColumns, "grad_norm"] : [];
   const gradGroups = hasSteps && gradColumns.length > 0 ? groupStepsByDataset(steps, gradColumns, stepsFile) : [];
   const lrPoints = hasSteps && steps.columns.includes("lr") ? stepColumnSeries(steps, "lr", stepsFile) : [];
-  const chartGroup = `val:${notebook}/${run}`;
-  const betaFiles = readBetas(notebook, run);
+  const chartGroup = `val:${source}/${notebook}/${run}`;
+  const betaFiles = readBetas(source, notebook, run);
 
   return (
     <>
-      <PageHeader crumbs={[{ label: "notebooks", href: "/" }, { label: notebook, href: notebookHref(notebook) }, { label: run }]} title={run}>
+      <PageHeader
+        crumbs={[
+          { label: "runs", href: "/" },
+          { label: source, href: sourceHref(source) },
+          { label: notebook, href: notebookHref(source, notebook) },
+          { label: run },
+        ]}
+        title={run}
+      >
         <StatusBadge status={summary.status} />
         <AutoRefresh active={summary.status === "running"} seconds={10} />
       </PageHeader>

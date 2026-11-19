@@ -3,22 +3,65 @@ import fs from "node:fs";
 import path from "node:path";
 import { Cell, Table, columnIndex, numberAt, parseCsv } from "./csv";
 
-// Read-only access to code/train-notebooks/beta-training/runs/<notebook>/<run>/.
-// Only run.json, steps.csv and val_history.csv are read. checkpoints/ and betas/ are never listed or opened.
+// Read-only access to <source root>/<notebook>/<run>/ for every run source (see runSources).
+// Only run.json, steps.csv, val_history.csv and betas/ are read. checkpoints/ is never listed or opened.
 
 const STATUSES = ["running", "interrupted", "finished"] as const;
 export type Status = (typeof STATUSES)[number];
 
-export function runsRoot(): string {
-  const configured = process.env.RUNS_DIR;
-  const root =
-    configured === undefined
-      ? path.resolve(/*turbopackIgnore: true*/ process.cwd(), "..", "train-notebooks", "beta-training", "runs")
-      : path.resolve(configured);
-  if (!fs.existsSync(root)) {
-    throw new Error(`Runs folder ${root} does not exist (set RUNS_DIR to override)`);
+// A run source is one folder of notebooks: <root>/<notebook>/<run>/run.json
+export type RunSource = { name: string; root: string };
+
+// Default sources, relative to this app's folder (code/run-viewer)
+const DEFAULT_SOURCES: { name: string; relativeRoot: string[] }[] = [
+  { name: "beta-training", relativeRoot: ["..", "train-notebooks", "beta-training", "runs"] },
+  { name: "ms-paper-beta-loss", relativeRoot: ["..", "train-notebooks", "beta-training", "ms_paper_beta_loss", "runs"] },
+];
+
+const SOURCE_NAME = /^[a-z0-9][a-z0-9-]*$/;
+
+// RUNS_SOURCES overrides the defaults: "name=path;name=path" (paths relative to this app's folder or absolute)
+export function runSources(): RunSource[] {
+  const configured = process.env.RUNS_SOURCES;
+  const sources: RunSource[] = [];
+  if (configured === undefined) {
+    for (const source of DEFAULT_SOURCES) {
+      sources.push({ name: source.name, root: path.resolve(/*turbopackIgnore: true*/ process.cwd(), ...source.relativeRoot) });
+    }
+  } else {
+    for (const entry of configured.split(";")) {
+      const equals = entry.indexOf("=");
+      if (equals === -1) {
+        throw new Error(`RUNS_SOURCES entry "${entry}" is not name=path`);
+      }
+      const name = entry.slice(0, equals).trim();
+      const root = entry.slice(equals + 1).trim();
+      sources.push({ name, root: path.resolve(/*turbopackIgnore: true*/ process.cwd(), root) });
+    }
   }
-  return root;
+  const names: string[] = [];
+  for (const source of sources) {
+    if (!SOURCE_NAME.test(source.name)) {
+      throw new Error(`Run source name "${source.name}" must be lowercase letters, digits and dashes`);
+    }
+    if (names.includes(source.name)) {
+      throw new Error(`Run source "${source.name}" is listed twice`);
+    }
+    names.push(source.name);
+    if (!fs.existsSync(source.root)) {
+      throw new Error(`Runs folder ${source.root} of source "${source.name}" does not exist (set RUNS_SOURCES to override)`);
+    }
+  }
+  return sources;
+}
+
+function sourceRoot(source: string): string {
+  for (const candidate of runSources()) {
+    if (candidate.name === source) {
+      return candidate.root;
+    }
+  }
+  throw new Error(`No run source named "${source}"`);
 }
 
 function subdirectories(dir: string): string[] {
@@ -49,8 +92,8 @@ export type NotebookInfo = {
   newestUpdate: number | null;
 };
 
-export function listNotebooks(): NotebookInfo[] {
-  const root = runsRoot();
+export function listNotebooks(source: string): NotebookInfo[] {
+  const root = sourceRoot(source);
   const notebooks: NotebookInfo[] = [];
   for (const name of subdirectories(root)) {
     const { runs, otherFolders } = splitRunFolders(path.join(root, name));
@@ -81,19 +124,19 @@ function splitRunFolders(notebookDir: string): { runs: string[]; otherFolders: s
   return { runs, otherFolders };
 }
 
-function notebookDir(notebook: string): string {
-  const root = runsRoot();
-  requireName(notebook, subdirectories(root), "notebook");
+function notebookDir(source: string, notebook: string): string {
+  const root = sourceRoot(source);
+  requireName(notebook, subdirectories(root), `notebook in ${source}`);
   return path.join(root, notebook);
 }
 
 // Run folder names of a notebook in their fixed (sorted) order; compare colors follow this order
-export function listRunNames(notebook: string): string[] {
-  return splitRunFolders(notebookDir(notebook)).runs;
+export function listRunNames(source: string, notebook: string): string[] {
+  return splitRunFolders(notebookDir(source, notebook)).runs;
 }
 
-function runDir(notebook: string, run: string): string {
-  const dir = notebookDir(notebook);
+function runDir(source: string, notebook: string, run: string): string {
+  const dir = notebookDir(source, notebook);
   requireName(run, splitRunFolders(dir).runs, `run in ${notebook}`);
   return path.join(dir, run);
 }
@@ -305,8 +348,8 @@ function summarize(name: string, dir: string, info: RunJson, steps: Table, val: 
 
 export type NotebookRuns = { notebook: string; runs: RunRow[]; otherFolders: string[] };
 
-export function listRuns(notebook: string): NotebookRuns {
-  const dir = notebookDir(notebook);
+export function listRuns(source: string, notebook: string): NotebookRuns {
+  const dir = notebookDir(source, notebook);
   const { runs, otherFolders } = splitRunFolders(dir);
   const rows: RunRow[] = [];
   for (const name of runs) {
@@ -327,18 +370,19 @@ export function listRuns(notebook: string): NotebookRuns {
 // ---------------------------------------------------------------- run detail
 
 export type RunDetail = {
+  source: string;
   notebook: string;
   summary: RunSummary;
   val: Table;
   steps: Table;
 };
 
-export function readRun(notebook: string, run: string): RunDetail {
-  const dir = runDir(notebook, run);
+export function readRun(source: string, notebook: string, run: string): RunDetail {
+  const dir = runDir(source, notebook, run);
   const info = readRunJson(dir);
   const steps = readTable(dir, "steps.csv", info.status);
   const val = readTable(dir, "val_history.csv", info.status);
-  return { notebook, summary: summarize(run, dir, info, steps, val), val, steps };
+  return { source, notebook, summary: summarize(run, dir, info, steps, val), val, steps };
 }
 
 // ---------------------------------------------------------------- column helpers
@@ -391,8 +435,8 @@ function requireCellNumber(row: Cell[], index: number, column: string, file: str
   return value;
 }
 
-export function readBetas(notebook: string, run: string): BetaFile[] {
-  const dir = path.join(runDir(notebook, run), "betas");
+export function readBetas(source: string, notebook: string, run: string): BetaFile[] {
+  const dir = path.join(runDir(source, notebook, run), "betas");
   if (!fs.existsSync(dir)) {
     return [];
   }

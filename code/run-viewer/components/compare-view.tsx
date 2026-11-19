@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import LineChart, { ChartSeries, XY } from "@/components/charts/line-chart";
+import HyperparameterValue from "@/components/hyperparameter-value";
 import StatusBadge from "@/components/status-badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,21 +13,27 @@ import { SERIES_LIGHT, formatNumber, runHref } from "@/lib/format";
 
 export type CompareRun = {
   name: string;
-  // Palette slot = the run's position in the notebook, so a run keeps its color whatever else is selected
+  // Palette slot = the run's position in the notebook (within its run source), so a run keeps its color whatever else is selected
   slot: number;
   status: string;
   bestStep: number | null;
+  // Main hyperparameters from run.json config, keyed by config key
+  hyperparameters: Record<string, string | number>;
   metrics: Record<string, XY[]>;
 };
 
 export default function CompareView({
+  source,
   notebook,
   runs,
+  hyperparameterColumns,
   metricOptions,
   initialMetric,
 }: {
+  source: string;
   notebook: string;
   runs: CompareRun[];
+  hyperparameterColumns: { key: string; label: string }[];
   metricOptions: string[];
   initialMetric: string;
 }) {
@@ -69,6 +76,9 @@ export default function CompareView({
             <TableRow>
               <TableHead className="pl-4">run</TableHead>
               <TableHead>status</TableHead>
+              {hyperparameterColumns.map(({ key, label }) => (
+                <TableHead key={key}>{label}</TableHead>
+              ))}
               <TableHead className="text-right">points</TableHead>
               <TableHead className="text-right">min</TableHead>
               <TableHead className="text-right">max</TableHead>
@@ -85,7 +95,7 @@ export default function CompareView({
                   <TableCell className="pl-4">
                     <span className="inline-flex items-center gap-2">
                       <span className="h-1 w-3.5 rounded-full" style={{ background: SERIES_LIGHT[run.slot] }} />
-                      <Link href={runHref(notebook, run.name)} className="font-mono hover:underline">
+                      <Link href={runHref(source, notebook, run.name)} className="font-mono hover:underline">
                         {run.name}
                       </Link>
                     </span>
@@ -93,6 +103,11 @@ export default function CompareView({
                   <TableCell>
                     <StatusBadge status={run.status} />
                   </TableCell>
+                  {hyperparameterColumns.map(({ key }) => (
+                    <TableCell key={key}>
+                      <HyperparameterValue value={run.hyperparameters[key]} />
+                    </TableCell>
+                  ))}
                   <TableCell className="text-right tabular-nums">
                     {points === undefined ? <span className="text-xs text-muted-foreground">column absent</span> : values.length}
                   </TableCell>

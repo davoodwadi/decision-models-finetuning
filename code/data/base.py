@@ -6,6 +6,7 @@ import gc
 import hashlib
 import itertools
 import json
+import os
 import pickle
 import sys
 import time
@@ -896,7 +897,11 @@ def predict_probs_grouped(
             views_iter = tqdm(packed_views, desc=f"Tokenizing {label}", unit="state", leave=False) if show_progress else packed_views
             grouped_records["encs"] = [model.prepare(v)[0] for v in views_iter]
             DEFAULT_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-            cache_path.write_bytes(pickle.dumps(grouped_records["encs"], protocol=pickle.HIGHEST_PROTOCOL))
+            # Atomic, with a per-process temporary name: jobs filling the same cache at once never leave or read a
+            # partly written file
+            temporary_path = cache_path.with_name(f"{cache_path.name}.{os.getpid()}.tmp")
+            temporary_path.write_bytes(pickle.dumps(grouped_records["encs"], protocol=pickle.HIGHEST_PROTOCOL))
+            temporary_path.replace(cache_path)
         grouped_records["encs_key"] = encs_key
     encs = grouped_records["encs"]
     batches = group_eval_views(packed_views, max_questions=max_questions, max_chars=max_chars)

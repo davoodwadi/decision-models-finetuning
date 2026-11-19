@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import inspect
 import json
+import os
 import pickle
 from pathlib import Path
 
@@ -54,7 +55,9 @@ def load_or_compute(cache_dir: Path, name: str, key: dict, compute_fn):
         return stored["value"], True
     value = compute_fn()
     Path(cache_dir).mkdir(parents=True, exist_ok=True)
-    temporary_path = path.with_suffix(".tmp")
+    # Atomic, with a per-process temporary name: an interrupted write never leaves a broken cache file, and jobs
+    # filling the same cache at once never write into each other's temporary file
+    temporary_path = path.with_name(f"{path.name}.{os.getpid()}.tmp")
     temporary_path.write_bytes(pickle.dumps({"key": key, "value": value}, protocol=pickle.HIGHEST_PROTOCOL))
-    temporary_path.replace(path)   # atomic: an interrupted write never leaves a broken cache file
+    temporary_path.replace(path)
     return value, False

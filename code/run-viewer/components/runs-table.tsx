@@ -13,12 +13,13 @@ import { ArrowDown, ArrowUp, ArrowUpDown, GitCompare } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import HyperparameterValue from "@/components/hyperparameter-value";
 import LocalTime from "@/components/LocalTime";
 import StatusBadge from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MAX_SERIES, formatNumber, runHref } from "@/lib/format";
+import { MAX_SERIES, compareHref, formatNumber, runHref } from "@/lib/format";
 
 export type RunTableRow = {
   name: string;
@@ -32,6 +33,8 @@ export type RunTableRow = {
   bestFromSummary: boolean;
   updated: number;
   age: string;
+  // Main hyperparameters from run.json config, keyed by config key; a key is absent when the run's config lacks it
+  hyperparameters: Record<string, string | number>;
 };
 
 function SortHeader({ label, column }: { label: string; column: { getIsSorted: () => false | "asc" | "desc"; toggleSorting: (desc?: boolean) => void } }) {
@@ -44,10 +47,28 @@ function SortHeader({ label, column }: { label: string; column: { getIsSorted: (
   );
 }
 
-export default function RunsTable({ notebook, rows }: { notebook: string; rows: RunTableRow[] }) {
+export default function RunsTable({
+  source,
+  notebook,
+  rows,
+  hyperparameterColumns,
+}: {
+  source: string;
+  notebook: string;
+  rows: RunTableRow[];
+  hyperparameterColumns: { key: string; label: string }[];
+}) {
   const router = useRouter();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [selection, setSelection] = useState<RowSelectionState>({});
+
+  const hyperparameterDefs: ColumnDef<RunTableRow>[] = hyperparameterColumns.map(({ key, label }) => ({
+    id: `hp:${key}`,
+    accessorFn: (row) => row.hyperparameters[key],
+    header: ({ column }) => <SortHeader label={label} column={column} />,
+    cell: ({ row }) => <HyperparameterValue value={row.original.hyperparameters[key]} />,
+    sortUndefined: "last",
+  }));
 
   const columns: ColumnDef<RunTableRow>[] = [
     {
@@ -68,7 +89,7 @@ export default function RunsTable({ notebook, rows }: { notebook: string; rows: 
       accessorKey: "name",
       header: ({ column }) => <SortHeader label="run" column={column} />,
       cell: ({ row }) => (
-        <Link href={runHref(notebook, row.original.name)} className="font-mono hover:underline">
+        <Link href={runHref(source, notebook, row.original.name)} className="font-mono hover:underline">
           {row.original.name}
         </Link>
       ),
@@ -78,6 +99,7 @@ export default function RunsTable({ notebook, rows }: { notebook: string; rows: 
       header: ({ column }) => <SortHeader label="status" column={column} />,
       cell: ({ row }) => <StatusBadge status={row.original.status} />,
     },
+    ...hyperparameterDefs,
     {
       accessorKey: "stepsDone",
       header: ({ column }) => <SortHeader label="steps done / total" column={column} />,
@@ -137,7 +159,7 @@ export default function RunsTable({ notebook, rows }: { notebook: string; rows: 
     getSortedRowModel: getSortedRowModel(),
   });
 
-  // Compare keeps the notebook's run order so each run keeps its color slot
+  // Compare keeps the notebook's run order so each run keeps its color slot; links carry the run source
   const selected = rows.filter((row) => selection[row.name] === true).map((row) => row.name);
   const tooMany = selected.length > MAX_SERIES;
 
@@ -146,7 +168,7 @@ export default function RunsTable({ notebook, rows }: { notebook: string; rows: 
     for (const name of selected) {
       params.append("run", name);
     }
-    router.push(`/n/${encodeURIComponent(notebook)}/compare?${params.toString()}`);
+    router.push(compareHref(source, notebook, params.toString()));
   }
 
   return (
