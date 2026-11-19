@@ -303,7 +303,10 @@ def load_paper_run(run_dir: Path) -> RunResult:
     run_dir = Path(run_dir)
     run_info = runs.read_run_json(run_dir)
     config = PaperTrainConfig.from_dict(run_info["identity"]["config"])
-    step_df = pd.read_csv(run_dir / "steps.csv")
+    steps_path = run_dir / "steps.csv"
+    if not steps_path.exists():
+        raise FileNotFoundError(f"Missing steps.csv in {run_dir}")
+    step_df = pd.read_csv(steps_path) if steps_path.read_text(encoding="utf-8").strip() else pd.DataFrame()
     val_history_df = pd.read_csv(run_dir / "val_history.csv").set_index("step")
     validator_names = list(run_info["identity"]["validators"])
 

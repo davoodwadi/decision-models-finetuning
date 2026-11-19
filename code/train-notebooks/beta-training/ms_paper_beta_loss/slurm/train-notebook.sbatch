@@ -27,6 +27,8 @@ source ~/envs/kev-cu13/bin/activate
 export HF_HOME=$HOME/links/projects/def-yuma/wadi/hf
 export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
+# lets the CUDA allocator grow segments instead of fragmenting (4B row5 ran out of memory with 4.78 GiB reserved but unused)
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 cd "$SLURM_SUBMIT_DIR"
 if [ ! -d paper_beta ]; then
