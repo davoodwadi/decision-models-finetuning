@@ -5,22 +5,22 @@
 #SBATCH --mem=48G
 #SBATCH --time=16:00:00
 #SBATCH --output=%x-%j.out
-# Runs one notebook (name without .ipynb, given as the argument) top to bottom on one H100 and saves the executed copy
-# as <notebook>.rorqual.ipynb (the source notebook is not modified). Meant for the one-regime notebooks
-# (02-train-paper-4b-row*.ipynb), so each regime is its own job.
-# Submit from the ms_paper_beta_loss folder, naming the job after the notebook so the log is <notebook>-<jobid>.out:
-#   sbatch --job-name=02-train-paper-4b-row2 slurm/train-notebook.sbatch 02-train-paper-4b-row2
-# All 4B regimes at once:
-#   for nb in 02-train-paper-4b-row*.ipynb; do sbatch --job-name="${nb%.ipynb}" slurm/train-notebook.sbatch "${nb%.ipynb}"; done
+# Runs one notebook top to bottom on one H100 and saves the executed copy next to it as <notebook>.rorqual.ipynb (the
+# source notebook is not modified). The argument is the notebook's path relative to the ms_paper_beta_loss folder.
+# Meant for the one-run notebooks (train-800m/, train-4b/, kl-anchor-9b/), so each run is its own job.
+# Submit from the ms_paper_beta_loss folder, naming the job after the notebook so the log in that folder is
+# <notebook>-<jobid>.out:
+#   sbatch --job-name=02-train-paper-4b-row2 slurm/train-notebook.sbatch train-4b/02-train-paper-4b-row2.ipynb
+# Every notebook of a folder at once (skips executed copies): slurm/submit-folder.sh <folder> [sbatch options]
 # --time=16:00:00 is a guess for the longest regime (4,125 steps); override with sbatch --time=... . Resubmitting
 # continues an unfinished regime from its run folder.
 set -euo pipefail
 
 if [ "$#" -ne 1 ]; then
-    echo "Usage: sbatch --job-name=<notebook> slurm/train-notebook.sbatch <notebook>  (name without .ipynb)" >&2
+    echo "Usage: sbatch --job-name=<name> slurm/train-notebook.sbatch <folder>/<notebook>.ipynb" >&2
     exit 1
 fi
-NOTEBOOK="$1"
+NOTEBOOK_PATH="$1"
 
 module load python/3.13.2 arrow/25.0.0
 source ~/envs/kev-cu13/bin/activate
@@ -29,17 +29,23 @@ export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
 
 cd "$SLURM_SUBMIT_DIR"
-if [ ! -f "${NOTEBOOK}.ipynb" ]; then
-    echo "Submit from the ms_paper_beta_loss folder (${NOTEBOOK}.ipynb not found in $PWD)" >&2
+if [ ! -d paper_beta ]; then
+    echo "Submit from the ms_paper_beta_loss folder (no paper_beta/ in $PWD)" >&2
     exit 1
 fi
+if [ ! -f "$NOTEBOOK_PATH" ]; then
+    echo "Notebook $NOTEBOOK_PATH not found in $PWD" >&2
+    exit 1
+fi
+NOTEBOOK_NAME="$(basename "$NOTEBOOK_PATH" .ipynb)"
 
-echo "job $SLURM_JOB_ID ($NOTEBOOK) on $(hostname), started $(date)"
+echo "job $SLURM_JOB_ID ($NOTEBOOK_PATH) on $(hostname), started $(date)"
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
 jupyter nbconvert --version
 
-jupyter nbconvert --to notebook --execute "${NOTEBOOK}.ipynb" \
-    --output "${NOTEBOOK}.rorqual.ipynb" \
+# --output is relative to the notebook's own folder, so the executed copy lands next to the notebook
+jupyter nbconvert --to notebook --execute "$NOTEBOOK_PATH" \
+    --output "${NOTEBOOK_NAME}.rorqual.ipynb" \
     --ExecutePreprocessor.kernel_name=kev-cu13 \
     --ExecutePreprocessor.timeout=-1
 
