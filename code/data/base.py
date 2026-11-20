@@ -19,7 +19,7 @@ import torch
 import torch.nn.functional as F
 from tqdm.auto import tqdm
 
-from data.persona import PERSONA_MAPS, PERSONA_NAMES
+from data.persona import ALL_PERSONA_NAMES, EXTRA_PERSONA_NAMES, PERSONA_MAPS, PERSONA_NAMES
 
 CODE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = Path(__file__).resolve().parent
@@ -36,26 +36,6 @@ from kev.fused_qwen35 import (
     deltanet_forward,
     mlp_forward,
 )
-
-EXTRA_PERSONA_NAMES = {
-    "CHILDREN": "How many children (ages 0-18) currently live in your household?",
-    "SNAP": "SNAP / Food Stamps recipient",
-    "WIC": "Do you or anyone else in your household currently receive WIC benefits?",
-    "NFPUSE": "Nutrition Facts label usage",
-    "ONLINEAMT": "Share of groceries bought online",
-    # Derived in Grummon 2025 (scr_litall = 0..4 sum across 4 NVS ice-cream Nutrition Facts math items, not a single verbatim survey question); may be adapted in the future.
-    "HEALTHLIT": "Nutrition literacy score",
-    "MEDHELP": (
-        "How often do you need to have someone help you when you read instructions, "
-        "pamphlets, or other written materials from your doctor or pharmacy?"
-    ),
-    "DIETQUAL": "In general, how healthy is your overall diet?",
-    "VENDING_BEV": "In a typical week, how often do you buy beverages from vending machines?",
-    "VENDING_SNACK": "In a typical week, how often do you buy snacks from vending machines?",
-    # Derived in Grummon 2023 from self-reported height_feet, height_inches, and weight_lbs matching published Table 1; may be adapted in the future.
-    "BMI": "Body mass index (BMI)",
-}
-ALL_PERSONA_NAMES = {**PERSONA_NAMES, **EXTRA_PERSONA_NAMES}
 
 SINGLE_PERSONA_ATTRS = [c for c in PERSONA_NAMES.keys() if c != "c_alphan"]
 PAIR_PERSONA_ATTRS = [list(c) for c in itertools.combinations(SINGLE_PERSONA_ATTRS, 2)]

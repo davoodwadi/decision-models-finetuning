@@ -1,6 +1,6 @@
 import { AuditWorkspace } from "@/components/AuditWorkspace";
 import { discoverDatasets, getDatasetPayload } from "@/lib/store";
-import type { InitialViewState, TriageMode } from "@/lib/types";
+import type { InitialViewState, TriageMode, WorkspaceTab } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -46,8 +46,13 @@ export default async function HomePage({
         ? rawTag.filter(Boolean)
         : undefined;
 
+  const tabParam = typeof params.tab === "string" ? params.tab : undefined;
+  const tab: WorkspaceTab | undefined =
+    tabParam === "personas" || tabParam === "questions" ? tabParam : undefined;
+
   const initialView: InitialViewState = {
     hasParams: Object.keys(params).length > 0,
+    tab,
     rowKey: typeof params.row === "string" ? params.row : undefined,
     mode:
       modeParam && VALID_MODES.has(modeParam as TriageMode)

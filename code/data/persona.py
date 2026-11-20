@@ -35,6 +35,26 @@ PERSONA_NAMES = {
     "POL_LABEL": "When it comes to politics, would you describe yourself as libertarian, socialist, communist, liberal, conservative, centrist, or something else?",  # wu2025 ideology_original
 }
 
+EXTRA_PERSONA_NAMES = {
+    "CHILDREN": "How many children (ages 0-18) currently live in your household?",
+    "SNAP": "SNAP / Food Stamps recipient",
+    "WIC": "Do you or anyone else in your household currently receive WIC benefits?",
+    "NFPUSE": "Nutrition Facts label usage",
+    "ONLINEAMT": "Share of groceries bought online",
+    # Derived in Grummon 2025 (scr_litall = 0..4 sum across 4 NVS ice-cream Nutrition Facts math items, not a single verbatim survey question); may be adapted in the future.
+    "HEALTHLIT": "Nutrition literacy score",
+    "MEDHELP": (
+        "How often do you need to have someone help you when you read instructions, "
+        "pamphlets, or other written materials from your doctor or pharmacy?"
+    ),
+    "DIETQUAL": "In general, how healthy is your overall diet?",
+    "VENDING_BEV": "In a typical week, how often do you buy beverages from vending machines?",
+    "VENDING_SNACK": "In a typical week, how often do you buy snacks from vending machines?",
+    # Derived in Grummon 2023 from self-reported height_feet, height_inches, and weight_lbs matching published Table 1; may be adapted in the future.
+    "BMI": "Body mass index (BMI)",
+}
+ALL_PERSONA_NAMES = {**PERSONA_NAMES, **EXTRA_PERSONA_NAMES}
+
 DATASET_PERSONA_COLS = {
     "issp": [c for c in PERSONA_NAMES if c not in {"RACE", "HISPANIC", "HHSIZE", "VOTE_FREQ", "RESTYPE", "POL_LABEL", "OWNHOME", "RENTHOME", "ORIENTATION", "MILITARY", "ELECHEAT"}],
     "twin2k": [
@@ -109,6 +129,13 @@ DATASET_PERSONA_COLS = {
         "ORIENTATION",
         "MILITARY",
         "ELECHEAT",
+    ],
+    "kantorowicz2026": [  # decisions in kantorowicz2026/DECISIONS.md
+        "c_alphan",
+        "SEX",
+        "AGE",
+        "EDULEVEL",
+        "US_INC",
     ],
     "wvs": [
         "c_alphan",
@@ -244,6 +271,15 @@ WU2025_RACE_LABELS = [
     "Other",
 ]
 
+# kantorowicz2026 (Kantorowicz-Reznichenko et al. 2026, computers & laundry machines).
+# The public RDS files store binary demographic splits with R `NA` for missing values.
+KANTOROWICZ2026_COL_TO_PERSONA = {
+    "gender_dummy": "SEX",
+    "age_dummy": "AGE",
+    "education_dummy": "EDULEVEL",
+    "income_dummy": "US_INC",
+}
+
 TWIN2K_QID_TO_PERSONA = {
     "QID11": "US_REG",
     "QID12": "SEX",
@@ -311,6 +347,8 @@ GLOBAL_PERSONA_LEVELS = {
         "18 - 24 years", "25 - 34 years", "35 - 44 years", "45 - 54 years", "55 - 64 years", "65 or older",
         # wu2025 `age` (its first five brackets share berke2023's levels)
         "65 - 74 years", "75 - 84 years", "85 or older",
+        # kantorowicz2026 `age_dummy` (binary age split; numeric cutoff not documented)
+        "Older", "Younger",
     ],
     "US_REG": ["Northeast", "Midwest", "South", "West"],
     "EDULEVEL": [
@@ -318,6 +356,9 @@ GLOBAL_PERSONA_LEVELS = {
         "High school or some college",
         "Associate's degree",
         "College graduate/some postgrad",
+        # kantorowicz2026 `education_dummy` (binary education split; exact degree cutoff not documented)
+        "Below higher education",
+        "Higher education",
     ],
     "RACE": [
         "White", "Black", "Asian", "Hispanic", "Other", "Other, Non-Hispanic", "Two plus, non-Hispanic",
@@ -415,6 +456,9 @@ GLOBAL_PERSONA_LEVELS = {
         "$150,000 - $199,999",     # Grummon, berke2023
         "$150,000 or more",        # wu2025
         "$200,000 or more",        # Grummon, berke2023
+        # kantorowicz2026 `income_dummy` (binary income split; dollar cutoff not documented)
+        "Lower income",
+        "Higher income",
     ],
     "PARTY_LR": [
         "Very liberal",
@@ -544,6 +588,7 @@ PERSONA_MAPS = {
         "kriner2026": {"United States": "United States"},
         "berke2023": {"United States": "United States"},  # Prolific US residents; nobody chose "not in the US"
         "wu2025": {"United States": "United States"},  # non-US respondents removed by the authors
+        "kantorowicz2026": {"United States": "United States"},  # quota-representative US sample (MSI/Savanta)
     },
     "SEX": {
         "issp": {"Male": "Male", "Female": "Female"},
@@ -556,6 +601,7 @@ PERSONA_MAPS = {
         "berke2023": {1: "Male", 2: "Female", 3: "Other", 4: "Prefer not to say"},  # 4 = Prefer not to answer
         "kriner2026": {1: "Male", 2: "Female", 3: "Prefer not to say"},
         "wu2025": {"Female": "Female", "Male": "Male"},  # `sex`; "" (no answer) -> NaN in the loader
+        "kantorowicz2026": {"Female": "Female", "Male": "Male"},  # `gender_dummy`; NA -> NaN
     },
     "AGE": {
         "twin2k": {
@@ -581,6 +627,10 @@ PERSONA_MAPS = {
             "65 - 74": "65 - 74 years",
             "75 - 84": "75 - 84 years",
             "85 or older": "85 or older",
+        },
+        "kantorowicz2026": {  # `age_dummy`; NA -> NaN
+            "Older": "Older",
+            "Younger": "Younger",
         },
     },
     "US_REG": {
@@ -842,6 +892,10 @@ PERSONA_MAPS = {
             "Master's degree": "College graduate/some postgrad",
             "Professional degree (JD, MD)": "College graduate/some postgrad",
             "Doctoral degree": "College graduate/some postgrad",
+        },
+        "kantorowicz2026": {  # `education_dummy`; NA -> NaN
+            "Below higher edu.": "Below higher education",
+            "Higher edu.": "Higher education",
         },
     },
     # Select-all race questions (Covid, Kriner2026, berke2023, Grummon 2023/2025, wu2025) are first combined by
@@ -1196,6 +1250,10 @@ PERSONA_MAPS = {
             "$100,000 to $149,999": "$100,000 - $149,999",
             "$150,000 or more": "$150,000 or more",
         },
+        "kantorowicz2026": {  # `income_dummy`; NA -> NaN
+            "Lower income": "Lower income",
+            "Higher income": "Higher income",
+        },
     },
     "PARTY_LR": {
         "issp": {
@@ -1502,6 +1560,13 @@ def apply_persona_mapping(df: pd.DataFrame, dataset: str) -> pd.DataFrame:
                 raise ValueError(f"kriner2026: missing column {src_col} for persona attribute {attr}")
             df[attr] = df[src_col]
         df["RACE"] = race_from_checkboxes(df, KRINER2026_RACE_COLS, "kriner2026", allow_all_missing=False)
+    elif dataset == "kantorowicz2026":
+        df["c_alphan"] = "United States"
+        missing_cols = [c for c in KANTOROWICZ2026_COL_TO_PERSONA if c not in df.columns]
+        if missing_cols:
+            raise ValueError(f"kantorowicz2026: missing columns {missing_cols}")
+        for src_col, attr in KANTOROWICZ2026_COL_TO_PERSONA.items():
+            df[attr] = df[src_col]
     elif dataset == "wvs":
         for src_col, attr in WVS_COL_TO_PERSONA.items():
             if src_col not in df.columns:

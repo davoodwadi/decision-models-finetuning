@@ -11,11 +11,13 @@ import {
   Check,
   Database,
   Layers,
+  ListChecks,
   Loader2,
   Play,
   RotateCcw,
   Save,
   Search,
+  Users,
   XIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -48,9 +50,11 @@ import type {
   QuestionOverride,
   SidebarSubItem,
   TriageMode,
+  WorkspaceTab,
 } from "@/lib/types";
 import { DetailPane } from "./DetailPane";
 import { MultiSelectFilter } from "./MultiSelectFilter";
+import { PersonasPane } from "./PersonasPane";
 import { SidebarRow } from "./SidebarRow";
 
 const LAST_DS_STORAGE_KEY = "audit-ui-last-ds:v1";
@@ -182,6 +186,10 @@ export function AuditWorkspace({
 }: AuditWorkspaceProps) {
   const [datasets] = useState<DatasetInfo[]>(initialDatasets);
   const [payload, setPayload] = useState<DatasetPayload>(initialPayload);
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>(
+    initialView.tab ?? "questions"
+  );
+  const [personasRefreshSeq, setPersonasRefreshSeq] = useState(0);
   const [loadingDs, setLoadingDs] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
@@ -749,6 +757,7 @@ export function AuditWorkspace({
 
     const sp = new URLSearchParams();
     sp.set("ds", payload.dsId);
+    if (activeTab === "personas") sp.set("tab", "personas");
     if (activeRowKey) sp.set("row", activeRowKey);
     sp.set("mode", triage);
     if (showFormatSkipped) sp.set("skip", "1");
@@ -812,6 +821,7 @@ export function AuditWorkspace({
     hydrated,
     payload.dsId,
     payload.rows,
+    activeTab,
     selectedRowIdx,
     triage,
     showFormatSkipped,
@@ -1354,8 +1364,9 @@ export function AuditWorkspace({
     commitRowEntries,
   ]);
 
-  // Global keyboard shortcuts
+  // Global keyboard shortcuts (Questions tab only)
   useEffect(() => {
+    if (activeTab !== "questions") return;
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
@@ -1458,6 +1469,7 @@ export function AuditWorkspace({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [
+    activeTab,
     goNext,
     goPrev,
     selectedRowIdx,
@@ -1495,6 +1507,7 @@ export function AuditWorkspace({
         throw new Error(json.stderr || json.error || "Notebook execution failed");
       }
       setRebuildBanner(`Parquet rebuilt: ${json.summary}`);
+      setPersonasRefreshSeq((n) => n + 1);
       await switchDataset(payload.dsId, true);
     } catch (err: unknown) {
       setSaveState("error");
@@ -1531,6 +1544,7 @@ export function AuditWorkspace({
         );
       }
       setRebuildBanner(`All ${done.length} Parquets rebuilt. ${done.join(" || ")}`);
+      setPersonasRefreshSeq((n) => n + 1);
       await switchDataset(payload.dsId, true);
     } catch (err: unknown) {
       setSaveState("error");
@@ -1621,6 +1635,48 @@ export function AuditWorkspace({
 
         {loadingDs && <Loader2 className="w-4 h-4 animate-spin text-blue-600" />}
 
+        {/* Top-level Workspace View Tabs: Questions vs Personas */}
+        <div
+          role="tablist"
+          aria-label="Workspace view"
+          className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-100/80 p-0.5 gap-0.5"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "questions"}
+            onClick={() => setActiveTab("questions")}
+            className={[
+              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer",
+              activeTab === "questions"
+                ? "bg-white text-slate-900 shadow-2xs"
+                : "text-slate-600 hover:text-slate-900",
+            ].join(" ")}
+          >
+            <ListChecks className="w-3.5 h-3.5" />
+            Questions
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "personas"}
+            onClick={() => {
+              setActiveTab("personas");
+              setShowBulk(false);
+            }}
+            className={[
+              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer",
+              activeTab === "personas"
+                ? "bg-white text-blue-700 shadow-2xs"
+                : "text-slate-600 hover:text-slate-900",
+            ].join(" ")}
+          >
+            <Users className="w-3.5 h-3.5" />
+            Personas
+          </button>
+        </div>
+
+        {activeTab === "questions" && (
         <div className="hidden xl:flex items-center gap-2 text-xs text-slate-600 ml-1 whitespace-nowrap">
           <Badge
             variant="outline"
@@ -1642,6 +1698,7 @@ export function AuditWorkspace({
             <strong className="text-slate-900">{includedTotal}</strong>
           </span>
         </div>
+        )}
 
         <div className="flex-1" />
 
@@ -1715,6 +1772,7 @@ export function AuditWorkspace({
           </Badge>
         )}
 
+        {activeTab === "questions" && (
         <Button
           type="button"
           variant="outline"
@@ -1725,6 +1783,7 @@ export function AuditWorkspace({
           <Layers className="w-3.5 h-3.5" />
           Bulk ({filteredIndices.length})
         </Button>
+        )}
 
         <div className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 p-0.5 gap-0.5">
           <span className="px-1.5 text-[11px] font-semibold text-slate-500 select-none">Parquet</span>
@@ -1787,7 +1846,7 @@ export function AuditWorkspace({
         </div>
       )}
 
-      {showBulk && (
+      {activeTab === "questions" && showBulk && (
         <div className="bg-slate-100 border-b border-slate-200 px-4 py-2 flex items-center gap-2 flex-wrap text-xs">
           <span className="font-semibold text-slate-700">
             Stage on {filteredIndices.length} filtered rows:
@@ -1933,7 +1992,10 @@ export function AuditWorkspace({
         </div>
       )}
 
-      {/* Main Split Workspace */}
+      {/* Main Workspace */}
+      {activeTab === "personas" ? (
+        <PersonasPane dsId={payload.dsId} refreshSeq={personasRefreshSeq} />
+      ) : (
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar */}
         <aside className="w-[390px] shrink-0 bg-white border-r border-slate-200 flex flex-col h-full overflow-hidden">
@@ -2186,6 +2248,7 @@ export function AuditWorkspace({
           onConfirmAndNext={handleConfirmAndNext}
         />
       </div>
+      )}
     </div>
   );
 }

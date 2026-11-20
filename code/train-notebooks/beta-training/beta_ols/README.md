@@ -10,7 +10,7 @@ Data and OLS only: no model or tokenizer. The training side (items, gradient ste
 | `core.py` | Shared types (`RegressionSpec`, `OutcomeRow`, `RespondentBetaPart`), `fit_human_ols`, `wide_ols_table`, `ols_projector`, `beta_noise_by_sample_size` |
 | `unified_loss.py` | `build_sample_beta_operators`, `compute_unified_loss` |
 | `evaluation.py` | `build_population_eval`, `flat_probs_from_predictions`, `compare_population_betas`: model vs human population betas with the module's own coding |
-| `wu2025.py`, `berke2023.py`, `grummon2023_calories.py`, `grummon2023_labels.py`, `kriner2026.py`, `covid.py`, `grummon2025.py` | One module per dataset (`grummon2023_calories` and `grummon2023_labels` are two codings of Grummon 2023's data) |
+| `wu2025.py`, `berke2023.py`, `grummon2023_calories.py`, `grummon2023_labels.py`, `kriner2026.py`, `covid.py`, `grummon2025.py`, `kantorowicz2026.py` | One module per dataset (`grummon2023_calories` and `grummon2023_labels` are two codings of Grummon 2023's data) |
 | `__init__.py` | `DATASET_MODULES`: every dataset module by name |
 
 ## Dataset module interface
@@ -52,5 +52,6 @@ Human betas use the same `B` with one-hot choices, so the beta error is `B @ (p 
 | Kriner 2026 | 1 | each displayed flight | that flight's probability | clustered |
 | COVID (Kreps 2020) | 1 | profiles A and B ("neither" has no row) | that profile's probability | clustered |
 | Grummon 2025 | 1 | each of the 6 items (the paper's unit of analysis) | p(picked the healthier product) | clustered |
+| Kantorowicz 2026 | 2 (computers, laundry) | each displayed product profile (9 attributes / 19 AMCEs per product) | that profile's choice probability | clustered |
 
-Each module's docstring states the paper's estimand and how ours compares. All six human replications were checked against the earlier notebook cells (betas, SEs and σ agree to about 1e-13 or better). Kriner, COVID and Grummon 2023 also match the published tables. Grummon 2025 is 0.01 below 3 of 5 published effects because the paper used mixed logit.
+Each module's docstring states the paper's estimand and how ours compares. All earlier human replications were checked against the notebook cells (betas, SEs and σ agree to about 1e-13 or better). Kriner, COVID, Grummon 2023, and Kantorowicz 2026 also match their published tables (Kantorowicz 2026 betas agree with `amces_computers.csv` and `amces_laundry_machines.csv` to `4.2e-14`, SEs to `3.2e-6`). Grummon 2025 is 0.01 below 3 of 5 published effects because the paper used mixed logit.

@@ -1,25 +1,9 @@
-# test-best: best.pt of every paper run on Grummon 2025 and COVID
+# Best checkpoint evaluation on held-out test datasets
 
-One notebook per model (`04-test-best-800m`, `04-test-best-4b`, `04-test-best-9b`), run locally on the runs pulled from
-Rorqual and Nibi. Each loads the base model once, then for every finished run in its runs folders (`RUNS_DIR`, or
-`RUNS_DIRS` for 9B) loads `checkpoints/best.pt` (LoRA + pointer head, picked during training by
-`kriner2026/beta_mse`) and evaluates it on the test datasets in `TEST_DATASETS`, with the same fused population
-validation used during training.
+One notebook per model (`04-test-best-800m`, `04-test-best-4b`, `04-test-best-9b`) runs locally on the training runs pulled from Rorqual and Nibi. Each notebook loads the base model once, then for every finished run in its runs folders (`RUNS_DIR`, or `RUNS_DIRS` for 9B) loads `checkpoints/best.pt` (LoRA and pointer head, selected during training by `kriner2026/beta_mse`) and evaluates it on the test datasets listed in `TEST_DATASETS` using the same fused population validation used during training.
 
-- Test datasets: `grummon2025` and `covid` (Kreps et al. 2020 vaccine conjoint; 1,971 respondents, 9,855 tasks, 11 Table 3
-  terms). Neither is trained on, and neither picks the checkpoint.
-- Grummon 2025 at best.pt is also in each run's `best_validation.csv` (checked at the end of training); this notebook
-  computes it again from best.pt with the same validator, next to COVID.
-- Row 1 (untrained model): `runs-rorqual/<model>/row1_base_untrained/test_best/` (step-0 results, cached in `code/.cache/beta_training`).
-- Output per run: `<runs folder>/<model>/<run>/test_best/`
-  - `metrics.csv`: one row per test dataset (`kl_loss`, `beta_mse`, `beta_mae`, `beta_mape_pct`, `spearman_rho`, timings).
-  - `betas.csv`: model and human population betas per term, stacked with a `validator` column.
-  - `test.json`: notebook, model, paper row, checkpoint step, best metric and value, test datasets.
-- Unfinished runs are skipped. A run already tested at the same checkpoint step on the same test datasets is skipped, so
-  rerunning a notebook tests only the runs that finished since.
-- Runs folders: 0.8B and 4B in `runs-rorqual/<model>/`. 9B in two: Rows 2 and 2 ablation in `runs-rorqual/kev-9b/`
-  (trained on Rorqual), Rows 2b to 5 in `runs-nibi/kev-9b/` (trained on Nibi). A run name found in both stops the
-  9B notebook, since it would be two copies of the same regime.
-- Before running: `./pull-rorqual-runs.sh` and, for 9B, `./pull-nibi-runs.sh` (repository root) copy each run's files and
-  `checkpoints/best.pt` (not `last.pt`) into `runs-rorqual/` and `runs-nibi/`. A later pull does not touch `test_best/`
-  (it exists only locally).
+**Test datasets.** All three notebooks evaluate `grummon2025`, `covid` (Kreps et al. 2020 vaccine conjoint, 1,971 respondents, 9,855 tasks, 11 Table 3 terms), and `kantorowicz2026` (Kantorowicz-Reznichenko et al. 2026 consumer rights conjoint, 2,235 US respondents, 26,823 tasks across computers and laundry machines, 38 AMCEs). None of these datasets is trained on, and none selects the checkpoint. Grummon 2025 at `best.pt` also appears in each run's `best_validation.csv` from the end of training, and these notebooks compute it again from `best.pt` with the same validator alongside the other test datasets.
+
+**Outputs and caching.** Row 1 (the untrained model) is saved under `runs-rorqual/<model>/row1_base_untrained/test_best/` from step-0 results cached per validator in `code/.cache/beta_training`. Every finished run writes its results to `<runs folder>/<model>/<run>/test_best/`, producing `metrics.csv` (one row per test dataset with `kl_loss`, `beta_mse`, `beta_mae`, `beta_mape_pct`, `spearman_rho`, and timings), `betas.csv` (model and human population betas per term, stacked with a `validator` column), and `test.json` (notebook, model, paper row, checkpoint step, best metric and value, and test datasets). Unfinished runs are skipped, and both Row 1 and finished runs reuse verified results from `test_best/` whenever `checkpoint_step` and `MODEL_KEY` match so adding a new dataset evaluates only the missing dataset(s) before merging and saving atomically.
+
+**Runs folders and pulling.** The 0.8B and 4B runs live in `runs-rorqual/<model>/`, whereas 9B spans `runs-rorqual/kev-9b/` for Rows 2 and 2 ablation (trained on Rorqual) and `runs-nibi/kev-9b/` for Rows 2b to 5 (trained on Nibi). Finding the same run name in both 9B folders stops the notebook because it would represent duplicate copies of the same regime. Before running, execute `./pull-rorqual-runs.sh` and, for 9B, `./pull-nibi-runs.sh` from the repository root to copy each run's files and `checkpoints/best.pt` (not `last.pt`) into `runs-rorqual/` and `runs-nibi/`. Later pulls leave `test_best/` untouched because it exists only locally.

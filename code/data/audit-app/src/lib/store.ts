@@ -16,7 +16,11 @@ import type {
   DatasetInfo,
   DatasetPayload,
   ItemDetail,
+  PersonaCompletenessFilter,
+  PersonasPagePayload,
+  PersonaSummaryBundle,
   QuestionOverride,
+  RespondentQuestionsPayload,
   SchemaKind,
 } from "./types";
 
@@ -27,6 +31,7 @@ const DATA_DIR = path.resolve(APP_DIR, "..");
 const REPO_ROOT = path.resolve(DATA_DIR, "..", "..");
 const PYTHON_BIN = path.join(REPO_ROOT, ".venv-cu13", "bin", "python");
 const BUILD_INDEX_SCRIPT = path.join(APP_DIR, "scripts", "build_index.py");
+const INSPECT_PERSONAS_SCRIPT = path.join(APP_DIR, "scripts", "inspect_personas.py");
 const DETAILS_FILE = ".audit_details.json";
 const OVERRIDES_FILE = "question_overrides.json";
 const TAGS_FILE = "question_tags.json";
@@ -61,15 +66,25 @@ interface CachedDataset {
   tagsMtimeMs: number;
 }
 
+interface CachedPersonas {
+  dsId: string;
+  parquetPath: string;
+  parquetMtimeMs: number;
+  bundle: PersonaSummaryBundle;
+}
+
 const globalForStore = globalThis as unknown as {
   __auditCache?: Map<string, CachedDataset>;
   __auditLocks?: Map<string, Promise<unknown>>;
+  __personaCache?: Map<string, CachedPersonas>;
 };
 
 const datasetCache =
   globalForStore.__auditCache ?? (globalForStore.__auditCache = new Map());
 const datasetLocks =
   globalForStore.__auditLocks ?? (globalForStore.__auditLocks = new Map());
+const personaCache =
+  globalForStore.__personaCache ?? (globalForStore.__personaCache = new Map());
 
 async function withLock<T>(dsId: string, fn: () => Promise<T>): Promise<T> {
   const prev = datasetLocks.get(dsId) ?? Promise.resolve();
@@ -733,7 +748,7 @@ export async function updateRows(
 }
 
 // Dataset folders whose parquet is written by `data.<folder>.export_<folder>_parquet()` (others use data.ipynb).
-const PYTHON_EXPORT_DIRS = ["grummon2023", "grummon2025", "covid", "Kriner2026", "berke2023", "wu2025"];
+const PYTHON_EXPORT_DIRS = ["grummon2023", "grummon2025", "covid", "Kriner2026", "berke2023", "wu2025", "kantorowicz2026"];
 
 // Folders that must be rebuilt before the others: the Twin-2K-500 Mega-Study notebook checks its personas against
 // Twin-2K-500's parquet, so Twin-2K-500 goes first.
@@ -836,6 +851,7 @@ nbformat.write(nb, "data.ipynb")`,
         { env: execEnv, maxBuffer: 16 * 1024 * 1024 }
       );
       datasetCache.delete(dsId);
+      personaCache.delete(dsId);
 
       const { stdout } = await execFileAsync(
         PYTHON_BIN,
@@ -864,4 +880,175 @@ else:
       };
     }
   });
+}
+
+async function findLongParquetPath(datasetDir: string): Promise<string> {
+  const entries = await fs.readdir(datasetDir, { withFileTypes: true });
+  const matches = entries
+    .filter((e) => e.isFile() && e.name.endsWith("_long.parquet"))
+    .map((e) => e.name)
+    .sort();
+  if (matches.length === 0) {
+    throw new Error(
+      `No *_long.parquet found in ${datasetDir}. Click "Parquet -> This dataset" to build it first.`
+    );
+  }
+  if (matches.length > 1) {
+    throw new Error(
+      `Expected a single *_long.parquet in ${datasetDir}, found: ${matches.join(", ")}`
+    );
+  }
+  return path.join(datasetDir, matches[0]);
+}
+
+async function loadOrRefreshPersonas(dsId: string): Promise<PersonaSummaryBundle> {
+  const csvPath = await resolveDatasetCsvPath(dsId);
+  const datasetDir = path.dirname(csvPath);
+  const parquetPath = await findLongParquetPath(datasetDir);
+  const curMtime = await fileMtimeMs(parquetPath);
+  const cached = personaCache.get(dsId);
+
+  if (
+    cached &&
+    cached.parquetPath === parquetPath &&
+    cached.parquetMtimeMs === curMtime
+  ) {
+    return cached.bundle;
+  }
+
+  const { stdout } = await execFileAsync(
+    PYTHON_BIN,
+    [INSPECT_PERSONAS_SCRIPT, "--dataset-dir", datasetDir, "--mode", "summary"],
+    { maxBuffer: 64 * 1024 * 1024 }
+  );
+  const bundle = JSON.parse(stdout) as PersonaSummaryBundle;
+  personaCache.set(dsId, {
+    dsId,
+    parquetPath,
+    parquetMtimeMs: curMtime,
+    bundle,
+  });
+  return bundle;
+}
+
+export interface PersonaQueryOptions {
+  search?: string;
+  attrCol?: string;
+  attrVal?: string;
+  completeness?: PersonaCompletenessFilter;
+  page?: number;
+  pageSize?: number;
+}
+
+export async function getPersonasPage(
+  dsId: string,
+  opts: PersonaQueryOptions = {}
+): Promise<PersonasPagePayload> {
+  const bundle = await loadOrRefreshPersonas(dsId);
+  const searchLower = (opts.search ?? "").trim().toLowerCase();
+  const attrCol = (opts.attrCol ?? "").trim();
+  const attrVal = opts.attrVal ?? "";
+  const completeness: PersonaCompletenessFilter =
+    opts.completeness === "complete" || opts.completeness === "incomplete"
+      ? opts.completeness
+      : "all";
+  const pageSize = Math.min(200, Math.max(10, opts.pageSize ?? 100));
+
+  let completeCount = 0;
+  let incompleteCount = 0;
+  for (const r of bundle.respondents) {
+    if (r.nPresent >= bundle.nAttributes) {
+      completeCount += 1;
+    } else {
+      incompleteCount += 1;
+    }
+  }
+
+  const filtered = bundle.respondents.filter((r) => {
+    if (completeness === "complete" && r.nPresent < bundle.nAttributes) {
+      return false;
+    }
+    if (completeness === "incomplete" && r.nPresent >= bundle.nAttributes) {
+      return false;
+    }
+    if (attrCol && attrVal !== "") {
+      const val = r.values[attrCol] ?? null;
+      if (attrVal === "__MISSING__") {
+        if (val !== null) return false;
+      } else if (val !== attrVal) {
+        return false;
+      }
+    }
+    if (searchLower) {
+      if (r.caseId.toLowerCase().includes(searchLower)) return true;
+      for (const v of Object.values(r.extraIds)) {
+        if (v && v.toLowerCase().includes(searchLower)) return true;
+      }
+      for (const v of Object.values(r.values)) {
+        if (v && v.toLowerCase().includes(searchLower)) return true;
+      }
+      return false;
+    }
+    return true;
+  });
+
+  const totalFiltered = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+  const page = Math.min(totalPages, Math.max(1, opts.page ?? 1));
+  const start = (page - 1) * pageSize;
+  const respondents = filtered.slice(start, start + pageSize);
+
+  return {
+    dsId,
+    parquetFile: bundle.parquetFile,
+    parquetMtimeMs: bundle.parquetMtimeMs,
+    loaderKind: bundle.loaderKind,
+    isspRuntimeMapped: bundle.isspRuntimeMapped,
+    nRespondents: bundle.nRespondents,
+    nRows: bundle.nRows,
+    nQuestions: bundle.nQuestions,
+    extraIdCols: bundle.extraIdCols,
+    hasCountry: bundle.hasCountry,
+    nAttributes: bundle.nAttributes,
+    uniquePersonasWithCountry: bundle.uniquePersonasWithCountry,
+    uniquePersonasWithoutCountry: bundle.uniquePersonasWithoutCountry,
+    avgAttrsPresent: bundle.avgAttrsPresent,
+    minAttrsPresent: bundle.minAttrsPresent,
+    maxAttrsPresent: bundle.maxAttrsPresent,
+    completeCount,
+    incompleteCount,
+    attributes: bundle.attributes,
+    totalFiltered,
+    page,
+    pageSize,
+    totalPages,
+    respondents,
+  };
+}
+
+export async function getRespondentQuestions(
+  dsId: string,
+  caseId: string,
+  limit = 50
+): Promise<RespondentQuestionsPayload> {
+  const csvPath = await resolveDatasetCsvPath(dsId);
+  const datasetDir = path.dirname(csvPath);
+  const safeLimit = Math.min(200, Math.max(1, Math.floor(limit)));
+  const { stdout } = await execFileAsync(
+    PYTHON_BIN,
+    [
+      INSPECT_PERSONAS_SCRIPT,
+      "--dataset-dir",
+      datasetDir,
+      "--mode",
+      "questions",
+      "--caseid",
+      caseId,
+      "--limit",
+      String(safeLimit),
+    ],
+    { maxBuffer: 32 * 1024 * 1024 }
+  );
+  const parsed = JSON.parse(stdout) as Omit<RespondentQuestionsPayload, "dsId">;
+  return { dsId, ...parsed };
 }

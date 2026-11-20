@@ -1,5 +1,7 @@
 export type SchemaKind = "question_audit" | "question_bank";
 
+export type WorkspaceTab = "questions" | "personas";
+
 export type TriageMode =
   | "suspects"
   | "unsaved"
@@ -20,6 +22,7 @@ export interface QuestionOverride {
 
 export interface InitialViewState {
   hasParams: boolean;
+  tab?: WorkspaceTab;
   rowKey?: string;
   mode?: TriageMode;
   skip?: boolean;
@@ -122,4 +125,104 @@ export interface DatasetPayload {
   studyContexts: Record<string, ContextCandidate[]>;
   overrides: Record<string, QuestionOverride>;
   tags: Record<string, string[]>;
+}
+
+export interface PersonaLevelStat {
+  value: string;
+  count: number;
+  pct: number;
+  inGlobalLevels: boolean | null;
+}
+
+export interface PersonaAttributeSummary {
+  col: string;
+  promptLabel: string;
+  source: "global" | "extra";
+  isCountry: boolean;
+  nPresent: number;
+  nMissing: number;
+  pctPresent: number;
+  nLevels: number;
+  levels: PersonaLevelStat[];
+}
+
+export interface PersonaRespondentRow {
+  caseId: string;
+  extraIds: Record<string, string | null>;
+  nQuestions: number;
+  nPresent: number;
+  nPresentNoCountry: number;
+  values: Record<string, string | null>;
+  rawValues?: Record<string, string | null>;
+}
+
+export interface PersonaSummaryBundle {
+  parquetFile: string;
+  parquetMtimeMs: number;
+  loaderKind: "build_persona_dataset" | "build_long_records";
+  isspRuntimeMapped: boolean;
+  nRespondents: number;
+  nRows: number;
+  nQuestions: number;
+  extraIdCols: string[];
+  hasCountry: boolean;
+  nAttributes: number;
+  uniquePersonasWithCountry: number;
+  uniquePersonasWithoutCountry: number;
+  avgAttrsPresent: number;
+  minAttrsPresent: number;
+  maxAttrsPresent: number;
+  attributes: PersonaAttributeSummary[];
+  respondents: PersonaRespondentRow[];
+}
+
+export type PersonaCompletenessFilter = "all" | "complete" | "incomplete";
+
+export interface PersonasPagePayload {
+  dsId: string;
+  parquetFile: string;
+  parquetMtimeMs: number;
+  loaderKind: "build_persona_dataset" | "build_long_records";
+  isspRuntimeMapped: boolean;
+  nRespondents: number;
+  nRows: number;
+  nQuestions: number;
+  extraIdCols: string[];
+  hasCountry: boolean;
+  nAttributes: number;
+  uniquePersonasWithCountry: number;
+  uniquePersonasWithoutCountry: number;
+  avgAttrsPresent: number;
+  minAttrsPresent: number;
+  maxAttrsPresent: number;
+  completeCount: number;
+  incompleteCount: number;
+  attributes: PersonaAttributeSummary[];
+  totalFiltered: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  respondents: PersonaRespondentRow[];
+}
+
+export interface RespondentQuestionSample {
+  qid: string;
+  v: string;
+  label: string | null;
+  type: string;
+  question: string;
+  optionCodes: number[];
+  optionTexts: string[];
+  optionDescriptions: (string | null)[] | null;
+  answerCode: number;
+  answerText: string;
+  answerIdx: number;
+  arm: string | null;
+}
+
+export interface RespondentQuestionsPayload {
+  dsId: string;
+  caseId: string;
+  totalQuestions: number;
+  questions: RespondentQuestionSample[];
 }

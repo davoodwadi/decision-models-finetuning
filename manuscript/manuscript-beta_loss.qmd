@@ -171,9 +171,9 @@ Using learned affine projections $(\mathbf{W}_q, \mathbf{b}_q)$ and $(\mathbf{W}
 $$
 z_{t,k}(\mathbf{s}_t; \theta) = \frac{\big(\mathbf{W}_q \mathbf{h}^{\mathrm{dec}}_t(\mathbf{s}_t) + \mathbf{b}_q\big)^\top \big(\mathbf{W}_k \mathbf{h}_{t,k}(\mathbf{s}_t) + \mathbf{b}_k\big)}{\sqrt{d_{\mathrm{head}}}}.
 $$ {#eq-pointer-head}
-Applying a softmax function with readout temperature $T > 0$ yields the normalized choice probability vector $\mathbf{p}_t(\theta) = (p_{t,1}(\theta), \dots, p_{t,K_t}(\theta))^\top$ in a single pass:
+Applying a softmax function yields the normalized choice probability vector $\mathbf{p}_t(\theta) = (p_{t,1}(\theta), \dots, p_{t,K_t}(\theta))^\top$ in a single pass:
 $$
-p_{t,k}(\theta) = P_{\mathrm{model}}(Y_t = k \mid \mathbf{s}_t; \theta) = \frac{\exp\!\big(z_{t,k}(\mathbf{s}_t; \theta) / T\big)}{\sum_{m=1}^{K_t} \exp\!\big(z_{t,m}(\mathbf{s}_t; \theta) / T\big)}.
+p_{t,k}(\theta) = P_{\mathrm{model}}(Y_t = k \mid \mathbf{s}_t; \theta) = \frac{\exp\!\big(z_{t,k}(\mathbf{s}_t; \theta)\big)}{\sum_{m=1}^{K_t} \exp\!\big(z_{t,m}(\mathbf{s}_t; \theta)\big)}.
 $$ {#eq-model-pmf}
 When respondent choices $\mathbf{y}_t$ are observed, model parameters $\theta$ can be supervised directly via mini-batch cross-entropy over a sampled task batch $S \subset \{1, \dots, N\}$:
 $$
@@ -183,7 +183,7 @@ $$ {#eq-resp-ce}
 **Population OLS operators and published targets.**
 Concatenating option probabilities across all $N$ tasks in a study yields the flat vector $\mathbf{p}(\theta) = (\mathbf{p}_1(\theta)^\top, \dots, \mathbf{p}_N(\theta)^\top)^\top \in [0, 1]^M$, where $M = \sum_{t=1}^N K_t$, with corresponding stacked human choices $\mathbf{y} \in \{0, 1\}^M$.
 Any linear econometric specification estimated on the study can be written over $R$ regression rows via a full-column-rank design matrix $\mathbf{X} \in \mathbb{R}^{R \times c}$ (comprising an intercept, any nuisance controls, and $d$ focal treatment columns indexed by $\mathcal{T} \subset \{1, \dots, c\}$) and a fixed sparse weight matrix $\mathbf{W} \in \mathbb{R}^{R \times M}$ that maps option probabilities to regression outcomes $\mathbf{W}\mathbf{p}(\theta) \in \mathbb{R}^R$ (e.g., selecting each displayed profile's choice probability in conjoint average marginal component effects or the healthier item's choice probability in a randomized trial).
-Dividing by the human outcome standard deviation $\sigma > 0$ places coefficients across studies on a common dimensionless scale.
+For training, dividing by the human outcome standard deviation $\sigma > 0$ places coefficients across studies on a common dimensionless scale.
 Using the Moore-Penrose pseudoinverse $\mathbf{X}^\dagger = (\mathbf{X}^\top \mathbf{X})^{-1}\mathbf{X}^\top$, define the fixed standardized population slope operator:
 $$
 \mathbf{B} = \frac{1}{\sigma} \big(\mathbf{X}^\dagger\big)_{\mathcal{T}, :} \mathbf{W} \in \mathbb{R}^{d \times M},
@@ -213,82 +213,78 @@ $$
 $$ {#eq-cross-loss}
 Up to negligible $\mathcal{O}(1/N)$ finite-population sampling covariance without replacement, $\hat{\boldsymbol{\beta}}_1(\theta)$ and $\hat{\boldsymbol{\beta}}_2(\theta)$ are independent unbiased estimators of $\boldsymbol{\beta}(\theta)$, implying $\mathbb{E}[\mathcal{L}_{\beta\text{-cross}}(\theta; S_1, S_2)] = \mathcal{L}_{\mathrm{pop}}(\theta)$ and $\mathbb{E}[\nabla_\theta \mathcal{L}_{\beta\text{-cross}}(\theta; S_1, S_2)] = \nabla_\theta \mathcal{L}_{\mathrm{pop}}(\theta)$ (individual step realizations of @eq-cross-loss may be negative).
 
-**Entropy anchoring across training regimes.**
+**KL anchoring across training regimes.**
 Because $d \ll M$, minimizing @eq-cross-loss alone constrains only $d$ linear projections of $\mathbf{p}(\theta)$ and leaves the $(M - d)$-dimensional nullspace $\ker(\mathbf{B})$ unconstrained.
-Without an entropy anchor, prolonged optimization can sharpen logits along unconstrained directions, driving task probabilities toward zero or one while maintaining $\mathbf{B}\mathbf{p}(\theta) \approx \boldsymbol{\beta}^*$ and inflating out-of-sample treatment-effect magnitudes.
-In the table-only regime, where no microdata is available for any study, we regularize predicted probabilities toward the frozen base distribution $\mathbf{p}_{0,t}$ via a forward KL penalty with weight $\alpha > 0$:
+Without regularization along those unconstrained directions, prolonged optimization can sharpen option logits and push task probabilities toward zero or one while still maintaining $\mathbf{B}\mathbf{p}(\theta) \approx \boldsymbol{\beta}^*$, distorting choice uncertainty and destabilizing out-of-sample treatment-effect estimates.
+To stabilize table supervision without using any respondent choices, we anchor predicted probabilities on table-study tasks to the frozen base distribution $\mathbf{p}_{0,t}$ through a forward Kullback-Leibler (KL) divergence penalty:
 $$
-\mathcal{L}_{\mathrm{table}}(\theta; S) = \mathcal{L}_{\beta\text{-cross}}(\theta; S_1, S_2) + \alpha \, \frac{1}{|S|} \sum_{t \in S} \sum_{k=1}^{K_t} p_{0,t,k} \log \frac{p_{0,t,k}}{p_{t,k}(\theta)}.
+\mathcal{L}_{\mathrm{KL}}(\theta; S) = \frac{1}{|S|} \sum_{t \in S} \sum_{k=1}^{K_t} p_{0,t,k} \log \frac{p_{0,t,k}}{p_{t,k}(\theta)}.
+$$ {#eq-kl-anchor}
+Combining @eq-cross-loss and @eq-kl-anchor with slope weight $\lambda > 0$ and anchor weight $\alpha \ge 0$ yields the table-study objective:
+$$
+\mathcal{L}_{\mathrm{table}}(\theta; S) = \lambda \, \mathcal{L}_{\beta\text{-cross}}(\theta; S_1, S_2) + \alpha \, \mathcal{L}_{\mathrm{KL}}(\theta; S).
 $$ {#eq-table-loss}
-Evaluating the KL anchor requires zero additional forward passes because $\mathbf{p}_{0,t}$ is already stored in memory, and its logit gradient $\mathbf{p}_t(\theta) - \mathbf{p}_{0,t}$ prevents probabilities from collapsing onto zero or one.
-In the hybrid regime, where in-house choice microdata $\mathcal{D}_{\mathrm{micro}}$ is paired with external table-only studies $\mathcal{D}_{\mathrm{table}}$, we interleave single-study mini-batches and jointly minimize respondent-level CE on $\mathcal{D}_{\mathrm{micro}}$ alongside weighted population-$\boldsymbol{\beta}$ supervision ($\lambda > 0$) on $\mathcal{D}_{\mathrm{table}}$:
+Evaluating @eq-kl-anchor requires zero additional forward passes because $\mathbf{p}_{0,t}$ is already stored in memory for @eq-cv-beta.
+Furthermore, $\mathcal{L}_{\mathrm{KL}}(\theta; S)$ is convex in the option logits with per-task logit gradient $\mathbf{p}_t(\theta) - \mathbf{p}_{0,t}$, which smoothly pulls drifting probabilities back toward $\mathbf{p}_{0,t}$ and prevents collapse onto zero or one.
+
+In the table-only regime, where no microdata is available for any study, we minimize @eq-table-loss directly over mini-batches drawn from the table study.
+In the hybrid regime, where in-house choice microdata $\mathcal{D}_{\mathrm{micro}}$ is paired with external table-only studies $\mathcal{D}_{\mathrm{table}}$, we interleave single-study mini-batches across both sources and minimize respondent-level CE on $\mathcal{D}_{\mathrm{micro}}$ alongside the same anchored table loss @eq-table-loss on $\mathcal{D}_{\mathrm{table}}$:
 $$
-\mathcal{L}_{\mathrm{hybrid}}(\theta; S) = \mathbb{I}(S \subset \mathcal{D}_{\mathrm{micro}}) \, \mathcal{L}_{\mathrm{CE}}(\theta; S) + \mathbb{I}(S \subset \mathcal{D}_{\mathrm{table}}) \, \lambda \, \mathcal{L}_{\beta\text{-cross}}(\theta; S_1, S_2).
+\mathcal{L}_{\mathrm{hybrid}}(\theta; S) = \mathbb{I}(S \subset \mathcal{D}_{\mathrm{micro}}) \, \mathcal{L}_{\mathrm{CE}}(\theta; S) + \mathbb{I}(S \subset \mathcal{D}_{\mathrm{table}}) \, \mathcal{L}_{\mathrm{table}}(\theta; S).
 $$ {#eq-hybrid-loss}
-Under @eq-hybrid-loss, $\mathcal{L}_{\mathrm{CE}}$ calibrates global logit scale and choice uncertainty to empirical human randomness, while $\mathcal{L}_{\beta\text{-cross}}$ transfers missing attribute trade-offs from external regression tables.
+Under @eq-hybrid-loss, $\mathcal{L}_{\mathrm{CE}}$ calibrates choice uncertainty on the microdata domain, $\mathcal{L}_{\beta\text{-cross}}$ transfers missing attribute trade-offs from external regression tables, and the KL anchor directly regularizes the unconstrained nullspace of the external table study's tasks while keeping table supervision uniform across regimes.
+Setting $\alpha = 0$ removes the KL anchor in either regime, enabling a direct ablation of whether the anchor is needed when training on a table alone or alongside microdata.
 
-# Survey Training and Validation {#sec-training}
+# Experimental setup {#sec-setup}
 
+**Studies and split roles.**
+We evaluate the framework across five published US choice studies spanning distinct domains with no domain overlap between training and evaluation (@tbl-datasets).
+Two studies serve as training data.
+The first, `Electricity` [@wu2025partisan\; 1,861 respondents, 18,591 choices], is a paired electricity-plan conjoint experiment varying monthly bill (`$105` to `$125`), renewable-energy share (`10%` to `100%`), and local renewable production (`No` or `Yes`), yielding $d = 8$ OLS average marginal component effects (AMCEs).
+Because @wu2025partisan displays these eight AMCEs graphically in Figure 3 rather than in a printed numerical table, we reproduce the eight slopes using the study's published OLS specification and divide by the outcome standard deviation $\sigma$ to stand in for a published regression table; in table-supervised regimes, all 18,591 respondent choices are strictly withheld from the loss and gradients.
+The second training study, `Drones` [@berke2023drone\; 3,625 respondents, 36,297 choices], is a discrete-choice experiment on drone versus ground delivery across four vendor contexts varying delivery fee (`$0` to `$10`), wait time, and drone privacy, with no sustainability attribute.
+In our design, `Drones` represents in-house respondent microdata and enters training only through @eq-resp-ce.
 
-**Survey microdata and question split.**
-We construct a harmonized training corpus from two public US survey microdata sources (@tbl-datasets).
-The first comprises $10$ consecutive US waves of the International Social Survey Programme (`US ISSP`, 2015 to 2024; @apptbl-issp-waves), spanning modules on work, government, social networks, religion, inequality, the environment, health, family, national identity, and digital societies (767,484 responses from 14,356 respondents across $616$ questions).
-The second is the `Twin-2K-500` panel [@toubia2025database], covering psychological, economic, and behavioral items (1,127,649 responses from 2,058 participants across $974$ questions).
-Combined, the corpus contains 1,895,133 responses from 16,414 respondents across 1,590 questions ($761$ Likert `score` items and $829$ categorical `choice` items).
-We partition the corpus strictly by question into 1,572 training items (1,881,950 observations) and $18$ unseen validation items (13,183 observations across $4$ `US ISSP` and $14$ `Twin-2K-500` questions).
+Three unseen studies serve as out-of-domain benchmarks separated by both split role and attribute overlap with training (@tbl-datasets).
+`Flights` [@goldfarb2026comfort\; 1,000 respondents, 5,000 choices, 12 OLS AMCEs] is a paired airline-ticket conjoint experiment varying ticket price (`$250` to `$325`), sustainable aviation fuel, airline, baggage, legroom, and seat selection.
+We designate `Flights` as the shared-attribute validation set, using it to select every training run's checkpoint and to judge the KL-anchor ablation so that held-out test sets never inform modeling choices.
+`Flights` therefore differs from the held-out test sets both because it selects checkpoints and because it shares the core price-versus-sustainability trade-off with `Electricity` (and small delivery fees with `Drones`), alongside four flight-specific attributes.
+The two strictly held-out zero-shot benchmarks are disjoint-attribute tests whose attributes have no overlap with training: `Food labels` [@grummon2025nutrition\; 5,633 respondents, 33,798 choices, 5 OLS arm contrasts], a six-arm front-of-package nutrition-labeling randomized trial measuring healthier-product identification relative to the positive-label control, and `Vaccines` [@kreps2020factors\; 1,971 respondents, 9,855 choices, 11 OLS AMCEs], a three-option COVID-19 vaccine conjoint experiment (two vaccine profiles plus an opt-out option) varying efficacy, duration, side effects, FDA authorization, country of origin, and endorsements.
+Neither `Food labels` nor `Vaccines` is used during training, hyperparameter tuning, or checkpoint selection, and neither includes price or sustainability attributes.
 
-**Harmonized persona attributes.**
-Respondents are represented by up to $17$ harmonized demographic and attitudinal attributes (@apptbl-attributes).
-Eleven attributes appear in both surveys (sex, age, education, religion, religious attendance, political ideology, marital status, main activity, political party, household income, and US census region), four appear only in `US ISSP` (prior voting, urban-rural residence, union membership, and ancestry), and two appear only in `Twin-2K-500` (race and household size).
-The 16,414 respondents span 16,338 distinct full-persona configurations, and unrecorded attributes for any respondent are omitted from the state prompt.
+| Dataset | Study | Role | Shared attributes (price, sustainability) | Other study attributes | Respondents | Choices | OLS slopes |
+|:---|:---|:---|:---|:---|---:|---:|---:|
+| Electricity | @wu2025partisan | Training (OLS slopes or microdata) | Monthly bill (`$105` to `$125`), renewable share (`10%` to `100%`), local renewables | None | 1,861 | 18,591 | 8 |
+| Drones | @berke2023drone | Training (microdata) | Delivery fee (`$0` to `$10`); no sustainability | Wait time, drone privacy | 3,625 | 36,297 | n/a |
+| Flights† | @goldfarb2026comfort | Shared-attribute validation | Ticket price (`$250` to `$325`), sustainable aviation fuel | Airline, baggage, legroom, seat | 1,000 | 5,000 | 12 |
+| Food labels | @grummon2025nutrition | Disjoint-attribute test | None | Front-of-package warning labels (6 arms) | 5,633 | 33,798 | 5 |
+| Vaccines | @kreps2020factors | Disjoint-attribute test | None | Efficacy, duration, side effects, FDA, origin, endorsements | 1,971 | 9,855 | 11 |
 
-**Decision models and optimization.**
-We evaluate the `Kev` decision-model family [@palmer2026kev; @gao2026choicesfewerdecisionsordinalscale] across three scales (`Kev 0.8B`, `Kev 4B`, and `Kev 9B`), comparing each off-the-shelf `base` checkpoint against its fine-tuned `FT` counterpart.
-Each base model is trained in `bfloat16` precision using Low-Rank Adaptation (`LoRA`, rank $r = 64$, $\alpha = 128$) across all linear backbone projections alongside the trainable decision head.
-We optimize @eq-resp-ce using AdamW (peak learning rate $5 \times 10^{-5}$, weight decay $0.01$, a $10\%$ cosine warmup with cosine decay, and gradient clipping at $1.0$).
-Throughout training and held-out evaluation, validation cross-entropy is computed against observed individual one-hot responses $\mathbf{y}_{i,q}$ under respondent $i$'s full persona $\mathbf{s}_i$, and the lowest-validation-loss checkpoint is selected.
-At evaluation, off-the-shelf models use their released calibration temperatures ($T = 2.35$ for `0.8B`, $T = 2.41$ for `4B`, and $T = 2.19$ for `9B`), whereas all fine-tuned models use unit temperature ($T = 1.00$) without post-hoc tuning.
-
-| Split | Dataset | Attributes | Questions | Likert (`score`) | Categorical (`choice`) | Respondents | Observations |
-|:---|:---|---:|---:|---:|---:|---:|---:|
-| Training | US ISSP (2015 to 2024) | 15 | 612 | 470 | 142 | 14,356 | 760,473 |
-| Training | Twin-2K-500 | 13 | 960 | 287 | 673 | 2,058 | 1,121,477 |
-| Training | Combined | 17 | 1,572 | 757 | 815 | 16,414 | 1,881,950 |
-| Validation | US ISSP (2015 to 2024) | 15 | 4 | 4 | 0 | 1,827 | 7,011 |
-| Validation | Twin-2K-500 | 13 | 14 | 0 | 14 | 2,058 | 6,172 |
-| Validation | Combined | 17 | 18 | 4 | 14 | 3,885 | 13,183 |
-| Held-out study | COVID-19 vaccine conjoint (full / eval subsample) | 9 | 5 / 5 | 0 | 5 / 5 | 1,971 / 200 | 9,855 / 1,000 |
-| Held-out study | Nutrition labeling RCT (full / eval subsample) | 13 | 36 / 36 | 0 | 36 / 36 | 5,633 / 200 | 33,798 / 1,200 |
-
-: Summary of the survey training corpus, validation split, and held-out evaluation studies {#tbl-datasets}
+: Summary of training, validation, and held-out test datasets {#tbl-datasets}
 
 ::: {custom-style="Table Note"}
-*Note.* Training and validation splits partition the harmonized `US ISSP` (10 waves, 2015 to 2024) and `Twin-2K-500` [@toubia2025database] microdata strictly by survey question. Held-out study rows report `full / evaluation subsample` counts for Study 1 [@kreps2020factors; @wang2026large] and Study 2 [@grummon2025nutrition].
+*Note.* Shorthand labels in the first column are used throughout all tables and figures. Shared attributes highlight price and sustainability dimensions that overlap between training and evaluation, whereas other study attributes are unique to each benchmark. Training regimes append the supervision format in parentheses: microdata trains on respondent choices via cross-entropy (@eq-resp-ce), whereas OLS slopes trains on the eight published-specification OLS slopes of @wu2025partisan via @eq-table-loss while withholding all 18,591 respondent choices. OLS slopes reports the number of population regression slopes used in training or evaluation (n/a for `Drones`, which enters training only as microdata). † `Flights` [@goldfarb2026comfort] is the shared-attribute validation set used to select each run's checkpoint and to judge the KL-anchor ablation.
 :::
 
-## Held-Out Survey Validation
+**Data-access regimes.**
+Across every model scale, we compare six main regimes spanning the data-access ladder.
+`Untrained` evaluates the off-the-shelf decision model without fine-tuning ($0$ steps).
+`Electricity (OLS slopes)` trains solely on the eight @wu2025partisan OLS slopes using the anchored table objective @eq-table-loss ($\lambda = 1.0$, $\alpha = 0.005$, 1,395 steps over $3$ epochs) without using respondent choices, whereas `Electricity (microdata)` trains via @eq-resp-ce on all 18,591 @wu2025partisan choices (1,395 steps) to provide a matched within-study microdata reference.
+`Drones (microdata)` trains via @eq-resp-ce on the 36,297 @berke2023drone choices (2,730 steps), representing a researcher's proprietary microdata baseline.
+`Drones (microdata) + Electricity (OLS slopes)` applies the anchored hybrid objective @eq-hybrid-loss ($\lambda = 1.0$, $\alpha = 0.005$, 4,125 steps) to combine in-house `Drones` microdata with external `Electricity` OLS slopes, and `Drones + Electricity (microdata)` pools respondent choices across both training studies under @eq-resp-ce (4,125 steps) as a full-microdata reference.
+To isolate the effect of KL anchoring, we additionally run unanchored counterparts ($\alpha = 0$) of both `Electricity (OLS slopes)` and `Drones (microdata) + Electricity (OLS slopes)` under identical optimization settings, together with a sensitivity sweep over $\alpha$ on `Electricity (OLS slopes)`, evaluated strictly on the `Flights` validation set.
 
-Off-the-shelf decision models exhibit high cross-entropy on the $18$ unseen validation questions, and larger models do not reliably perform better (`2.4262` bits on `Kev 0.8B`, `2.3586` bits on `Kev 4B`, and `2.3983` bits on `Kev 9B`; @tbl-validation and @fig-validation-curves).
-Distributional fine-tuning reduces held-out validation cross-entropy by $26.0\%$ to $27.5\%$ and improves accuracy steadily with model scale, reaching `1.7963` bits on `Kev 0.8B` ($0.34$ epochs), `1.7431` bits on `Kev 4B` ($0.67$ epochs), and `1.7377` bits on `Kev 9B` ($0.60$ epochs).
-Most of the reduction occurs within the first $0.10$ epochs as the decision head adapts to subjective response distributions, followed by steady gains from persona conditioning.
+**Models, optimization, and evaluation metrics.**
+We evaluate the open-weight `KEV` decision-model family [@palmer2026kev; @gao2026choicesfewerdecisionsordinalscale] across three scales (`KEV-0.8B`, `KEV-4B`, and `KEV-9B`).
+Each base checkpoint is loaded in `bfloat16` precision and adapted with Low-Rank Adaptation (LoRA, rank $r = 64$, scaling $\alpha_{\mathrm{LoRA}} = 128$, dropout $0.05$) across all linear backbone projections alongside the trainable decision head.
+All fine-tuned regimes use identical optimization settings across model scales: AdamW with a peak learning rate of $5 \times 10^{-6}$, a OneCycle learning-rate schedule with a $10\%$ warmup and cosine decay, weight decay $0.01$, gradient-norm clipping at $1.0$, mini-batch size $|S| = 40$ tasks, random seed $42$, and $3$ epochs.
+Within each epoch, tasks are partitioned into single-study mini-batches (and, for `Drones`, single-vendor mini-batches) of $40$ tasks and interleaved in shuffled order, merging any one-task remainder on a table study into another batch so every split cross-loss step satisfies $|S| \ge 2$.
+To compute exact gradients of @eq-table-loss within GPU memory limits, each table-study step uses a two-pass micro-chunked procedure (a first no-gradient pass collects option logits across micro-chunks to evaluate @eq-table-loss and its logit gradients, and a second pass replays identical dropout states to backpropagate those gradients), whereas microdata steps accumulate exact additive cross-entropy gradients in a single pass.
 
-| Model | Base valid CE | FT valid CE | Valid CE change | Best ckpt (epoch) |
-|:---|---:|---:|---:|---:|
-| Kev 0.8B | 2.4262 | 1.7963 | -26.0% | 0.34 |
-| Kev 4B | 2.3586 | 1.7431 | -26.1% | 0.67 |
-| Kev 9B | 2.3983 | 1.7377 | -27.5% | 0.60 |
-
-: Choice cross-entropy on the held-out survey validation split {#tbl-validation}
-
-::: {custom-style="Table Note"}
-*Note.* Cross-entropy (CE) is reported in bits ($\log_2$) across 13,183 observations on 18 unseen `US ISSP` and `Twin-2K-500` items. Off-the-shelf (`Base`) models use released calibration temperatures ($T = 2.35$, $2.41$, and $2.19$); fine-tuned (`FT`) models use unit temperature ($T = 1.00$) at the lowest-validation-CE checkpoint and at Epoch 1 completion.
-:::
-
-![Epoch 1 validation cross-entropy trajectories across model scales](figures/validation_trajectories.png){#fig-validation-curves width=68%}
-
-::: {custom-style="Table Note"}
-*Note.* Cross-entropy (in bits) across Epoch 1 on the held-out survey validation split (18 unseen `US ISSP` and `Twin-2K-500` questions, *n* = 13,183; evaluated every 50 steps on `0.8B` and `9B` and every 200 steps on `4B`). Circles denote the selected lowest-validation-CE checkpoint for each scale.
-:::
+Every run is validated on `Flights` every $32$ optimization steps ($1,280$ training tasks), as well as at step $0$ and the final step, and the checkpoint attaining the lowest validation population slope MSE is selected for test evaluation.
+Whereas training standardizes table targets by $\sigma$ in @eq-pop-operator and @eq-pop-mse, all validation and held-out test metrics compare unstandardized population OLS slopes $\tilde{\boldsymbol{\beta}}(\theta) = (\mathbf{X}^\dagger)_{\mathcal{T},:}\mathbf{W}\mathbf{p}(\theta)$ against the corresponding human OLS slopes $\tilde{\boldsymbol{\beta}}^{\mathrm{human}} = (\mathbf{X}^\dagger)_{\mathcal{T},:}\mathbf{W}\mathbf{y}$ in each study's native probability-point units.
+Our primary metric across all benchmarks is unstandardized population slope MSE, $\frac{1}{d}\lVert \tilde{\boldsymbol{\beta}}(\theta) - \tilde{\boldsymbol{\beta}}^{\mathrm{human}} \rVert_2^2$ (reported multiplied by $10^3$).
+As a secondary individual-level diagnostic reported in the Web Appendix, we compute choice-distribution KL divergence (Choice KL), defined as the mean negative natural log probability $-\frac{1}{N}\sum_{t=1}^N \sum_{k=1}^{K_t} y_{t,k} \log p_{t,k}(\theta)$ in nats across all tasks in a study.
 
 # Study 1: Choice-Based Conjoint Analysis {#sec-study1}
 
