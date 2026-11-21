@@ -137,6 +137,15 @@ DATASET_PERSONA_COLS = {
         "EDULEVEL",
         "US_INC",
     ],
+    "magistro2025": [  # decisions in magistro2025/DECISIONS.md (US + Canada YouGov samples)
+        "c_alphan",
+        "US_REG",
+        "SEX",
+        "AGE",
+        "EDULEVEL",
+        "US_INC",
+        "US_PRTY",
+    ],
     "wvs": [
         "c_alphan",
         "SEX",
@@ -280,6 +289,16 @@ KANTOROWICZ2026_COL_TO_PERSONA = {
     "income_dummy": "US_INC",
 }
 
+# magistro2025 (Magistro et al. 2025, AI & offshoring conjoint; US + Canada YouGov samples).
+# Decisions in `magistro2025/DECISIONS.md`.
+MAGISTRO2025_COL_TO_PERSONA: dict[str, str] = {
+    "gender": "SEX",
+    "age_group": "AGE",
+    "education": "EDULEVEL",
+    "income": "US_INC",
+    "party": "US_PRTY",  # without US leaners (prefer over `party2`, matching kriner2026 & wu2025)
+}
+
 TWIN2K_QID_TO_PERSONA = {
     "QID11": "US_REG",
     "QID12": "SEX",
@@ -339,7 +358,7 @@ LEFT_RIGHT_LEVELS = [   # WVS Q240 left-right self-placement; each label says wh
 ]
 
 GLOBAL_PERSONA_LEVELS = {
-    "c_alphan": ["United States"],
+    "c_alphan": ["United States", "Canada"],
     "SEX": ["Male", "Female", "Non-binary", "Other", "Prefer not to say"],  # last two: answers offered by some surveys
     "AGE": [
         "18-29", "30-49", "50-64", "65+",
@@ -349,8 +368,15 @@ GLOBAL_PERSONA_LEVELS = {
         "65 - 74 years", "75 - 84 years", "85 or older",
         # kantorowicz2026 `age_dummy` (binary age split; numeric cutoff not documented)
         "Older", "Younger",
+        # magistro2025 `age_group` (30-44 and 45-64 cross AGE_BINS)
+        "30-44", "45-64",
     ],
-    "US_REG": ["Northeast", "Midwest", "South", "West"],
+    "US_REG": [
+        "Northeast", "Midwest", "South", "West",
+        # magistro2025 Canada `GeoPC_Region1` (provinces/territories)
+        "Alberta", "British Columbia", "Manitoba", "New Brunswick", "Newfoundland and Labrador",
+        "Northwest Territories", "Nova Scotia", "Ontario", "Prince Edward Island", "Quebec", "Saskatchewan",
+    ],
     "EDULEVEL": [
         "Less than high school",
         "High school or some college",
@@ -359,6 +385,11 @@ GLOBAL_PERSONA_LEVELS = {
         # kantorowicz2026 `education_dummy` (binary education split; exact degree cutoff not documented)
         "Below higher education",
         "Higher education",
+        # magistro2025 `education` (4-level YouGov recode preserving College grad vs. Postgrad)
+        "High school or less",
+        "Some college",
+        "College graduate",
+        "Postgraduate",
     ],
     "RACE": [
         "White", "Black", "Asian", "Hispanic", "Other", "Other, Non-Hispanic", "Two plus, non-Hispanic",
@@ -417,6 +448,11 @@ GLOBAL_PERSONA_LEVELS = {
         "Other candidate",
         "Libertarian",
         "Green",
+        # magistro2025 `party` (US Independents+unaffiliated & Canada non-major/unaffiliated, plus Canadian parties)
+        "Other",
+        "Conservative Party of Canada",
+        "Liberal Party of Canada",
+        "New Democratic Party",
     ],
     # Union of all datasets' income brackets, ordered by amount: one level per distinct range (no merging). Identical
     # ranges share a level ("$50,000 to $74,999" = "$50,000-$75,000"); one format "$X - $Y". Levels overlap across datasets.
@@ -459,6 +495,10 @@ GLOBAL_PERSONA_LEVELS = {
         # kantorowicz2026 `income_dummy` (binary income split; dollar cutoff not documented)
         "Lower income",
         "Higher income",
+        # magistro2025 `income` (3-level split; dollar cutoffs not documented)
+        "Low",
+        "Middle",
+        "High",
     ],
     "PARTY_LR": [
         "Very liberal",
@@ -589,6 +629,7 @@ PERSONA_MAPS = {
         "berke2023": {"United States": "United States"},  # Prolific US residents; nobody chose "not in the US"
         "wu2025": {"United States": "United States"},  # non-US respondents removed by the authors
         "kantorowicz2026": {"United States": "United States"},  # quota-representative US sample (MSI/Savanta)
+        "magistro2025": {"US": "United States", "Canada": "Canada"},  # `countr` (US + Canada YouGov)
     },
     "SEX": {
         "issp": {"Male": "Male", "Female": "Female"},
@@ -602,6 +643,7 @@ PERSONA_MAPS = {
         "kriner2026": {1: "Male", 2: "Female", 3: "Prefer not to say"},
         "wu2025": {"Female": "Female", "Male": "Male"},  # `sex`; "" (no answer) -> NaN in the loader
         "kantorowicz2026": {"Female": "Female", "Male": "Male"},  # `gender_dummy`; NA -> NaN
+        "magistro2025": {"Man": "Male", "Woman": "Female", "Other": "Other"},  # `gender`; NA -> NaN
     },
     "AGE": {
         "twin2k": {
@@ -631,6 +673,12 @@ PERSONA_MAPS = {
         "kantorowicz2026": {  # `age_dummy`; NA -> NaN
             "Older": "Older",
             "Younger": "Younger",
+        },
+        "magistro2025": {  # `age_group`
+            "18 to 29": "18-29",
+            "30 to 44": "30-44",
+            "45 to 64": "45-64",
+            "65 or older": "65+",
         },
     },
     "US_REG": {
@@ -816,6 +864,23 @@ PERSONA_MAPS = {
             "Wisconsin": "Midwest",
             "Wyoming": "West",
         },
+        "magistro2025": {  # country-prefixed codes: US `region` (1..4) and Canada `GeoPC_Region1` (1..12)
+            "US:1": "Northeast",
+            "US:2": "Midwest",
+            "US:3": "South",
+            "US:4": "West",
+            "Canada:1": "Alberta",
+            "Canada:2": "British Columbia",
+            "Canada:3": "Manitoba",
+            "Canada:4": "New Brunswick",
+            "Canada:5": "Newfoundland and Labrador",
+            "Canada:6": "Northwest Territories",
+            "Canada:7": "Nova Scotia",
+            "Canada:9": "Ontario",
+            "Canada:10": "Prince Edward Island",
+            "Canada:11": "Quebec",
+            "Canada:12": "Saskatchewan",
+        },
     },
     "EDULEVEL": {
         "issp": {
@@ -896,6 +961,12 @@ PERSONA_MAPS = {
         "kantorowicz2026": {  # `education_dummy`; NA -> NaN
             "Below higher edu.": "Below higher education",
             "Higher edu.": "Higher education",
+        },
+        "magistro2025": {  # `education`
+            "HS or less": "High school or less",
+            "Some college": "Some college",
+            "College grad": "College graduate",
+            "Postgrad": "Postgraduate",
         },
     },
     # Select-all race questions (Covid, Kriner2026, berke2023, Grummon 2023/2025, wu2025) are first combined by
@@ -1163,6 +1234,14 @@ PERSONA_MAPS = {
             "Independent": "Independent",
             "Something else": "Something else",
         },
+        "magistro2025": {  # `party` (US + Canada; without US leaners)
+            "Democratic": "Democrat",
+            "Republican": "Republican",
+            "CPC": "Conservative Party of Canada",
+            "LPC": "Liberal Party of Canada",
+            "NDP": "New Democratic Party",
+            "Other": "Other",
+        },
     },
     "US_INC": {
         "issp": {
@@ -1253,6 +1332,11 @@ PERSONA_MAPS = {
         "kantorowicz2026": {  # `income_dummy`; NA -> NaN
             "Lower income": "Lower income",
             "Higher income": "Higher income",
+        },
+        "magistro2025": {  # `income`; NA -> NaN
+            "Low": "Low",
+            "Middle": "Middle",
+            "High": "High",
         },
     },
     "PARTY_LR": {
@@ -1566,6 +1650,23 @@ def apply_persona_mapping(df: pd.DataFrame, dataset: str) -> pd.DataFrame:
         if missing_cols:
             raise ValueError(f"kantorowicz2026: missing columns {missing_cols}")
         for src_col, attr in KANTOROWICZ2026_COL_TO_PERSONA.items():
+            df[attr] = df[src_col]
+    elif dataset == "magistro2025":
+        required_cols = ["countr", "region", "GeoPC_Region1", *MAGISTRO2025_COL_TO_PERSONA]
+        missing_cols = [c for c in required_cols if c not in df.columns]
+        if missing_cols:
+            raise ValueError(f"magistro2025: missing columns {missing_cols}")
+        df["c_alphan"] = df["countr"]
+        reg_keys: list[object] = []
+        for country, us_reg, ca_reg in zip(df["countr"], df["region"], df["GeoPC_Region1"], strict=True):
+            if country == "US":
+                reg_keys.append(f"US:{int(us_reg)}" if pd.notna(us_reg) else float("nan"))
+            elif country == "Canada":
+                reg_keys.append(f"Canada:{int(ca_reg)}" if pd.notna(ca_reg) else float("nan"))
+            else:
+                raise ValueError(f"magistro2025: unexpected countr value {country!r}")
+        df["US_REG"] = pd.Series(reg_keys, index=df.index, dtype=object)
+        for src_col, attr in MAGISTRO2025_COL_TO_PERSONA.items():
             df[attr] = df[src_col]
     elif dataset == "wvs":
         for src_col, attr in WVS_COL_TO_PERSONA.items():

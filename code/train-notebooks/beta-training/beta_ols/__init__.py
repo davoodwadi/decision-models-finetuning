@@ -12,7 +12,7 @@ No model or tokenizer dependency: tokenizing respondents into training items liv
 Population evaluation (evaluation): build_population_eval, flat_probs_from_predictions, compare_population_betas.
 """
 
-from beta_ols import berke2023, covid, grummon2023_calories, grummon2023_labels, grummon2025, kantorowicz2026, kriner2026, wu2025
+from beta_ols import berke2023, covid, grummon2023_calories, grummon2023_labels, grummon2025, kantorowicz2026, kriner2026, magistro2025, wu2025
 
 # Every dataset module, by name. Which ones are trained on, validated on, or tested on is decided in the notebook.
 DATASET_MODULES = {
@@ -26,5 +26,6 @@ DATASET_MODULES = {
         covid,
         grummon2025,
         kantorowicz2026,
+        magistro2025,
     )
 }
