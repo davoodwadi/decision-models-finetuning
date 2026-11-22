@@ -19,6 +19,8 @@ description: Use whenever drafting, editing, or reviewing manuscript prose, figu
 | Wang et al. (2026) and Leng et al. (2026) methods | post-inference adjustment, post-inference reweighting (on fixed model outputs using target-study human data) | conflating with training or post-training |
 | Simulated participants in surveys and market research (general) | synthetic respondents | silicon sampling, silicon samples |
 | Simulated choice outcomes in conjoint and discrete-choice experiments | synthetic choice data | silicon sampling, LLM-generated choice data (when covering decision models) |
+| The seven empirical data collections used for training, validation, and testing | dataset, datasets (training datasets, validation dataset, test datasets, held-out test datasets) | test benchmarks, benchmark studies, benchmark designs, validation set, bouncing between studies and datasets |
+| Full-sample human OLS reference estimates | human benchmark, human slope benchmark | reusing "benchmark" to mean test datasets |
 
 ## Rationale and enforcement rules
 
@@ -30,11 +32,13 @@ description: Use whenever drafting, editing, or reviewing manuscript prose, figu
 
 **Use off-the-shelf for every model prior to choice training.** Calling released generative LLMs or released KEV checkpoints "untrained" is technically vulnerable because those checkpoints were pretrained on large corpora or objective single-label benchmarks. Use "off-the-shelf" symmetrically across generative LLMs and released decision models (e.g., "off-the-shelf generative LLMs", "off-the-shelf decision models", "off-the-shelf baseline"). In all main-paper and appendix tables, axis labels, and legends comparing regimes, label the baseline regime `Off-the-shelf` rather than `Untrained` or `Base`.
 
-**Use unseen-study instead of bare zero-shot.** Marketing readers often associate "zero-shot" with zero-shot prompting (no in-context examples in the prompt) rather than out-of-study evaluation. Use "unseen-study" (e.g., "unseen-study transfer", "unseen-study population OLS MSE", "transfer to unseen studies") and explicitly state that no target-study training data is used.
+**Use unseen-study instead of bare zero-shot.** Marketing readers often associate "zero-shot" with zero-shot prompting (no in-context examples in the prompt) rather than out-of-study evaluation. Use "unseen-study" (e.g., "unseen-study transfer", "unseen-study evaluation", "transfer to unseen datasets") and explicitly state that no target-study training data is used.
 
 **Use train instead of align.** In AI research, "alignment" evokes safety and value alignment (RLHF) rather than econometric parameter estimation. Write "we train decision models before inference" rather than "we align models before inference."
 
 **Use reasoning effort for LLM thinking controls.** Refer to generative LLM thinking controls uniformly as "reasoning effort" (e.g., "increasing reasoning effort", "lower (off, min, low) and higher (on, high) reasoning effort") rather than "reasoning settings", "reasoning budgets", or "stronger reasoning."
+
+**Use dataset consistently for the seven empirical datasets.** Match `@tbl-datasets` (`Dataset`) across all prose, headings, tables, and notes: refer to our seven data collections as `training datasets`, `validation dataset`, and `test datasets` (or `held-out test datasets`). Never call test datasets `test benchmarks`, `benchmark studies`, or `benchmark designs`, and never call the validation dataset a `validation set`. Reserve `benchmark` strictly for the full-sample human slope benchmark ($\hat{\boldsymbol{\beta}}^{(g)}$) and pretrained objective single-label benchmarks. Reserve `study` or `studies` for published papers, literature citations, or general conceptual framing (e.g., `choice study`, `unseen-study transfer`).
 
 ## Concrete examples
 
@@ -53,8 +57,11 @@ RIGHT: Replacing human respondents with synthetic choice data from off-the-shelf
 
 WRONG: Section heading "## Microdata fine-tuning"
 RIGHT: Section heading "## Microdata choice training"
+
+WRONG: Our four unseen-study test benchmarks never enter training; Flights is a dedicated validation set.
+RIGHT: Our four held-out test datasets never enter training; Flights is a dedicated validation dataset.
 ```
 
 ## Verification before finishing edits
 
-**Audit edited text and plotting code.** After editing manuscript prose, table headers, figure labels, or notebook scripts that export tables or plots, search the modified files for forbidden terms (`fine-tun`, `untrained`, `zero-shot`, `align`, `post-training`, `reasoning setting`, `reasoning budget`, `silicon`) and verify that every match is either removed or an intentional internal reference (e.g., a checkpoint directory slug, `.bib` filename, or citation key that never appears in rendered text, tables, or plots). Always keep the `TERMINOLOGY GUIDE` comment block at the top of [manuscript/manuscript-training.qmd](../../../manuscript/manuscript-training.qmd) synchronized if the user ever revises a term.
+**Audit edited text and plotting code.** After editing manuscript prose, table headers, figure labels, or notebook scripts that export tables or plots, search the modified files for forbidden terms (`fine-tun`, `untrained`, `zero-shot`, `align`, `post-training`, `reasoning setting`, `reasoning budget`, `silicon`, `test benchmark`, `benchmark study`, `benchmark design`, `validation set`) and verify that every match is either removed or an intentional internal reference (e.g., a checkpoint directory slug, `.bib` filename, or citation key that never appears in rendered text, tables, or plots). Always keep the `TERMINOLOGY GUIDE` comment block at the top of [manuscript/manuscript-training.qmd](../../../manuscript/manuscript-training.qmd) synchronized if the user ever revises a term.

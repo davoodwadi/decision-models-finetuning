@@ -1,0 +1,63 @@
+% Web Appendix figure: full decision model input for one unseen-study task (Vaccines), drawn at 16.5 cm.
+% Row: covid:vax_choice:p509_p252, as rendered by code/data/base.py:make_view (include_country=False as in the paper's runs). Text is verbatim (no excerpts).
+% Build: pdflatex fig_input_vaccines.tex && pdftoppm -png -r 300 -singlefile fig_input_vaccines.pdf fig_input_vaccines
+\documentclass[tikz,border=2pt]{standalone}
+\input{style}
+
+\begin{document}
+\begin{tikzpicture}
+
+\node[note, font=\scriptsize\itshape] at (0,0) {Respondent and task};
+\node[note, font=\scriptsize\itshape] at (8.6,0) {Decision model input};
+
+\coordinate (inx) at (12.55,0);
+\node[rawtxt, text width=7.9cm, anchor=north west] (rs) at (0,-0.4) {%
+  \textit{Demographics} $\mathbf{s}_t$\\
+  Region = Northeast, Sex = Female, Age = 30-49, Education = Associate's degree,
+  Religion = Agnostic, Political ideology = Somewhat liberal, Political party = Independent,
+  Income = \$60,000 - \$79,999, Race = White};
+\node[fieldtxt, text width=7.7cm, anchor=north] (fs) at (rs.north -| inx) {%
+  \tok{<state>} Region: Northeast\\ Sex: Female\\ Age: 30-49\\ Education: Associate's degree\\
+  Religion: Agnostic\\ Political ideology: Somewhat liberal\\ Political party: Independent\\
+  Income: \$60,000 - \$79,999\\ Race: White};
+\rowboxes{rs}{fs}{b1}
+\node[rawtxt, text width=7.9cm, anchor=north west] (ri) at ($(b1)+(0,-0.15)$) {%
+  \textit{Screen text and question} $c_t$\\
+  As you may know, scientists around the world are working to develop a vaccine for Covid-19.
+  Please consider the hypothetical vaccines described below:\\[1pt]
+  If you had to choose, would you choose to get Vaccine A or Vaccine B, or would you choose not to be vaccinated?};
+\node[fieldtxt, text width=7.7cm, anchor=north] (fi) at (ri.north -| inx) {%
+  \tok{<q>} As you may know, scientists around the world are working to develop a vaccine for Covid-19.
+  Please consider the hypothetical vaccines described below:\\[1pt]
+  If you had to choose, would you choose to get Vaccine A or Vaccine B, or would you choose not to be vaccinated?};
+\rowboxes{ri}{fi}{b2}
+\node[rawtxt, text width=7.9cm, anchor=north west] (rc) at ($(b2)+(0,-0.15)$) {%
+  \textit{Options} ($K_t = 3$)\\[1pt]
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.85cm}@{\hspace{4pt}}>{\raggedright\arraybackslash}p{2.25cm}@{\hspace{4pt}}>{\raggedright\arraybackslash}p{2.25cm}@{}}
+                                                     & Vaccine A & Vaccine B \\ \hline
+  Efficacy (protection against severe symptoms)      & 90\%      & 70\% \\
+  Protection duration                                & 5 years   & 1 year \\
+  Risk of severe side effects (hospitalization or death) & 1 in 10,000 & 1 in 1,000,000 \\
+  Risk of mild side effects (flu-like symptoms)      & 1 in 30   & 1 in 10 \\
+  Government authorization                           & The vaccine has been approved and licensed by the US Food and Drug Administration. & The vaccine has been approved and licensed by the US Food and Drug Administration. \\
+  Vaccine origin                                     & United Kingdom & China \\
+  Recommended by                                     & President Donald Trump & World Health Organization \\
+  \end{tabular}\\[2pt]
+  Third option: I would choose not to get either vaccine};
+
+\node[fieldtxt, text width=7.7cm, anchor=north] (fc) at (rc.north -| inx) {%
+  \tok{<opt>} Vaccine A: Efficacy (protection against severe symptoms): 90\%; Protection duration: 5 years;
+  Risk of severe side effects (hospitalization or death): 1 in 10,000; Risk of mild side effects (flu-like symptoms): 1 in 30;
+  Government authorization: The vaccine has been approved and licensed by the US Food and Drug Administration.;
+  Vaccine origin: United Kingdom; Recommended by: President Donald Trump \tok{</opt>}\\[2pt]
+  \tok{<opt>} Vaccine B: Efficacy (protection against severe symptoms): 70\%; Protection duration: 1 year;
+  Risk of severe side effects (hospitalization or death): 1 in 1,000,000; Risk of mild side effects (flu-like symptoms): 1 in 10;
+  Government authorization: The vaccine has been approved and licensed by the US Food and Drug Administration.;
+  Vaccine origin: China; Recommended by: World Health Organization \tok{</opt>}\\[2pt]
+  \tok{<opt>} I would choose not to get either vaccine \tok{</opt>}\\[2pt]
+  \tok{<decide>}};
+\rowboxes{rc}{fc}{b3}
+
+
+\end{tikzpicture}
+\end{document}
