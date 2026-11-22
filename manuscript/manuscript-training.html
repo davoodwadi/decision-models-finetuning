@@ -336,7 +336,52 @@ Table&nbsp;1: Summary of training, validation, and held-out test datasets
 </section>
 <section id="models-training-protocol-and-evaluation" class="level2">
 <h2 class="anchored" data-anchor-id="models-training-protocol-and-evaluation">Models, training protocol, and evaluation</h2>
-<p>We evaluate the <code>KEV-0.8B</code>, <code>KEV-4B</code>, and <code>KEV-9B</code> open-weight decision models <span class="citation" data-cites="palmer2026kev gao2026choicesfewerdecisionsordinalscale">(<a href="#ref-gao2026choicesfewerdecisionsordinalscale" role="doc-biblioref">Gao et al. 2026</a>, <a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>, each loaded in <code>bfloat16</code> precision with unit temperature. Choice training updates LoRA adapters (rank <span class="math inline">\(r = 64\)</span>, scaling <span class="math inline">\(\alpha_{\mathrm{LoRA}} = 128\)</span>, dropout <span class="math inline">\(0.05\)</span>) across all linear backbone projections jointly with the trainable pointer head via <a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a>. Every trained run uses AdamW with a <span class="math inline">\(5 \times 10^{-6}\)</span> peak learning rate, a OneCycle schedule (<span class="math inline">\(10\%\)</span> warmup and cosine decay), weight decay <span class="math inline">\(0.01\)</span>, and gradient-norm clipping at <span class="math inline">\(1.0\)</span>. Training runs for <span class="math inline">\(3\)</span> epochs with mini-batch size <span class="math inline">\(|S| = 40\)</span> and random seed <span class="math inline">\(42\)</span>. Within each epoch, tasks are shuffled independently within each dataset (and within each vendor context in <code>Drones</code>), partitioned into single-dataset mini-batches, and interleaved randomly. We validate each run on <code>Flights</code> at step <span class="math inline">\(0\)</span>, every <span class="math inline">\(32\)</span> steps (<span class="math inline">\(1,280\)</span> tasks), and the final step, selecting the checkpoint with the lowest validation <span class="math inline">\(\mathrm{MSE}_\beta\)</span> (<a href="#eq-eval-mse" class="quarto-xref">Equation&nbsp;4</a>). Main-text results report <span class="math inline">\(\mathrm{MSE}_\beta\)</span> (<a href="#eq-eval-mse" class="quarto-xref">Equation&nbsp;4</a>) multiplied by <span class="math inline">\(10^3\)</span>. The Web Appendix reports held-out empirical cross-entropy in nats (<a href="#sec-methodology" class="quarto-xref">Section&nbsp;3</a>) alongside the off-the-shelf generative LLM protocol used in <a href="#fig-intro-off-the-shelf" class="quarto-xref">Figure&nbsp;1</a>.</p>
+<p>We evaluate the <code>KEV-0.8B</code>, <code>KEV-4B</code>, and <code>KEV-9B</code> open-weight decision models <span class="citation" data-cites="palmer2026kev">(<a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>, each loaded in <code>bfloat16</code> precision with unit temperature. Choice training updates LoRA adapters (rank <span class="math inline">\(r = 64\)</span>, scaling <span class="math inline">\(\alpha_{\mathrm{LoRA}} = 128\)</span>, dropout <span class="math inline">\(0.05\)</span>) across all linear backbone projections jointly with the trainable pointer head via <a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a>. Every trained run uses AdamW with a <span class="math inline">\(5 \times 10^{-6}\)</span> peak learning rate, a OneCycle schedule (<span class="math inline">\(10\%\)</span> warmup and cosine decay), weight decay <span class="math inline">\(0.01\)</span>, and gradient-norm clipping at <span class="math inline">\(1.0\)</span>. Training runs for <span class="math inline">\(3\)</span> epochs with mini-batch size <span class="math inline">\(|S| = 40\)</span> and random seed <span class="math inline">\(42\)</span>. Within each epoch, tasks are shuffled independently within each dataset (and within each vendor context in <code>Drones</code>), partitioned into single-dataset mini-batches, and interleaved randomly. We validate each run on <code>Flights</code> at step <span class="math inline">\(0\)</span>, every <span class="math inline">\(32\)</span> steps (<span class="math inline">\(1,280\)</span> tasks), and the final step, selecting the checkpoint with the lowest validation <span class="math inline">\(\mathrm{MSE}_\beta\)</span> (<a href="#eq-eval-mse" class="quarto-xref">Equation&nbsp;4</a>). Main-text results report <span class="math inline">\(\mathrm{MSE}_\beta\)</span> (<a href="#eq-eval-mse" class="quarto-xref">Equation&nbsp;4</a>) multiplied by <span class="math inline">\(10^3\)</span>. The Web Appendix reports held-out empirical cross-entropy in nats (<a href="#sec-methodology" class="quarto-xref">Section&nbsp;3</a>) alongside the off-the-shelf generative LLM protocol used in <a href="#fig-intro-off-the-shelf" class="quarto-xref">Figure&nbsp;1</a>.</p>
+</section>
+</section>
+<section id="sec-results" class="level1">
+<h1>Results</h1>
+<section id="unseen-study-transfer-across-domains-and-model-scales" class="level2">
+<h2 class="anchored" data-anchor-id="unseen-study-transfer-across-domains-and-model-scales">Unseen-study transfer across domains and model scales</h2>
+<p><a href="#fig-results-overall" class="quarto-xref">TODO: Insert main <span class="math inline">\(\mathrm{MSE}_\beta\)</span> table (<code>Table 1</code> from <code>03-analysis-paper-microdata-figure1.ipynb</code>) alongside&nbsp;3</a></p>
+<div id="fig-results-overall" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-results-overall-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/fig_results_overall.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-results-overall-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: Population OLS treatment-effect error across datasets and choice-training regimes
+</figcaption>
+</figure>
+</div>
+</section>
+<section id="attribute-level-transfer-across-shared-and-unseen-attributes" class="level2">
+<h2 class="anchored" data-anchor-id="attribute-level-transfer-across-shared-and-unseen-attributes">Attribute-level transfer across shared and unseen attributes</h2>
+<p><a href="#fig-results-laptops-slopes" class="quarto-xref">TODO: Discuss&nbsp;4</a></p>
+<div id="fig-results-laptops-slopes" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-results-laptops-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/fig_results_laptops_slopes.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-results-laptops-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;4: Consumer rights (laptops) OLS treatment effects by attribute for off-the-shelf and pooled choice-trained models
+</figcaption>
+</figure>
+</div>
+<div id="fig-results-vaccines-slopes" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-results-vaccines-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/fig_results_vaccines_slopes.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-results-vaccines-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;5: Vaccines OLS treatment effects by attribute for off-the-shelf and pooled choice-trained models
+</figcaption>
+</figure>
+</div>
+</section>
+<section id="individual-level-probability-diagnostics" class="level2">
+<h2 class="anchored" data-anchor-id="individual-level-probability-diagnostics">Individual-level probability diagnostics</h2>
+<p>[TODO: Brief bridge paragraph summarizing Web Appendix held-out empirical cross-entropy (<code>Table A1</code> from <code>03-analysis-paper-microdata-figure1.ipynb</code>) and <code>Flights</code> validation slopes (<a href="#appfig-flights-slopes" class="quarto-xref">Figure W2</a>; <code>Table A3</code>). Confirm that OLS slope gains stem from improved respondent-level choice probabilities rather than slope-level overfitting.]</p>
 </section>
 </section>
 <section id="sec-discussion" class="level1">
@@ -480,32 +525,38 @@ Zahradnickova K, Polisensky J, Lukeš M, Hranický R, Pouč P (2026) Which AI? A
 </section>
 <section id="web-appendix" class="level1 unnumbered">
 <h1 class="unnumbered">Web Appendix</h1>
-<div id="apptbl-sample-table" class="quarto-float quarto-figure quarto-figure-center anchored">
-<figure class="quarto-float quarto-float-apptbl figure">
-<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-apptbl" id="apptbl-sample-table-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table W1: Sample table
-</figcaption>
-<div aria-describedby="apptbl-sample-table-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<table class="caption-top table" data-custom-style="APATable">
-<thead>
-<tr class="header">
-<th style="text-align: left;">a</th>
-<th style="text-align: left;">b</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td style="text-align: left;">1</td>
-<td style="text-align: left;">2</td>
-</tr>
-</tbody>
-</table>
+<section id="token-serialization-query-key-readout-and-covariate-mappings" class="level2 unnumbered">
+<h2 class="unnumbered anchored" data-anchor-id="token-serialization-query-key-readout-and-covariate-mappings">Token serialization, query-key readout, and covariate mappings</h2>
+<p><a href="#appfig-input-vaccines" class="quarto-xref">TODO: Add token serialization equations, query-key readout equations, and respondent-covariate mapping tables across all seven datasets alongside1</a></p>
+<div id="appfig-input-vaccines" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-appfig figure">
+<div aria-describedby="appfig-input-vaccines-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/fig_input_vaccines.png" class="img-fluid figure-img" style="width:100.0%">
 </div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-appfig" id="appfig-input-vaccines-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure W1: Full decision model input for one unseen-study task (Vaccines)
+</figcaption>
 </figure>
 </div>
-<div data-custom-style="Table Note">
-<p><em>Note.</em> Sample APA style note.</p>
+</section>
+<section id="off-the-shelf-generative-llm-baseline-protocol" class="level2 unnumbered">
+<h2 class="unnumbered anchored" data-anchor-id="off-the-shelf-generative-llm-baseline-protocol">Off-the-shelf generative LLM baseline protocol</h2>
+<p><a href="#fig-intro-off-the-shelf" class="quarto-xref">TODO: Add the generative LLM prompting protocol and full numerical comparison table backing&nbsp;1</a></p>
+</section>
+<section id="held-out-empirical-cross-entropy-and-attribute-level-tables" class="level2 unnumbered">
+<h2 class="unnumbered anchored" data-anchor-id="held-out-empirical-cross-entropy-and-attribute-level-tables">Held-out empirical cross-entropy and attribute-level tables</h2>
+<p><a href="#appfig-flights-slopes" class="quarto-xref">TODO: Add held-out empirical cross-entropy (<code>Table A1</code> from <code>03-analysis-paper-microdata-figure1.ipynb</code>), validation attribute slopes (2</a></p>
+<div id="appfig-flights-slopes" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-appfig figure">
+<div aria-describedby="appfig-flights-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/fig_results_flights_slopes.png" class="img-fluid figure-img" style="width:100.0%">
 </div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-appfig" id="appfig-flights-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure W2: Flights (validation) OLS treatment effects by attribute for off-the-shelf and pooled choice-trained models
+</figcaption>
+</figure>
+</div>
+</section>
 </section>
 
 </main>

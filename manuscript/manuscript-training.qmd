@@ -274,7 +274,7 @@ This factorial design isolates whether single-dataset training already transfers
 
 ## Models, training protocol, and evaluation
 
-We evaluate the `KEV-0.8B`, `KEV-4B`, and `KEV-9B` open-weight decision models [@palmer2026kev; @gao2026choicesfewerdecisionsordinalscale], each loaded in `bfloat16` precision with unit temperature.
+We evaluate the `KEV-0.8B`, `KEV-4B`, and `KEV-9B` open-weight decision models [@palmer2026kev], each loaded in `bfloat16` precision with unit temperature.
 Choice training updates LoRA adapters (rank $r = 64$, scaling $\alpha_{\mathrm{LoRA}} = 128$, dropout $0.05$) across all linear backbone projections jointly with the trainable pointer head via @eq-resp-ce.
 Every trained run uses AdamW with a $5 \times 10^{-6}$ peak learning rate, a OneCycle schedule ($10\%$ warmup and cosine decay), weight decay $0.01$, and gradient-norm clipping at $1.0$.
 Training runs for $3$ epochs with mini-batch size $|S| = 40$ and random seed $42$.
@@ -283,7 +283,25 @@ We validate each run on `Flights` at step $0$, every $32$ steps ($1,280$ tasks),
 Main-text results report $\mathrm{MSE}_\beta$ (@eq-eval-mse) multiplied by $10^3$.
 The Web Appendix reports held-out empirical cross-entropy in nats (@sec-methodology) alongside the off-the-shelf generative LLM protocol used in @fig-intro-off-the-shelf.
 
+# Results {#sec-results}
 
+## Unseen-study transfer across domains and model scales
+
+[TODO: Insert main $\mathrm{MSE}_\beta$ table (`Table 1` from `03-analysis-paper-microdata-figure1.ipynb`) alongside @fig-results-overall. Present three takeaways: universal gains from pooled choice training, dataset-pooling gains over single-dataset training on ordinal transfer, and choice training outperforming off-the-shelf model scaling.]
+
+![Population OLS treatment-effect error across datasets and choice-training regimes](figures/fig_results_overall.png){#fig-results-overall width=100%}
+
+## Attribute-level transfer across shared and unseen attributes
+
+[TODO: Discuss @fig-results-laptops-slopes and @fig-results-vaccines-slopes alongside the validation breakdown in @appfig-flights-slopes and the full slope-level tables in the Web Appendix (`Tables A2` to `A5`). Show on held-out `Consumer rights` (laptops) that pooled choice training improves both price and non-price attributes (e.g., brand, RAM, storage, warranty, and conflict resolution) across all three model scales, and on held-out `Vaccines` (which has no price attribute) that choice training fixes both off-the-shelf endorsement and origin overreactions and underweighted duration, side-effect, and FDA slopes.]
+
+![Consumer rights (laptops) OLS treatment effects by attribute for off-the-shelf and pooled choice-trained models](figures/fig_results_laptops_slopes.png){#fig-results-laptops-slopes width=100%}
+
+![Vaccines OLS treatment effects by attribute for off-the-shelf and pooled choice-trained models](figures/fig_results_vaccines_slopes.png){#fig-results-vaccines-slopes width=100%}
+
+## Individual-level probability diagnostics
+
+[TODO: Brief bridge paragraph summarizing Web Appendix held-out empirical cross-entropy (`Table A1` from `03-analysis-paper-microdata-figure1.ipynb`) and `Flights` validation slopes (@appfig-flights-slopes; `Table A3`). Confirm that OLS slope gains stem from improved respondent-level choice probabilities rather than slope-level overfitting.]
 
 # Discussion and Conclusion {#sec-discussion}
 
@@ -304,17 +322,30 @@ All authors certify that they have no affiliations with or involvement in any or
 
 # Web Appendix {.unnumbered}
 
-::: {#apptbl-sample-table}
+## Token serialization, query-key readout, and covariate mappings {.unnumbered}
 
-| a  | b  |
-|:---|:---|
-| 1  | 2  |
+[TODO: Add token serialization equations, query-key readout equations, and respondent-covariate mapping tables across all seven datasets alongside @appfig-input-vaccines.]
 
-Sample table
+::: {#appfig-input-vaccines}
+
+![](figures/fig_input_vaccines.png){width=100%}
+
+Full decision model input for one unseen-study task (Vaccines)
 
 :::
 
-::: {custom-style="Table Note"}
-*Note.* Sample APA style note.
-:::
+## Off-the-shelf generative LLM baseline protocol {.unnumbered}
 
+[TODO: Add the generative LLM prompting protocol and full numerical comparison table backing @fig-intro-off-the-shelf (`01-gemini-vs-kev-covid-ols.ipynb`).]
+
+## Held-out empirical cross-entropy and attribute-level tables {.unnumbered}
+
+[TODO: Add held-out empirical cross-entropy (`Table A1` from `03-analysis-paper-microdata-figure1.ipynb`), validation attribute slopes (@appfig-flights-slopes), and full slope-level tables (`Tables A2` to `A5` from `03-analysis-paper-microdata-appendix.ipynb`).]
+
+::: {#appfig-flights-slopes}
+
+![](figures/fig_results_flights_slopes.png){width=100%}
+
+Flights (validation) OLS treatment effects by attribute for off-the-shelf and pooled choice-trained models
+
+:::
