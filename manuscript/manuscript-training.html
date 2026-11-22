@@ -167,15 +167,15 @@ TERMINOLOGY GUIDE (enforce strictly across all sections, tables, figures, and no
 <div id="fig-intro-off-the-shelf" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-intro-off-the-shelf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="figures/fig_llm_vs_kev_covid.png" class="img-fluid figure-img" style="width:90.0%">
+<img src="manuscript-training-assets/fig-intro-off-the-shelf.png" class="img-fluid figure-img" style="width:90.0%">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-intro-off-the-shelf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;1: Population OLS treatment-effect error across off-the-shelf generative LLMs and decision models
+Figure&nbsp;1: OLS treatment-effect error across off-the-shelf generative LLMs and decision models
 </figcaption>
 </figure>
 </div>
 <div data-custom-style="Table Note">
-<p><em>Note.</em> Bars report population OLS <span class="math inline">\(\boldsymbol{\beta}\)</span> MSE (<span class="math inline">\(\times 10^3\)</span>) across 11 vaccine attribute levels on the 200-respondent Vaccines conjoint subsample <span class="citation" data-cites="wang2026large">(<em>n</em> = 1,000 choice tasks; <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>. Errors are measured relative to full-sample human estimates (<em>N</em> = 1,971 respondents; 9,855 choice tasks).</p>
+<p><em>Note.</em> Bars report OLS <span class="math inline">\(\mathrm{MSE}_\beta \times 10^3\)</span> (<a href="#eq-eval-mse" class="quarto-xref">Equation&nbsp;4</a>) across 11 vaccine attribute levels on the 200-respondent Vaccines conjoint subsample <span class="citation" data-cites="wang2026large">(<em>n</em> = 1,000 choice tasks; <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>. Errors are measured relative to full-sample human estimates (<em>N</em> = 1,971 respondents; 9,855 choice tasks).</p>
 </div>
 <p>Empirically, we evaluate choice training across three open-weight decision-model scales <span class="citation" data-cites="palmer2026kev">(0.8B, 4B, and 9B parameters; <a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>. We evaluate generalizability of our training on four unseen held-out studies: a nutrition-labeling trial <span class="citation" data-cites="grummon2025nutrition">(<a href="#ref-grummon2025nutrition" role="doc-biblioref">Grummon et al. 2025</a>)</span>, a vaccine conjoint <span class="citation" data-cites="kreps2020factors">(<a href="#ref-kreps2020factors" role="doc-biblioref">Kreps et al. 2020</a>)</span>, a consumer-rights conjoint <span class="citation" data-cites="kantorowicz2026consumers">(<a href="#ref-kantorowicz2026consumers" role="doc-biblioref">Kantorowicz-Reznichenko et al. 2026</a>)</span>, and an AI smartphone conjoint <span class="citation" data-cites="magistro2026attitudes">(<a href="#ref-magistro2026attitudes" role="doc-biblioref">Magistro et al. 2026</a>)</span>. We show that although scaling to proprietary models or increasing reasoning effort can worsens OLS MSE, choice training with respondent-level CE substantially lowers this error on unseen studies, across model scales.</p>
 </section>
@@ -190,7 +190,7 @@ Figure&nbsp;1: Population OLS treatment-effect error across off-the-shelf genera
 <div id="fig-pipeline" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-pipeline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="figures/fig_pipeline.png" class="img-fluid figure-img" style="width:100.0%">
+<img src="diagrams-tikz/fig_pipeline_v5.png" class="img-fluid figure-img" style="width:100.0%">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-pipeline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Figure&nbsp;2: Choice training and unseen-study evaluation of decision models
@@ -221,7 +221,7 @@ p_{t,k}(\theta) = P\big(y_{t,k} = 1 \mid \mathbf{s}_t, c_t; \theta\big) = \frac{
 \tag{3}\]</span></span> where <span class="math inline">\(\hat{\alpha}^{(g)}\)</span> and <span class="math inline">\(\bar{\alpha}^{(g)}(\theta)\)</span> are the intercepts, <span class="math inline">\(\hat{\boldsymbol{\beta}}^{(g)}\)</span> is the full-sample human slope benchmark, and <span class="math inline">\(\bar{\boldsymbol{\beta}}^{(g)}(\theta)\)</span> collects the <span class="math inline">\(d_g\)</span> model-implied treatment or attribute slopes. Because <span class="math inline">\(\mathbf{X}^{(g)}\)</span> is fixed and OLS is linear in the outcome vector, <span class="math inline">\(\bar{\boldsymbol{\beta}}^{(g)}(\theta)\)</span> equals the exact expectation of the OLS slope estimator over synthetic choices drawn from <span class="math inline">\(p_{t,k}(\theta)\)</span>, with zero Monte Carlo variance. Note that <a href="#eq-pop-ols" class="quarto-xref">Equation&nbsp;3</a> targets point-estimate recovery rather than plug-in standard errors, because regressing deterministic expectations <span class="math inline">\(\bar{\mathbf{o}}^{(g)}(\theta)\)</span> omits realization-level sampling variance.</p>
 <p>Because all <span class="math inline">\(G\)</span> regressions within each study share identical outcome units, we measure aggregate slope recovery across all <span class="math inline">\(d = \sum_{g=1}^G d_g\)</span> slopes via mean squared error <span class="citation" data-cites="wang2026large">(<a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>: <span id="eq-eval-mse"><span class="math display">\[
 \mathrm{MSE}_{\beta}(\theta) = \frac{1}{d} \sum_{g=1}^G \left\lVert \bar{\boldsymbol{\beta}}^{(g)}(\theta) - \hat{\boldsymbol{\beta}}^{(g)} \right\rVert_2^2.
-\tag{4}\]</span></span> As a secondary individual-level check in the Web Appendix, we also report held-out empirical cross-entropy in nats by evaluating <a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a> over all tasks in the unseen study.</p>
+\tag{4}\]</span></span> As a complementary individual-level diagnostic, we also report held-out empirical cross-entropy in nats by evaluating <a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a> over all tasks in each unseen study alongside <a href="#eq-eval-mse" class="quarto-xref">Equation&nbsp;4</a> in <a href="#tbl-results-mse" class="quarto-xref">Table&nbsp;2</a>.</p>
 </section>
 <section id="sec-setup" class="level1">
 <h1>Experimental setup</h1>
@@ -336,18 +336,242 @@ Table&nbsp;1: Summary of training, validation, and held-out test datasets
 </section>
 <section id="models-training-protocol-and-evaluation" class="level2">
 <h2 class="anchored" data-anchor-id="models-training-protocol-and-evaluation">Models, training protocol, and evaluation</h2>
-<p>We evaluate the <code>KEV-0.8B</code>, <code>KEV-4B</code>, and <code>KEV-9B</code> open-weight decision models <span class="citation" data-cites="palmer2026kev">(<a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>, each loaded in <code>bfloat16</code> precision with unit temperature. Choice training updates LoRA adapters (rank <span class="math inline">\(r = 64\)</span>, scaling <span class="math inline">\(\alpha_{\mathrm{LoRA}} = 128\)</span>, dropout <span class="math inline">\(0.05\)</span>) across all linear backbone projections jointly with the trainable pointer head via <a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a>. Every trained run uses AdamW with a <span class="math inline">\(5 \times 10^{-6}\)</span> peak learning rate, a OneCycle schedule (<span class="math inline">\(10\%\)</span> warmup and cosine decay), weight decay <span class="math inline">\(0.01\)</span>, and gradient-norm clipping at <span class="math inline">\(1.0\)</span>. Training runs for <span class="math inline">\(3\)</span> epochs with mini-batch size <span class="math inline">\(|S| = 40\)</span> and random seed <span class="math inline">\(42\)</span>. Within each epoch, tasks are shuffled independently within each dataset (and within each vendor context in <code>Drones</code>), partitioned into single-dataset mini-batches, and interleaved randomly. We validate each run on <code>Flights</code> at step <span class="math inline">\(0\)</span>, every <span class="math inline">\(32\)</span> steps (<span class="math inline">\(1,280\)</span> tasks), and the final step, selecting the checkpoint with the lowest validation <span class="math inline">\(\mathrm{MSE}_\beta\)</span> (<a href="#eq-eval-mse" class="quarto-xref">Equation&nbsp;4</a>). Main-text results report <span class="math inline">\(\mathrm{MSE}_\beta\)</span> (<a href="#eq-eval-mse" class="quarto-xref">Equation&nbsp;4</a>) multiplied by <span class="math inline">\(10^3\)</span>. The Web Appendix reports held-out empirical cross-entropy in nats (<a href="#sec-methodology" class="quarto-xref">Section&nbsp;3</a>) alongside the off-the-shelf generative LLM protocol used in <a href="#fig-intro-off-the-shelf" class="quarto-xref">Figure&nbsp;1</a>.</p>
+<p>We evaluate the <code>KEV-0.8B</code>, <code>KEV-4B</code>, and <code>KEV-9B</code> open-weight decision models <span class="citation" data-cites="palmer2026kev">(<a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>, each loaded in <code>bfloat16</code> precision with unit temperature. Choice training updates LoRA adapters (rank <span class="math inline">\(r = 64\)</span>, scaling <span class="math inline">\(\alpha_{\mathrm{LoRA}} = 128\)</span>, dropout <span class="math inline">\(0.05\)</span>) across all linear backbone projections jointly with the trainable pointer head via <a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a>. Every trained run uses AdamW with a <span class="math inline">\(5 \times 10^{-6}\)</span> peak learning rate, a OneCycle schedule (<span class="math inline">\(10\%\)</span> warmup and cosine decay), weight decay <span class="math inline">\(0.01\)</span>, and gradient-norm clipping at <span class="math inline">\(1.0\)</span>. Training runs for <span class="math inline">\(3\)</span> epochs with mini-batch size <span class="math inline">\(|S| = 40\)</span> and random seed <span class="math inline">\(42\)</span>. Within each epoch, tasks are shuffled independently within each dataset (and within each vendor context in <code>Drones</code>), partitioned into single-dataset mini-batches, and interleaved randomly. We validate each run on <code>Flights</code> at step <span class="math inline">\(0\)</span>, every <span class="math inline">\(32\)</span> steps (<span class="math inline">\(1,280\)</span> tasks), and the final step, selecting the checkpoint with the lowest validation <span class="math inline">\(\mathrm{MSE}_\beta\)</span> (<a href="#eq-eval-mse" class="quarto-xref">Equation&nbsp;4</a>). Main-text results in <a href="#tbl-results-mse" class="quarto-xref">Table&nbsp;2</a> report <span class="math inline">\(\mathrm{MSE}_\beta\)</span> (<a href="#eq-eval-mse" class="quarto-xref">Equation&nbsp;4</a>) multiplied by <span class="math inline">\(10^3\)</span> alongside held-out empirical cross-entropy in nats (<a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a>). The Web Appendix reports the off-the-shelf generative LLM protocol used in <a href="#fig-intro-off-the-shelf" class="quarto-xref">Figure&nbsp;1</a> (<a href="#apptbl-llm-baseline" class="quarto-xref">Table W1</a>) and full attribute-level slope tables and subset diagnostics (<a href="#appfig-flights-slopes" class="quarto-xref">Figure W2</a>; <a href="#apptbl-vaccines-slopes" class="quarto-xref">Table W2</a> through <a href="#apptbl-magistro-subsets" class="quarto-xref">Table W7</a>).</p>
 </section>
 </section>
 <section id="sec-results" class="level1">
 <h1>Results</h1>
 <section id="unseen-study-transfer-across-domains-and-model-scales" class="level2">
 <h2 class="anchored" data-anchor-id="unseen-study-transfer-across-domains-and-model-scales">Unseen-study transfer across domains and model scales</h2>
-<p><a href="#fig-results-overall" class="quarto-xref">TODO: Insert main <span class="math inline">\(\mathrm{MSE}_\beta\)</span> table (<code>Table 1</code> from <code>03-analysis-paper-microdata-figure1.ipynb</code>) alongside&nbsp;3</a></p>
+<p><a href="#tbl-results-mse" class="quarto-xref">Table&nbsp;2</a> and <a href="#fig-results-overall" class="quarto-xref">Figure&nbsp;3</a> report unseen-study treatment-effect error (<span class="math inline">\(\mathrm{MSE}_\beta\)</span>) and held-out empirical cross-entropy (CE) across all three model scales, four choice-training regimes, and five evaluation datasets. Pooled choice training (<code>Drones + Electricity</code>) lowers <span class="math inline">\(\mathrm{MSE}_\beta\)</span> relative to the off-the-shelf checkpoint in all 15 model-dataset cells, including all 12 held-out test cells, and achieves the lowest CE in every cell. Across held-out test datasets, <span class="math inline">\(\mathrm{MSE}_\beta\)</span> falls by 22% to 89%. These gains extend well beyond <code>Flights</code> and the two held-out price datasets (<code>Consumer rights</code> and <code>AI &amp; offshoring</code>). Some of the sharpest improvements occur on non-price test datasets that share no attributes with training, cutting <span class="math inline">\(\mathrm{MSE}_\beta\)</span> by 79% to 88% on <code>Vaccines</code> and by 35% to 89% on <code>Food labels</code> across scales. Choice training also transfers across response formats, moving from binary paired choices in training to three-option opt-out conjoints (<code>Vaccines</code>), a six-arm randomized trial (<code>Food labels</code>), and five-point ordinal ratings (<code>AI &amp; offshoring</code>, where larger raw <span class="math inline">\(\mathrm{MSE}_\beta\)</span> values reflect the 1 to 5 outcome scale; see <a href="#apptbl-magistro-subsets" class="quarto-xref">Table W7</a>).</p>
+<p>Comparing single-dataset regimes against <code>Drones + Electricity</code> shows why pooling distinct choice datasets matters (<a href="#tbl-results-mse" class="quarto-xref">Table&nbsp;2</a> and <a href="#fig-results-overall" class="quarto-xref">Figure&nbsp;3</a>). Training on <code>Electricity</code> or <code>Drones</code> alone already improves <span class="math inline">\(\mathrm{MSE}_\beta\)</span> substantially on binary and three-option tasks, yet both single-dataset regimes prove brittle under the format shift to five-point ordinal ratings on <code>AI &amp; offshoring</code>. Each single-dataset regime worsens <code>AI &amp; offshoring</code> <span class="math inline">\(\mathrm{MSE}_\beta\)</span> on two of the three model scales relative to the off-the-shelf checkpoint. Pooling <code>Drones + Electricity</code> reverses every single-dataset regression, lowering <code>AI &amp; offshoring</code> <span class="math inline">\(\mathrm{MSE}_\beta\)</span> by 22% to 35% across scales. Overall, pooled choice training attains the lowest <span class="math inline">\(\mathrm{MSE}_\beta\)</span> among all four regimes in 13 of 15 cells, trailing a single-dataset model only on <code>KEV-9B</code> for <code>Consumer rights</code> and <code>Food labels</code>, while still recording the lowest CE in both cells.</p>
+<p>Across model scales, choice training dominates off-the-shelf parameter scaling. Echoing the off-the-shelf generative LLM pattern in <a href="#fig-intro-off-the-shelf" class="quarto-xref">Figure&nbsp;1</a>, scaling off-the-shelf decision models from <code>KEV-0.8B</code> to <code>KEV-9B</code> does not reliably improve treatment-effect recovery. Off-the-shelf <code>KEV-9B</code> incurs higher <span class="math inline">\(\mathrm{MSE}_\beta\)</span> than off-the-shelf <code>KEV-0.8B</code> on three of the four held-out test datasets (<code>AI &amp; offshoring</code>, <code>Food labels</code>, and <code>Vaccines</code>), improving monotonically with scale only on <code>Consumer rights</code>. By contrast, pooled choice training overturns an order-of-magnitude gap in parameter count. Choice-trained <code>KEV-0.8B</code> outperforms off-the-shelf <code>KEV-9B</code> on four of five datasets, trailing only on <code>Consumer rights</code>. At the middle scale, choice-trained <code>KEV-4B</code> achieves the lowest <span class="math inline">\(\mathrm{MSE}_\beta\)</span> overall on <code>Flights</code>, <code>Food labels</code>, and <code>Vaccines</code>, and virtually matches choice-trained <code>KEV-9B</code> on <code>AI &amp; offshoring</code>.</p>
+<p>The CE columns in <a href="#tbl-results-mse" class="quarto-xref">Table&nbsp;2</a> clarify why off-the-shelf scaling breaks down and confirm that aggregate OLS slope gains reflect genuine individual-level probability improvements. Consistent with the objective-pretraining mechanism in <a href="#sec-methodology" class="quarto-xref">Section&nbsp;3</a>, off-the-shelf decision models exhibit severe overconfidence, with held-out CE (<a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a>) exceeding uniform random guessing (<span class="math inline">\(\ln K\)</span>, for option counts <span class="math inline">\(K \in \{2, 3, 5\}\)</span> in <a href="#tbl-datasets" class="quarto-xref">Table&nbsp;1</a>) in 14 of 15 cells. Moreover, off-the-shelf CE rises with parameter scale on <code>Food labels</code>, <code>Vaccines</code>, and <code>AI &amp; offshoring</code>, showing that larger off-the-shelf models concentrate probability mass even more sharply onto extreme options and amplify OLS slope distortion. Pooled choice training reverses this collapse across every scale and dataset, reducing CE strictly below <span class="math inline">\(\ln K\)</span> in 11 of 15 cells and bringing the remaining cells close to or effectively at that threshold, including a drop of roughly 0.7 to 0.8 nats across scales on five-point <code>AI &amp; offshoring</code>. Because <a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a> penalizes misallocated respondent-level probabilities directly, these parallel drops in CE and <span class="math inline">\(\mathrm{MSE}_\beta\)</span> (<a href="#eq-eval-mse" class="quarto-xref">Equation&nbsp;4</a>) rule out slope-level error cancellation across respondents or attributes.</p>
+<div id="tbl-results-mse" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-results-mse-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;2: OLS treatment-effect error and empirical cross-entropy across datasets and choice-training regimes
+</figcaption>
+<div aria-describedby="tbl-results-mse-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table" data-custom-style="APATable">
+<colgroup>
+<col style="width: 6%">
+<col style="width: 14%">
+<col style="width: 6%">
+<col style="width: 7%">
+<col style="width: 6%">
+<col style="width: 7%">
+<col style="width: 7%">
+<col style="width: 7%">
+<col style="width: 7%">
+<col style="width: 7%">
+<col style="width: 6%">
+<col style="width: 7%">
+</colgroup>
+<thead>
+<tr class="header">
+<th rowspan="2" style="text-align: left;">Model</th>
+<th rowspan="2" style="text-align: left;">Trained on</th>
+<th colspan="2" style="text-align: center;">Flights</th>
+<th colspan="2" style="text-align: center;">Consumer rights</th>
+<th colspan="2" style="text-align: center;">AI &amp; offshoring</th>
+<th colspan="2" style="text-align: center;">Food labels</th>
+<th colspan="2" style="text-align: center;">Vaccines</th>
+</tr>
+<tr class="even">
+<th style="text-align: right;">MSE</th>
+<th style="text-align: right;">CE</th>
+<th style="text-align: right;">MSE</th>
+<th style="text-align: right;">CE</th>
+<th style="text-align: right;">MSE</th>
+<th style="text-align: right;">CE</th>
+<th style="text-align: right;">MSE</th>
+<th style="text-align: right;">CE</th>
+<th style="text-align: right;">MSE</th>
+<th style="text-align: right;">CE</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">KEV-0.8B</td>
+<td style="text-align: left;">Off-the-shelf</td>
+<td style="text-align: right;">17.75</td>
+<td style="text-align: right;">1.086</td>
+<td style="text-align: right;">8.34</td>
+<td style="text-align: right;">1.418</td>
+<td style="text-align: right;">33.92</td>
+<td style="text-align: right;">2.283</td>
+<td style="text-align: right;">5.46</td>
+<td style="text-align: right;">1.059</td>
+<td style="text-align: right;">12.07</td>
+<td style="text-align: right;">1.185</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Electricity</td>
+<td style="text-align: right;">8.91</td>
+<td style="text-align: right;">0.693</td>
+<td style="text-align: right;">7.35</td>
+<td style="text-align: right;">0.821</td>
+<td style="text-align: right;">29.60</td>
+<td style="text-align: right;">1.689</td>
+<td style="text-align: right;">3.53</td>
+<td style="text-align: right;">0.915</td>
+<td style="text-align: right;">3.73</td>
+<td style="text-align: right;">1.082</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Drones</td>
+<td style="text-align: right;">9.68</td>
+<td style="text-align: right;">0.709</td>
+<td style="text-align: right;">7.17</td>
+<td style="text-align: right;">0.806</td>
+<td style="text-align: right;">34.41</td>
+<td style="text-align: right;">1.630</td>
+<td style="text-align: right;">3.25</td>
+<td style="text-align: right;">0.953</td>
+<td style="text-align: right;">4.08</td>
+<td style="text-align: right;">1.105</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Drones + Electricity</td>
+<td style="text-align: right;"><strong>4.62</strong></td>
+<td style="text-align: right;"><strong>0.647</strong></td>
+<td style="text-align: right;"><strong>6.04</strong></td>
+<td style="text-align: right;"><strong>0.695</strong></td>
+<td style="text-align: right;"><strong>26.61</strong></td>
+<td style="text-align: right;"><strong>1.558</strong></td>
+<td style="text-align: right;"><strong>2.30</strong></td>
+<td style="text-align: right;"><strong>0.879</strong></td>
+<td style="text-align: right;"><strong>2.56</strong></td>
+<td style="text-align: right;"><strong>1.067</strong></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">KEV-4B</td>
+<td style="text-align: left;">Off-the-shelf</td>
+<td style="text-align: right;">4.10</td>
+<td style="text-align: right;">0.811</td>
+<td style="text-align: right;">4.89</td>
+<td style="text-align: right;">0.779</td>
+<td style="text-align: right;">99.01</td>
+<td style="text-align: right;">2.434</td>
+<td style="text-align: right;">21.10</td>
+<td style="text-align: right;">1.100</td>
+<td style="text-align: right;">9.08</td>
+<td style="text-align: right;">1.525</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Electricity</td>
+<td style="text-align: right;">1.72</td>
+<td style="text-align: right;">0.625</td>
+<td style="text-align: right;">3.27</td>
+<td style="text-align: right;">0.650</td>
+<td style="text-align: right;">113.26</td>
+<td style="text-align: right;">1.886</td>
+<td style="text-align: right;">3.57</td>
+<td style="text-align: right;">0.887</td>
+<td style="text-align: right;">1.73</td>
+<td style="text-align: right;">1.120</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Drones</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">0.623</td>
+<td style="text-align: right;">2.64</td>
+<td style="text-align: right;">0.663</td>
+<td style="text-align: right;">74.69</td>
+<td style="text-align: right;">1.797</td>
+<td style="text-align: right;">7.04</td>
+<td style="text-align: right;">0.959</td>
+<td style="text-align: right;">4.63</td>
+<td style="text-align: right;">1.195</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Drones + Electricity</td>
+<td style="text-align: right;"><strong>0.73</strong></td>
+<td style="text-align: right;"><strong>0.588</strong></td>
+<td style="text-align: right;"><strong>2.25</strong></td>
+<td style="text-align: right;"><strong>0.629</strong></td>
+<td style="text-align: right;"><strong>63.98</strong></td>
+<td style="text-align: right;"><strong>1.636</strong></td>
+<td style="text-align: right;"><strong>2.28</strong></td>
+<td style="text-align: right;"><strong>0.854</strong></td>
+<td style="text-align: right;"><strong>1.12</strong></td>
+<td style="text-align: right;"><strong>1.046</strong></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">KEV-9B</td>
+<td style="text-align: left;">Off-the-shelf</td>
+<td style="text-align: right;">5.12</td>
+<td style="text-align: right;">0.833</td>
+<td style="text-align: right;">1.76</td>
+<td style="text-align: right;">0.804</td>
+<td style="text-align: right;">82.89</td>
+<td style="text-align: right;">2.437</td>
+<td style="text-align: right;">22.73</td>
+<td style="text-align: right;">1.238</td>
+<td style="text-align: right;">14.30</td>
+<td style="text-align: right;">1.422</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Electricity</td>
+<td style="text-align: right;">2.17</td>
+<td style="text-align: right;">0.647</td>
+<td style="text-align: right;"><strong>1.34</strong></td>
+<td style="text-align: right;">0.694</td>
+<td style="text-align: right;">95.68</td>
+<td style="text-align: right;">1.873</td>
+<td style="text-align: right;">18.85</td>
+<td style="text-align: right;">0.972</td>
+<td style="text-align: right;">4.25</td>
+<td style="text-align: right;">1.203</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Drones</td>
+<td style="text-align: right;">2.62</td>
+<td style="text-align: right;">0.646</td>
+<td style="text-align: right;">1.37</td>
+<td style="text-align: right;">0.674</td>
+<td style="text-align: right;">87.42</td>
+<td style="text-align: right;">2.000</td>
+<td style="text-align: right;"><strong>10.90</strong></td>
+<td style="text-align: right;">0.963</td>
+<td style="text-align: right;">9.54</td>
+<td style="text-align: right;">1.165</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Drones + Electricity</td>
+<td style="text-align: right;"><strong>0.93</strong></td>
+<td style="text-align: right;"><strong>0.604</strong></td>
+<td style="text-align: right;">1.36</td>
+<td style="text-align: right;"><strong>0.665</strong></td>
+<td style="text-align: right;"><strong>63.49</strong></td>
+<td style="text-align: right;"><strong>1.658</strong></td>
+<td style="text-align: right;">14.82</td>
+<td style="text-align: right;"><strong>0.808</strong></td>
+<td style="text-align: right;"><strong>2.43</strong></td>
+<td style="text-align: right;"><strong>1.100</strong></td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<div data-custom-style="Table Note">
+<p><em>Note.</em> MSE reports population OLS treatment-effect error <span class="math inline">\(\mathrm{MSE}_\beta \times 10^3\)</span> (<a href="#eq-eval-mse" class="quarto-xref">Equation&nbsp;4</a>) and CE reports mean empirical cross-entropy (negative log-likelihood per choice task, in nats; <a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a>); lower is better for both metrics. Uniform random guessing yields <span class="math inline">\(\mathrm{CE} = \ln 2 = 0.693\)</span> on <code>Flights</code> and <code>Consumer rights</code>, <span class="math inline">\(\ln 3 = 1.099\)</span> on <code>Food labels</code> and <code>Vaccines</code>, and <span class="math inline">\(\ln 5 = 1.609\)</span> on <code>AI &amp; offshoring</code>. Bold marks the lowest value per model, dataset, and metric. <code>Flights</code> is the validation dataset that selects each run’s checkpoint; <code>Consumer rights</code> and <code>AI &amp; offshoring</code> are held-out test price datasets; <code>Food labels</code> and <code>Vaccines</code> are held-out test non-price datasets.</p>
+</div>
 <div id="fig-results-overall" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-results-overall-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="figures/fig_results_overall.png" class="img-fluid figure-img" style="width:100.0%">
+<img src="manuscript-training-assets/fig-results-overall.png" class="img-fluid figure-img" style="width:100.0%">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-results-overall-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Figure&nbsp;3: Population OLS treatment-effect error across datasets and choice-training regimes
@@ -357,11 +581,13 @@ Figure&nbsp;3: Population OLS treatment-effect error across datasets and choice-
 </section>
 <section id="attribute-level-transfer-across-shared-and-unseen-attributes" class="level2">
 <h2 class="anchored" data-anchor-id="attribute-level-transfer-across-shared-and-unseen-attributes">Attribute-level transfer across shared and unseen attributes</h2>
-<p><a href="#fig-results-laptops-slopes" class="quarto-xref">TODO: Discuss&nbsp;4</a></p>
+<p>Because both training datasets include a price attribute, aggregate <span class="math inline">\(\mathrm{MSE}_\beta\)</span> reductions could in principle stem from price sensitivity transferring alone while unseen non-price attributes remain distorted. Attribute-level estimates on held-out <code>Consumer rights</code> rule out that explanation (<a href="#fig-results-laptops-slopes" class="quarto-xref">Figure&nbsp;4</a>; full laptop and laundry estimates in <a href="#apptbl-consumer-rights-slopes" class="quarto-xref">Table W4</a>). Across all 34 unseen non-price slopes, pooled choice training lowers non-price <span class="math inline">\(\mathrm{MSE}_\beta\)</span> at every model scale, by 24% to 41%. On <code>KEV-9B</code>, where pooled training slightly overshoots price slopes relative to the off-the-shelf model, the entire net improvement on <code>Consumer rights</code> comes from unseen non-price attributes. In the laptop conjoint (<a href="#fig-results-laptops-slopes" class="quarto-xref">Figure&nbsp;4</a>), off-the-shelf <code>KEV-0.8B</code> and <code>KEV-4B</code> compress hardware, warranty, and price slopes toward zero while inverting brand and consumer-rights signs. Pooled choice training lifts price, RAM, storage, and ten-year warranty slopes toward the human benchmark and corrects inverted signs on Apple MacBook, full privacy, and conflict resolution, although brand premia and ten-year warranty effects remain attenuated relative to human choices.</p>
+<p>The non-price <code>Vaccines</code> conjoint provides an even cleaner test because it shares no attributes with either training dataset (<a href="#fig-results-vaccines-slopes" class="quarto-xref">Figure&nbsp;5</a> and <a href="#apptbl-vaccines-slopes" class="quarto-xref">Table W2</a>). Here, choice training corrects two opposite off-the-shelf distortions at once. First, off-the-shelf models sharply exaggerate socially and politically salient cues, overstating CDC and WHO endorsement effects across all three scales and overshooting high vaccine efficacy and China-origin penalties at <code>KEV-4B</code> and <code>KEV-9B</code>. Pooled choice training cuts those endorsement overshoots by more than half across scales and pulls efficacy and origin slopes back toward human estimates. Second, choice training simultaneously lifts underweighted clinical and regulatory slopes rather than shrinking all effects toward zero. Across scales, it raises five-year duration and severe side-effect slopes toward human magnitudes and moderates the <code>KEV-4B</code> emergency-authorization distortion. Because choice training pulls exaggerated slopes downward while lifting suppressed slopes upward within the same task, unseen-study transfer cannot be explained by simple temperature rescaling or uniform shrinkage.</p>
+<p>The remaining Web Appendix breakdowns reinforce both the breadth and the limits of attribute-level transfer. On held-out <code>Food labels</code> (<a href="#apptbl-food-slopes" class="quarto-xref">Table W3</a>), off-the-shelf <code>KEV-4B</code> and <code>KEV-9B</code> invert the <code>HighIn</code> warning label into a large negative slope while exaggerating nutrition-information arms. Pooled choice training nearly eliminates that sign inversion and brings <code>KEV-4B</code> close to human estimates across arms. On held-out <code>AI &amp; offshoring</code> (<a href="#apptbl-ai-offshoring-slopes" class="quarto-xref">Table W5</a> and <a href="#apptbl-magistro-subsets" class="quarto-xref">Table W7</a>), pooled training cuts non-price job-change <span class="math inline">\(\mathrm{MSE}_\beta\)</span> by 33% to 34% across all three scales and moderates extreme off-the-shelf overreactions to factory-job gains. However, factory-job slopes remain inflated at <code>KEV-4B</code> and <code>KEV-9B</code>, and <code>KEV-9B</code> overshoots price slopes under the five-point ordinal scale, underscoring that transfer across response formats remains harder than transfer within binary or three-option designs. Finally, the <code>Flights</code> validation breakdown (<a href="#appfig-flights-slopes" class="quarto-xref">Figure W2</a> and <a href="#apptbl-flights-slopes" class="quarto-xref">Table W6</a>) exhibits the same dual improvement across shared price levels and unseen airline, baggage, and sustainable-fuel attributes.</p>
 <div id="fig-results-laptops-slopes" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-results-laptops-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="figures/fig_results_laptops_slopes.png" class="img-fluid figure-img" style="width:100.0%">
+<img src="manuscript-training-assets/fig-results-laptops-slopes.png" class="img-fluid figure-img" style="width:100.0%">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-results-laptops-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Figure&nbsp;4: Consumer rights (laptops) OLS treatment effects by attribute for off-the-shelf and pooled choice-trained models
@@ -371,7 +597,7 @@ Figure&nbsp;4: Consumer rights (laptops) OLS treatment effects by attribute for 
 <div id="fig-results-vaccines-slopes" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-results-vaccines-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="figures/fig_results_vaccines_slopes.png" class="img-fluid figure-img" style="width:100.0%">
+<img src="manuscript-training-assets/fig-results-vaccines-slopes.png" class="img-fluid figure-img" style="width:100.0%">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-results-vaccines-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Figure&nbsp;5: Vaccines OLS treatment effects by attribute for off-the-shelf and pooled choice-trained models
@@ -379,13 +605,10 @@ Figure&nbsp;5: Vaccines OLS treatment effects by attribute for off-the-shelf and
 </figure>
 </div>
 </section>
-<section id="individual-level-probability-diagnostics" class="level2">
-<h2 class="anchored" data-anchor-id="individual-level-probability-diagnostics">Individual-level probability diagnostics</h2>
-<p>[TODO: Brief bridge paragraph summarizing Web Appendix held-out empirical cross-entropy (<code>Table A1</code> from <code>03-analysis-paper-microdata-figure1.ipynb</code>) and <code>Flights</code> validation slopes (<a href="#appfig-flights-slopes" class="quarto-xref">Figure W2</a>; <code>Table A3</code>). Confirm that OLS slope gains stem from improved respondent-level choice probabilities rather than slope-level overfitting.]</p>
 </section>
-</section>
-<section id="sec-discussion" class="level1">
-<h1>Discussion and Conclusion</h1>
+<section id="sec-conclusion" class="level1">
+<h1>Conclusion</h1>
+<!-- Note explaining the limitations of training only on the CE loss. For Food Labels 9B has the lowest CE loss but the highest MSE_beta. Motivation for future research to address training both CE loss and a beta loss -->
 </section>
 <section id="declarations" class="level1 unnumbered">
 <h1 class="unnumbered">Declarations</h1>
@@ -527,11 +750,23 @@ Zahradnickova K, Polisensky J, Lukeš M, Hranický R, Pouč P (2026) Which AI? A
 <h1 class="unnumbered">Web Appendix</h1>
 <section id="token-serialization-query-key-readout-and-covariate-mappings" class="level2 unnumbered">
 <h2 class="unnumbered anchored" data-anchor-id="token-serialization-query-key-readout-and-covariate-mappings">Token serialization, query-key readout, and covariate mappings</h2>
-<p><a href="#appfig-input-vaccines" class="quarto-xref">TODO: Add token serialization equations, query-key readout equations, and respondent-covariate mapping tables across all seven datasets alongside1</a></p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>TODO.</strong> Add token serialization equations, query-key readout equations, and respondent-covariate mapping tables across all seven datasets alongside <a href="#appfig-input-vaccines" class="quarto-xref">Figure W1</a>.</p>
+</div>
+</div>
 <div id="appfig-input-vaccines" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-appfig figure">
 <div aria-describedby="appfig-input-vaccines-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="figures/fig_input_vaccines.png" class="img-fluid figure-img" style="width:100.0%">
+<img src="diagrams-tikz/fig_input_vaccines.png" class="img-fluid figure-img" style="width:100.0%">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-appfig" id="appfig-input-vaccines-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Figure W1: Full decision model input for one unseen-study task (Vaccines)
@@ -541,20 +776,1669 @@ Figure W1: Full decision model input for one unseen-study task (Vaccines)
 </section>
 <section id="off-the-shelf-generative-llm-baseline-protocol" class="level2 unnumbered">
 <h2 class="unnumbered anchored" data-anchor-id="off-the-shelf-generative-llm-baseline-protocol">Off-the-shelf generative LLM baseline protocol</h2>
-<p><a href="#fig-intro-off-the-shelf" class="quarto-xref">TODO: Add the generative LLM prompting protocol and full numerical comparison table backing&nbsp;1</a></p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>TODO.</strong> Add the generative LLM prompting protocol backing <a href="#fig-intro-off-the-shelf" class="quarto-xref">Figure&nbsp;1</a> and <a href="#apptbl-llm-baseline" class="quarto-xref">Table W1</a>.</p>
+</div>
+</div>
+<div id="apptbl-llm-baseline" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-apptbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-apptbl" id="apptbl-llm-baseline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table W1: Off-the-shelf generative LLMs and decision models on the 200-respondent Vaccines subsample
+</figcaption>
+<div aria-describedby="apptbl-llm-baseline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table" data-custom-style="APATable">
+<colgroup>
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Model</th>
+<th style="text-align: left;">Reasoning effort</th>
+<th style="text-align: right;">Refusals</th>
+<th style="text-align: right;">Opt-out</th>
+<th style="text-align: right;"><span class="math inline">\(\mathrm{MSE}_\beta \times 10^3\)</span></th>
+<th style="text-align: right;">MAE</th>
+<th style="text-align: right;">Spearman <span class="math inline">\(\rho\)</span></th>
+<th style="text-align: right;">Sign acc.</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Human subsample (200 resp.)</td>
+<td style="text-align: left;">Observed</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">20.3%</td>
+<td style="text-align: right;">0.46</td>
+<td style="text-align: right;">0.018</td>
+<td style="text-align: right;">0.89</td>
+<td style="text-align: right;">100.0%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Qwen3.5-0.8B</td>
+<td style="text-align: left;">Off</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">59.0%</td>
+<td style="text-align: right;">2.75</td>
+<td style="text-align: right;">0.038</td>
+<td style="text-align: right;">0.82</td>
+<td style="text-align: right;">90.9%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Qwen3.5-0.8B</td>
+<td style="text-align: left;">On</td>
+<td style="text-align: right;">19</td>
+<td style="text-align: right;">28.6%</td>
+<td style="text-align: right;">13.82</td>
+<td style="text-align: right;">0.095</td>
+<td style="text-align: right;">0.87</td>
+<td style="text-align: right;">90.9%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Qwen3.5-4B</td>
+<td style="text-align: left;">Off</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">53.6%</td>
+<td style="text-align: right;">1.94</td>
+<td style="text-align: right;">0.029</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: right;">90.9%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Qwen3.5-4B</td>
+<td style="text-align: left;">On</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">4.8%</td>
+<td style="text-align: right;">9.71</td>
+<td style="text-align: right;">0.085</td>
+<td style="text-align: right;">0.98</td>
+<td style="text-align: right;">100.0%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Qwen3.5-9B</td>
+<td style="text-align: left;">Off</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">81.8%</td>
+<td style="text-align: right;">1.49</td>
+<td style="text-align: right;">0.027</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: right;">90.9%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Qwen3.5-9B</td>
+<td style="text-align: left;">On</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">11.4%</td>
+<td style="text-align: right;">6.27</td>
+<td style="text-align: right;">0.066</td>
+<td style="text-align: right;">0.97</td>
+<td style="text-align: right;">100.0%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Gemini 3.5 Flash-Lite</td>
+<td style="text-align: left;">Min</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">21.9%</td>
+<td style="text-align: right;">10.64</td>
+<td style="text-align: right;">0.083</td>
+<td style="text-align: right;">0.94</td>
+<td style="text-align: right;">100.0%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Gemini 3.5 Flash-Lite</td>
+<td style="text-align: left;">High</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">4.8%</td>
+<td style="text-align: right;">12.28</td>
+<td style="text-align: right;">0.085</td>
+<td style="text-align: right;">0.90</td>
+<td style="text-align: right;">100.0%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Gemini 4 Argon</td>
+<td style="text-align: left;">Low</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">12.2%</td>
+<td style="text-align: right;">16.50</td>
+<td style="text-align: right;">0.099</td>
+<td style="text-align: right;">0.93</td>
+<td style="text-align: right;">100.0%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Gemini 4 Argon</td>
+<td style="text-align: left;">High</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">9.1%</td>
+<td style="text-align: right;">16.57</td>
+<td style="text-align: right;">0.099</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: right;">100.0%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">KEV-0.8B</td>
+<td style="text-align: left;">Off-the-shelf</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">32.1%</td>
+<td style="text-align: right;">5.85</td>
+<td style="text-align: right;">0.065</td>
+<td style="text-align: right;">0.50</td>
+<td style="text-align: right;">72.7%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">KEV-4B</td>
+<td style="text-align: left;">Off-the-shelf</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">13.4%</td>
+<td style="text-align: right;">2.77</td>
+<td style="text-align: right;">0.037</td>
+<td style="text-align: right;">0.88</td>
+<td style="text-align: right;">100.0%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">KEV-9B</td>
+<td style="text-align: left;">Off-the-shelf</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">16.3%</td>
+<td style="text-align: right;">4.38</td>
+<td style="text-align: right;">0.049</td>
+<td style="text-align: right;">0.93</td>
+<td style="text-align: right;">100.0%</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<div data-custom-style="Table Note">
+<p><em>Note.</em> All models condition on respondent demographics over the same 200-respondent, 1,000-task subsample of <code>Vaccines</code> <span class="citation" data-cites="kreps2020factors">(<a href="#ref-kreps2020factors" role="doc-biblioref">Kreps et al. 2020</a>)</span>, evaluated against the full-sample human OLS benchmark (<span class="math inline">\(N = 1,971\)</span>). Refusals count tasks where a generative LLM failed to return a valid choice option. Opt-out reports the share (or expected probability for decision models) of selecting neither vaccine. Values back <a href="#fig-intro-off-the-shelf" class="quarto-xref">Figure&nbsp;1</a>.</p>
+</div>
 </section>
-<section id="held-out-empirical-cross-entropy-and-attribute-level-tables" class="level2 unnumbered">
-<h2 class="unnumbered anchored" data-anchor-id="held-out-empirical-cross-entropy-and-attribute-level-tables">Held-out empirical cross-entropy and attribute-level tables</h2>
-<p><a href="#appfig-flights-slopes" class="quarto-xref">TODO: Add held-out empirical cross-entropy (<code>Table A1</code> from <code>03-analysis-paper-microdata-figure1.ipynb</code>), validation attribute slopes (2</a></p>
+<section id="attribute-level-treatment-effect-tables-and-diagnostics" class="level2 unnumbered">
+<h2 class="unnumbered anchored" data-anchor-id="attribute-level-treatment-effect-tables-and-diagnostics">Attribute-level treatment-effect tables and diagnostics</h2>
 <div id="appfig-flights-slopes" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-appfig figure">
 <div aria-describedby="appfig-flights-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="figures/fig_results_flights_slopes.png" class="img-fluid figure-img" style="width:100.0%">
+<img src="manuscript-training-assets/appfig-flights-slopes.png" class="img-fluid figure-img" style="width:100.0%">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-appfig" id="appfig-flights-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Figure W2: Flights (validation) OLS treatment effects by attribute for off-the-shelf and pooled choice-trained models
 </figcaption>
 </figure>
+</div>
+<div id="apptbl-vaccines-slopes" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-apptbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-apptbl" id="apptbl-vaccines-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table W2: Vaccines (held-out test) OLS treatment effects by attribute
+</figcaption>
+<div aria-describedby="apptbl-vaccines-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table" data-custom-style="APATable">
+<colgroup>
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Vaccine attribute level</th>
+<th style="text-align: right;">Human</th>
+<th style="text-align: right;">0.8B Base</th>
+<th style="text-align: right;">0.8B Pooled</th>
+<th style="text-align: right;">4B Base</th>
+<th style="text-align: right;">4B Pooled</th>
+<th style="text-align: right;">9B Base</th>
+<th style="text-align: right;">9B Pooled</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Efficacy: 70% vs 50%</td>
+<td style="text-align: right;">0.074</td>
+<td style="text-align: right;">0.042</td>
+<td style="text-align: right;">0.056</td>
+<td style="text-align: right;">0.125</td>
+<td style="text-align: right;">0.109</td>
+<td style="text-align: right;">0.211</td>
+<td style="text-align: right;">0.154</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Efficacy: 90% vs 50%</td>
+<td style="text-align: right;">0.164</td>
+<td style="text-align: right;">0.065</td>
+<td style="text-align: right;">0.104</td>
+<td style="text-align: right;">0.238</td>
+<td style="text-align: right;">0.211</td>
+<td style="text-align: right;">0.369</td>
+<td style="text-align: right;">0.289</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Duration: 5y vs 1y</td>
+<td style="text-align: right;">0.054</td>
+<td style="text-align: right;">0.017</td>
+<td style="text-align: right;">0.023</td>
+<td style="text-align: right;">0.005</td>
+<td style="text-align: right;">0.038</td>
+<td style="text-align: right;">0.025</td>
+<td style="text-align: right;">0.046</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Severe side effects: 1/1M vs 1/10k</td>
+<td style="text-align: right;">0.065</td>
+<td style="text-align: right;">0.009</td>
+<td style="text-align: right;">0.024</td>
+<td style="text-align: right;">0.024</td>
+<td style="text-align: right;">0.045</td>
+<td style="text-align: right;">0.050</td>
+<td style="text-align: right;">0.054</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Mild side effects: 1/30 vs 1/10</td>
+<td style="text-align: right;">0.012</td>
+<td style="text-align: right;">-0.000</td>
+<td style="text-align: right;">-0.009</td>
+<td style="text-align: right;">0.008</td>
+<td style="text-align: right;">0.018</td>
+<td style="text-align: right;">0.016</td>
+<td style="text-align: right;">0.020</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">FDA: EUA vs Full approval</td>
+<td style="text-align: right;">-0.029</td>
+<td style="text-align: right;">0.034</td>
+<td style="text-align: right;">0.017</td>
+<td style="text-align: right;">-0.068</td>
+<td style="text-align: right;">-0.039</td>
+<td style="text-align: right;">-0.008</td>
+<td style="text-align: right;">-0.013</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Origin: UK vs US</td>
+<td style="text-align: right;">-0.038</td>
+<td style="text-align: right;">-0.025</td>
+<td style="text-align: right;">-0.030</td>
+<td style="text-align: right;">-0.081</td>
+<td style="text-align: right;">-0.053</td>
+<td style="text-align: right;">-0.072</td>
+<td style="text-align: right;">-0.051</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Origin: China vs US</td>
+<td style="text-align: right;">-0.131</td>
+<td style="text-align: right;">0.028</td>
+<td style="text-align: right;">-0.004</td>
+<td style="text-align: right;">-0.197</td>
+<td style="text-align: right;">-0.114</td>
+<td style="text-align: right;">-0.205</td>
+<td style="text-align: right;">-0.143</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Endorsed: Biden vs Trump</td>
+<td style="text-align: right;">0.018</td>
+<td style="text-align: right;">0.109</td>
+<td style="text-align: right;">0.063</td>
+<td style="text-align: right;">0.050</td>
+<td style="text-align: right;">0.046</td>
+<td style="text-align: right;">0.118</td>
+<td style="text-align: right;">0.040</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Endorsed: CDC vs Trump</td>
+<td style="text-align: right;">0.089</td>
+<td style="text-align: right;">0.273</td>
+<td style="text-align: right;">0.081</td>
+<td style="text-align: right;">0.284</td>
+<td style="text-align: right;">0.138</td>
+<td style="text-align: right;">0.306</td>
+<td style="text-align: right;">0.123</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Endorsed: WHO vs Trump</td>
+<td style="text-align: right;">0.057</td>
+<td style="text-align: right;">0.271</td>
+<td style="text-align: right;">0.082</td>
+<td style="text-align: right;">0.259</td>
+<td style="text-align: right;">0.123</td>
+<td style="text-align: right;">0.234</td>
+<td style="text-align: right;">0.104</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong><span class="math inline">\(\mathrm{MSE}_\beta \times 10^3\)</span></strong></td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;"><strong>12.07</strong></td>
+<td style="text-align: right;"><strong>2.56</strong></td>
+<td style="text-align: right;"><strong>9.08</strong></td>
+<td style="text-align: right;"><strong>1.12</strong></td>
+<td style="text-align: right;"><strong>14.30</strong></td>
+<td style="text-align: right;"><strong>2.43</strong></td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<div data-custom-style="Table Note">
+<p><em>Note.</em> Human reports full-sample OLS slopes on observed respondent choices in <code>Vaccines</code> <span class="citation" data-cites="kreps2020factors">(<a href="#ref-kreps2020factors" role="doc-biblioref">Kreps et al. 2020</a>)</span>. Base denotes the off-the-shelf decision model; Pooled denotes choice training on <code>Drones + Electricity</code>. Values back <a href="#fig-results-vaccines-slopes" class="quarto-xref">Figure&nbsp;5</a>.</p>
+</div>
+<div id="apptbl-food-slopes" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-apptbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-apptbl" id="apptbl-food-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table W3: Food labels (held-out test) OLS treatment effects by arm
+</figcaption>
+<div aria-describedby="apptbl-food-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table" data-custom-style="APATable">
+<colgroup>
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Warning-label arm</th>
+<th style="text-align: right;">Human</th>
+<th style="text-align: right;">0.8B Base</th>
+<th style="text-align: right;">0.8B Pooled</th>
+<th style="text-align: right;">4B Base</th>
+<th style="text-align: right;">4B Pooled</th>
+<th style="text-align: right;">9B Base</th>
+<th style="text-align: right;">9B Pooled</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">NutritionInfo vs Positive</td>
+<td style="text-align: right;">0.184</td>
+<td style="text-align: right;">0.128</td>
+<td style="text-align: right;">0.161</td>
+<td style="text-align: right;">0.250</td>
+<td style="text-align: right;">0.199</td>
+<td style="text-align: right;">0.358</td>
+<td style="text-align: right;">0.344</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">HighIn vs Positive</td>
+<td style="text-align: right;">0.054</td>
+<td style="text-align: right;">0.123</td>
+<td style="text-align: right;">0.076</td>
+<td style="text-align: right;">-0.208</td>
+<td style="text-align: right;">-0.020</td>
+<td style="text-align: right;">-0.124</td>
+<td style="text-align: right;">-0.005</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Positive+NutritionInfo vs Positive</td>
+<td style="text-align: right;">0.179</td>
+<td style="text-align: right;">0.157</td>
+<td style="text-align: right;">0.167</td>
+<td style="text-align: right;">0.305</td>
+<td style="text-align: right;">0.183</td>
+<td style="text-align: right;">0.370</td>
+<td style="text-align: right;">0.331</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Positive+HighIn vs Positive</td>
+<td style="text-align: right;">0.119</td>
+<td style="text-align: right;">-0.008</td>
+<td style="text-align: right;">0.023</td>
+<td style="text-align: right;">-0.002</td>
+<td style="text-align: right;">0.047</td>
+<td style="text-align: right;">0.019</td>
+<td style="text-align: right;">0.192</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Spectrum vs Positive</td>
+<td style="text-align: right;">0.108</td>
+<td style="text-align: right;">0.057</td>
+<td style="text-align: right;">0.074</td>
+<td style="text-align: right;">0.067</td>
+<td style="text-align: right;">0.128</td>
+<td style="text-align: right;">0.179</td>
+<td style="text-align: right;">0.239</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong><span class="math inline">\(\mathrm{MSE}_\beta \times 10^3\)</span></strong></td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;"><strong>5.46</strong></td>
+<td style="text-align: right;"><strong>2.30</strong></td>
+<td style="text-align: right;"><strong>21.10</strong></td>
+<td style="text-align: right;"><strong>2.28</strong></td>
+<td style="text-align: right;"><strong>22.73</strong></td>
+<td style="text-align: right;"><strong>14.82</strong></td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<div data-custom-style="Table Note">
+<p><em>Note.</em> Human reports full-sample OLS slopes on observed choices in <code>Food labels</code> <span class="citation" data-cites="grummon2025nutrition">(<a href="#ref-grummon2025nutrition" role="doc-biblioref">Grummon et al. 2025</a>)</span>. Base denotes the off-the-shelf decision model; Pooled denotes choice training on <code>Drones + Electricity</code>.</p>
+</div>
+<div id="apptbl-consumer-rights-slopes" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-apptbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-apptbl" id="apptbl-consumer-rights-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table W4: Consumer rights (held-out test) OLS treatment effects by attribute
+</figcaption>
+<div aria-describedby="apptbl-consumer-rights-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table" data-custom-style="APATable">
+<colgroup>
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Product and attribute level</th>
+<th style="text-align: right;">Human</th>
+<th style="text-align: right;">0.8B Base</th>
+<th style="text-align: right;">0.8B Pooled</th>
+<th style="text-align: right;">4B Base</th>
+<th style="text-align: right;">4B Pooled</th>
+<th style="text-align: right;">9B Base</th>
+<th style="text-align: right;">9B Pooled</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Computers | Price: $1250 vs $2000</td>
+<td style="text-align: right;">0.097</td>
+<td style="text-align: right;">0.003</td>
+<td style="text-align: right;">0.000</td>
+<td style="text-align: right;">0.037</td>
+<td style="text-align: right;">0.079</td>
+<td style="text-align: right;">0.113</td>
+<td style="text-align: right;">0.150</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Computers | Price: $500 vs $2000</td>
+<td style="text-align: right;">0.220</td>
+<td style="text-align: right;">0.011</td>
+<td style="text-align: right;">0.026</td>
+<td style="text-align: right;">0.027</td>
+<td style="text-align: right;">0.128</td>
+<td style="text-align: right;">0.154</td>
+<td style="text-align: right;">0.259</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Computers | Brand: Apple MacBook vs Medion</td>
+<td style="text-align: right;">0.031</td>
+<td style="text-align: right;">-0.012</td>
+<td style="text-align: right;">0.014</td>
+<td style="text-align: right;">-0.023</td>
+<td style="text-align: right;">0.020</td>
+<td style="text-align: right;">-0.058</td>
+<td style="text-align: right;">-0.017</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Computers | Brand: Lenovo vs Medion</td>
+<td style="text-align: right;">0.046</td>
+<td style="text-align: right;">-0.006</td>
+<td style="text-align: right;">0.002</td>
+<td style="text-align: right;">0.013</td>
+<td style="text-align: right;">0.019</td>
+<td style="text-align: right;">-0.004</td>
+<td style="text-align: right;">0.003</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Computers | Brand: HP vs Medion</td>
+<td style="text-align: right;">0.080</td>
+<td style="text-align: right;">-0.001</td>
+<td style="text-align: right;">0.001</td>
+<td style="text-align: right;">0.012</td>
+<td style="text-align: right;">0.019</td>
+<td style="text-align: right;">-0.015</td>
+<td style="text-align: right;">-0.007</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Computers | RAM: 10 GB vs 4 GB</td>
+<td style="text-align: right;">0.092</td>
+<td style="text-align: right;">-0.001</td>
+<td style="text-align: right;">0.018</td>
+<td style="text-align: right;">0.012</td>
+<td style="text-align: right;">0.046</td>
+<td style="text-align: right;">0.093</td>
+<td style="text-align: right;">0.116</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Computers | RAM: 16 GB vs 4 GB</td>
+<td style="text-align: right;">0.147</td>
+<td style="text-align: right;">0.008</td>
+<td style="text-align: right;">0.036</td>
+<td style="text-align: right;">0.045</td>
+<td style="text-align: right;">0.085</td>
+<td style="text-align: right;">0.152</td>
+<td style="text-align: right;">0.193</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Computers | Storage: 256 GB vs 128 GB</td>
+<td style="text-align: right;">0.063</td>
+<td style="text-align: right;">0.000</td>
+<td style="text-align: right;">0.002</td>
+<td style="text-align: right;">0.031</td>
+<td style="text-align: right;">0.040</td>
+<td style="text-align: right;">0.055</td>
+<td style="text-align: right;">0.072</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Computers | Storage: 512 GB vs 128 GB</td>
+<td style="text-align: right;">0.119</td>
+<td style="text-align: right;">-0.009</td>
+<td style="text-align: right;">0.007</td>
+<td style="text-align: right;">0.046</td>
+<td style="text-align: right;">0.073</td>
+<td style="text-align: right;">0.092</td>
+<td style="text-align: right;">0.135</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Computers | Processor: AMD vs Qualcomm snapdragon</td>
+<td style="text-align: right;">0.002</td>
+<td style="text-align: right;">0.014</td>
+<td style="text-align: right;">-0.006</td>
+<td style="text-align: right;">0.028</td>
+<td style="text-align: right;">0.015</td>
+<td style="text-align: right;">0.032</td>
+<td style="text-align: right;">0.018</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Computers | Processor: Intel vs Qualcomm snapdragon</td>
+<td style="text-align: right;">0.030</td>
+<td style="text-align: right;">0.014</td>
+<td style="text-align: right;">-0.003</td>
+<td style="text-align: right;">0.026</td>
+<td style="text-align: right;">0.012</td>
+<td style="text-align: right;">0.037</td>
+<td style="text-align: right;">0.017</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Computers | Warranty: 1 year vs No warranty</td>
+<td style="text-align: right;">0.080</td>
+<td style="text-align: right;">0.008</td>
+<td style="text-align: right;">0.010</td>
+<td style="text-align: right;">0.049</td>
+<td style="text-align: right;">0.044</td>
+<td style="text-align: right;">0.047</td>
+<td style="text-align: right;">0.053</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Computers | Warranty: 10 years vs No warranty</td>
+<td style="text-align: right;">0.169</td>
+<td style="text-align: right;">0.003</td>
+<td style="text-align: right;">0.027</td>
+<td style="text-align: right;">0.051</td>
+<td style="text-align: right;">0.077</td>
+<td style="text-align: right;">0.057</td>
+<td style="text-align: right;">0.106</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Computers | Privacy: No privacy (marketing) vs No privacy</td>
+<td style="text-align: right;">-0.026</td>
+<td style="text-align: right;">-0.003</td>
+<td style="text-align: right;">-0.012</td>
+<td style="text-align: right;">-0.028</td>
+<td style="text-align: right;">-0.013</td>
+<td style="text-align: right;">-0.025</td>
+<td style="text-align: right;">-0.011</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Computers | Privacy: No privacy (sustainability) vs No privacy</td>
+<td style="text-align: right;">-0.004</td>
+<td style="text-align: right;">-0.003</td>
+<td style="text-align: right;">-0.002</td>
+<td style="text-align: right;">-0.022</td>
+<td style="text-align: right;">0.013</td>
+<td style="text-align: right;">-0.018</td>
+<td style="text-align: right;">0.006</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Computers | Privacy: Full privacy vs No privacy</td>
+<td style="text-align: right;">0.016</td>
+<td style="text-align: right;">0.003</td>
+<td style="text-align: right;">0.012</td>
+<td style="text-align: right;">-0.004</td>
+<td style="text-align: right;">0.054</td>
+<td style="text-align: right;">-0.008</td>
+<td style="text-align: right;">0.028</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Computers | Liability: Seller and consumer vs The consumer</td>
+<td style="text-align: right;">0.019</td>
+<td style="text-align: right;">-0.003</td>
+<td style="text-align: right;">0.006</td>
+<td style="text-align: right;">-0.001</td>
+<td style="text-align: right;">0.020</td>
+<td style="text-align: right;">0.016</td>
+<td style="text-align: right;">0.050</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Computers | Liability: The seller vs The consumer</td>
+<td style="text-align: right;">0.024</td>
+<td style="text-align: right;">0.003</td>
+<td style="text-align: right;">0.003</td>
+<td style="text-align: right;">0.005</td>
+<td style="text-align: right;">0.031</td>
+<td style="text-align: right;">0.035</td>
+<td style="text-align: right;">0.046</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Computers | Conflict resolution: The consumer vs The seller</td>
+<td style="text-align: right;">0.009</td>
+<td style="text-align: right;">0.047</td>
+<td style="text-align: right;">0.029</td>
+<td style="text-align: right;">-0.029</td>
+<td style="text-align: right;">0.021</td>
+<td style="text-align: right;">0.031</td>
+<td style="text-align: right;">0.044</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Laundry | Price: $900 vs $1400</td>
+<td style="text-align: right;">0.113</td>
+<td style="text-align: right;">0.012</td>
+<td style="text-align: right;">0.045</td>
+<td style="text-align: right;">0.035</td>
+<td style="text-align: right;">0.072</td>
+<td style="text-align: right;">0.097</td>
+<td style="text-align: right;">0.132</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Laundry | Price: $400 vs $1400</td>
+<td style="text-align: right;">0.215</td>
+<td style="text-align: right;">0.011</td>
+<td style="text-align: right;">0.092</td>
+<td style="text-align: right;">0.056</td>
+<td style="text-align: right;">0.127</td>
+<td style="text-align: right;">0.179</td>
+<td style="text-align: right;">0.269</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Laundry | Brand: Hoover vs Haier</td>
+<td style="text-align: right;">0.018</td>
+<td style="text-align: right;">-0.010</td>
+<td style="text-align: right;">-0.015</td>
+<td style="text-align: right;">0.004</td>
+<td style="text-align: right;">0.004</td>
+<td style="text-align: right;">-0.006</td>
+<td style="text-align: right;">0.002</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Laundry | Brand: General Electric vs Haier</td>
+<td style="text-align: right;">0.043</td>
+<td style="text-align: right;">0.002</td>
+<td style="text-align: right;">-0.014</td>
+<td style="text-align: right;">0.007</td>
+<td style="text-align: right;">0.008</td>
+<td style="text-align: right;">0.011</td>
+<td style="text-align: right;">0.008</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Laundry | Brand: Whirlpool vs Haier</td>
+<td style="text-align: right;">0.061</td>
+<td style="text-align: right;">0.000</td>
+<td style="text-align: right;">-0.009</td>
+<td style="text-align: right;">0.011</td>
+<td style="text-align: right;">0.009</td>
+<td style="text-align: right;">0.011</td>
+<td style="text-align: right;">0.010</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Laundry | Depth: 32 inches vs 28 inches</td>
+<td style="text-align: right;">0.033</td>
+<td style="text-align: right;">0.001</td>
+<td style="text-align: right;">0.006</td>
+<td style="text-align: right;">-0.002</td>
+<td style="text-align: right;">-0.002</td>
+<td style="text-align: right;">-0.010</td>
+<td style="text-align: right;">-0.008</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Laundry | Depth: 36 inches vs 28 inches</td>
+<td style="text-align: right;">0.055</td>
+<td style="text-align: right;">-0.001</td>
+<td style="text-align: right;">0.008</td>
+<td style="text-align: right;">-0.004</td>
+<td style="text-align: right;">-0.004</td>
+<td style="text-align: right;">-0.015</td>
+<td style="text-align: right;">-0.015</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Laundry | Noise: 75 dB vs 78 dB</td>
+<td style="text-align: right;">0.005</td>
+<td style="text-align: right;">-0.013</td>
+<td style="text-align: right;">0.006</td>
+<td style="text-align: right;">0.004</td>
+<td style="text-align: right;">0.022</td>
+<td style="text-align: right;">0.019</td>
+<td style="text-align: right;">0.035</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Laundry | Noise: 70 dB vs 78 dB</td>
+<td style="text-align: right;">0.019</td>
+<td style="text-align: right;">-0.010</td>
+<td style="text-align: right;">0.021</td>
+<td style="text-align: right;">0.018</td>
+<td style="text-align: right;">0.050</td>
+<td style="text-align: right;">0.046</td>
+<td style="text-align: right;">0.079</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Laundry | Load capacity: 12 pounds vs 6 pounds</td>
+<td style="text-align: right;">0.096</td>
+<td style="text-align: right;">0.005</td>
+<td style="text-align: right;">0.009</td>
+<td style="text-align: right;">0.041</td>
+<td style="text-align: right;">0.055</td>
+<td style="text-align: right;">0.105</td>
+<td style="text-align: right;">0.114</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Laundry | Load capacity: 20 pounds vs 6 pounds</td>
+<td style="text-align: right;">0.170</td>
+<td style="text-align: right;">-0.005</td>
+<td style="text-align: right;">0.016</td>
+<td style="text-align: right;">0.067</td>
+<td style="text-align: right;">0.092</td>
+<td style="text-align: right;">0.150</td>
+<td style="text-align: right;">0.181</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Laundry | Warranty: 1 year vs No warranty</td>
+<td style="text-align: right;">0.103</td>
+<td style="text-align: right;">-0.006</td>
+<td style="text-align: right;">0.009</td>
+<td style="text-align: right;">0.043</td>
+<td style="text-align: right;">0.040</td>
+<td style="text-align: right;">0.065</td>
+<td style="text-align: right;">0.071</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Laundry | Warranty: 10 years vs No warranty</td>
+<td style="text-align: right;">0.227</td>
+<td style="text-align: right;">-0.003</td>
+<td style="text-align: right;">0.029</td>
+<td style="text-align: right;">0.065</td>
+<td style="text-align: right;">0.092</td>
+<td style="text-align: right;">0.134</td>
+<td style="text-align: right;">0.171</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Laundry | Privacy: No privacy (marketing) vs No privacy</td>
+<td style="text-align: right;">-0.013</td>
+<td style="text-align: right;">0.008</td>
+<td style="text-align: right;">-0.004</td>
+<td style="text-align: right;">-0.037</td>
+<td style="text-align: right;">-0.006</td>
+<td style="text-align: right;">-0.017</td>
+<td style="text-align: right;">-0.005</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Laundry | Privacy: No privacy (sustainability) vs No privacy</td>
+<td style="text-align: right;">0.010</td>
+<td style="text-align: right;">0.003</td>
+<td style="text-align: right;">0.006</td>
+<td style="text-align: right;">-0.022</td>
+<td style="text-align: right;">0.019</td>
+<td style="text-align: right;">-0.018</td>
+<td style="text-align: right;">0.005</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Laundry | Privacy: Full privacy vs No privacy</td>
+<td style="text-align: right;">0.022</td>
+<td style="text-align: right;">0.026</td>
+<td style="text-align: right;">-0.003</td>
+<td style="text-align: right;">-0.011</td>
+<td style="text-align: right;">0.049</td>
+<td style="text-align: right;">-0.008</td>
+<td style="text-align: right;">0.026</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Laundry | Liability: Seller and consumer vs The consumer</td>
+<td style="text-align: right;">0.024</td>
+<td style="text-align: right;">0.012</td>
+<td style="text-align: right;">0.014</td>
+<td style="text-align: right;">-0.019</td>
+<td style="text-align: right;">0.004</td>
+<td style="text-align: right;">0.006</td>
+<td style="text-align: right;">0.048</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Laundry | Liability: The seller vs The consumer</td>
+<td style="text-align: right;">0.033</td>
+<td style="text-align: right;">0.020</td>
+<td style="text-align: right;">0.009</td>
+<td style="text-align: right;">-0.019</td>
+<td style="text-align: right;">0.017</td>
+<td style="text-align: right;">0.025</td>
+<td style="text-align: right;">0.043</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Laundry | Conflict resolution: The consumer vs The seller</td>
+<td style="text-align: right;">0.020</td>
+<td style="text-align: right;">0.055</td>
+<td style="text-align: right;">0.034</td>
+<td style="text-align: right;">-0.040</td>
+<td style="text-align: right;">0.015</td>
+<td style="text-align: right;">0.025</td>
+<td style="text-align: right;">0.043</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>Price <span class="math inline">\(\mathrm{MSE}_\beta \times 10^3\)</span> (4)</strong></td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;"><strong>26.02</strong></td>
+<td style="text-align: right;"><strong>16.64</strong></td>
+<td style="text-align: right;"><strong>18.12</strong></td>
+<td style="text-align: right;"><strong>4.54</strong></td>
+<td style="text-align: right;"><strong>1.53</strong></td>
+<td style="text-align: right;"><strong>1.91</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>Non-price <span class="math inline">\(\mathrm{MSE}_\beta \times 10^3\)</span> (34)</strong></td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;"><strong>6.26</strong></td>
+<td style="text-align: right;"><strong>4.79</strong></td>
+<td style="text-align: right;"><strong>3.33</strong></td>
+<td style="text-align: right;"><strong>1.98</strong></td>
+<td style="text-align: right;"><strong>1.79</strong></td>
+<td style="text-align: right;"><strong>1.29</strong></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>Overall <span class="math inline">\(\mathrm{MSE}_\beta \times 10^3\)</span> (38)</strong></td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;"><strong>8.34</strong></td>
+<td style="text-align: right;"><strong>6.04</strong></td>
+<td style="text-align: right;"><strong>4.89</strong></td>
+<td style="text-align: right;"><strong>2.25</strong></td>
+<td style="text-align: right;"><strong>1.76</strong></td>
+<td style="text-align: right;"><strong>1.36</strong></td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<div data-custom-style="Table Note">
+<p><em>Note.</em> Human reports full-sample OLS slopes across the 19 laptop (<code>Computers</code>) and 19 laundry-machine (<code>Laundry</code>) attribute levels in <code>Consumer rights</code> <span class="citation" data-cites="kantorowicz2026consumers">(<a href="#ref-kantorowicz2026consumers" role="doc-biblioref">Kantorowicz-Reznichenko et al. 2026</a>)</span>. Base denotes the off-the-shelf decision model; Pooled denotes choice training on <code>Drones + Electricity</code>. Laptop slopes back <a href="#fig-results-laptops-slopes" class="quarto-xref">Figure&nbsp;4</a>.</p>
+</div>
+<div id="apptbl-ai-offshoring-slopes" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-apptbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-apptbl" id="apptbl-ai-offshoring-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table W5: AI &amp; offshoring (held-out test) OLS treatment effects by attribute
+</figcaption>
+<div aria-describedby="apptbl-ai-offshoring-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table" data-custom-style="APATable">
+<colgroup>
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Country, arm, and attribute level</th>
+<th style="text-align: right;">Human</th>
+<th style="text-align: right;">0.8B Base</th>
+<th style="text-align: right;">0.8B Pooled</th>
+<th style="text-align: right;">4B Base</th>
+<th style="text-align: right;">4B Pooled</th>
+<th style="text-align: right;">9B Base</th>
+<th style="text-align: right;">9B Pooled</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">US AI | Price: $450 vs $600</td>
+<td style="text-align: right;">0.313</td>
+<td style="text-align: right;">-0.002</td>
+<td style="text-align: right;">0.031</td>
+<td style="text-align: right;">0.105</td>
+<td style="text-align: right;">0.171</td>
+<td style="text-align: right;">0.236</td>
+<td style="text-align: right;">0.331</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">US AI | Price: $300 vs $600</td>
+<td style="text-align: right;">0.351</td>
+<td style="text-align: right;">-0.013</td>
+<td style="text-align: right;">0.022</td>
+<td style="text-align: right;">0.174</td>
+<td style="text-align: right;">0.242</td>
+<td style="text-align: right;">0.256</td>
+<td style="text-align: right;">0.364</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">US AI | Customer service jobs: 75 vs 100</td>
+<td style="text-align: right;">-0.197</td>
+<td style="text-align: right;">-0.010</td>
+<td style="text-align: right;">-0.054</td>
+<td style="text-align: right;">-0.296</td>
+<td style="text-align: right;">-0.251</td>
+<td style="text-align: right;">-0.121</td>
+<td style="text-align: right;">-0.154</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">US AI | Customer service jobs: 125 vs 100</td>
+<td style="text-align: right;">0.072</td>
+<td style="text-align: right;">0.037</td>
+<td style="text-align: right;">0.061</td>
+<td style="text-align: right;">0.394</td>
+<td style="text-align: right;">0.294</td>
+<td style="text-align: right;">0.172</td>
+<td style="text-align: right;">0.153</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">US AI | Factory jobs: 300 vs 400</td>
+<td style="text-align: right;">-0.389</td>
+<td style="text-align: right;">-0.078</td>
+<td style="text-align: right;">-0.125</td>
+<td style="text-align: right;">-0.502</td>
+<td style="text-align: right;">-0.590</td>
+<td style="text-align: right;">-0.511</td>
+<td style="text-align: right;">-0.613</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">US AI | Factory jobs: 500 vs 400</td>
+<td style="text-align: right;">0.140</td>
+<td style="text-align: right;">0.028</td>
+<td style="text-align: right;">0.072</td>
+<td style="text-align: right;">0.800</td>
+<td style="text-align: right;">0.638</td>
+<td style="text-align: right;">0.841</td>
+<td style="text-align: right;">0.636</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">US AI | Data science jobs: 150 vs 200</td>
+<td style="text-align: right;">-0.215</td>
+<td style="text-align: right;">-0.055</td>
+<td style="text-align: right;">-0.087</td>
+<td style="text-align: right;">-0.408</td>
+<td style="text-align: right;">-0.376</td>
+<td style="text-align: right;">-0.258</td>
+<td style="text-align: right;">-0.347</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">US AI | Data science jobs: 250 vs 200</td>
+<td style="text-align: right;">0.075</td>
+<td style="text-align: right;">0.109</td>
+<td style="text-align: right;">0.160</td>
+<td style="text-align: right;">0.329</td>
+<td style="text-align: right;">0.248</td>
+<td style="text-align: right;">0.020</td>
+<td style="text-align: right;">-0.001</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">US Offshoring | Price: $450 vs $600</td>
+<td style="text-align: right;">0.227</td>
+<td style="text-align: right;">0.005</td>
+<td style="text-align: right;">0.016</td>
+<td style="text-align: right;">0.141</td>
+<td style="text-align: right;">0.186</td>
+<td style="text-align: right;">0.414</td>
+<td style="text-align: right;">0.522</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">US Offshoring | Price: $300 vs $600</td>
+<td style="text-align: right;">0.261</td>
+<td style="text-align: right;">-0.032</td>
+<td style="text-align: right;">-0.023</td>
+<td style="text-align: right;">0.159</td>
+<td style="text-align: right;">0.214</td>
+<td style="text-align: right;">0.466</td>
+<td style="text-align: right;">0.587</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">US Offshoring | Customer service jobs: 75 vs 100</td>
+<td style="text-align: right;">-0.185</td>
+<td style="text-align: right;">-0.010</td>
+<td style="text-align: right;">-0.059</td>
+<td style="text-align: right;">-0.351</td>
+<td style="text-align: right;">-0.249</td>
+<td style="text-align: right;">-0.145</td>
+<td style="text-align: right;">-0.146</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">US Offshoring | Customer service jobs: 125 vs 100</td>
+<td style="text-align: right;">0.108</td>
+<td style="text-align: right;">0.045</td>
+<td style="text-align: right;">0.062</td>
+<td style="text-align: right;">0.352</td>
+<td style="text-align: right;">0.242</td>
+<td style="text-align: right;">0.207</td>
+<td style="text-align: right;">0.194</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">US Offshoring | Factory jobs: 300 vs 400</td>
+<td style="text-align: right;">-0.308</td>
+<td style="text-align: right;">-0.038</td>
+<td style="text-align: right;">-0.091</td>
+<td style="text-align: right;">-0.442</td>
+<td style="text-align: right;">-0.495</td>
+<td style="text-align: right;">-0.509</td>
+<td style="text-align: right;">-0.552</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">US Offshoring | Factory jobs: 500 vs 400</td>
+<td style="text-align: right;">0.081</td>
+<td style="text-align: right;">0.067</td>
+<td style="text-align: right;">0.115</td>
+<td style="text-align: right;">0.787</td>
+<td style="text-align: right;">0.652</td>
+<td style="text-align: right;">0.800</td>
+<td style="text-align: right;">0.576</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">US Offshoring | Data science jobs: 150 vs 200</td>
+<td style="text-align: right;">-0.128</td>
+<td style="text-align: right;">-0.015</td>
+<td style="text-align: right;">-0.069</td>
+<td style="text-align: right;">-0.297</td>
+<td style="text-align: right;">-0.273</td>
+<td style="text-align: right;">-0.262</td>
+<td style="text-align: right;">-0.307</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">US Offshoring | Data science jobs: 250 vs 200</td>
+<td style="text-align: right;">0.087</td>
+<td style="text-align: right;">0.142</td>
+<td style="text-align: right;">0.199</td>
+<td style="text-align: right;">0.422</td>
+<td style="text-align: right;">0.333</td>
+<td style="text-align: right;">0.069</td>
+<td style="text-align: right;">0.071</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Canada AI | Price: $450 vs $600</td>
+<td style="text-align: right;">0.209</td>
+<td style="text-align: right;">-0.005</td>
+<td style="text-align: right;">0.022</td>
+<td style="text-align: right;">0.118</td>
+<td style="text-align: right;">0.163</td>
+<td style="text-align: right;">0.214</td>
+<td style="text-align: right;">0.303</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Canada AI | Price: $300 vs $600</td>
+<td style="text-align: right;">0.263</td>
+<td style="text-align: right;">-0.020</td>
+<td style="text-align: right;">0.007</td>
+<td style="text-align: right;">0.163</td>
+<td style="text-align: right;">0.219</td>
+<td style="text-align: right;">0.225</td>
+<td style="text-align: right;">0.322</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Canada AI | Customer service jobs: 75 vs 100</td>
+<td style="text-align: right;">-0.188</td>
+<td style="text-align: right;">-0.015</td>
+<td style="text-align: right;">-0.060</td>
+<td style="text-align: right;">-0.297</td>
+<td style="text-align: right;">-0.240</td>
+<td style="text-align: right;">-0.116</td>
+<td style="text-align: right;">-0.166</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Canada AI | Customer service jobs: 125 vs 100</td>
+<td style="text-align: right;">0.036</td>
+<td style="text-align: right;">0.038</td>
+<td style="text-align: right;">0.067</td>
+<td style="text-align: right;">0.339</td>
+<td style="text-align: right;">0.281</td>
+<td style="text-align: right;">0.149</td>
+<td style="text-align: right;">0.139</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Canada AI | Factory jobs: 300 vs 400</td>
+<td style="text-align: right;">-0.251</td>
+<td style="text-align: right;">-0.076</td>
+<td style="text-align: right;">-0.132</td>
+<td style="text-align: right;">-0.490</td>
+<td style="text-align: right;">-0.567</td>
+<td style="text-align: right;">-0.488</td>
+<td style="text-align: right;">-0.608</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Canada AI | Factory jobs: 500 vs 400</td>
+<td style="text-align: right;">0.111</td>
+<td style="text-align: right;">0.036</td>
+<td style="text-align: right;">0.083</td>
+<td style="text-align: right;">0.769</td>
+<td style="text-align: right;">0.649</td>
+<td style="text-align: right;">0.841</td>
+<td style="text-align: right;">0.650</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Canada AI | Data science jobs: 150 vs 200</td>
+<td style="text-align: right;">-0.069</td>
+<td style="text-align: right;">-0.049</td>
+<td style="text-align: right;">-0.084</td>
+<td style="text-align: right;">-0.410</td>
+<td style="text-align: right;">-0.356</td>
+<td style="text-align: right;">-0.236</td>
+<td style="text-align: right;">-0.321</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Canada AI | Data science jobs: 250 vs 200</td>
+<td style="text-align: right;">0.077</td>
+<td style="text-align: right;">0.112</td>
+<td style="text-align: right;">0.165</td>
+<td style="text-align: right;">0.292</td>
+<td style="text-align: right;">0.230</td>
+<td style="text-align: right;">-0.005</td>
+<td style="text-align: right;">-0.028</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Canada Offshoring | Price: $450 vs $600</td>
+<td style="text-align: right;">0.195</td>
+<td style="text-align: right;">0.006</td>
+<td style="text-align: right;">0.011</td>
+<td style="text-align: right;">0.139</td>
+<td style="text-align: right;">0.171</td>
+<td style="text-align: right;">0.394</td>
+<td style="text-align: right;">0.493</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Canada Offshoring | Price: $300 vs $600</td>
+<td style="text-align: right;">0.274</td>
+<td style="text-align: right;">-0.029</td>
+<td style="text-align: right;">-0.027</td>
+<td style="text-align: right;">0.154</td>
+<td style="text-align: right;">0.207</td>
+<td style="text-align: right;">0.468</td>
+<td style="text-align: right;">0.606</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Canada Offshoring | Customer service jobs: 75 vs 100</td>
+<td style="text-align: right;">-0.156</td>
+<td style="text-align: right;">-0.013</td>
+<td style="text-align: right;">-0.063</td>
+<td style="text-align: right;">-0.334</td>
+<td style="text-align: right;">-0.244</td>
+<td style="text-align: right;">-0.136</td>
+<td style="text-align: right;">-0.148</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Canada Offshoring | Customer service jobs: 125 vs 100</td>
+<td style="text-align: right;">0.009</td>
+<td style="text-align: right;">0.040</td>
+<td style="text-align: right;">0.066</td>
+<td style="text-align: right;">0.346</td>
+<td style="text-align: right;">0.243</td>
+<td style="text-align: right;">0.229</td>
+<td style="text-align: right;">0.215</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Canada Offshoring | Factory jobs: 300 vs 400</td>
+<td style="text-align: right;">-0.264</td>
+<td style="text-align: right;">-0.036</td>
+<td style="text-align: right;">-0.094</td>
+<td style="text-align: right;">-0.404</td>
+<td style="text-align: right;">-0.476</td>
+<td style="text-align: right;">-0.493</td>
+<td style="text-align: right;">-0.527</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Canada Offshoring | Factory jobs: 500 vs 400</td>
+<td style="text-align: right;">0.050</td>
+<td style="text-align: right;">0.069</td>
+<td style="text-align: right;">0.122</td>
+<td style="text-align: right;">0.806</td>
+<td style="text-align: right;">0.682</td>
+<td style="text-align: right;">0.836</td>
+<td style="text-align: right;">0.622</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Canada Offshoring | Data science jobs: 150 vs 200</td>
+<td style="text-align: right;">-0.164</td>
+<td style="text-align: right;">-0.012</td>
+<td style="text-align: right;">-0.068</td>
+<td style="text-align: right;">-0.304</td>
+<td style="text-align: right;">-0.269</td>
+<td style="text-align: right;">-0.233</td>
+<td style="text-align: right;">-0.260</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Canada Offshoring | Data science jobs: 250 vs 200</td>
+<td style="text-align: right;">0.073</td>
+<td style="text-align: right;">0.135</td>
+<td style="text-align: right;">0.200</td>
+<td style="text-align: right;">0.417</td>
+<td style="text-align: right;">0.325</td>
+<td style="text-align: right;">0.105</td>
+<td style="text-align: right;">0.090</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>Price <span class="math inline">\(\mathrm{MSE}_\beta \times 10^3\)</span> (8)</strong></td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;"><strong>77.60</strong></td>
+<td style="text-align: right;"><strong>67.37</strong></td>
+<td style="text-align: right;"><strong>16.09</strong></td>
+<td style="text-align: right;"><strong>5.66</strong></td>
+<td style="text-align: right;"><strong>21.31</strong></td>
+<td style="text-align: right;"><strong>50.56</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><strong>Non-price <span class="math inline">\(\mathrm{MSE}_\beta \times 10^3\)</span> (24)</strong></td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;"><strong>19.36</strong></td>
+<td style="text-align: right;"><strong>13.03</strong></td>
+<td style="text-align: right;"><strong>126.66</strong></td>
+<td style="text-align: right;"><strong>83.42</strong></td>
+<td style="text-align: right;"><strong>103.41</strong></td>
+<td style="text-align: right;"><strong>67.80</strong></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>Overall <span class="math inline">\(\mathrm{MSE}_\beta \times 10^3\)</span> (32)</strong></td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;"><strong>33.92</strong></td>
+<td style="text-align: right;"><strong>26.61</strong></td>
+<td style="text-align: right;"><strong>99.01</strong></td>
+<td style="text-align: right;"><strong>63.98</strong></td>
+<td style="text-align: right;"><strong>82.89</strong></td>
+<td style="text-align: right;"><strong>63.49</strong></td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<div data-custom-style="Table Note">
+<p><em>Note.</em> Human reports full-sample OLS slopes on the five-point ordinal support scale across four country-by-arm regressions (8 slopes each, 32 total) in <code>AI &amp; offshoring</code> <span class="citation" data-cites="magistro2026attitudes">(<a href="#ref-magistro2026attitudes" role="doc-biblioref">Magistro et al. 2026</a>)</span>. Base denotes the off-the-shelf decision model; Pooled denotes choice training on <code>Drones + Electricity</code>.</p>
+</div>
+<div id="apptbl-flights-slopes" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-apptbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-apptbl" id="apptbl-flights-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table W6: Flights (validation) OLS treatment effects by attribute
+</figcaption>
+<div aria-describedby="apptbl-flights-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table" data-custom-style="APATable">
+<colgroup>
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Flight attribute level</th>
+<th style="text-align: right;">Human</th>
+<th style="text-align: right;">0.8B Base</th>
+<th style="text-align: right;">0.8B Pooled</th>
+<th style="text-align: right;">4B Base</th>
+<th style="text-align: right;">4B Pooled</th>
+<th style="text-align: right;">9B Base</th>
+<th style="text-align: right;">9B Pooled</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Price: $275</td>
+<td style="text-align: right;">-0.085</td>
+<td style="text-align: right;">0.003</td>
+<td style="text-align: right;">-0.070</td>
+<td style="text-align: right;">-0.055</td>
+<td style="text-align: right;">-0.088</td>
+<td style="text-align: right;">-0.027</td>
+<td style="text-align: right;">-0.068</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Price: $300</td>
+<td style="text-align: right;">-0.195</td>
+<td style="text-align: right;">-0.013</td>
+<td style="text-align: right;">-0.152</td>
+<td style="text-align: right;">-0.101</td>
+<td style="text-align: right;">-0.186</td>
+<td style="text-align: right;">-0.064</td>
+<td style="text-align: right;">-0.172</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Price: $325</td>
+<td style="text-align: right;">-0.304</td>
+<td style="text-align: right;">-0.020</td>
+<td style="text-align: right;">-0.233</td>
+<td style="text-align: right;">-0.164</td>
+<td style="text-align: right;">-0.280</td>
+<td style="text-align: right;">-0.127</td>
+<td style="text-align: right;">-0.264</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Fuel: Sustainable aviation fuel</td>
+<td style="text-align: right;">0.069</td>
+<td style="text-align: right;">-0.057</td>
+<td style="text-align: right;">0.010</td>
+<td style="text-align: right;">0.100</td>
+<td style="text-align: right;">0.079</td>
+<td style="text-align: right;">0.026</td>
+<td style="text-align: right;">0.049</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Airline: Frontier</td>
+<td style="text-align: right;">-0.085</td>
+<td style="text-align: right;">0.034</td>
+<td style="text-align: right;">0.006</td>
+<td style="text-align: right;">-0.180</td>
+<td style="text-align: right;">-0.089</td>
+<td style="text-align: right;">-0.127</td>
+<td style="text-align: right;">-0.092</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Airline: Southwest</td>
+<td style="text-align: right;">-0.024</td>
+<td style="text-align: right;">0.027</td>
+<td style="text-align: right;">0.003</td>
+<td style="text-align: right;">0.022</td>
+<td style="text-align: right;">0.012</td>
+<td style="text-align: right;">0.021</td>
+<td style="text-align: right;">0.036</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Airline: United</td>
+<td style="text-align: right;">-0.022</td>
+<td style="text-align: right;">0.001</td>
+<td style="text-align: right;">0.002</td>
+<td style="text-align: right;">-0.016</td>
+<td style="text-align: right;">-0.010</td>
+<td style="text-align: right;">-0.013</td>
+<td style="text-align: right;">-0.012</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Baggage: Checked bag+carry-on</td>
+<td style="text-align: right;">0.056</td>
+<td style="text-align: right;">-0.043</td>
+<td style="text-align: right;">-0.026</td>
+<td style="text-align: right;">0.087</td>
+<td style="text-align: right;">0.069</td>
+<td style="text-align: right;">0.086</td>
+<td style="text-align: right;">0.089</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Baggage: Personal item only</td>
+<td style="text-align: right;">-0.139</td>
+<td style="text-align: right;">-0.003</td>
+<td style="text-align: right;">-0.014</td>
+<td style="text-align: right;">-0.186</td>
+<td style="text-align: right;">-0.092</td>
+<td style="text-align: right;">-0.120</td>
+<td style="text-align: right;">-0.103</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Space: Extra legroom</td>
+<td style="text-align: right;">0.065</td>
+<td style="text-align: right;">-0.081</td>
+<td style="text-align: right;">-0.003</td>
+<td style="text-align: right;">0.124</td>
+<td style="text-align: right;">0.114</td>
+<td style="text-align: right;">0.043</td>
+<td style="text-align: right;">0.088</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Seat: Middle</td>
+<td style="text-align: right;">-0.091</td>
+<td style="text-align: right;">-0.006</td>
+<td style="text-align: right;">-0.004</td>
+<td style="text-align: right;">-0.084</td>
+<td style="text-align: right;">-0.061</td>
+<td style="text-align: right;">-0.065</td>
+<td style="text-align: right;">-0.063</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Seat: Window</td>
+<td style="text-align: right;">0.038</td>
+<td style="text-align: right;">0.009</td>
+<td style="text-align: right;">0.009</td>
+<td style="text-align: right;">0.009</td>
+<td style="text-align: right;">0.008</td>
+<td style="text-align: right;">0.004</td>
+<td style="text-align: right;">0.008</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong><span class="math inline">\(\mathrm{MSE}_\beta \times 10^3\)</span></strong></td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;"><strong>17.75</strong></td>
+<td style="text-align: right;"><strong>4.62</strong></td>
+<td style="text-align: right;"><strong>4.10</strong></td>
+<td style="text-align: right;"><strong>0.73</strong></td>
+<td style="text-align: right;"><strong>5.12</strong></td>
+<td style="text-align: right;"><strong>0.93</strong></td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<div data-custom-style="Table Note">
+<p><em>Note.</em> Human reports full-sample OLS slopes on observed respondent choices in <code>Flights</code> <span class="citation" data-cites="goldfarb2026comfort">(<a href="#ref-goldfarb2026comfort" role="doc-biblioref">Goldfarb et al. 2026</a>)</span>, the validation dataset used to select each run’s checkpoint. Base denotes the off-the-shelf decision model; Pooled denotes choice training on <code>Drones + Electricity</code>. Values back <a href="#appfig-flights-slopes" class="quarto-xref">Figure W2</a>.</p>
+</div>
+<div id="apptbl-magistro-subsets" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-apptbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-apptbl" id="apptbl-magistro-subsets-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table W7: AI &amp; offshoring OLS treatment-effect error by country, arm, and attribute type
+</figcaption>
+<div aria-describedby="apptbl-magistro-subsets-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table" data-custom-style="APATable">
+<colgroup>
+<col style="width: 9%">
+<col style="width: 9%">
+<col style="width: 9%">
+<col style="width: 9%">
+<col style="width: 9%">
+<col style="width: 9%">
+<col style="width: 9%">
+<col style="width: 9%">
+<col style="width: 9%">
+<col style="width: 9%">
+<col style="width: 9%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Model</th>
+<th style="text-align: left;">Trained on</th>
+<th style="text-align: right;">All (32)</th>
+<th style="text-align: right;">US (16)</th>
+<th style="text-align: right;">Canada (16)</th>
+<th style="text-align: right;">US AI (8)</th>
+<th style="text-align: right;">US Off. (8)</th>
+<th style="text-align: right;">CA AI (8)</th>
+<th style="text-align: right;">CA Off. (8)</th>
+<th style="text-align: right;">Price (8)</th>
+<th style="text-align: right;">Jobs (24)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">KEV-0.8B</td>
+<td style="text-align: left;">Off-the-shelf</td>
+<td style="text-align: right;">33.92</td>
+<td style="text-align: right;">41.48</td>
+<td style="text-align: right;">26.35</td>
+<td style="text-align: right;">50.62</td>
+<td style="text-align: right;">32.34</td>
+<td style="text-align: right;">24.20</td>
+<td style="text-align: right;">28.51</td>
+<td style="text-align: right;">77.60</td>
+<td style="text-align: right;">19.36</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Electricity</td>
+<td style="text-align: right;">29.60</td>
+<td style="text-align: right;">35.59</td>
+<td style="text-align: right;">23.62</td>
+<td style="text-align: right;">42.21</td>
+<td style="text-align: right;">28.96</td>
+<td style="text-align: right;">20.16</td>
+<td style="text-align: right;">27.08</td>
+<td style="text-align: right;">71.71</td>
+<td style="text-align: right;">15.57</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Drones</td>
+<td style="text-align: right;">34.41</td>
+<td style="text-align: right;">41.14</td>
+<td style="text-align: right;">27.67</td>
+<td style="text-align: right;">49.82</td>
+<td style="text-align: right;">32.46</td>
+<td style="text-align: right;">25.25</td>
+<td style="text-align: right;">30.10</td>
+<td style="text-align: right;">83.27</td>
+<td style="text-align: right;">18.12</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Drones + Electricity</td>
+<td style="text-align: right;"><strong>26.61</strong></td>
+<td style="text-align: right;"><strong>32.17</strong></td>
+<td style="text-align: right;"><strong>21.06</strong></td>
+<td style="text-align: right;"><strong>38.38</strong></td>
+<td style="text-align: right;"><strong>25.96</strong></td>
+<td style="text-align: right;"><strong>17.60</strong></td>
+<td style="text-align: right;"><strong>24.51</strong></td>
+<td style="text-align: right;"><strong>67.37</strong></td>
+<td style="text-align: right;"><strong>13.03</strong></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">KEV-4B</td>
+<td style="text-align: left;">Off-the-shelf</td>
+<td style="text-align: right;">99.01</td>
+<td style="text-align: right;">93.76</td>
+<td style="text-align: right;">104.27</td>
+<td style="text-align: right;">92.30</td>
+<td style="text-align: right;">95.22</td>
+<td style="text-align: right;">96.88</td>
+<td style="text-align: right;">111.65</td>
+<td style="text-align: right;">16.09</td>
+<td style="text-align: right;">126.66</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Electricity</td>
+<td style="text-align: right;">113.26</td>
+<td style="text-align: right;">106.45</td>
+<td style="text-align: right;">120.08</td>
+<td style="text-align: right;">101.87</td>
+<td style="text-align: right;">111.03</td>
+<td style="text-align: right;">112.91</td>
+<td style="text-align: right;">127.26</td>
+<td style="text-align: right;">11.67</td>
+<td style="text-align: right;">147.13</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Drones</td>
+<td style="text-align: right;">74.69</td>
+<td style="text-align: right;">67.29</td>
+<td style="text-align: right;">82.09</td>
+<td style="text-align: right;">60.96</td>
+<td style="text-align: right;">73.62</td>
+<td style="text-align: right;">74.73</td>
+<td style="text-align: right;">89.45</td>
+<td style="text-align: right;">6.21</td>
+<td style="text-align: right;">97.52</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Drones + Electricity</td>
+<td style="text-align: right;"><strong>63.98</strong></td>
+<td style="text-align: right;"><strong>56.05</strong></td>
+<td style="text-align: right;"><strong>71.90</strong></td>
+<td style="text-align: right;"><strong>53.45</strong></td>
+<td style="text-align: right;"><strong>58.66</strong></td>
+<td style="text-align: right;"><strong>70.30</strong></td>
+<td style="text-align: right;"><strong>73.49</strong></td>
+<td style="text-align: right;"><strong>5.66</strong></td>
+<td style="text-align: right;"><strong>83.42</strong></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">KEV-9B</td>
+<td style="text-align: left;">Off-the-shelf</td>
+<td style="text-align: right;">82.89</td>
+<td style="text-align: right;">75.34</td>
+<td style="text-align: right;">90.43</td>
+<td style="text-align: right;">67.71</td>
+<td style="text-align: right;">82.98</td>
+<td style="text-align: right;">80.55</td>
+<td style="text-align: right;">100.31</td>
+<td style="text-align: right;"><strong>21.31</strong></td>
+<td style="text-align: right;">103.41</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Electricity</td>
+<td style="text-align: right;">95.68</td>
+<td style="text-align: right;">83.68</td>
+<td style="text-align: right;">107.69</td>
+<td style="text-align: right;">71.35</td>
+<td style="text-align: right;">96.01</td>
+<td style="text-align: right;">98.52</td>
+<td style="text-align: right;">116.86</td>
+<td style="text-align: right;">37.05</td>
+<td style="text-align: right;">115.23</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Drones</td>
+<td style="text-align: right;">87.42</td>
+<td style="text-align: right;">79.58</td>
+<td style="text-align: right;">95.26</td>
+<td style="text-align: right;">68.44</td>
+<td style="text-align: right;">90.72</td>
+<td style="text-align: right;">86.34</td>
+<td style="text-align: right;">104.18</td>
+<td style="text-align: right;">37.14</td>
+<td style="text-align: right;">104.18</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Drones + Electricity</td>
+<td style="text-align: right;"><strong>63.49</strong></td>
+<td style="text-align: right;"><strong>54.14</strong></td>
+<td style="text-align: right;"><strong>72.83</strong></td>
+<td style="text-align: right;"><strong>40.89</strong></td>
+<td style="text-align: right;"><strong>67.39</strong></td>
+<td style="text-align: right;"><strong>64.66</strong></td>
+<td style="text-align: right;"><strong>81.00</strong></td>
+<td style="text-align: right;">50.56</td>
+<td style="text-align: right;"><strong>67.80</strong></td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<div data-custom-style="Table Note">
+<p><em>Note.</em> Values report <span class="math inline">\(\mathrm{MSE}_\beta \times 10^3\)</span> on <code>AI &amp; offshoring</code> <span class="citation" data-cites="magistro2026attitudes">(<a href="#ref-magistro2026attitudes" role="doc-biblioref">Magistro et al. 2026</a>)</span>; lower is better. Bold marks the lowest value per model and subset. Pooled choice training (<code>Drones + Electricity</code>) improves every country and arm subset across all three models, whereas single-dataset training on <code>Electricity</code> degrades both US and Canada subsets on <code>KEV-4B</code> and <code>KEV-9B</code>.</p>
 </div>
 </section>
 </section>

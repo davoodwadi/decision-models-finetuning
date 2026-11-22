@@ -1,6 +1,6 @@
 # Figure captions (drafts)
 
-## fig_pipeline — main text (source: fig_pipeline_v5.tex; in manuscript as figures/fig_pipeline.png, #fig-pipeline)
+## fig_pipeline — main text (source: fig_pipeline_v5.tex; in manuscript as diagrams-tikz/fig_pipeline_v5.png, #fig-pipeline)
 
 **Title:** Choice training and unseen-study evaluation of decision models
 

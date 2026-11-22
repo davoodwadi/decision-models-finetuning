@@ -132,10 +132,10 @@ Because these models are pretrained on single-label objective benchmarks rather 
 In this research, we train decision models by updating their weights on historical human choice microdata, a procedure we call choice training.
 Specifically, we minimize respondent-level cross-entropy (CE), which is equivalent to conditional maximum likelihood estimation, and test whether choice training transfers to unseen marketing and behavioral studies.
 
-![Population OLS treatment-effect error across off-the-shelf generative LLMs and decision models](figures/fig_llm_vs_kev_covid.png){#fig-intro-off-the-shelf width=90%}
+![OLS treatment-effect error across off-the-shelf generative LLMs and decision models](manuscript-training-assets/fig-intro-off-the-shelf.png){#fig-intro-off-the-shelf width=90%}
 
 ::: {custom-style="Table Note"}
-*Note.* Bars report population OLS $\boldsymbol{\beta}$ MSE ($\times 10^3$) across 11 vaccine attribute levels on the 200-respondent Vaccines conjoint subsample [*n* = 1,000 choice tasks\; @wang2026large]. 
+*Note.* Bars report OLS $\mathrm{MSE}_\beta \times 10^3$ (@eq-eval-mse) across 11 vaccine attribute levels on the 200-respondent Vaccines conjoint subsample [*n* = 1,000 choice tasks\; @wang2026large]. 
 Errors are measured relative to full-sample human estimates (*N* = 1,971 respondents; 9,855 choice tasks). 
 :::
 
@@ -168,7 +168,7 @@ We bridge this data gap by supervising decision models directly on published pop
 
 # Methodology {#sec-methodology}
 
-![Choice training and unseen-study evaluation of decision models](figures/fig_pipeline.png){#fig-pipeline width=100%}
+![Choice training and unseen-study evaluation of decision models](diagrams-tikz/fig_pipeline_v5.png){#fig-pipeline width=100%}
 
 **Decision model parameterization.**
 Consider a choice study composed of discrete-choice tasks indexed by $t$ (@fig-pipeline, panel a).
@@ -230,7 +230,7 @@ Because all $G$ regressions within each study share identical outcome units, we 
 $$
 \mathrm{MSE}_{\beta}(\theta) = \frac{1}{d} \sum_{g=1}^G \left\lVert \bar{\boldsymbol{\beta}}^{(g)}(\theta) - \hat{\boldsymbol{\beta}}^{(g)} \right\rVert_2^2.
 $$ {#eq-eval-mse}
-As a secondary individual-level check in the Web Appendix, we also report held-out empirical cross-entropy in nats by evaluating @eq-resp-ce over all tasks in the unseen study.
+As a complementary individual-level diagnostic, we also report held-out empirical cross-entropy in nats by evaluating @eq-resp-ce over all tasks in each unseen study alongside @eq-eval-mse in @tbl-results-mse.
 
 # Experimental setup {#sec-setup}
 
@@ -248,15 +248,7 @@ Two include price over wider ranges than training (`Consumer rights` and `AI & o
 Together, these test datasets span paired conjoints, a three-option conjoint with an opt-out (`Vaccines`), a five-point ordinal rating conjoint (`AI & offshoring`), and a six-arm randomized trial (`Food labels`).
 Across all seven datasets, each choice task conditions on the respondent's observed covariates $\mathbf{s}_t$ in a standardized text format (@fig-pipeline, panel a; mappings appear in the Web Appendix).
 
-| Role | Dataset | Price attributes | Non-price attributes | Respondents | Tasks | $d$ |
-|:---|:-----|:-------------|:-------------|---:|---:|---:|
-| Training | Electricity [@wu2025partisan] | Monthly bill (\$105 to \$125) | Renewable share (10% to 100%), local renewables | 1,861 | 18,591 | 8 |
-| Training | Drones [@berke2023drone] | Delivery fee (\$0 to \$10) | Wait time, drone privacy | 3,625 | 36,297 | 28 |
-| Validation | Flights [@goldfarb2026comfort] | Ticket price (\$250 to \$325) | Sustainable aviation fuel, airline, baggage, legroom, seat | 1,000 | 5,000 | 12 |
-| Test | Consumer rights [@kantorowicz2026consumers] | Laptop (\$500 to \$2,000) and laundry (\$400 to \$1,400) price | Brand, specs, warranty, privacy, liability, conflict resolution | 2,242 | 26,823 | 38 |
-| Test | AI & offshoring [@magistro2026attitudes] | Smartphone price (\$300 to \$600) | Customer service, factory, and data science jobs | 5,525 | 21,005 | 32 |
-| Test | Food labels [@grummon2025nutrition] | None | Front-of-package warning labels (6 arms) | 5,633 | 33,798 | 5 |
-| Test | Vaccines [@kreps2020factors] | None | Efficacy, duration, side effects, FDA, origin, endorsements | 1,971 | 9,855 | 11 |
+{{< include manuscript-training-assets/tbl-datasets.md >}}
 
 : Summary of training, validation, and held-out test datasets {#tbl-datasets}
 
@@ -280,32 +272,84 @@ Every trained run uses AdamW with a $5 \times 10^{-6}$ peak learning rate, a One
 Training runs for $3$ epochs with mini-batch size $|S| = 40$ and random seed $42$.
 Within each epoch, tasks are shuffled independently within each dataset (and within each vendor context in `Drones`), partitioned into single-dataset mini-batches, and interleaved randomly.
 We validate each run on `Flights` at step $0$, every $32$ steps ($1,280$ tasks), and the final step, selecting the checkpoint with the lowest validation $\mathrm{MSE}_\beta$ (@eq-eval-mse).
-Main-text results report $\mathrm{MSE}_\beta$ (@eq-eval-mse) multiplied by $10^3$.
-The Web Appendix reports held-out empirical cross-entropy in nats (@sec-methodology) alongside the off-the-shelf generative LLM protocol used in @fig-intro-off-the-shelf.
+Main-text results in @tbl-results-mse report $\mathrm{MSE}_\beta$ (@eq-eval-mse) multiplied by $10^3$ alongside held-out empirical cross-entropy in nats (@eq-resp-ce).
+The Web Appendix reports the off-the-shelf generative LLM protocol used in @fig-intro-off-the-shelf (@apptbl-llm-baseline) and full attribute-level slope tables and subset diagnostics (@appfig-flights-slopes; @apptbl-vaccines-slopes through @apptbl-magistro-subsets).
 
 # Results {#sec-results}
 
 ## Unseen-study transfer across domains and model scales
 
-[TODO: Insert main $\mathrm{MSE}_\beta$ table (`Table 1` from `03-analysis-paper-microdata-figure1.ipynb`) alongside @fig-results-overall. Present three takeaways: universal gains from pooled choice training, dataset-pooling gains over single-dataset training on ordinal transfer, and choice training outperforming off-the-shelf model scaling.]
+@tbl-results-mse and @fig-results-overall report unseen-study treatment-effect error ($\mathrm{MSE}_\beta$) and held-out empirical cross-entropy (CE) across all three model scales, four choice-training regimes, and five evaluation datasets.
+Pooled choice training (`Drones + Electricity`) lowers $\mathrm{MSE}_\beta$ relative to the off-the-shelf checkpoint in all 15 model-dataset cells, including all 12 held-out test cells, and achieves the lowest CE in every cell.
+Across held-out test datasets, $\mathrm{MSE}_\beta$ falls by 22% to 89%.
+These gains extend well beyond `Flights` and the two held-out price datasets (`Consumer rights` and `AI & offshoring`).
+Some of the sharpest improvements occur on non-price test datasets that share no attributes with training, cutting $\mathrm{MSE}_\beta$ by 79% to 88% on `Vaccines` and by 35% to 89% on `Food labels` across scales.
+Choice training also transfers across response formats, moving from binary paired choices in training to three-option opt-out conjoints (`Vaccines`), a six-arm randomized trial (`Food labels`), and five-point ordinal ratings (`AI & offshoring`, where larger raw $\mathrm{MSE}_\beta$ values reflect the 1 to 5 outcome scale; see @apptbl-magistro-subsets).
 
-![Population OLS treatment-effect error across datasets and choice-training regimes](figures/fig_results_overall.png){#fig-results-overall width=100%}
+Comparing single-dataset regimes against `Drones + Electricity` shows why pooling distinct choice datasets matters (@tbl-results-mse and @fig-results-overall).
+Training on `Electricity` or `Drones` alone already improves $\mathrm{MSE}_\beta$ substantially on binary and three-option tasks, yet both single-dataset regimes prove brittle under the format shift to five-point ordinal ratings on `AI & offshoring`.
+Each single-dataset regime worsens `AI & offshoring` $\mathrm{MSE}_\beta$ on two of the three model scales relative to the off-the-shelf checkpoint.
+Pooling `Drones + Electricity` reverses every single-dataset regression, lowering `AI & offshoring` $\mathrm{MSE}_\beta$ by 22% to 35% across scales.
+Overall, pooled choice training attains the lowest $\mathrm{MSE}_\beta$ among all four regimes in 13 of 15 cells, trailing a single-dataset model only on `KEV-9B` for `Consumer rights` and `Food labels`, while still recording the lowest CE in both cells.
+
+Across model scales, choice training dominates off-the-shelf parameter scaling.
+Echoing the off-the-shelf generative LLM pattern in @fig-intro-off-the-shelf, scaling off-the-shelf decision models from `KEV-0.8B` to `KEV-9B` does not reliably improve treatment-effect recovery.
+Off-the-shelf `KEV-9B` incurs higher $\mathrm{MSE}_\beta$ than off-the-shelf `KEV-0.8B` on three of the four held-out test datasets (`AI & offshoring`, `Food labels`, and `Vaccines`), improving monotonically with scale only on `Consumer rights`.
+By contrast, pooled choice training overturns an order-of-magnitude gap in parameter count.
+Choice-trained `KEV-0.8B` outperforms off-the-shelf `KEV-9B` on four of five datasets, trailing only on `Consumer rights`.
+At the middle scale, choice-trained `KEV-4B` achieves the lowest $\mathrm{MSE}_\beta$ overall on `Flights`, `Food labels`, and `Vaccines`, and virtually matches choice-trained `KEV-9B` on `AI & offshoring`.
+
+The CE columns in @tbl-results-mse clarify why off-the-shelf scaling breaks down and confirm that aggregate OLS slope gains reflect genuine individual-level probability improvements.
+Consistent with the objective-pretraining mechanism in @sec-methodology, off-the-shelf decision models exhibit severe overconfidence, with held-out CE (@eq-resp-ce) exceeding uniform random guessing ($\ln K$, for option counts $K \in \{2, 3, 5\}$ in @tbl-datasets) in 14 of 15 cells.
+Moreover, off-the-shelf CE rises with parameter scale on `Food labels`, `Vaccines`, and `AI & offshoring`, showing that larger off-the-shelf models concentrate probability mass even more sharply onto extreme options and amplify OLS slope distortion.
+Pooled choice training reverses this collapse across every scale and dataset, reducing CE strictly below $\ln K$ in 11 of 15 cells and bringing the remaining cells close to or effectively at that threshold, including a drop of roughly 0.7 to 0.8 nats across scales on five-point `AI & offshoring`.
+Because @eq-resp-ce penalizes misallocated respondent-level probabilities directly, these parallel drops in CE and $\mathrm{MSE}_\beta$ (@eq-eval-mse) rule out slope-level error cancellation across respondents or attributes.
+
+::: {#tbl-results-mse size="scriptsize"}
+
+{{< include manuscript-training-assets/tbl-results-mse.md >}}
+
+OLS treatment-effect error and empirical cross-entropy across datasets and choice-training regimes
+
+:::
+
+::: {custom-style="Table Note"}
+*Note.* MSE reports population OLS treatment-effect error $\mathrm{MSE}_\beta \times 10^3$ (@eq-eval-mse) and CE reports mean empirical cross-entropy (negative log-likelihood per choice task, in nats; @eq-resp-ce); lower is better for both metrics. Uniform random guessing yields $\mathrm{CE} = \ln 2 = 0.693$ on `Flights` and `Consumer rights`, $\ln 3 = 1.099$ on `Food labels` and `Vaccines`, and $\ln 5 = 1.609$ on `AI & offshoring`. Bold marks the lowest value per model, dataset, and metric. `Flights` is the validation dataset that selects each run's checkpoint; `Consumer rights` and `AI & offshoring` are held-out test price datasets; `Food labels` and `Vaccines` are held-out test non-price datasets.
+:::
+
+![Population OLS treatment-effect error across datasets and choice-training regimes](manuscript-training-assets/fig-results-overall.png){#fig-results-overall width=100%}
 
 ## Attribute-level transfer across shared and unseen attributes
 
-[TODO: Discuss @fig-results-laptops-slopes and @fig-results-vaccines-slopes alongside the validation breakdown in @appfig-flights-slopes and the full slope-level tables in the Web Appendix (`Tables A2` to `A5`). Show on held-out `Consumer rights` (laptops) that pooled choice training improves both price and non-price attributes (e.g., brand, RAM, storage, warranty, and conflict resolution) across all three model scales, and on held-out `Vaccines` (which has no price attribute) that choice training fixes both off-the-shelf endorsement and origin overreactions and underweighted duration, side-effect, and FDA slopes.]
+Because both training datasets include a price attribute, aggregate $\mathrm{MSE}_\beta$ reductions could in principle stem from price sensitivity transferring alone while unseen non-price attributes remain distorted.
+Attribute-level estimates on held-out `Consumer rights` rule out that explanation (@fig-results-laptops-slopes; full laptop and laundry estimates in @apptbl-consumer-rights-slopes).
+Across all 34 unseen non-price slopes, pooled choice training lowers non-price $\mathrm{MSE}_\beta$ at every model scale, by 24% to 41%.
+On `KEV-9B`, where pooled training slightly overshoots price slopes relative to the off-the-shelf model, the entire net improvement on `Consumer rights` comes from unseen non-price attributes.
+In the laptop conjoint (@fig-results-laptops-slopes), off-the-shelf `KEV-0.8B` and `KEV-4B` compress hardware, warranty, and price slopes toward zero while inverting brand and consumer-rights signs.
+Pooled choice training lifts price, RAM, storage, and ten-year warranty slopes toward the human benchmark and corrects inverted signs on Apple MacBook, full privacy, and conflict resolution, although brand premia and ten-year warranty effects remain attenuated relative to human choices.
 
-![Consumer rights (laptops) OLS treatment effects by attribute for off-the-shelf and pooled choice-trained models](figures/fig_results_laptops_slopes.png){#fig-results-laptops-slopes width=100%}
+The non-price `Vaccines` conjoint provides an even cleaner test because it shares no attributes with either training dataset (@fig-results-vaccines-slopes and @apptbl-vaccines-slopes).
+Here, choice training corrects two opposite off-the-shelf distortions at once.
+First, off-the-shelf models sharply exaggerate socially and politically salient cues, overstating CDC and WHO endorsement effects across all three scales and overshooting high vaccine efficacy and China-origin penalties at `KEV-4B` and `KEV-9B`.
+Pooled choice training cuts those endorsement overshoots by more than half across scales and pulls efficacy and origin slopes back toward human estimates.
+Second, choice training simultaneously lifts underweighted clinical and regulatory slopes rather than shrinking all effects toward zero.
+Across scales, it raises five-year duration and severe side-effect slopes toward human magnitudes and moderates the `KEV-4B` emergency-authorization distortion.
+Because choice training pulls exaggerated slopes downward while lifting suppressed slopes upward within the same task, unseen-study transfer cannot be explained by simple temperature rescaling or uniform shrinkage.
 
-![Vaccines OLS treatment effects by attribute for off-the-shelf and pooled choice-trained models](figures/fig_results_vaccines_slopes.png){#fig-results-vaccines-slopes width=100%}
+The remaining Web Appendix breakdowns reinforce both the breadth and the limits of attribute-level transfer.
+On held-out `Food labels` (@apptbl-food-slopes), off-the-shelf `KEV-4B` and `KEV-9B` invert the `HighIn` warning label into a large negative slope while exaggerating nutrition-information arms.
+Pooled choice training nearly eliminates that sign inversion and brings `KEV-4B` close to human estimates across arms.
+On held-out `AI & offshoring` (@apptbl-ai-offshoring-slopes and @apptbl-magistro-subsets), pooled training cuts non-price job-change $\mathrm{MSE}_\beta$ by 33% to 34% across all three scales and moderates extreme off-the-shelf overreactions to factory-job gains.
+However, factory-job slopes remain inflated at `KEV-4B` and `KEV-9B`, and `KEV-9B` overshoots price slopes under the five-point ordinal scale, underscoring that transfer across response formats remains harder than transfer within binary or three-option designs.
+Finally, the `Flights` validation breakdown (@appfig-flights-slopes and @apptbl-flights-slopes) exhibits the same dual improvement across shared price levels and unseen airline, baggage, and sustainable-fuel attributes.
 
-## Individual-level probability diagnostics
+![Consumer rights (laptops) OLS treatment effects by attribute for off-the-shelf and pooled choice-trained models](manuscript-training-assets/fig-results-laptops-slopes.png){#fig-results-laptops-slopes width=100%}
 
-[TODO: Brief bridge paragraph summarizing Web Appendix held-out empirical cross-entropy (`Table A1` from `03-analysis-paper-microdata-figure1.ipynb`) and `Flights` validation slopes (@appfig-flights-slopes; `Table A3`). Confirm that OLS slope gains stem from improved respondent-level choice probabilities rather than slope-level overfitting.]
+![Vaccines OLS treatment effects by attribute for off-the-shelf and pooled choice-trained models](manuscript-training-assets/fig-results-vaccines-slopes.png){#fig-results-vaccines-slopes width=100%}
 
-# Discussion and Conclusion {#sec-discussion}
+# Conclusion {#sec-conclusion}
 
-
+<!-- Note explaining the limitations of training only on the CE loss. For Food Labels 9B has the lowest CE loss but the highest MSE_beta. Motivation for future research to address training both CE loss and a beta loss -->
 
 # Declarations {.unnumbered}
 
@@ -324,11 +368,13 @@ All authors certify that they have no affiliations with or involvement in any or
 
 ## Token serialization, query-key readout, and covariate mappings {.unnumbered}
 
-[TODO: Add token serialization equations, query-key readout equations, and respondent-covariate mapping tables across all seven datasets alongside @appfig-input-vaccines.]
+::: {.callout-note}
+**TODO.** Add token serialization equations, query-key readout equations, and respondent-covariate mapping tables across all seven datasets alongside @appfig-input-vaccines.
+:::
 
 ::: {#appfig-input-vaccines}
 
-![](figures/fig_input_vaccines.png){width=100%}
+![](diagrams-tikz/fig_input_vaccines.png){width=100%}
 
 Full decision model input for one unseen-study task (Vaccines)
 
@@ -336,16 +382,100 @@ Full decision model input for one unseen-study task (Vaccines)
 
 ## Off-the-shelf generative LLM baseline protocol {.unnumbered}
 
-[TODO: Add the generative LLM prompting protocol and full numerical comparison table backing @fig-intro-off-the-shelf (`01-gemini-vs-kev-covid-ols.ipynb`).]
+::: {.callout-note}
+**TODO.** Add the generative LLM prompting protocol backing @fig-intro-off-the-shelf and @apptbl-llm-baseline.
+:::
 
-## Held-out empirical cross-entropy and attribute-level tables {.unnumbered}
+::: {#apptbl-llm-baseline size="footnotesize"}
 
-[TODO: Add held-out empirical cross-entropy (`Table A1` from `03-analysis-paper-microdata-figure1.ipynb`), validation attribute slopes (@appfig-flights-slopes), and full slope-level tables (`Tables A2` to `A5` from `03-analysis-paper-microdata-appendix.ipynb`).]
+{{< include manuscript-training-assets/apptbl-llm-baseline.md >}}
+
+Off-the-shelf generative LLMs and decision models on the 200-respondent Vaccines subsample
+
+:::
+
+::: {custom-style="Table Note"}
+*Note.* All models condition on respondent demographics over the same 200-respondent, 1,000-task subsample of `Vaccines` [@kreps2020factors], evaluated against the full-sample human OLS benchmark ($N = 1,971$). Refusals count tasks where a generative LLM failed to return a valid choice option. Opt-out reports the share (or expected probability for decision models) of selecting neither vaccine. Values back @fig-intro-off-the-shelf.
+:::
+
+## Attribute-level treatment-effect tables and diagnostics {.unnumbered}
 
 ::: {#appfig-flights-slopes}
 
-![](figures/fig_results_flights_slopes.png){width=100%}
+![](manuscript-training-assets/appfig-flights-slopes.png){width=100%}
 
 Flights (validation) OLS treatment effects by attribute for off-the-shelf and pooled choice-trained models
 
+:::
+
+::: {#apptbl-vaccines-slopes size="scriptsize"}
+
+{{< include manuscript-training-assets/apptbl-vaccines-slopes.md >}}
+
+Vaccines (held-out test) OLS treatment effects by attribute
+
+:::
+
+::: {custom-style="Table Note"}
+*Note.* Human reports full-sample OLS slopes on observed respondent choices in `Vaccines` [@kreps2020factors]. Base denotes the off-the-shelf decision model; Pooled denotes choice training on `Drones + Electricity`. Values back @fig-results-vaccines-slopes.
+:::
+
+::: {#apptbl-food-slopes size="scriptsize"}
+
+{{< include manuscript-training-assets/apptbl-food-slopes.md >}}
+
+Food labels (held-out test) OLS treatment effects by arm
+
+:::
+
+::: {custom-style="Table Note"}
+*Note.* Human reports full-sample OLS slopes on observed choices in `Food labels` [@grummon2025nutrition]. Base denotes the off-the-shelf decision model; Pooled denotes choice training on `Drones + Electricity`.
+:::
+
+::: {#apptbl-consumer-rights-slopes size="scriptsize"}
+
+{{< include manuscript-training-assets/apptbl-consumer-rights-slopes.md >}}
+
+Consumer rights (held-out test) OLS treatment effects by attribute
+
+:::
+
+::: {custom-style="Table Note"}
+*Note.* Human reports full-sample OLS slopes across the 19 laptop (`Computers`) and 19 laundry-machine (`Laundry`) attribute levels in `Consumer rights` [@kantorowicz2026consumers]. Base denotes the off-the-shelf decision model; Pooled denotes choice training on `Drones + Electricity`. Laptop slopes back @fig-results-laptops-slopes.
+:::
+
+::: {#apptbl-ai-offshoring-slopes size="scriptsize"}
+
+{{< include manuscript-training-assets/apptbl-ai-offshoring-slopes.md >}}
+
+AI & offshoring (held-out test) OLS treatment effects by attribute
+
+:::
+
+::: {custom-style="Table Note"}
+*Note.* Human reports full-sample OLS slopes on the five-point ordinal support scale across four country-by-arm regressions (8 slopes each, 32 total) in `AI & offshoring` [@magistro2026attitudes]. Base denotes the off-the-shelf decision model; Pooled denotes choice training on `Drones + Electricity`.
+:::
+
+::: {#apptbl-flights-slopes size="scriptsize"}
+
+{{< include manuscript-training-assets/apptbl-flights-slopes.md >}}
+
+Flights (validation) OLS treatment effects by attribute
+
+:::
+
+::: {custom-style="Table Note"}
+*Note.* Human reports full-sample OLS slopes on observed respondent choices in `Flights` [@goldfarb2026comfort], the validation dataset used to select each run's checkpoint. Base denotes the off-the-shelf decision model; Pooled denotes choice training on `Drones + Electricity`. Values back @appfig-flights-slopes.
+:::
+
+::: {#apptbl-magistro-subsets size="scriptsize"}
+
+{{< include manuscript-training-assets/apptbl-magistro-subsets.md >}}
+
+AI & offshoring OLS treatment-effect error by country, arm, and attribute type
+
+:::
+
+::: {custom-style="Table Note"}
+*Note.* Values report $\mathrm{MSE}_\beta \times 10^3$ on `AI & offshoring` [@magistro2026attitudes]; lower is better. Bold marks the lowest value per model and subset. Pooled choice training (`Drones + Electricity`) improves every country and arm subset across all three models, whereas single-dataset training on `Electricity` degrades both US and Canada subsets on `KEV-4B` and `KEV-9B`.
 :::
