@@ -374,17 +374,16 @@ Table&nbsp;1: Summary of training, validation, and held-out test datasets
 <h2 class="anchored" data-anchor-id="choice-training-regimes-and-protocol">Choice-training regimes and protocol</h2>
 <p>At each model scale, we use a <span class="math inline">\(2 \times 2\)</span> design crossing the inclusion of <code>Electricity</code> (excluded vs.&nbsp;included) with the inclusion of <code>Drones</code> (excluded vs.&nbsp;included) studies. This forms four choice-training regimes: <code>Off-the-shelf</code> (neither dataset), <code>Electricity</code> (18,591 tasks), <code>Drones</code> (36,297 tasks), and <code>Drones + Electricity</code> (54,888 tasks). <code>Off-the-shelf</code> evaluates the unmodified decision model without choice training. This design tests whether single-dataset training transfers to unseen datasets and whether pooling both choice datasets improves the model beyond each individual dataset.</p>
 <p>We evaluate the <code>KEV-0.8B</code>, <code>KEV-4B</code>, and <code>KEV-9B</code> open-weight decision models <span class="citation" data-cites="palmer2026kev">(<a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>, each loaded in <code>bfloat16</code> precision with unit temperature. Choice training updates LoRA adapters (rank <span class="math inline">\(r = 64\)</span>, scaling <span class="math inline">\(\alpha_{\mathrm{LoRA}} = 128\)</span>, dropout <span class="math inline">\(0.05\)</span>) across all linear backbone projections jointly with the trainable pointer head via <a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a>. Every trained run uses AdamW with a <span class="math inline">\(5 \times 10^{-6}\)</span> peak learning rate, a OneCycle schedule (<span class="math inline">\(10\%\)</span> warmup and cosine decay), weight decay <span class="math inline">\(0.01\)</span>, and gradient-norm clipping at <span class="math inline">\(1.0\)</span>, for <span class="math inline">\(3\)</span> epochs with mini-batch size <span class="math inline">\(|S| = 40\)</span> and random seed <span class="math inline">\(42\)</span>. Within each epoch, tasks are shuffled by dataset (and by vendor context in <code>Drones</code>), partitioned into single-dataset mini-batches, and interleaved randomly.</p>
-<p>The Web Appendix details the off-the-shelf generative LLM protocol behind <a href="#fig-intro-off-the-shelf" class="quarto-xref">Figure&nbsp;1</a> (<a href="#apptbl-llm-baseline" class="quarto-xref">Table W1</a>) alongside full attribute-level slope tables and subset diagnostics (<a href="#appfig-flights-slopes" class="quarto-xref">Figure W2</a>; <a href="#apptbl-vaccines-slopes" class="quarto-xref">Table W2</a> through <a href="#apptbl-magistro-subsets" class="quarto-xref">Table W7</a>).</p>
+<p>The Web Appendix details the off-the-shelf generative LLM protocol behind <a href="#fig-intro-off-the-shelf" class="quarto-xref">Figure&nbsp;1</a> (<a href="#apptbl-llm-baseline" class="quarto-xref">Table W2</a>), choice-training hyperparameters (<a href="#apptbl-hyperparameters" class="quarto-xref">Table W3</a>), training curves (<a href="#appfig-training-curves" class="quarto-xref">Figure W2</a>), and attribute-level tables and diagnostics (<a href="#appfig-flights-slopes" class="quarto-xref">Figure W3</a>; <a href="#apptbl-vaccines-slopes" class="quarto-xref">Table W4</a> through <a href="#apptbl-magistro-subsets" class="quarto-xref">Table W9</a>).</p>
 </section>
 </section>
 <section id="sec-results" class="level1">
 <h1>Results</h1>
 <section id="unseen-study-transfer-across-domains-and-model-scales" class="level2">
 <h2 class="anchored" data-anchor-id="unseen-study-transfer-across-domains-and-model-scales">Unseen-study transfer across domains and model scales</h2>
-<p>Relative to the off-the-shelf checkpoints, pooled choice training (<code>Drones + Electricity</code>) lowers both <span class="math inline">\(\mathrm{MSE}_\beta\)</span> and CE in all 12 held-out test cells, reducing <span class="math inline">\(\mathrm{MSE}_\beta\)</span> by 22% to 89%. Notably, these gains extend both to datasets that share no attributes with the training studies (<code>Food labels</code> and <code>Vaccines</code>) and to response formats absent from training (<a href="#fig-results-overall" class="quarto-xref">Figure&nbsp;3</a>).<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a> In particular, although the training data contain only binary choices, pooled models still transfer to three-option choices and five-point ordinal ratings.</p>
-<p>The CE columns in <a href="#tbl-results-mse" class="quarto-xref">Table&nbsp;2</a> point to overconfidence, consistent with the objective-pretraining mechanism in <a href="#sec-methodology" class="quarto-xref">Section&nbsp;3</a>. Off-the-shelf CE exceeds uniform random guessing (<span class="math inline">\(\ln 2 = 0.693\)</span> for binary choices, <span class="math inline">\(\ln 3 = 1.099\)</span> for three-option tasks, and <span class="math inline">\(\ln 5 = 1.609\)</span> for five-point ratings) in 11 of 12 held-out test cells. Pooled choice training instead lowers CE in every cell, bringing 8 of 12 held-out test cells below <span class="math inline">\(\ln K\)</span> and leaving the remaining four only slightly above it.</p>
-<p>The two single-dataset regimes test whether transfer depends on the specific historical dataset used for training. Each regime (<code>Electricity</code> or <code>Drones</code> alone) lowers <span class="math inline">\(\mathrm{MSE}_\beta\)</span> relative to off-the-shelf checkpoints in 10 of 12 held-out test cells, showing that unseen-study transfer does not hinge on any single training dataset. However, every single-dataset failure occurs when transferring from binary choices to five-point ordinal ratings. Single-dataset training nevertheless lowers CE in all 24 held-out test cells, including those four failures. As a result, lower CE does not guarantee lower treatment-effect error. Pooling both datasets eliminates these ordinal-transfer failures and attains the lowest <span class="math inline">\(\mathrm{MSE}_\beta\)</span> among the four regimes in 10 of 12 held-out test cells.</p>
-<p>Choice training also reduces error more reliably than parameter scaling. Echoing the generative LLM pattern in <a href="#fig-intro-off-the-shelf" class="quarto-xref">Figure&nbsp;1</a>, scaling off-the-shelf decision models fails to improve treatment-effect recovery consistently. In fact, off-the-shelf <code>KEV-9B</code> incurs higher <span class="math inline">\(\mathrm{MSE}_\beta\)</span> than off-the-shelf <code>KEV-0.8B</code> on three of the four held-out test datasets. By contrast, choice-trained <code>KEV-0.8B</code> outperforms off-the-shelf <code>KEV-9B</code> on those same three datasets despite having an order of magnitude fewer parameters.</p>
+<p>Relative to the off-the-shelf checkpoints, pooled choice training (<code>Drones + Electricity</code>) lowers both <span class="math inline">\(\mathrm{MSE}_\beta\)</span> and CE in all 12 held-out test cells, reducing <span class="math inline">\(\mathrm{MSE}_\beta\)</span> by 22% to 89% (<a href="#tbl-results-mse" class="quarto-xref">Table&nbsp;2</a>). Notably, these gains extend both to datasets that share no attributes with the training studies (<code>Food labels</code> and <code>Vaccines</code>) and to response formats absent from training (<a href="#fig-results-overall" class="quarto-xref">Figure&nbsp;3</a>).<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a> In particular, although the training data contain only binary choices, pooled models still transfer to three-option choices and five-point ordinal ratings.</p>
+<p>Training on a single dataset, however, transfers to unseen studies less reliably. Training on <code>Electricity</code> alone and <code>Drones</code> alone each reduces <span class="math inline">\(\mathrm{MSE}_\beta\)</span> on three test datasets, yet raises <span class="math inline">\(\mathrm{MSE}_\beta\)</span> above off-the-shelf levels in four of six cells in <code>AI &amp; offshoring</code> (<a href="#fig-results-overall" class="quarto-xref">Figure&nbsp;3</a>). <code>AI &amp; offshoring</code> is the test dataset that has a five-point rating scale for its outcome variable. These failures arise even though single-dataset training lowers CE in all 24 held-out test cells. A closer approximation of individual choices (i.e., lower CE) therefore does not guarantee more accurate treatment effects. Pooling both training datasets eliminates these failures, making unseen-study transfer more robust than training on either dataset alone.</p>
+<p>Choice training also reduces error more reliably than scaling model parameters. Similar to the pattern seen for generative LLMs (<a href="#fig-intro-off-the-shelf" class="quarto-xref">Figure&nbsp;1</a>), scaling off-the-shelf decision models fails to improve treatment-effect recovery consistently. Interestingly, choice-trained <code>KEV-0.8B</code> outperforms off-the-shelf <code>KEV-9B</code> on three of the four test datasets, despite having an order of magnitude fewer parameters.</p>
 <div id="tbl-results-mse" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-results-mse-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -407,7 +406,7 @@ Table&nbsp;2: OLS treatment-effect error and empirical cross-entropy across data
 </colgroup>
 <thead>
 <tr class="header">
-<th rowspan="2" style="text-align: left;">Trained on</th>
+<th rowspan="2" style="text-align: left;">Regime</th>
 <th colspan="2" style="text-align: center;">Flights</th>
 <th colspan="2" style="text-align: center;">Consumer rights</th>
 <th colspan="2" style="text-align: center;">AI &amp; offshoring</th>
@@ -599,7 +598,7 @@ Table&nbsp;2: OLS treatment-effect error and empirical cross-entropy across data
 </figure>
 </div>
 <div data-custom-style="Table Note">
-<p><em>Note.</em> <span class="math inline">\(\mathrm{MSE}_\beta\)</span> reports population OLS treatment-effect error <span class="math inline">\(\times 10^3\)</span> (<a href="#eq-eval-mse" class="quarto-xref">Equation&nbsp;5</a>). CE reports mean empirical cross-entropy (negative log-likelihood per choice task, in nats; <a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a>). Lower is better for both metrics. Uniform random guessing yields <span class="math inline">\(\mathrm{CE} = \ln 2 = 0.693\)</span> on <code>Flights</code> and <code>Consumer rights</code>, <span class="math inline">\(\ln 3 = 1.099\)</span> on <code>Food labels</code> and <code>Vaccines</code>, and <span class="math inline">\(\ln 5 = 1.609\)</span> on <code>AI &amp; offshoring</code>. Bold marks the lowest value per model, dataset, and metric.</p>
+<p><em>Note.</em> <span class="math inline">\(\mathrm{MSE}_\beta\)</span> reports population OLS treatment-effect error <span class="math inline">\(\times 10^3\)</span> (<a href="#eq-eval-mse" class="quarto-xref">Equation&nbsp;5</a>). CE reports mean empirical cross-entropy (negative log-likelihood per choice task, in nats; <a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a>). Lower is better for both metrics. Bold marks the lowest value per model, dataset, and metric.</p>
 </div>
 <div id="fig-results-overall" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
@@ -614,9 +613,8 @@ Figure&nbsp;3: Population OLS treatment-effect error across datasets and choice-
 </section>
 <section id="attribute-level-transfer-across-shared-and-unseen-attributes" class="level2">
 <h2 class="anchored" data-anchor-id="attribute-level-transfer-across-shared-and-unseen-attributes">Attribute-level transfer across shared and unseen attributes</h2>
-<p>Because both training datasets include price, aggregate gains could in principle reflect price-sensitivity transfer alone, yet attribute-level estimates rule out that explanation. On <code>Consumer rights</code>, pooled choice training lowers <span class="math inline">\(\mathrm{MSE}_\beta\)</span> across the 34 non-price slopes by 23% to 41% at every model scale (<a href="#fig-results-laptops-slopes" class="quarto-xref">Figure&nbsp;4</a> and <a href="#apptbl-consumer-rights-slopes" class="quarto-xref">Table W4</a>). Similarly, it cuts error across the 24 non-price job slopes on <code>AI &amp; offshoring</code> by 33% to 34% at every scale (<a href="#apptbl-ai-offshoring-slopes" class="quarto-xref">Table W5</a>). Because <code>Food labels</code> and <code>Vaccines</code> share no attributes with training, their gains likewise cannot stem from price transfer.</p>
-<p>On <code>Vaccines</code>, pooled choice training also adjusts slopes in both directions within the same task (<a href="#fig-results-vaccines-slopes" class="quarto-xref">Figure&nbsp;5</a> and <a href="#apptbl-vaccines-slopes" class="quarto-xref">Table W2</a>). At every scale, off-the-shelf models overstate endorsement effects, and choice training pulls those slopes down toward the human benchmark. Conversely, it lifts underweighted duration and severe side-effect slopes upward toward human levels across all three scales. Because choice training simultaneously damps exaggerated effects and strengthens suppressed ones, uniform shrinkage toward zero cannot explain the <code>Vaccines</code> gains.</p>
-<p>Despite these improvements, pooled choice training narrows rather than closes the gap to human estimates, leaving some of the largest human effects attenuated or overshot at every scale (<a href="#fig-results-laptops-slopes" class="quarto-xref">Figure&nbsp;4</a> and <a href="#fig-results-vaccines-slopes" class="quarto-xref">Figure&nbsp;5</a>). Full attribute-level estimates for the remaining datasets appear in the Web Appendix (<a href="#apptbl-food-slopes" class="quarto-xref">Table W3</a>, <a href="#apptbl-magistro-subsets" class="quarto-xref">Table W7</a>, <a href="#appfig-flights-slopes" class="quarto-xref">Figure W2</a>, and <a href="#apptbl-flights-slopes" class="quarto-xref">Table W6</a>).</p>
+<p>Because both training datasets include price, aggregate gains for the <code>Consumer rights</code> and <code>AI &amp; offshoring</code> datasets could indicate that the models have learned only price-related information. However, attribute-level estimates rule out this explanation. On <code>Consumer rights</code>, pooled choice training lowers <span class="math inline">\(\mathrm{MSE}_\beta\)</span> across the 34 non-price slopes by 23% to 41% at every model scale (<a href="#fig-results-laptops-slopes" class="quarto-xref">Figure&nbsp;4</a> and <a href="#apptbl-consumer-rights-slopes" class="quarto-xref">Table W6</a>). Similarly, it reduces error across the 24 non-price job slopes on <code>AI &amp; offshoring</code>, by 33% to 34% at every scale (<a href="#apptbl-ai-offshoring-slopes" class="quarto-xref">Table W7</a>). Because <code>Food labels</code> and <code>Vaccines</code> share no attributes with training, their gains likewise cannot stem from price information learned during training.</p>
+<p>Despite these improvements, pooled choice training narrows but does not close the gap to human estimates. Some of the largest human effects remain attenuated or over-estimated at every model scale (<a href="#fig-results-laptops-slopes" class="quarto-xref">Figure&nbsp;4</a> and <a href="#fig-results-vaccines-slopes" class="quarto-xref">Figure&nbsp;5</a>). Full attribute-level estimates for the remaining datasets appear in the Web Appendix (<a href="#apptbl-food-slopes" class="quarto-xref">Table W5</a>, <a href="#apptbl-magistro-subsets" class="quarto-xref">Table W9</a>, <a href="#appfig-flights-slopes" class="quarto-xref">Figure W3</a>, and <a href="#apptbl-flights-slopes" class="quarto-xref">Table W8</a>).</p>
 <div id="fig-results-laptops-slopes" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-results-laptops-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -641,11 +639,11 @@ Figure&nbsp;5: Vaccines OLS treatment effects by attribute for off-the-shelf and
 </section>
 <section id="sec-conclusion" class="level1">
 <h1>Conclusion</h1>
-<p>Off-the-shelf foundation models, whether generative LLMs or single-pass decision models, struggle to recover human treatment effects in unseen choice studies, and neither larger parameter counts nor higher reasoning effort reliably resolves this error. Instead, pre-inference choice training of compact open-weight decision models delivers consistent improvements. Training on just two historical choice datasets lowers both OLS treatment-effect error and cross-entropy across every held-out test dataset and model scale. Crucially, these gains extend to unseen attributes and new response formats without any target-study human data.</p>
-<p>These results clarify how choice training fits alongside existing approaches to synthetic respondents. Unlike post-inference adjustment methods that require human data from the target study <span class="citation" data-cites="wang2026large leng2026reducing">(<a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>, <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>, choice training relies strictly on historical datasets and can serve as a stronger starting point before any statistical adjustment <span class="citation" data-cites="hullman2026human">(<a href="#ref-hullman2026human" role="doc-biblioref">Hullman et al. 2026</a>)</span>. It also generalizes beyond prior within-category conjoint training, which failed to transfer across product categories <span class="citation" data-cites="brand2023using">(<a href="#ref-brand2023using" role="doc-biblioref">Brand et al. 2023</a>)</span>, by transferring across unrelated domains and response formats. Finally, whereas large-scale behavioral models depend on hundreds of studies and autoregressive text generation <span class="citation" data-cites="binz2025foundation kolluri2025finetuning">(<a href="#ref-binz2025foundation" role="doc-biblioref"><span class="nocase">Binz et al.</span> 2025</a>, <a href="#ref-kolluri2025finetuning" role="doc-biblioref">Kolluri et al. 2025</a>)</span>, our approach achieves unseen-study transfer from two datasets using a compact single-pass architecture.</p>
-<p>For marketing researchers, these findings carry clear practical implications. Before any human data is collected, choice-trained decision models offer a stronger starting point that can support exploratory pre-testing and experimental design while potentially reducing the residual bias left for post-inference adjustment. In addition, pooling both training datasets yields more dependable transfer than single-dataset training, and choice training reduces error more consistently than scaling parameter counts. Because single-pass decision models also return exact choice probabilities with zero refusals and no Monte Carlo sampling cost, these gains remain practical at modest compute.</p>
-<p>Our results also expose a limitation of training on cross-entropy alone. Single-dataset training lowers cross-entropy on every held-out test cell, yet it sometimes raises treatment-effect error when transferring to five-point ordinal ratings. Lower cross-entropy therefore does not guarantee more accurate experimental slopes. One plausible reason is that cross-entropy weights every choice task equally without directly penalizing bias in treatment-versus-control contrasts. Because single-pass decision models yield exact, differentiable expected OLS slopes (<a href="#eq-pop-ols" class="quarto-xref">Equation&nbsp;4</a>), future research can train jointly on respondent-level cross-entropy and a direct treatment-effect loss.</p>
-<p>Several remaining boundaries point to concrete avenues for future work. Because pooled training combines two datasets and more choice tasks than either single-dataset run, matched-volume ablations are needed to separate dataset diversity from data volume. Similarly, choice-training generative LLMs alongside decision models would isolate architectural advantages from training-data gains. On the estimation side, choice-trained models still attenuate or overshoot some of the largest human effects at every scale, and our evaluation targets population point estimates rather than plug-in standard errors or subgroup-level heterogeneous treatment effects. Extending choice training to ordinal scales, opt-out tasks, non-US samples, and richer respondent covariates therefore offers a natural next step toward more general synthetic respondents.</p>
+<p>Off-the-shelf foundation models, whether generative LLMs or decision models, struggle to recover human treatment effects in unseen choice studies. Neither larger parameter counts nor higher reasoning effort reliably mitigates regression estimates. In this research, we show that pre-inference choice training of compact open-weight decision models provides consistent improvements. Training on only two historical choice studies lowers both OLS treatment-effect error and cross-entropy across every held-out test dataset and model scale. These gains extend to unseen attributes and new response formats without any target-study human data calibration.</p>
+<p>Our results show how choice training fits alongside existing approaches for using AI models as synthetic respondents. Unlike post-inference calibration methods that require human data from the target study <span class="citation" data-cites="wang2026large leng2026reducing">(<a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>, <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>, choice training relies strictly on historical datasets and can serve as a stronger starting point before any statistical calibration <span class="citation" data-cites="hullman2026human">(<a href="#ref-hullman2026human" role="doc-biblioref">Hullman et al. 2026</a>)</span>. It also generalizes beyond the domain of the training datasets and transfers across new domains and response formats. Finally, whereas large-scale behavioral models depend on hundreds of studies and autoregressive text generation <span class="citation" data-cites="binz2025foundation kolluri2025finetuning">(<a href="#ref-binz2025foundation" role="doc-biblioref"><span class="nocase">Binz et al.</span> 2025</a>, <a href="#ref-kolluri2025finetuning" role="doc-biblioref">Kolluri et al. 2025</a>)</span>, our approach achieves unseen-study transfer from two datasets using a compact model architecture.</p>
+<p>For marketing researchers, these findings carry the following practical implications. Before any human data is collected, choice-trained decision models offer a stronger starting point that can support exploratory pre-testing and experimental design while potentially reducing the residual bias left for post-inference calibration. In addition, pooling various training datasets yields more dependable transfer than single-dataset training. Also, choice training reduces error more consistently than scaling model parameters. Because decision models also return exact choice probabilities without Monte Carlo sampling cost, these gains require far less compute than generative LLMs.</p>
+<p>Our results also expose a limitation of training on cross-entropy alone. Single-dataset training lowers cross-entropy on every held-out test cell, yet, for some test datasets, it raises treatment-effect error. Lower cross-entropy therefore does not guarantee more accurate experimental slope estimation. One plausible reason is that cross-entropy weights every choice task equally without directly penalizing bias in treatment-versus-control contrasts. Because decision models yield exact, differentiable expected OLS slopes (<a href="#eq-pop-ols" class="quarto-xref">Equation&nbsp;4</a>), future research can train jointly on respondent-level cross-entropy and a direct treatment-effect loss.</p>
+<p>Moreover, because pooled training combines two datasets and more choice tasks than either single-dataset run, matched-volume ablations are needed to separate dataset diversity from data volume. Similarly, choice-training generative LLMs and comparing with decision models would isolate architectural advantages of decision models from training-data gains. On the estimation side, choice-trained models still attenuate or overshoot some of the largest human effects at every scale. Extending choice training to ordinal scales, non-US samples, and richer respondent covariates therefore offers a natural next step toward generating more general synthetic respondents.</p>
 </section>
 <section id="declarations" class="level1 unnumbered">
 <h1 class="unnumbered">Declarations</h1>
@@ -760,18 +758,339 @@ Ye Z, Zhao J, Wang L (2025) Fine-tune, then rectify. <em>arXiv e-prints</em>:arX
 <h1 class="unnumbered">Web Appendix</h1>
 <section id="token-serialization-query-key-readout-and-covariate-mappings" class="level2 unnumbered">
 <h2 class="unnumbered anchored" data-anchor-id="token-serialization-query-key-readout-and-covariate-mappings">Token serialization, query-key readout, and covariate mappings</h2>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
+<p><strong>Serialization.</strong> Each respondent’s covariates <span class="math inline">\(\mathbf{s}_t\)</span> form a state block of “Label: Value” lines (<a href="#apptbl-covariates" class="quarto-xref">Table W1</a>), opened by a state marker. Each task context <span class="math inline">\(c_t\)</span> follows as a branch that opens with a question marker and the task instructions, wraps each of the <span class="math inline">\(K_t\)</span> options in option-start and option-end markers, and closes with a decision marker (<a href="#appfig-input-vaccines" class="quarto-xref">Figure W1</a>). The five markers reuse reserved tokens of the backbone vocabulary, so serialization adds no new embeddings. Every task branch attends to the shared state block, so several tasks of the same respondent can be scored against one encoded state.</p>
+<p><strong>Query-key readout.</strong> Let <span class="math inline">\(\mathbf{h}_t^{\mathrm{dec}}\)</span> denote the final-layer hidden state at the decision marker of task <span class="math inline">\(t\)</span>, and <span class="math inline">\(\mathbf{h}_{t,k}\)</span> the hidden state at the option-end marker of option <span class="math inline">\(k\)</span>. The pointer head maps both to a <span class="math inline">\(d_p\)</span>-dimensional space, <span id="eq-pointer-readout"><span class="math display">\[
+\mathbf{a}_t = \mathbf{W}_Q \mathbf{h}_t^{\mathrm{dec}} + \mathbf{c}_Q, \qquad
+\mathbf{b}_{t,k} = \mathbf{W}_K \mathbf{h}_{t,k} + \mathbf{c}_K, \qquad
+z_{t,k}(\theta) = \frac{\mathbf{b}_{t,k}^{\top} \mathbf{a}_t}{\sqrt{d_p}},
+\tag{6}\]</span></span> with <span class="math inline">\(d_p = 256\)</span>, and <a href="#eq-model-pmf" class="quarto-xref">Equation&nbsp;1</a> converts the scores into choice probabilities. Because each score depends on its option’s own position in the sequence, the head accommodates any number of options <span class="math inline">\(K_t\)</span> without changing its parameters.</p>
+<div id="apptbl-covariates" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-apptbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-apptbl" id="apptbl-covariates-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table W1: Respondent covariates in the decision model input by dataset
+</figcaption>
+<div aria-describedby="apptbl-covariates-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table" data-custom-style="APATable">
+<colgroup>
+<col style="width: 19%">
+<col style="width: 11%">
+<col style="width: 9%">
+<col style="width: 8%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 10%">
+<col style="width: 10%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Covariate</th>
+<th style="text-align: center;">Electricity</th>
+<th style="text-align: center;">Drones</th>
+<th style="text-align: center;">Flights</th>
+<th style="text-align: center;">Consumer rights</th>
+<th style="text-align: center;">AI &amp; offshoring</th>
+<th style="text-align: center;">Food labels</th>
+<th style="text-align: center;">Vaccines</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Sex</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Age</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Education</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Income</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Race</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Hispanic or Latino</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Region</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">✓</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Place of living</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Religion</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">✓</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Political party</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">✓</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Political ideology</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">✓</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Political self-label</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Voted in last election</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Marital status</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Main activity</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Sexual orientation</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Military service</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Residence type</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Owns residence</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Rents residence</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Electric heating</td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Household size</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Children in household</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">SNAP recipient</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">WIC recipient</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Nutrition Facts label use</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Online grocery share</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Nutrition literacy score</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">✓</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><strong>Total</strong></td>
+<td style="text-align: center;"><strong>18</strong></td>
+<td style="text-align: center;"><strong>7</strong></td>
+<td style="text-align: center;"><strong>11</strong></td>
+<td style="text-align: center;"><strong>4</strong></td>
+<td style="text-align: center;"><strong>6</strong></td>
+<td style="text-align: center;"><strong>13</strong></td>
+<td style="text-align: center;"><strong>9</strong></td>
+</tr>
+</tbody>
+</table>
 </div>
-<div class="callout-title-container flex-fill">
-Note
+</figure>
 </div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>TODO.</strong> Add token serialization equations, query-key readout equations, and respondent-covariate mapping tables across all seven datasets alongside <a href="#appfig-input-vaccines" class="quarto-xref">Figure W1</a>.</p>
-</div>
+<div data-custom-style="Table Note">
+<p><em>Note.</em> Each covariate enters the input as one “Label: Value” line (<a href="#appfig-input-vaccines" class="quarto-xref">Figure W1</a>); covariates a respondent did not report are omitted. Country is not included.</p>
 </div>
 <div id="appfig-input-vaccines" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-appfig figure">
@@ -786,35 +1105,24 @@ Figure W1: Full decision model input for one unseen-study task (Vaccines)
 </section>
 <section id="off-the-shelf-generative-llm-baseline-protocol" class="level2 unnumbered">
 <h2 class="unnumbered anchored" data-anchor-id="off-the-shelf-generative-llm-baseline-protocol">Off-the-shelf generative LLM baseline protocol</h2>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>TODO.</strong> Add the generative LLM prompting protocol backing <a href="#fig-intro-off-the-shelf" class="quarto-xref">Figure&nbsp;1</a> and <a href="#apptbl-llm-baseline" class="quarto-xref">Table W1</a>.</p>
-</div>
-</div>
+<p>We compare off-the-shelf generative LLMs and decision models on a random subsample of 200 <code>Vaccines</code> respondents (seed 42; 1,000 three-option tasks), matching the AI-only sample size of <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span>. Each model’s choices enter the same OLS operator as the main analysis, and errors are computed against the full-sample human slopes (<span class="math inline">\(N = 1,971\)</span>; 11 slopes).</p>
+<p><strong>Prompt.</strong> Generative LLMs receive the prompt of <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026, sec. 5.2.1</a>)</span>. The system prompt reads “You should act like a person with the following characteristics deciding whether or not to receive a COVID-19 vaccination:”, followed by one line per respondent covariate (e.g., “Age: 18-29”). The user prompt lists options A and B by efficacy, protective duration, major and minor side effects, authorization, origin, and endorsement, adds “C: You choose neither A nor B.”, and asks “Which option would you choose as this person? Your response should be a single letter A, B, or C.” Gemini prompts omit the respondent’s region, which the covariate mapping added after those runs.</p>
+<p><strong>Generation.</strong> We query Gemini 3.5 Flash-Lite (minimal and high thinking) and Gemini 4 Argon (low and high thinking) through the Gemini API with default sampling. We serve Qwen3.5-0.8B, 4B, and 9B with vLLM in <code>bfloat16</code>, toggling reasoning through the chat template and using Qwen’s official recommended sampling settings (reasoning off: temperature 0.7, top-<span class="math inline">\(p\)</span> 0.8; reasoning on: temperature 1.0, top-<span class="math inline">\(p\)</span> 0.95; both top-<span class="math inline">\(k\)</span> 20 and presence penalty 1.5) without an output-length limit. Each generative LLM produces one response per task.</p>
+<p><strong>Parsing.</strong> A response counts as a choice only if, after removing surrounding whitespace, it is exactly “A”, “B”, or “C”; all other responses are counted as refusals and excluded from the regression. Valid responses enter the regression as one-hot choice vectors.</p>
+<p><strong>Decision models.</strong> Off-the-shelf <code>KEV-0.8B</code>, <code>KEV-4B</code>, and <code>KEV-9B</code> receive the same respondent covariates and choice task in their native serialization and return a probability over the three options in one forward pass, which enters the regression directly. Following the released model cards, these baseline evaluations apply each checkpoint’s shipped calibration temperature (2.35, 2.41, and 2.19, respectively).</p>
 <div id="apptbl-llm-baseline" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-apptbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-apptbl" id="apptbl-llm-baseline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table W1: Off-the-shelf generative LLMs and decision models on the 200-respondent Vaccines subsample
+Table W2: Off-the-shelf generative LLMs and decision models on the 200-respondent Vaccines subsample
 </figcaption>
 <div aria-describedby="apptbl-llm-baseline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table" data-custom-style="APATable">
 <colgroup>
-<col style="width: 22%">
-<col style="width: 14%">
-<col style="width: 10%">
-<col style="width: 8%">
-<col style="width: 13%">
-<col style="width: 7%">
-<col style="width: 13%">
-<col style="width: 10%">
+<col style="width: 34%">
+<col style="width: 20%">
+<col style="width: 12%">
+<col style="width: 11%">
+<col style="width: 20%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -823,21 +1131,15 @@ Table W1: Off-the-shelf generative LLMs and decision models on the 200-responden
 <th style="text-align: right;">Refusals</th>
 <th style="text-align: right;">Opt-out</th>
 <th style="text-align: right;"><span class="math inline">\(\mathrm{MSE}_\beta\)</span> <span class="math inline">\(\times 10^3\)</span></th>
-<th style="text-align: right;">MAE</th>
-<th style="text-align: right;">Spearman <span class="math inline">\(\rho\)</span></th>
-<th style="text-align: right;">Sign acc.</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td style="text-align: left;">Human subsample (200 resp.)</td>
-<td style="text-align: left;">Observed</td>
+<td style="text-align: left;"></td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">20.3%</td>
 <td style="text-align: right;">0.46</td>
-<td style="text-align: right;">0.018</td>
-<td style="text-align: right;">0.89</td>
-<td style="text-align: right;">100.0%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Qwen3.5-0.8B</td>
@@ -845,9 +1147,6 @@ Table W1: Off-the-shelf generative LLMs and decision models on the 200-responden
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">59.0%</td>
 <td style="text-align: right;">2.75</td>
-<td style="text-align: right;">0.038</td>
-<td style="text-align: right;">0.82</td>
-<td style="text-align: right;">90.9%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Qwen3.5-0.8B</td>
@@ -855,9 +1154,6 @@ Table W1: Off-the-shelf generative LLMs and decision models on the 200-responden
 <td style="text-align: right;">19</td>
 <td style="text-align: right;">28.6%</td>
 <td style="text-align: right;">13.82</td>
-<td style="text-align: right;">0.095</td>
-<td style="text-align: right;">0.87</td>
-<td style="text-align: right;">90.9%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Qwen3.5-4B</td>
@@ -865,9 +1161,6 @@ Table W1: Off-the-shelf generative LLMs and decision models on the 200-responden
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">53.6%</td>
 <td style="text-align: right;">1.94</td>
-<td style="text-align: right;">0.029</td>
-<td style="text-align: right;">0.95</td>
-<td style="text-align: right;">90.9%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Qwen3.5-4B</td>
@@ -875,9 +1168,6 @@ Table W1: Off-the-shelf generative LLMs and decision models on the 200-responden
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">4.8%</td>
 <td style="text-align: right;">9.71</td>
-<td style="text-align: right;">0.085</td>
-<td style="text-align: right;">0.98</td>
-<td style="text-align: right;">100.0%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Qwen3.5-9B</td>
@@ -885,9 +1175,6 @@ Table W1: Off-the-shelf generative LLMs and decision models on the 200-responden
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">81.8%</td>
 <td style="text-align: right;">1.49</td>
-<td style="text-align: right;">0.027</td>
-<td style="text-align: right;">0.95</td>
-<td style="text-align: right;">90.9%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Qwen3.5-9B</td>
@@ -895,9 +1182,6 @@ Table W1: Off-the-shelf generative LLMs and decision models on the 200-responden
 <td style="text-align: right;">1</td>
 <td style="text-align: right;">11.4%</td>
 <td style="text-align: right;">6.27</td>
-<td style="text-align: right;">0.066</td>
-<td style="text-align: right;">0.97</td>
-<td style="text-align: right;">100.0%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Gemini 3.5 Flash-Lite</td>
@@ -905,9 +1189,6 @@ Table W1: Off-the-shelf generative LLMs and decision models on the 200-responden
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">21.9%</td>
 <td style="text-align: right;">10.64</td>
-<td style="text-align: right;">0.083</td>
-<td style="text-align: right;">0.94</td>
-<td style="text-align: right;">100.0%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Gemini 3.5 Flash-Lite</td>
@@ -915,9 +1196,6 @@ Table W1: Off-the-shelf generative LLMs and decision models on the 200-responden
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">4.8%</td>
 <td style="text-align: right;">12.28</td>
-<td style="text-align: right;">0.085</td>
-<td style="text-align: right;">0.90</td>
-<td style="text-align: right;">100.0%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Gemini 4 Argon</td>
@@ -925,9 +1203,6 @@ Table W1: Off-the-shelf generative LLMs and decision models on the 200-responden
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">12.2%</td>
 <td style="text-align: right;">16.50</td>
-<td style="text-align: right;">0.099</td>
-<td style="text-align: right;">0.93</td>
-<td style="text-align: right;">100.0%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Gemini 4 Argon</td>
@@ -935,39 +1210,27 @@ Table W1: Off-the-shelf generative LLMs and decision models on the 200-responden
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">9.1%</td>
 <td style="text-align: right;">16.57</td>
-<td style="text-align: right;">0.099</td>
-<td style="text-align: right;">0.95</td>
-<td style="text-align: right;">100.0%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">KEV-0.8B</td>
-<td style="text-align: left;">Off-the-shelf</td>
+<td style="text-align: left;"></td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">32.1%</td>
 <td style="text-align: right;">5.85</td>
-<td style="text-align: right;">0.065</td>
-<td style="text-align: right;">0.50</td>
-<td style="text-align: right;">72.7%</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">KEV-4B</td>
-<td style="text-align: left;">Off-the-shelf</td>
+<td style="text-align: left;"></td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">13.4%</td>
 <td style="text-align: right;">2.77</td>
-<td style="text-align: right;">0.037</td>
-<td style="text-align: right;">0.88</td>
-<td style="text-align: right;">100.0%</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">KEV-9B</td>
-<td style="text-align: left;">Off-the-shelf</td>
+<td style="text-align: left;"></td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">16.3%</td>
 <td style="text-align: right;">4.38</td>
-<td style="text-align: right;">0.049</td>
-<td style="text-align: right;">0.93</td>
-<td style="text-align: right;">100.0%</td>
 </tr>
 </tbody>
 </table>
@@ -978,6 +1241,144 @@ Table W1: Off-the-shelf generative LLMs and decision models on the 200-responden
 <p><em>Note.</em> All models condition on respondent demographics over the same 200-respondent, 1,000-task subsample of <code>Vaccines</code> <span class="citation" data-cites="kreps2020factors">(<a href="#ref-kreps2020factors" role="doc-biblioref">Kreps et al. 2020</a>)</span>, evaluated against the full-sample human OLS benchmark (<span class="math inline">\(N = 1,971\)</span>). Refusals count tasks where a generative LLM failed to return a valid choice option. Opt-out reports the share (or expected probability for decision models) of selecting neither vaccine. Values back <a href="#fig-intro-off-the-shelf" class="quarto-xref">Figure&nbsp;1</a>.</p>
 </div>
 </section>
+<section id="choice-training-hyperparameters" class="level2 unnumbered">
+<h2 class="unnumbered anchored" data-anchor-id="choice-training-hyperparameters">Choice-training hyperparameters</h2>
+<div id="apptbl-hyperparameters" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-apptbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-apptbl" id="apptbl-hyperparameters-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table W3: Choice-training hyperparameters shared by all trained runs
+</figcaption>
+<div aria-describedby="apptbl-hyperparameters-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table" data-custom-style="APATable">
+<colgroup>
+<col style="width: 29%">
+<col style="width: 70%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Setting</th>
+<th style="text-align: left;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Base decision models</td>
+<td style="text-align: left;">KEV-0.8B (<code>bf75a6a</code>), KEV-4B (<code>6cfce5c</code>), KEV-9B (<code>db029f0</code>)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Weights precision</td>
+<td style="text-align: left;">bfloat16</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Pointer-head temperature</td>
+<td style="text-align: left;">1.0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Pointer-head dimension</td>
+<td style="text-align: left;">256 (trained in full)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">LoRA rank <span class="math inline">\(r\)</span></td>
+<td style="text-align: left;">64</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">LoRA scaling <span class="math inline">\(\alpha_{\mathrm{LoRA}}\)</span></td>
+<td style="text-align: left;">128</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">LoRA dropout</td>
+<td style="text-align: left;">0.05</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">LoRA target modules</td>
+<td style="text-align: left;">All attention, MLP, and Gated DeltaNet projections</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Optimizer</td>
+<td style="text-align: left;">AdamW (<span class="math inline">\(\beta_1 = 0.9\)</span>, <span class="math inline">\(\beta_2 = 0.999\)</span>, <span class="math inline">\(\epsilon = 10^{-8}\)</span>)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Peak learning rate</td>
+<td style="text-align: left;"><span class="math inline">\(5 \times 10^{-6}\)</span></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Learning-rate schedule</td>
+<td style="text-align: left;">OneCycle: 10% warmup, cosine annealing, start = peak / 25, end = start / <span class="math inline">\(10^{4}\)</span></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Weight decay</td>
+<td style="text-align: left;">0.01</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Gradient-norm clipping</td>
+<td style="text-align: left;">1.0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Epochs</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Mini-batch size <span class="math inline">\(\lvert S \rvert\)</span></td>
+<td style="text-align: left;">40 tasks from a single dataset</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Random seed</td>
+<td style="text-align: left;">42</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Checkpoint selection</td>
+<td style="text-align: left;">Lowest Flights <span class="math inline">\(\mathrm{MSE}_\beta\)</span>, evaluated every 32 steps</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Hardware</td>
+<td style="text-align: left;">One NVIDIA H100 (80 GB) per run</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Steps, Electricity</td>
+<td style="text-align: left;">465 per epoch (1,395 total)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Selected step, Electricity</td>
+<td style="text-align: left;">640 / 416 / 928</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Steps, Drones</td>
+<td style="text-align: left;">910 per epoch (2,730 total)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Selected step, Drones</td>
+<td style="text-align: left;">1,152 / 544 / 256</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Steps, Drones + Electricity</td>
+<td style="text-align: left;">1,375 per epoch (4,125 total)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Selected step, Drones + Electricity</td>
+<td style="text-align: left;">1,600 / 1,472 / 1,600</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<div data-custom-style="Table Note">
+<p><em>Note.</em> Settings are identical across the three model scales and three choice-training regimes. Revision hashes uniquely identify the base checkpoints of <span class="citation" data-cites="palmer2026kev">Palmer (<a href="#ref-palmer2026kev" role="doc-biblioref">2026</a>)</span>. Steps count single-dataset mini-batches. Selected steps report the checkpoint with the lowest <code>Flights</code> <span class="math inline">\(\mathrm{MSE}_\beta\)</span> for <code>KEV-0.8B</code>, <code>KEV-4B</code>, and <code>KEV-9B</code>, respectively.</p>
+</div>
+<div id="appfig-training-curves" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-appfig figure">
+<div aria-describedby="appfig-training-curves-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="manuscript-training-assets/appfig-training-curves.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-appfig" id="appfig-training-curves-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure W2: Training cross-entropy and validation metrics over choice training
+</figcaption>
+</figure>
+</div>
+<div data-custom-style="Table Note">
+<p><em>Note.</em> Training CE is a moving average over 0.1 epoch of the per-mini-batch loss. Validation metrics are evaluated on <code>Flights</code> every 32 steps, starting from the off-the-shelf model at epoch 0. Dots mark the checkpoint with the lowest <code>Flights</code> <span class="math inline">\(\mathrm{MSE}_\beta\)</span>, which is used for all test evaluations.</p>
+</div>
+</section>
 <section id="attribute-level-treatment-effect-tables-and-diagnostics" class="level2 unnumbered">
 <h2 class="unnumbered anchored" data-anchor-id="attribute-level-treatment-effect-tables-and-diagnostics">Attribute-level treatment-effect tables and diagnostics</h2>
 <div id="appfig-flights-slopes" class="quarto-float quarto-figure quarto-figure-center anchored">
@@ -986,14 +1387,14 @@ Table W1: Off-the-shelf generative LLMs and decision models on the 200-responden
 <img src="manuscript-training-assets/appfig-flights-slopes.png" class="img-fluid figure-img" style="width:100.0%">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-appfig" id="appfig-flights-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure W2: Flights (validation) OLS treatment effects by attribute for off-the-shelf and pooled choice-trained models
+Figure W3: Flights (validation) OLS treatment effects by attribute for off-the-shelf and pooled choice-trained models
 </figcaption>
 </figure>
 </div>
 <div id="apptbl-vaccines-slopes" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-apptbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-apptbl" id="apptbl-vaccines-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table W2: Vaccines (held-out test) OLS treatment effects by attribute
+Table W4: Vaccines (held-out test) OLS treatment effects by attribute
 </figcaption>
 <div aria-describedby="apptbl-vaccines-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table" data-custom-style="APATable">
@@ -1151,7 +1552,7 @@ Table W2: Vaccines (held-out test) OLS treatment effects by attribute
 <div id="apptbl-food-slopes" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-apptbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-apptbl" id="apptbl-food-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table W3: Food labels (held-out test) OLS treatment effects by arm
+Table W5: Food labels (held-out test) OLS treatment effects by arm
 </figcaption>
 <div aria-describedby="apptbl-food-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table" data-custom-style="APATable">
@@ -1249,7 +1650,7 @@ Table W3: Food labels (held-out test) OLS treatment effects by arm
 <div id="apptbl-consumer-rights-slopes" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-apptbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-apptbl" id="apptbl-consumer-rights-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table W4: Consumer rights (held-out test) OLS treatment effects by attribute
+Table W6: Consumer rights (held-out test) OLS treatment effects by attribute
 </figcaption>
 <div aria-describedby="apptbl-consumer-rights-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table" data-custom-style="APATable">
@@ -1697,7 +2098,7 @@ Table W4: Consumer rights (held-out test) OLS treatment effects by attribute
 <div id="apptbl-ai-offshoring-slopes" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-apptbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-apptbl" id="apptbl-ai-offshoring-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table W5: AI &amp; offshoring (held-out test) OLS treatment effects by attribute
+Table W7: AI &amp; offshoring (held-out test) OLS treatment effects by attribute
 </figcaption>
 <div aria-describedby="apptbl-ai-offshoring-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table" data-custom-style="APATable">
@@ -2085,7 +2486,7 @@ Table W5: AI &amp; offshoring (held-out test) OLS treatment effects by attribute
 <div id="apptbl-flights-slopes" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-apptbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-apptbl" id="apptbl-flights-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table W6: Flights (validation) OLS treatment effects by attribute
+Table W8: Flights (validation) OLS treatment effects by attribute
 </figcaption>
 <div aria-describedby="apptbl-flights-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table" data-custom-style="APATable">
@@ -2248,12 +2649,12 @@ Table W6: Flights (validation) OLS treatment effects by attribute
 </figure>
 </div>
 <div data-custom-style="Table Note">
-<p><em>Note.</em> Human reports full-sample OLS slopes on observed respondent choices in <code>Flights</code> <span class="citation" data-cites="goldfarb2026comfort">(<a href="#ref-goldfarb2026comfort" role="doc-biblioref">Goldfarb et al. 2026</a>)</span>, the validation dataset used to select each run’s checkpoint. Base denotes the off-the-shelf decision model; Pooled denotes choice training on <code>Drones + Electricity</code>. Values back <a href="#appfig-flights-slopes" class="quarto-xref">Figure W2</a>.</p>
+<p><em>Note.</em> Human reports full-sample OLS slopes on observed respondent choices in <code>Flights</code> <span class="citation" data-cites="goldfarb2026comfort">(<a href="#ref-goldfarb2026comfort" role="doc-biblioref">Goldfarb et al. 2026</a>)</span>, the validation dataset used to select each run’s checkpoint. Base denotes the off-the-shelf decision model; Pooled denotes choice training on <code>Drones + Electricity</code>. Values back <a href="#appfig-flights-slopes" class="quarto-xref">Figure W3</a>.</p>
 </div>
 <div id="apptbl-magistro-subsets" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-apptbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-apptbl" id="apptbl-magistro-subsets-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table W7: AI &amp; offshoring OLS treatment-effect error (<span class="math inline">\(\mathrm{MSE}_\beta \times 10^3\)</span>) by country, arm, and attribute type
+Table W9: AI &amp; offshoring OLS treatment-effect error (<span class="math inline">\(\mathrm{MSE}_\beta \times 10^3\)</span>) by country, arm, and attribute type
 </figcaption>
 <div aria-describedby="apptbl-magistro-subsets-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table" data-custom-style="APATable">

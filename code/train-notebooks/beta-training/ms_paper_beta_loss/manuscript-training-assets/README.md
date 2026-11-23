@@ -30,7 +30,10 @@ manuscript reads `manuscript-training-assets/<label>.png` (or `.md`) through it,
 | `fig-results-laptops-slopes` | figure | saved runs |
 | `fig-results-vaccines-slopes` | figure | saved runs |
 | `apptbl-llm-baseline` | table | `../llm-baseline/results_summary.csv` |
+| `apptbl-covariates` | table | dataset modules through `beta_ols` (`PERSONA_COLS`, country excluded) |
+| `apptbl-hyperparameters` | table | saved runs (`run.json`) and fixed settings in `beta_train` / `kev` |
 | `appfig-flights-slopes` | figure | saved runs |
+| `appfig-training-curves` | figure | saved runs (`steps.csv`, `val_history.csv`) |
 | `apptbl-vaccines-slopes` | table | saved runs |
 | `apptbl-food-slopes` | table | saved runs |
 | `apptbl-consumer-rights-slopes` | table | saved runs |

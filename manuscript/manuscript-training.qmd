@@ -324,33 +324,28 @@ Choice training updates LoRA adapters (rank $r = 64$, scaling $\alpha_{\mathrm{L
 Every trained run uses AdamW with a $5 \times 10^{-6}$ peak learning rate, a OneCycle schedule ($10\%$ warmup and cosine decay), weight decay $0.01$, and gradient-norm clipping at $1.0$, for $3$ epochs with mini-batch size $|S| = 40$ and random seed $42$.
 Within each epoch, tasks are shuffled by dataset (and by vendor context in `Drones`), partitioned into single-dataset mini-batches, and interleaved randomly.
 
-The Web Appendix details the off-the-shelf generative LLM protocol behind @fig-intro-off-the-shelf (@apptbl-llm-baseline) alongside full attribute-level slope tables and subset diagnostics (@appfig-flights-slopes; @apptbl-vaccines-slopes through @apptbl-magistro-subsets).
+The Web Appendix details the off-the-shelf generative LLM protocol behind @fig-intro-off-the-shelf (@apptbl-llm-baseline), choice-training hyperparameters (@apptbl-hyperparameters), training curves (@appfig-training-curves), and attribute-level tables and diagnostics (@appfig-flights-slopes; @apptbl-vaccines-slopes through @apptbl-magistro-subsets).
 
 # Results {#sec-results}
 
 ## Unseen-study transfer across domains and model scales
 
-Relative to the off-the-shelf checkpoints, pooled choice training (`Drones + Electricity`) lowers both $\mathrm{MSE}_\beta$ and CE in all 12 held-out test cells, reducing $\mathrm{MSE}_\beta$ by 22% to 89%.
+Relative to the off-the-shelf checkpoints, pooled choice training (`Drones + Electricity`) lowers both $\mathrm{MSE}_\beta$ and CE in all 12 held-out test cells, reducing $\mathrm{MSE}_\beta$ by 22% to 89% (@tbl-results-mse).
 Notably, these gains extend both to datasets that share no attributes with the training studies (`Food labels` and `Vaccines`) and to response formats absent from training (@fig-results-overall).[^large-offshoring-mse]
 In particular, although the training data contain only binary choices, pooled models still transfer to three-option choices and five-point ordinal ratings.
 
 [^large-offshoring-mse]: In the table, the larger raw $\mathrm{MSE}_\beta$ values on `AI & offshoring` reflect its 1 to 5 ordinal scale rather than a binary indicator.
 
-The CE columns in @tbl-results-mse point to overconfidence, consistent with the objective-pretraining mechanism in @sec-methodology.
-Off-the-shelf CE exceeds uniform random guessing ($\ln 2 = 0.693$ for binary choices, $\ln 3 = 1.099$ for three-option tasks, and $\ln 5 = 1.609$ for five-point ratings) in 11 of 12 held-out test cells.
-Pooled choice training instead lowers CE in every cell, bringing 8 of 12 held-out test cells below $\ln K$ and leaving the remaining four only slightly above it.
 
-The two single-dataset regimes test whether transfer depends on the specific historical dataset used for training.
-Each regime (`Electricity` or `Drones` alone) lowers $\mathrm{MSE}_\beta$ relative to off-the-shelf checkpoints in 10 of 12 held-out test cells, showing that unseen-study transfer does not hinge on any single training dataset.
-However, every single-dataset failure occurs when transferring from binary choices to five-point ordinal ratings.
-Single-dataset training nevertheless lowers CE in all 24 held-out test cells, including those four failures.
-As a result, lower CE does not guarantee lower treatment-effect error.
-Pooling both datasets eliminates these ordinal-transfer failures and attains the lowest $\mathrm{MSE}_\beta$ among the four regimes in 10 of 12 held-out test cells.
+Training on a single dataset, however, transfers to unseen studies less reliably.
+Training on `Electricity` alone and `Drones` alone each reduces $\mathrm{MSE}_\beta$ on three test datasets, yet raises $\mathrm{MSE}_\beta$ above off-the-shelf levels in four of six cells in `AI & offshoring` (@fig-results-overall). `AI & offshoring` is the test dataset that has a five-point rating scale for its outcome variable.
+These failures arise even though single-dataset training lowers CE in all 24 held-out test cells.
+A closer approximation of individual choices (i.e., lower CE) therefore does not guarantee more accurate treatment effects.
+Pooling both training datasets eliminates these failures, making unseen-study transfer more robust than training on either dataset alone.
 
-Choice training also reduces error more reliably than parameter scaling.
-Echoing the generative LLM pattern in @fig-intro-off-the-shelf, scaling off-the-shelf decision models fails to improve treatment-effect recovery consistently.
-In fact, off-the-shelf `KEV-9B` incurs higher $\mathrm{MSE}_\beta$ than off-the-shelf `KEV-0.8B` on three of the four held-out test datasets.
-By contrast, choice-trained `KEV-0.8B` outperforms off-the-shelf `KEV-9B` on those same three datasets despite having an order of magnitude fewer parameters.
+Choice training also reduces error more reliably than scaling model parameters.
+Similar to the pattern seen for generative LLMs (@fig-intro-off-the-shelf), scaling off-the-shelf decision models fails to improve treatment-effect recovery consistently.
+Interestingly, choice-trained `KEV-0.8B` outperforms off-the-shelf `KEV-9B` on three of the four test datasets, despite having an order of magnitude fewer parameters.
 
 ::: {#tbl-results-mse size="scriptsize"}
 
@@ -364,7 +359,6 @@ OLS treatment-effect error and empirical cross-entropy across datasets and choic
 *Note.* $\mathrm{MSE}_\beta$ reports population OLS treatment-effect error $\times 10^3$ (@eq-eval-mse).
 CE reports mean empirical cross-entropy (negative log-likelihood per choice task, in nats; @eq-resp-ce). 
 Lower is better for both metrics. 
-Uniform random guessing yields $\mathrm{CE} = \ln 2 = 0.693$ on `Flights` and `Consumer rights`, $\ln 3 = 1.099$ on `Food labels` and `Vaccines`, and $\ln 5 = 1.609$ on `AI & offshoring`. 
 Bold marks the lowest value per model, dataset, and metric. 
 :::
 
@@ -372,17 +366,14 @@ Bold marks the lowest value per model, dataset, and metric.
 
 ## Attribute-level transfer across shared and unseen attributes
 
-Because both training datasets include price, aggregate gains could in principle reflect price-sensitivity transfer alone, yet attribute-level estimates rule out that explanation.
+Because both training datasets include price, aggregate gains for the `Consumer rights` and `AI & offshoring` datasets could indicate that the models have learned only price-related information.
+However, attribute-level estimates rule out this explanation.
 On `Consumer rights`, pooled choice training lowers $\mathrm{MSE}_\beta$ across the 34 non-price slopes by 23% to 41% at every model scale (@fig-results-laptops-slopes and @apptbl-consumer-rights-slopes).
-Similarly, it cuts error across the 24 non-price job slopes on `AI & offshoring` by 33% to 34% at every scale (@apptbl-ai-offshoring-slopes).
-Because `Food labels` and `Vaccines` share no attributes with training, their gains likewise cannot stem from price transfer.
+Similarly, it reduces error across the 24 non-price job slopes on `AI & offshoring`, by 33% to 34% at every scale (@apptbl-ai-offshoring-slopes).
+Because `Food labels` and `Vaccines` share no attributes with training, their gains likewise cannot stem from price information learned during training.
 
-On `Vaccines`, pooled choice training also adjusts slopes in both directions within the same task (@fig-results-vaccines-slopes and @apptbl-vaccines-slopes).
-At every scale, off-the-shelf models overstate endorsement effects, and choice training pulls those slopes down toward the human benchmark.
-Conversely, it lifts underweighted duration and severe side-effect slopes upward toward human levels across all three scales.
-Because choice training simultaneously damps exaggerated effects and strengthens suppressed ones, uniform shrinkage toward zero cannot explain the `Vaccines` gains.
-
-Despite these improvements, pooled choice training narrows rather than closes the gap to human estimates, leaving some of the largest human effects attenuated or overshot at every scale (@fig-results-laptops-slopes and @fig-results-vaccines-slopes).
+Despite these improvements, pooled choice training narrows but does not close the gap to human estimates. 
+Some of the largest human effects remain attenuated or over-estimated at every model scale (@fig-results-laptops-slopes and @fig-results-vaccines-slopes).
 Full attribute-level estimates for the remaining datasets appear in the Web Appendix (@apptbl-food-slopes, @apptbl-magistro-subsets, @appfig-flights-slopes, and @apptbl-flights-slopes).
 
 ![Consumer rights (laptops) OLS treatment effects by attribute for off-the-shelf and pooled choice-trained models](manuscript-training-assets/fig-results-laptops-slopes.png){#fig-results-laptops-slopes width=100%}
@@ -391,32 +382,33 @@ Full attribute-level estimates for the remaining datasets appear in the Web Appe
 
 # Conclusion {#sec-conclusion}
 
-Off-the-shelf foundation models, whether generative LLMs or single-pass decision models, struggle to recover human treatment effects in unseen choice studies, and neither larger parameter counts nor higher reasoning effort reliably resolves this error.
-Instead, pre-inference choice training of compact open-weight decision models delivers consistent improvements.
-Training on just two historical choice datasets lowers both OLS treatment-effect error and cross-entropy across every held-out test dataset and model scale.
-Crucially, these gains extend to unseen attributes and new response formats without any target-study human data.
+Off-the-shelf foundation models, whether generative LLMs or decision models, struggle to recover human treatment effects in unseen choice studies. 
+Neither larger parameter counts nor higher reasoning effort reliably mitigates regression estimates.
+In this research, we show that pre-inference choice training of compact open-weight decision models provides consistent improvements.
+Training on only two historical choice studies lowers both OLS treatment-effect error and cross-entropy across every held-out test dataset and model scale.
+These gains extend to unseen attributes and new response formats without any target-study human data calibration.
 
-These results clarify how choice training fits alongside existing approaches to synthetic respondents.
-Unlike post-inference adjustment methods that require human data from the target study [@wang2026large; @leng2026reducing], choice training relies strictly on historical datasets and can serve as a stronger starting point before any statistical adjustment [@hullman2026human].
-It also generalizes beyond prior within-category conjoint training, which failed to transfer across product categories [@brand2023using], by transferring across unrelated domains and response formats.
-Finally, whereas large-scale behavioral models depend on hundreds of studies and autoregressive text generation [@binz2025foundation; @kolluri2025finetuning], our approach achieves unseen-study transfer from two datasets using a compact single-pass architecture.
+Our results show how choice training fits alongside existing approaches for using AI models as synthetic respondents.
+Unlike post-inference calibration methods that require human data from the target study [@wang2026large; @leng2026reducing], choice training relies strictly on historical datasets and can serve as a stronger starting point before any statistical calibration [@hullman2026human].
+It also generalizes beyond the domain of the training datasets and transfers across new domains and response formats.
+Finally, whereas large-scale behavioral models depend on hundreds of studies and autoregressive text generation [@binz2025foundation; @kolluri2025finetuning], our approach achieves unseen-study transfer from two datasets using a compact model architecture.
 
-For marketing researchers, these findings carry clear practical implications.
-Before any human data is collected, choice-trained decision models offer a stronger starting point that can support exploratory pre-testing and experimental design while potentially reducing the residual bias left for post-inference adjustment.
-In addition, pooling both training datasets yields more dependable transfer than single-dataset training, and choice training reduces error more consistently than scaling parameter counts.
-Because single-pass decision models also return exact choice probabilities with zero refusals and no Monte Carlo sampling cost, these gains remain practical at modest compute.
+For marketing researchers, these findings carry the following practical implications.
+Before any human data is collected, choice-trained decision models offer a stronger starting point that can support exploratory pre-testing and experimental design while potentially reducing the residual bias left for post-inference calibration.
+In addition, pooling various training datasets yields more dependable transfer than single-dataset training. 
+Also, choice training reduces error more consistently than scaling model parameters.
+Because decision models also return exact choice probabilities without Monte Carlo sampling cost, these gains require far less compute than generative LLMs.
 
 Our results also expose a limitation of training on cross-entropy alone.
-Single-dataset training lowers cross-entropy on every held-out test cell, yet it sometimes raises treatment-effect error when transferring to five-point ordinal ratings.
-Lower cross-entropy therefore does not guarantee more accurate experimental slopes.
+Single-dataset training lowers cross-entropy on every held-out test cell, yet, for some test datasets, it raises treatment-effect error.
+Lower cross-entropy therefore does not guarantee more accurate experimental slope estimation.
 One plausible reason is that cross-entropy weights every choice task equally without directly penalizing bias in treatment-versus-control contrasts.
-Because single-pass decision models yield exact, differentiable expected OLS slopes (@eq-pop-ols), future research can train jointly on respondent-level cross-entropy and a direct treatment-effect loss.
+Because decision models yield exact, differentiable expected OLS slopes (@eq-pop-ols), future research can train jointly on respondent-level cross-entropy and a direct treatment-effect loss.
 
-Several remaining boundaries point to concrete avenues for future work.
-Because pooled training combines two datasets and more choice tasks than either single-dataset run, matched-volume ablations are needed to separate dataset diversity from data volume.
-Similarly, choice-training generative LLMs alongside decision models would isolate architectural advantages from training-data gains.
-On the estimation side, choice-trained models still attenuate or overshoot some of the largest human effects at every scale, and our evaluation targets population point estimates rather than plug-in standard errors or subgroup-level heterogeneous treatment effects.
-Extending choice training to ordinal scales, opt-out tasks, non-US samples, and richer respondent covariates therefore offers a natural next step toward more general synthetic respondents.
+Moreover, because pooled training combines two datasets and more choice tasks than either single-dataset run, matched-volume ablations are needed to separate dataset diversity from data volume.
+Similarly, choice-training generative LLMs and comparing with decision models would isolate architectural advantages of decision models from training-data gains.
+On the estimation side, choice-trained models still attenuate or overshoot some of the largest human effects at every scale. 
+Extending choice training to ordinal scales, non-US samples, and richer respondent covariates therefore offers a natural next step toward generating more general synthetic respondents.
 
 # Declarations {.unnumbered}
 
@@ -435,9 +427,33 @@ All authors certify that they have no affiliations with or involvement in any or
 
 ## Token serialization, query-key readout, and covariate mappings {.unnumbered}
 
-::: {.callout-note}
-**TODO.** Add token serialization equations, query-key readout equations, and respondent-covariate mapping tables across all seven datasets alongside @appfig-input-vaccines.
+**Serialization.** Each respondent's covariates $\mathbf{s}_t$ form a state block of "Label: Value" lines (@apptbl-covariates), opened by a state marker.
+Each task context $c_t$ follows as a branch that opens with a question marker and the task instructions, wraps each of the $K_t$ options in option-start and option-end markers, and closes with a decision marker (@appfig-input-vaccines).
+The five markers reuse reserved tokens of the backbone vocabulary, so serialization adds no new embeddings.
+Every task branch attends to the shared state block, so several tasks of the same respondent can be scored against one encoded state.
+
+**Query-key readout.** Let $\mathbf{h}_t^{\mathrm{dec}}$ denote the final-layer hidden state at the decision marker of task $t$, and $\mathbf{h}_{t,k}$ the hidden state at the option-end marker of option $k$.
+The pointer head maps both to a $d_p$-dimensional space,
+$$
+\mathbf{a}_t = \mathbf{W}_Q \mathbf{h}_t^{\mathrm{dec}} + \mathbf{c}_Q, \qquad
+\mathbf{b}_{t,k} = \mathbf{W}_K \mathbf{h}_{t,k} + \mathbf{c}_K, \qquad
+z_{t,k}(\theta) = \frac{\mathbf{b}_{t,k}^{\top} \mathbf{a}_t}{\sqrt{d_p}},
+$$ {#eq-pointer-readout}
+with $d_p = 256$, and @eq-model-pmf converts the scores into choice probabilities.
+Because each score depends on its option's own position in the sequence, the head accommodates any number of options $K_t$ without changing its parameters.
+
+::: {#apptbl-covariates size="footnotesize"}
+
+{{< include manuscript-training-assets/apptbl-covariates.md >}}
+
+Respondent covariates in the decision model input by dataset
+
 :::
+
+::: {custom-style="Table Note"}
+*Note.* Each covariate enters the input as one "Label: Value" line (@appfig-input-vaccines); covariates a respondent did not report are omitted. Country is not included.
+:::
+
 
 ::: {#appfig-input-vaccines}
 
@@ -449,9 +465,23 @@ Full decision model input for one unseen-study task (Vaccines)
 
 ## Off-the-shelf generative LLM baseline protocol {.unnumbered}
 
-::: {.callout-note}
-**TODO.** Add the generative LLM prompting protocol backing @fig-intro-off-the-shelf and @apptbl-llm-baseline.
-:::
+We compare off-the-shelf generative LLMs and decision models on a random subsample of 200 `Vaccines` respondents (seed 42; 1,000 three-option tasks), matching the AI-only sample size of @wang2026large.
+Each model's choices enter the same OLS operator as the main analysis, and errors are computed against the full-sample human slopes ($N = 1,971$; 11 slopes).
+
+**Prompt.** Generative LLMs receive the prompt of @wang2026large [Section 5.2.1].
+The system prompt reads "You should act like a person with the following characteristics deciding whether or not to receive a COVID-19 vaccination:", followed by one line per respondent covariate (e.g., "Age: 18-29").
+The user prompt lists options A and B by efficacy, protective duration, major and minor side effects, authorization, origin, and endorsement, adds "C: You choose neither A nor B.", and asks "Which option would you choose as this person? Your response should be a single letter A, B, or C."
+Gemini prompts omit the respondent's region, which the covariate mapping added after those runs.
+
+**Generation.** We query Gemini 3.5 Flash-Lite (minimal and high thinking) and Gemini 4 Argon (low and high thinking) through the Gemini API with default sampling.
+We serve Qwen3.5-0.8B, 4B, and 9B with vLLM in `bfloat16`, toggling reasoning through the chat template and using Qwen's official recommended sampling settings (reasoning off: temperature 0.7, top-$p$ 0.8; reasoning on: temperature 1.0, top-$p$ 0.95; both top-$k$ 20 and presence penalty 1.5) without an output-length limit.
+Each generative LLM produces one response per task.
+
+**Parsing.** A response counts as a choice only if, after removing surrounding whitespace, it is exactly "A", "B", or "C"; all other responses are counted as refusals and excluded from the regression.
+Valid responses enter the regression as one-hot choice vectors.
+
+**Decision models.** Off-the-shelf `KEV-0.8B`, `KEV-4B`, and `KEV-9B` receive the same respondent covariates and choice task in their native serialization and return a probability over the three options in one forward pass, which enters the regression directly.
+Following the released model cards, these baseline evaluations apply each checkpoint's shipped calibration temperature (2.35, 2.41, and 2.19, respectively).
 
 ::: {#apptbl-llm-baseline size="footnotesize"}
 
@@ -463,6 +493,34 @@ Off-the-shelf generative LLMs and decision models on the 200-respondent Vaccines
 
 ::: {custom-style="Table Note"}
 *Note.* All models condition on respondent demographics over the same 200-respondent, 1,000-task subsample of `Vaccines` [@kreps2020factors], evaluated against the full-sample human OLS benchmark ($N = 1,971$). Refusals count tasks where a generative LLM failed to return a valid choice option. Opt-out reports the share (or expected probability for decision models) of selecting neither vaccine. Values back @fig-intro-off-the-shelf.
+:::
+
+
+## Choice-training hyperparameters {.unnumbered}
+
+::: {#apptbl-hyperparameters size="footnotesize"}
+
+{{< include manuscript-training-assets/apptbl-hyperparameters.md >}}
+
+Choice-training hyperparameters shared by all trained runs
+
+:::
+
+::: {custom-style="Table Note"}
+*Note.* Settings are identical across the three model scales and three choice-training regimes. 
+Revision hashes uniquely identify the base checkpoints of @palmer2026kev. 
+Steps count single-dataset mini-batches. 
+Selected steps report the checkpoint with the lowest `Flights` $\mathrm{MSE}_\beta$ for `KEV-0.8B`, `KEV-4B`, and `KEV-9B`, respectively.
+:::
+
+
+![Training cross-entropy and validation metrics over choice training](manuscript-training-assets/appfig-training-curves.png){#appfig-training-curves width=100%}
+
+::: {custom-style="Table Note"}
+*Note.* 
+Training CE is a moving average over 0.1 epoch of the per-mini-batch loss. 
+Validation metrics are evaluated on `Flights` every 32 steps, starting from the off-the-shelf model at epoch 0. 
+Dots mark the checkpoint with the lowest `Flights` $\mathrm{MSE}_\beta$, which is used for all test evaluations.
 :::
 
 ## Attribute-level treatment-effect tables and diagnostics {.unnumbered}
