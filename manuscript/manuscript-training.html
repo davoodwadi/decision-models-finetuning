@@ -154,16 +154,16 @@ TERMINOLOGY GUIDE (enforce strictly across all sections, tables, figures, and no
 5. Generative LLM thinking/reasoning knobs -> "reasoning effort" (e.g., "higher reasoning effort", "lower (off, min, low) and higher (on, high) reasoning effort"). Avoid "reasoning settings" or "reasoning budgets".
 6. Contrast with Wang et al. (2026) and Leng et al. (2026) -> describe their methods as "post-inference adjustment" or "post-inference reweighting" of fixed model outputs using target-study human data, contrasted directly with our pre-inference "training" / "choice training" of model weights on historical studies.
 7. Field and data naming -> use "synthetic respondents" for general use and "synthetic choice data" for choice experiments in particular. Never use "silicon sampling" or "silicon samples" (non-Marketing Science terminology).
-8. Our seven empirical data collections -> use "dataset" / "datasets" consistently ("training datasets", "validation dataset", "test datasets" / "held-out test datasets"), matching @tbl-datasets. Never call test datasets "test benchmarks", "benchmark studies", or "benchmark designs", and never call the validation dataset a "validation set". Reserve "benchmark" for the full-sample human slope benchmark and pretrained objective single-label benchmarks, and reserve "study" for published papers or general conceptual framing (e.g., "choice study", "unseen-study transfer").
+8. Our seven empirical data collections -> "dataset" / "datasets" and "study" / "studies" are both allowed (e.g., "training datasets", "two training studies", "held-out test datasets"). Never call test datasets "test benchmarks", "benchmark studies", or "benchmark designs", and never call the validation dataset a "validation set". Reserve "benchmark" for the full-sample human slope benchmark and pretrained objective single-label benchmarks.
 -->
-<p><strong>Abstract</strong><br>
+<p><strong>Abstract.</strong><br>
 [TODO]</p>
-<p><strong>Keywords.</strong> Decision models, Large Language Models, Synthetic respondents, Econometric inference, Marketing research</p>
+<p><strong>Keywords.</strong> Decision models, large language models, synthetic respondents, econometric inference, marketing research</p>
 <section id="sec-intro" class="level1">
 <h1>Introduction</h1>
-<p>Using foundation models as synthetic respondents to simulate consumer choices has attracted growing interest in marketing and behavioral research. In marketing, the primary goal is downstream econometric inference, such as estimating attribute slopes in conjoint analysis or recovering causal treatment effects in randomized experiments. Most studies generate synthetic choice data with off-the-shelf generative large language models (LLMs), yet substituting these outputs for human responses severely biases downstream regressions <span class="citation" data-cites="goli2024frontiers leng2026reducing wang2026large">(<a href="#ref-goli2024frontiers" role="doc-biblioref">Goli and Singh 2024</a>, <a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>, <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>. This bias arises because off-the-shelf LLMs are optimized for deterministic text generation and safety compliance, which collapses choice uncertainty and triggers refusals. <!-- the sentence above should emphasize the nature of the tasks foundations models are trained to optimized: code, math require single correct responses. whereas human simulation requires stochastic distribution over possible responses. --> For instance, on a vaccines conjoint subsample <span class="citation" data-cites="kreps2020factors">(<a href="#ref-kreps2020factors" role="doc-biblioref">Kreps et al. 2020</a>)</span>, off-the-shelf models incur large ordinary least squares (OLS) treatment-effect error relative to human respondents <span class="citation" data-cites="wang2026large">(<a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>. Contrary to common expectation, using proprietary models or increasing reasoning effort can even increase this error (<a href="#fig-intro-off-the-shelf" class="quarto-xref">Figure&nbsp;1</a>). Additionally, generative LLMs are slow and computationally expensive. Since they produce responses as tokens, approximating their choice probabilities requires costly Monte-Carlo sampling.</p>
-<p>To overcome the time and computation costs of text generation, we investigate system one decision models <span class="citation" data-cites="deusser2026evaluatingbenchmarkingmodeljev geuter2026releasinginnerjevsimple palmer2026kev">(<a href="#ref-deusser2026evaluatingbenchmarkingmodeljev" role="doc-biblioref">Deußer et al. 2026</a>, <a href="#ref-geuter2026releasinginnerjevsimple" role="doc-biblioref">Geuter et al. 2026</a>, <a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>. Unlike generative LLMs, a decision model replaces the text-generation head with a scoring layer over candidate options. Given a respondent persona and choice task, it outputs normalized choice probabilities in a single forward pass. This single-pass directly generates the probability distribution of choices, eliminates Monte Carlo sampling cost and noise, and yields exact expected OLS treatment effects directly from predicted probabilities. Despite their architectural advantage, off-the-shelf decision models still suffer from high error in their OLS estimates (<a href="#fig-intro-off-the-shelf" class="quarto-xref">Figure&nbsp;1</a>). Because these models are pretrained on single-label objective benchmarks rather than human choice behavior, they treat disagreement among respondents with the same persona as classification error <span class="citation" data-cites="gao2026choicesfewerdecisionsordinalscale">(<a href="#ref-gao2026choicesfewerdecisionsordinalscale" role="doc-biblioref">Gao et al. 2026</a>)</span>.</p>
-<p>In this research, we train decision models by updating their weights on historical human choice microdata, a procedure we call choice training. Specifically, we minimize respondent-level cross-entropy (CE), which is equivalent to conditional maximum likelihood estimation, and test whether choice training transfers to unseen marketing and behavioral studies.</p>
+<p>Using foundation models as synthetic respondents has attracted growing interest in marketing and behavioral research. In marketing, a primary goal is downstream econometric inference, such as estimating attribute slopes in conjoint analysis or recovering causal treatment effects in randomized experiments. Most studies on synthetic respondents generate synthetic choice data with off-the-shelf generative large language models (LLMs), yet substituting these outputs for human responses severely biases downstream analyses <span class="citation" data-cites="goli2024frontiers leng2026reducing wang2026large">(<a href="#ref-goli2024frontiers" role="doc-biblioref">Goli and Singh 2024</a>, <a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>, <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>. A likely source of this bias is how LLMs are trained. During training, LLMs are rewarded for producing a single correct answer on single-label objective benchmarks (e.g., mathematics, factual questions) and for complying with safety rules. In these tasks, any probability placed on other answers is considered error to be minimized. In contrast, simulating human choices requires a probability distribution over all plausible responses, because respondents with the same observed characteristics can differ in their preferences. Therefore, off-the-shelf LLMs tend to collapse their response distribution onto a single answer and, because of their safety training, sometimes refuse to answer. For instance, on a vaccine conjoint subsample <span class="citation" data-cites="kreps2020factors">(<a href="#ref-kreps2020factors" role="doc-biblioref">Kreps et al. 2020</a>)</span>, off-the-shelf models incur large ordinary least squares (OLS) treatment-effect error (<span class="math inline">\(\mathrm{MSE}_\beta\)</span>) relative to human respondents <span class="citation" data-cites="wang2026large">(<a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>. Contrary to common expectation, using proprietary models or increasing reasoning effort can exacerbate this error (<a href="#fig-intro-off-the-shelf" class="quarto-xref">Figure&nbsp;1</a>).</p>
+<p>Moreover, generative LLMs are slow and expensive because generating text tokens requires costly Monte Carlo sampling to approximate choice probabilities. To avoid these costs, we study decision models. Decision models replace a language model’s text-generation head with a pointer head that scores candidate options directly <span class="citation" data-cites="deusser2026evaluatingbenchmarkingmodeljev geuter2026releasinginnerjevsimple palmer2026kev">(<a href="#ref-deusser2026evaluatingbenchmarkingmodeljev" role="doc-biblioref">Deußer et al. 2026</a>, <a href="#ref-geuter2026releasinginnerjevsimple" role="doc-biblioref">Geuter et al. 2026</a>, <a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>. Unlike LLMs that produce a probability distributions over all tokens in the vocabulary, decision models produce a probability distributions over only the valid options in a task. These probabilities eliminate Monte Carlo sampling cost and yield exact expected OLS treatment effects. Despite this architectural advantage, off-the-shelf decision models still incur high treatment-effect error (<a href="#fig-intro-off-the-shelf" class="quarto-xref">Figure&nbsp;1</a>). Because they are trained on similar single-label objective benchmarks, they treat disagreement among respondents with the same persona as classification error <span class="citation" data-cites="gao2026choicesfewerdecisionsordinalscale">(<a href="#ref-gao2026choicesfewerdecisionsordinalscale" role="doc-biblioref">Gao et al. 2026</a>)</span>.</p>
+<p>In this research, we train decision models by updating their weights on historical human choice microdata. We call this procedure choice training. Specifically, we minimize respondent-level cross-entropy (CE), which is equivalent to conditional maximum likelihood estimation. Unlike post-inference calibration methods that keep model weights fixed and require human data from the target study <span class="citation" data-cites="wang2026large leng2026reducing">(<a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>, <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>, choice training occurs before inference and uses no target-study human data. We therefore ask whether choice training on a small set of historical datasets can reduce error on held-out test datasets that never enter training.</p>
 <div id="fig-intro-off-the-shelf" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-intro-off-the-shelf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -175,15 +175,16 @@ Figure&nbsp;1: OLS treatment-effect error across off-the-shelf generative LLMs a
 </figure>
 </div>
 <div data-custom-style="Table Note">
-<p><em>Note.</em> Bars report OLS <span class="math inline">\(\mathrm{MSE}_\beta \times 10^3\)</span> (<a href="#eq-eval-mse" class="quarto-xref">Equation&nbsp;4</a>) across 11 vaccine attribute levels on the 200-respondent Vaccines conjoint subsample <span class="citation" data-cites="wang2026large">(<em>n</em> = 1,000 choice tasks; <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>. Errors are measured relative to full-sample human estimates (<em>N</em> = 1,971 respondents; 9,855 choice tasks).</p>
+<p><em>Note.</em> Bars report OLS <span class="math inline">\(\mathrm{MSE}_\beta \times 10^3\)</span> (<a href="#eq-eval-mse" class="quarto-xref">Equation&nbsp;5</a>) across 11 vaccine attribute levels on a 200-respondent Vaccines conjoint subsample <span class="citation" data-cites="wang2026large">(<span class="math inline">\(n = 1,000\)</span> choice tasks; <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>. Errors are measured relative to full-sample human estimates (<span class="math inline">\(N = 1,971\)</span> respondents; 9,855 choice tasks).</p>
 </div>
-<p>Empirically, we evaluate choice training across three open-weight decision-model scales <span class="citation" data-cites="palmer2026kev">(0.8B, 4B, and 9B parameters; <a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>. We evaluate generalizability of our training on four unseen held-out studies: a nutrition-labeling trial <span class="citation" data-cites="grummon2025nutrition">(<a href="#ref-grummon2025nutrition" role="doc-biblioref">Grummon et al. 2025</a>)</span>, a vaccine conjoint <span class="citation" data-cites="kreps2020factors">(<a href="#ref-kreps2020factors" role="doc-biblioref">Kreps et al. 2020</a>)</span>, a consumer-rights conjoint <span class="citation" data-cites="kantorowicz2026consumers">(<a href="#ref-kantorowicz2026consumers" role="doc-biblioref">Kantorowicz-Reznichenko et al. 2026</a>)</span>, and an AI smartphone conjoint <span class="citation" data-cites="magistro2026attitudes">(<a href="#ref-magistro2026attitudes" role="doc-biblioref">Magistro et al. 2026</a>)</span>. We show that although scaling to proprietary models or increasing reasoning effort can worsens OLS MSE, choice training with respondent-level CE substantially lowers this error on unseen studies, across model scales.</p>
+<p>We evaluate choice training across three open-weight decision-model scales <span class="citation" data-cites="palmer2026kev">(0.8B, 4B, and 9B parameters; <a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>. We train on two historical choice datasets and select the best checkpoint on a separate validation dataset. We use four held-out test datasets: a nutrition-labeling trial <span class="citation" data-cites="grummon2025nutrition">(<a href="#ref-grummon2025nutrition" role="doc-biblioref">Grummon et al. 2025</a>)</span>, a vaccine conjoint <span class="citation" data-cites="kreps2020factors">(<a href="#ref-kreps2020factors" role="doc-biblioref">Kreps et al. 2020</a>)</span>, a consumer-rights conjoint <span class="citation" data-cites="kantorowicz2026consumers">(<a href="#ref-kantorowicz2026consumers" role="doc-biblioref">Kantorowicz-Reznichenko et al. 2026</a>)</span>, and a rating conjoint on AI and offshoring <span class="citation" data-cites="magistro2026attitudes">(<a href="#ref-magistro2026attitudes" role="doc-biblioref">Magistro et al. 2026</a>)</span>. Compared to off-the-shelf decision models, we find that choice training on two studies lowers both <span class="math inline">\(\mathrm{MSE}_\beta\)</span> (by 22% to 89%) and <span class="math inline">\(CE\)</span> (by 10% to 51%) on every held-out test dataset and model scale. These gains extend to unseen studies with attributes and response formats absent from training. We also find that a small choice-trained model can outperform a much larger off-the-shelf model on three of the four test datasets.</p>
+<p>Our research makes the following contributions to synthetic respondents in marketing and behavioral research. First, we show that choice training lowers treatment-effect error on unseen studies without any target-study human data, complementing existing post-inference calibration methods <span class="citation" data-cites="hullman2026human">(<a href="#ref-hullman2026human" role="doc-biblioref">Hullman et al. 2026</a>)</span>. Second, we show that training decision models on just two studies with binary choices transfers to new domains (vaccines, nutrition labels, consumer rights, AI, and offshoring) and new response formats (three-option choices and five-point ratings). Unlike prior research, where training on human choices failed to generalize to new domains <span class="citation" data-cites="brand2023using">(<a href="#ref-brand2023using" role="doc-biblioref">Brand et al. 2023</a>)</span> or even within the same study <span class="citation" data-cites="wang2026large wang2025can">(<a href="#ref-wang2025can" role="doc-biblioref">Wang et al. 2025</a>, <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>, our training regime transfers to unseen studies. Third, we show that training models to minimize cross-entropy loss does not guarantee improvements in treatment effect recovery. Models trained on only one of our training studies did lower the CE loss on every test dataset, yet sometimes led to worse treatment-effect error. On the other hand, training on both studies mitigated these failures. This finding motivates novel training objectives that target treatment effects directly.</p>
 </section>
 <section id="sec-lit" class="level1">
 <h1>Literature review</h1>
-<p>Early work in silicon sampling prompted generative LLMs with demographic profiles to simulate human responses in political, economic, and marketing surveys <span class="citation" data-cites="argyle2023out horton2023large brand2023using goli2024frontiers sarstedt2024using pmlr-v202-santurkar23a durmus2024towards">(<a href="#ref-argyle2023out" role="doc-biblioref">Argyle et al. 2023</a>, <a href="#ref-brand2023using" role="doc-biblioref">Brand et al. 2023</a>, <a href="#ref-horton2023large" role="doc-biblioref">Horton et al. 2023</a>, <a href="#ref-pmlr-v202-santurkar23a" role="doc-biblioref">Santurkar et al. 2023</a>, <a href="#ref-durmus2024towards" role="doc-biblioref">Durmus et al. 2024</a>, <a href="#ref-goli2024frontiers" role="doc-biblioref">Goli and Singh 2024</a>, <a href="#ref-sarstedt2024using" role="doc-biblioref">Sarstedt et al. 2024</a>)</span>. Although generative LLMs often capture the direction of average preferences, prior studies document systematic discrepancies from human populations, including mode collapse onto a single option, attenuated within-group variance, demographic stereotyping, and prompt sensitivity <span class="citation" data-cites="pmlr-v202-santurkar23a shu-etal-2024-dont koo2024benchmarking kabir-etal-2025-break deas-mckeown-2025-artificial jung-etal-2026-psychometric wadi2025monte zahradnickova2026ai">(<a href="#ref-pmlr-v202-santurkar23a" role="doc-biblioref">Santurkar et al. 2023</a>, <a href="#ref-koo2024benchmarking" role="doc-biblioref">Koo et al. 2024</a>, <a href="#ref-shu-etal-2024-dont" role="doc-biblioref">Shu et al. 2024</a>, <a href="#ref-wadi2025monte" role="doc-biblioref">Wadi and Fredette 2025</a>, <a href="#ref-deas-mckeown-2025-artificial" role="doc-biblioref">Deas and McKeown 2025</a>, <a href="#ref-kabir-etal-2025-break" role="doc-biblioref">Kabir et al. 2025</a>, <a href="#ref-zahradnickova2026ai" role="doc-biblioref">Zahradnickova et al. 2026</a>, <a href="#ref-jung-etal-2026-psychometric" role="doc-biblioref">Jung et al. 2026</a>)</span>. In marketing applications, these distortions severely bias downstream econometric estimation <span class="citation" data-cites="goli2024frontiers leng2026reducing wang2026large">(<a href="#ref-goli2024frontiers" role="doc-biblioref">Goli and Singh 2024</a>, <a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>, <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>. In choice-based conjoint analysis, relying on simulated choices or naively pooling them with human data biases preference estimates, while scaling model capability or chain-of-thought reasoning worsens error by inducing overly deterministic choices <span class="citation" data-cites="wang2026large">(<a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>. Recent marketing studies address these discrepancies after inference by treating the language model as a fixed generator, using target-study human benchmark data to statistically debias downstream regression parameters <span class="citation" data-cites="wang2026large angelopoulos2023prediction">(<a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>, <a href="#ref-angelopoulos2023prediction" role="doc-biblioref">Angelopoulos et al. 2023</a>; AAE)</span> or optimally reweight ensembles of candidate prompts, personas, and model checkpoints <span class="citation" data-cites="leng2026reducing">(<a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>; HuMCal)</span>. Complementing these post-inference methods, we align predictions inside the model before inference through both output architecture and training supervision.</p>
-<p>Architecturally, several studies avoid the cost and sampling variance of repeated Monte Carlo text generation by extracting next-token probabilities over option symbols (e.g., A, B, and C) from causal LLMs <span class="citation" data-cites="kadavath2022language kuribayashi-etal-2024-psychometric bentegeac2025token wadi2026every">(<a href="#ref-kadavath2022language" role="doc-biblioref"><span class="nocase">Kadavath et al.</span> 2022</a>, <a href="#ref-kuribayashi-etal-2024-psychometric" role="doc-biblioref">Kuribayashi et al. 2024</a>, <a href="#ref-bentegeac2025token" role="doc-biblioref">Bentegeac et al. 2025</a>, <a href="#ref-wadi2026every" role="doc-biblioref">Wadi et al. 2026</a>)</span>. Yet symbol-level readouts remain sensitive to vocabulary and token-frequency priors. Decision models, also known as System One architectures, resolve this sensitivity via a single-pass scoring head <span class="citation" data-cites="palmer2026kev deusser2026evaluatingbenchmarkingmodeljev geuter2026releasinginnerjevsimple li2026llmasjevllmsjevstyledecision asseri2026calibratedwhompersonalanguage li2026kitescalingjevpopulation">(<a href="#ref-asseri2026calibratedwhompersonalanguage" role="doc-biblioref">Asseri and Asseri 2026</a>, <a href="#ref-deusser2026evaluatingbenchmarkingmodeljev" role="doc-biblioref">Deußer et al. 2026</a>, <a href="#ref-geuter2026releasinginnerjevsimple" role="doc-biblioref">Geuter et al. 2026</a>, <a href="#ref-li2026kitescalingjevpopulation" role="doc-biblioref">Li 2026</a>, <a href="#ref-li2026llmasjevllmsjevstyledecision" role="doc-biblioref">Li and Wagle 2026</a>, <a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>. This head evaluates each supplied option directly in representation space and restricts probability mass strictly to the valid options without open-ended generation or safety refusals. Crucially for econometric training, outputting exact choice probabilities in a single forward pass makes linear regression operators over experimental designs directly differentiable with respect to model parameters. However, existing decision models are pretrained on single-label objective benchmarks such as mathematics, code verification, and factual question answering, causing severe probability miscalibration on subjective choice tasks <span class="citation" data-cites="gao2026choicesfewerdecisionsordinalscale">(<a href="#ref-gao2026choicesfewerdecisionsordinalscale" role="doc-biblioref">Gao et al. 2026</a>)</span>.</p>
-<p>On the training dimension, existing fine-tuning approaches for silicon sampling require access to unreleased response data. At the token level, <span class="citation" data-cites="wang2026large">Wang et al. (<a href="#ref-wang2026large" role="doc-biblioref">2026</a>)</span> fine-tuned GPT-4o on 50 target-study conjoint tasks under a generic persona to emit a single choice letter, finding that small-sample single-token supervision worsened standalone parameter error relative to the human benchmark. Recent studies improve calibration by supervising causal language models or decision heads on large-scale survey microdata and subgroup response histograms <span class="citation" data-cites="suh-etal-2025-language huang-etal-2026-distribution ku2026siliconsamplingcrosssurveytransfer">(<a href="#ref-suh-etal-2025-language" role="doc-biblioref">Suh et al. 2025</a>, <a href="#ref-ku2026siliconsamplingcrosssurveytransfer" role="doc-biblioref">Ku et al. 2026</a>, <a href="#ref-huang-etal-2026-distribution" role="doc-biblioref">Huang et al. 2026</a>)</span>. When respondent-level choice microdata is available, minimizing CE on a probabilistic decision head effectively calibrates conditional choice probabilities across personas. Yet across conjoint analysis, discrete-choice modeling, and randomized online or field trials, published articles and archival industry reports rarely disclose raw respondent choices, reporting instead experimental designs and estimated regression tables. We bridge this data gap by supervising decision models directly on published population OLS coefficients via an unbiased split-sample moment loss, deployed either standalone with a base-distribution KL anchor when no microdata exists or jointly alongside respondent-level CE when augmenting in-house microdata with external literature tables.</p>
+<p>Early work on synthetic respondents prompted off-the-shelf generative LLMs with demographic profiles to simulate human responses in political, economic, and marketing surveys <span class="citation" data-cites="argyle2023out horton2023large goli2024frontiers pmlr-v202-santurkar23a">(<a href="#ref-argyle2023out" role="doc-biblioref">Argyle et al. 2023</a>, <a href="#ref-horton2023large" role="doc-biblioref">Horton et al. 2023</a>, <a href="#ref-pmlr-v202-santurkar23a" role="doc-biblioref">Santurkar et al. 2023</a>, <a href="#ref-goli2024frontiers" role="doc-biblioref">Goli and Singh 2024</a>)</span>. Although these models can capture average preference directions, systematic discrepancies from human populations severely bias downstream econometric estimates <span class="citation" data-cites="pmlr-v202-santurkar23a wadi2025monte leng2026reducing wang2026large">(<a href="#ref-pmlr-v202-santurkar23a" role="doc-biblioref">Santurkar et al. 2023</a>, <a href="#ref-wadi2025monte" role="doc-biblioref">Wadi and Fredette 2025</a>, <a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>, <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>. Common distortions include mode collapse (i.e., producing nearly the same answer every time a question is asked) and prompt sensitivity. <!-- In choice-based conjoint analysis, using more advanced LLMs or prompting techniques does not improve preference-estimation error [@wang2026large]. --> Recent marketing research addresses these biases while keeping model weights fixed, relying on human data from the target study or target individuals. These methods include post-inference econometric debiasing <span class="citation" data-cites="wang2026large">(<a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>, optimal post-inference reweighting across prompts and checkpoints <span class="citation" data-cites="leng2026reducing">(<a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>)</span>, and individual digital twins conditioned on hundreds of responses per person <span class="citation" data-cites="toubia2025database">(<a href="#ref-toubia2025database" role="doc-biblioref">Toubia et al. 2025</a>)</span>. Post-inference calibration uses a sample of human responses from the same study to correct model outputs. Therefore, the final estimates remain statistically valid even when the model itself is biased. However, how much these methods gain over human data alone depends on how closely the underlying model approximates the target human population <span class="citation" data-cites="hullman2026human">(<a href="#ref-hullman2026human" role="doc-biblioref">Hullman et al. 2026</a>)</span>.</p>
+<p>A growing literature instead updates LLM weights directly on human microdata, either from the target study itself, from a different study in the same product category, or from many unrelated studies. Training LLMs on a small sample (e.g., 50 tasks) from the same study cannot remove the bias in regression parameters <span class="citation" data-cites="wang2026large wang2025can ye2025fine">(<a href="#ref-wang2025can" role="doc-biblioref">Wang et al. 2025</a>, <a href="#ref-ye2025fine" role="doc-biblioref">Ye et al. 2025</a>, <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span> and still requires human data for the same study. Moreover, research has shown that WTP estimates from a separate study can transfer to a new study within the same product category, but fail to generalize to new product categories <span class="citation" data-cites="brand2023using">(<a href="#ref-brand2023using" role="doc-biblioref">Brand et al. 2023</a>)</span>. Outside marketing, large-scale behavioral training improves out-of-study prediction across cognitive psychology <span class="citation" data-cites="binz2025foundation">(10 million choices across 160 experiments; <a href="#ref-binz2025foundation" role="doc-biblioref"><span class="nocase">Binz et al.</span> 2025</a>)</span>, social-science experiments <span class="citation" data-cites="kolluri2025finetuning">(2.9 million responses across 210 studies; <a href="#ref-kolluri2025finetuning" role="doc-biblioref">Kolluri et al. 2025</a>)</span>, and public-opinion surveys <span class="citation" data-cites="suh-etal-2025-language huang-etal-2026-distribution ku2026siliconsamplingcrosssurveytransfer">(<a href="#ref-suh-etal-2025-language" role="doc-biblioref">Suh et al. 2025</a>, <a href="#ref-ku2026siliconsamplingcrosssurveytransfer" role="doc-biblioref">Ku et al. 2026</a>, <a href="#ref-huang-etal-2026-distribution" role="doc-biblioref">Huang et al. 2026</a>)</span>. Yet these cross-study efforts rely on large multi-hundred-study corpora and autoregressive text generation. Moreover, they evaluate predictive log-likelihood, marginal distributions, or cell-level distributional distance rather than econometric treatment-effect recovery.</p>
+<p>A third stream of research tackles the sampling variance of repeated text generation by using choice probabilities in a single forward pass. Early studies extract next-token probabilities over option symbols (e.g., A, B, and C) from LLMs, yet those probabilities remain sensitive to vocabulary and token-frequency priors <span class="citation" data-cites="kadavath2022language wadi2026every">(<a href="#ref-kadavath2022language" role="doc-biblioref"><span class="nocase">Kadavath et al.</span> 2022</a>, <a href="#ref-wadi2026every" role="doc-biblioref">Wadi et al. 2026</a>)</span>. Dedicated decision models address this sensitivity by scoring candidate options outside the vocabulary head <span class="citation" data-cites="palmer2026kev wadi2026whom">(<a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>, <a href="#ref-wadi2026whom" role="doc-biblioref">Wadi and Ma 2026</a>)</span>. However, because this architecture is new, it remains open whether pre-inference choice training can adapt decision models for unseen-study econometric inference without using target-study human data. In the following section, we formalize our training and evaluation methodology for these models.</p>
 </section>
 <section id="sec-methodology" class="level1">
 <h1>Methodology</h1>
@@ -197,16 +198,26 @@ Figure&nbsp;2: Choice training and unseen-study evaluation of decision models
 </figcaption>
 </figure>
 </div>
-<p><strong>Decision model parameterization.</strong> Consider a choice study composed of discrete-choice tasks indexed by <span class="math inline">\(t\)</span> (<a href="#fig-pipeline" class="quarto-xref">Figure&nbsp;2</a>, panel a). Each task pairs observed respondent covariates <span class="math inline">\(\mathbf{s}_t\)</span> (e.g., sex, age, education, income, political affiliation, and race) with a task context <span class="math inline">\(c_t\)</span> specifying the instructions and <span class="math inline">\(K_t \ge 2\)</span> discrete options. Let <span class="math inline">\(y_{t,k} \in \{0, 1\}\)</span> indicate whether the human respondent selects option <span class="math inline">\(k \in \{1, \dots, K_t\}\)</span> on task <span class="math inline">\(t\)</span>, with <span class="math inline">\(\sum_{k=1}^{K_t} y_{t,k} = 1\)</span>.</p>
-<p>Rather than generating text tokens autoregressively, a single-pass decision model replaces the vocabulary head of a pretrained language model with a pointer head that scores all <span class="math inline">\(K_t\)</span> options in one forward pass (<a href="#fig-pipeline" class="quarto-xref">Figure&nbsp;2</a>, panel b). For each option <span class="math inline">\(k\)</span>, the model computes a real-valued score <span class="math inline">\(z_{t,k}(\theta)\)</span> from <span class="math inline">\((\mathbf{s}_t, c_t)\)</span>, where <span class="math inline">\(\theta\)</span> collects trainable low-rank adaptation (LoRA) weights <span class="citation" data-cites="hu2021lora">(<a href="#ref-hu2021lora" role="doc-biblioref">Hu et al. 2021</a>)</span> on the backbone together with the pointer-head parameters (token serialization and query-key readout equations appear in the Web Appendix). Applying a softmax transformation with unit temperature produces the conditional choice probabilities: <span id="eq-model-pmf"><span class="math display">\[
+<p><strong>Decision model parameterization.</strong> Consider a choice study composed of discrete-choice tasks indexed by <span class="math inline">\(t\)</span> (<a href="#fig-pipeline" class="quarto-xref">Figure&nbsp;2</a>, panel a). Each task pairs observed respondent covariates <span class="math inline">\(\mathbf{s}_t\)</span> (e.g., sex, age, education, income, political affiliation, and race), which vary by dataset, with a task context <span class="math inline">\(c_t\)</span> specifying the instructions and <span class="math inline">\(K_t \ge 2\)</span> discrete options. Let <span class="math inline">\(y_{t,k} \in \{0, 1\}\)</span> indicate whether the human respondent selects option <span class="math inline">\(k \in \{1, \dots, K_t\}\)</span> on task <span class="math inline">\(t\)</span>, with <span class="math inline">\(\sum_{k=1}^{K_t} y_{t,k} = 1\)</span>.</p>
+<p>Unlike LLMs that generate tokens autoregressively, a decision model replaces the vocabulary head of a pretrained language model with a pointer head that scores all <span class="math inline">\(K_t\)</span> options in one forward pass (<a href="#fig-pipeline" class="quarto-xref">Figure&nbsp;2</a>, panel b). For each option <span class="math inline">\(k\)</span>, the model computes a real-valued score <span class="math inline">\(z_{t,k}(\theta)\)</span> from <span class="math inline">\((\mathbf{s}_t, c_t)\)</span>. <span class="math inline">\(\theta\)</span> consists of trainable low-rank adaptation (LoRA) weights <span class="citation" data-cites="hu2021lora">(<a href="#ref-hu2021lora" role="doc-biblioref">Hu et al. 2021</a>)</span> on the backbone and the pointer-head parameters. Applying a softmax transformation with unit temperature produces the conditional choice probabilities: <span id="eq-model-pmf"><span class="math display">\[
 p_{t,k}(\theta) = P\big(y_{t,k} = 1 \mid \mathbf{s}_t, c_t; \theta\big) = \frac{\exp\!\big(z_{t,k}(\theta)\big)}{\sum_{m=1}^{K_t} \exp\!\big(z_{t,m}(\theta)\big)}.
-\tag{1}\]</span></span> Formally, <a href="#eq-model-pmf" class="quarto-xref">Equation&nbsp;1</a> takes the conditional multinomial logit form <span class="citation" data-cites="mcfadden1972conditional train2009discrete">(<a href="#ref-mcfadden1972conditional" role="doc-biblioref">McFadden 1972</a>, <a href="#ref-train2009discrete" role="doc-biblioref">Train 2009</a>)</span> with <span class="math inline">\(z_{t,k}(\theta)\)</span> acting as systematic utility. Because <a href="#eq-model-pmf" class="quarto-xref">Equation&nbsp;1</a> normalizes directly over <span class="math inline">\(\{1, \dots, K_t\}\)</span> without text decoding, refusals and out-of-set outputs have zero probability by construction.</p>
-<p><strong>Choice training.</strong> Off-the-shelf decision models are pretrained on objective single-label benchmarks where each task has a single correct answer <span class="citation" data-cites="palmer2026kev gao2026choicesfewerdecisionsordinalscale">(<a href="#ref-gao2026choicesfewerdecisionsordinalscale" role="doc-biblioref">Gao et al. 2026</a>, <a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>. Training on deterministic labels widens score gaps across options and pushes predicted probabilities <span class="math inline">\(p_{t,k}(\theta)\)</span> toward zero and one. In human choice studies, however, respondents with identical observed covariates <span class="math inline">\(\mathbf{s}_t\)</span> still differ in unobserved preferences. Therefore, the true conditional choice distribution spreads probability mass across options rather than collapsing onto a single mode.</p>
-<p>Whereas post-inference adjustment and reweighting methods keep model parameters fixed and require human data from the target study <span class="citation" data-cites="wang2026large leng2026reducing">(<a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>, <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>, choice training updates <span class="math inline">\(\theta\)</span> before inference on historical respondent-level choice microdata (<a href="#fig-pipeline" class="quarto-xref">Figure&nbsp;2</a>, panel c). Starting from the off-the-shelf model checkpoint, we treat repeated tasks per respondent marginally under a pooled conditional log-likelihood and minimize empirical cross-entropy over mini-batches <span class="math inline">\(S\)</span> of historical tasks: <span id="eq-resp-ce"><span class="math display">\[
+\tag{1}\]</span></span> Formally, <a href="#eq-model-pmf" class="quarto-xref">Equation&nbsp;1</a> has the multinomial logit form, with <span class="math inline">\(z_{t,k}(\theta)\)</span> entering in place of systematic utility. Because <a href="#eq-model-pmf" class="quarto-xref">Equation&nbsp;1</a> normalizes directly over <span class="math inline">\(\{1, \dots, K_t\}\)</span> without text decoding, out-of-set outputs have zero probability by construction.</p>
+<p><strong>Choice training.</strong> Off-the-shelf decision models are trained on deterministic tasks with single-label answers. Therefore, the true conditional distribution of labels places all probability mass on one option. Minimizing cross-entropy on such data pushes predicted probabilities <span class="math inline">\(p_{t,k}(\theta)\)</span> toward zero and one. In contrast, in human choice studies, respondents with identical observed covariates, <span class="math inline">\(\mathbf{s}_t\)</span>, still differ in unobserved preferences. Therefore, the true conditional choice distribution <span class="math inline">\(\mathbf{q}_t = (q_{t,1}, \dots, q_{t,K_t})\)</span>, with <span class="math inline">\(q_{t,k} = P(y_{t,k} = 1 \mid \mathbf{s}_t, c_t)\)</span>, spreads probability mass across options rather than collapsing onto a single mode.</p>
+<p>Choice training updates <span class="math inline">\(\theta\)</span> before inference on historical respondent-level choice microdata (<a href="#fig-pipeline" class="quarto-xref">Figure&nbsp;2</a>, panel c). Starting from the off-the-shelf model checkpoint, we treat each task as an independent observation given the respondent’s covariates (i.e., a pooled likelihood), although each respondent may complete several tasks. We minimize empirical cross-entropy over mini-batches <span class="math inline">\(S\)</span> of historical tasks: <span id="eq-resp-ce"><span class="math display">\[
 \mathcal{L}_{\mathrm{CE}}(\theta; S) = -\frac{1}{|S|} \sum_{t \in S} \sum_{k=1}^{K_t} y_{t,k} \log p_{t,k}(\theta).
-\tag{2}\]</span></span> Minimizing <a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a> is equivalent to pooled conditional maximum likelihood estimation of <a href="#eq-model-pmf" class="quarto-xref">Equation&nbsp;1</a>. Because cross-entropy is a strictly proper scoring rule, its population minimizer recovers true conditional choice probabilities rather than a deterministic mode. Importantly, no target-study data enters <a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a>, so downstream evaluation measures unseen-study transfer.</p>
-<p><strong>Econometric evaluation.</strong> On an unseen evaluation study, we hold <span class="math inline">\(\theta\)</span> fixed and evaluate treatment-effect recovery using ordinary least squares (OLS) regressions defined by the study’s experimental design (<a href="#fig-pipeline" class="quarto-xref">Figure&nbsp;2</a>, panel d). Applying the same linear specification symmetrically to both human responses and model-implied expected outcomes places the human benchmark and synthetic choice data on a common estimator. Consider each regression <span class="math inline">\(g \in \{1, \dots, G\}\)</span> in the study, with full-column-rank design matrix <span class="math inline">\(\mathbf{X}^{(g)}\)</span> and human outcome vector <span class="math inline">\(\mathbf{o}^{(g)}\)</span>. The matrix <span class="math inline">\(\mathbf{X}^{(g)}\)</span> contains an intercept and <span class="math inline">\(d_g\)</span> treatment or attribute indicators from the randomized design. Across all evaluation designs, each entry of <span class="math inline">\(\mathbf{o}^{(g)}\)</span> is a linear function of the choice indicators <span class="math inline">\(y_{t,k}\)</span>. Specifically, it records a profile-selection indicator in paired conjoints (zero across profiles when an opt-out is chosen), a target-option indicator in binary-endpoint trials, or the numeric score <span class="math inline">\(\sum_{k=1}^{K_t} k\,y_{t,k}\)</span> in ordinal rating tasks. Replacing each realized indicator <span class="math inline">\(y_{t,k}\)</span> with its predicted probability <span class="math inline">\(p_{t,k}(\theta)\)</span> from <a href="#eq-model-pmf" class="quarto-xref">Equation&nbsp;1</a> therefore yields the exact expected outcome vector <span class="math inline">\(\bar{\mathbf{o}}^{(g)}(\theta)\)</span> under synthetic choice draws.</p>
-<p>Applying the OLS operator <span class="math inline">\(\mathbf{A}^{(g)} = (\mathbf{X}^{(g)\top}\mathbf{X}^{(g)})^{-1}\mathbf{X}^{(g)\top}\)</span> to the human and model-implied outcome vectors defines the intercepts and slopes: <span id="eq-pop-ols"><span class="math display">\[
+\tag{2}\]</span></span> Minimizing <a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a> is equivalent to pooled conditional maximum likelihood estimation of <a href="#eq-model-pmf" class="quarto-xref">Equation&nbsp;1</a>. This objective is respondent-level because each term uses an individual respondent’s observed choice vector <span class="math inline">\(\mathbf{y}_t = (y_{t,1}, \dots, y_{t,K_t})\)</span>. Taking expectations over <span class="math inline">\(\mathbf{y}_t \sim \mathbf{q}_t\)</span> conditional on <span class="math inline">\((\mathbf{s}_t, c_t)\)</span> decomposes the expected task loss as</p>
+<p><span id="eq-ce-kl"><span class="math display">\[
+\begin{aligned}
+\mathbb{E}_{\mathbf{y}_t \sim \mathbf{q}_t}\!\left[-\sum_{k=1}^{K_t} y_{t,k} \log p_{t,k}(\theta)\right]
+&amp;= -\sum_{k=1}^{K_t} q_{t,k} \log p_{t,k}(\theta) \\
+&amp;= H(\mathbf{q}_t) + D_{\mathrm{KL}}\!\big(\mathbf{q}_t \,\|\, \mathbf{p}_t(\theta)\big),
+\end{aligned}
+\tag{3}\]</span></span></p>
+<p>where <span class="math inline">\(\mathbf{p}_t(\theta) = (p_{t,1}(\theta), \dots, p_{t,K_t}(\theta))\)</span> is the predicted choice distribution from <a href="#eq-model-pmf" class="quarto-xref">Equation&nbsp;1</a>, <span class="math inline">\(H(\mathbf{q}_t) = -\sum_{k=1}^{K_t} q_{t,k} \log q_{t,k}\)</span> is the Shannon entropy of human choices, and <span class="math inline">\(D_{\mathrm{KL}}(\mathbf{q}_t \,\|\, \mathbf{p}_t(\theta)) = \sum_{k=1}^{K_t} q_{t,k} \log\big(q_{t,k} / p_{t,k}(\theta)\big)\)</span> is the Kullback-Leibler (KL) divergence. Because <span class="math inline">\(H(\mathbf{q}_t)\)</span> does not depend on <span class="math inline">\(\theta\)</span> and <span class="math inline">\(D_{\mathrm{KL}}(\mathbf{q}_t \,\|\, \mathbf{p}_t(\theta)) \ge 0\)</span> with equality if and only if <span class="math inline">\(\mathbf{p}_t(\theta) = \mathbf{q}_t\)</span>, cross-entropy is a strictly proper scoring rule (i.e., its expected value is minimized only by the true choice distribution).</p>
+<p><a href="#eq-ce-kl" class="quarto-xref">Equation&nbsp;3</a> resolves an apparent tension in our objective function. Choice training minimizes the same cross-entropy loss on the same one-hot label format as training regimes that have a single correct answer. What separates the two is the distribution of <span class="math inline">\(\mathbf{q}_t\)</span>. On objective tasks, <span class="math inline">\(\mathbf{q}_t\)</span> places all probability mass on the correct option (<span class="math inline">\(H(\mathbf{q}_t) = 0\)</span>), so minimizing the KL term pushes <span class="math inline">\(\mathbf{p}_t(\theta)\)</span> toward zero and one. On human choice data, if respondents with identical <span class="math inline">\((\mathbf{s}_t, c_t)\)</span> choose differently, <span class="math inline">\(\mathbf{q}_t\)</span> becomes interior (<span class="math inline">\(H(\mathbf{q}_t) &gt; 0\)</span>). Thus, the same loss function drives <span class="math inline">\(\mathbf{p}_t(\theta)\)</span> toward interior probabilities rather than the most common option. Each one-hot choice is a single draw from <span class="math inline">\(\mathbf{q}_t\)</span>, hence training requires no aggregate choice shares. This property is essential in randomized designs with sparse respondent covariates and task attributes, where each unique combination <span class="math inline">\((\mathbf{s}_t, c_t)\)</span> is typically observed only once and, thus, empirical choice shares cannot be estimated cell by cell. In such cases, the model recovers <span class="math inline">\(\mathbf{q}_t\)</span> by sharing parameters across respondents and tasks with similar covariates and attributes. Because this argument holds in expectation, a sufficiently flexible model could still memorize individual choices. Therefore, choice training should still select the best checkpoint on held-out validation data. Importantly, no target-study data enters <a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a>, so downstream econometric evaluation measures genuine generalizability to unseen studies.</p>
+<p><strong>Econometric evaluation.</strong> On a held-out evaluation dataset, we hold <span class="math inline">\(\theta\)</span> fixed and evaluate treatment-effect recovery using ordinary least squares (OLS) regressions defined by the dataset’s experimental design (<a href="#fig-pipeline" class="quarto-xref">Figure&nbsp;2</a>, panel d). Applying the same linear specification symmetrically to both human responses and model-implied expected outcomes places the human benchmark and synthetic choice data on a common estimator. Consider each regression <span class="math inline">\(g \in \{1, \dots, G\}\)</span> in the dataset, with full-column-rank design matrix <span class="math inline">\(\mathbf{X}^{(g)}\)</span> and human outcome vector <span class="math inline">\(\mathbf{o}^{(g)}\)</span>. The matrix <span class="math inline">\(\mathbf{X}^{(g)}\)</span> contains an intercept and <span class="math inline">\(d_g\)</span> treatment or attribute indicators from the experiment design. Across our evaluation designs, each entry of the regression outcome <span class="math inline">\(\mathbf{o}^{(g)}\)</span> is a linear function of the choice indicators <span class="math inline">\(y_{t,k}\)</span>. It is either a binary indicator <span class="math inline">\(y_{t,k}\)</span> for choosing a given profile or target option (zero across profiles when the outside option is chosen) or the numeric rating <span class="math inline">\(\sum_{k=1}^{K_t} k\,y_{t,k}\)</span> on an ordinal scale. By linearity of expectation, replacing each realized indicator <span class="math inline">\(y_{t,k}\)</span> with its predicted probability <span class="math inline">\(p_{t,k}(\theta)\)</span> from <a href="#eq-model-pmf" class="quarto-xref">Equation&nbsp;1</a> yields the exact expected outcome vector <span class="math inline">\(\bar{\mathbf{o}}^{(g)}(\theta)\)</span> that would result from averaging over synthetic choices drawn from <span class="math inline">\(\mathbf{p}_t(\theta)\)</span>.</p>
+<p>Applying the OLS operator <span class="math inline">\(\mathbf{A}^{(g)} = (\mathbf{X}^{(g)\top}\mathbf{X}^{(g)})^{-1}\mathbf{X}^{(g)\top}\)</span> to the human and model-predicted outcome vectors defines the intercepts and slopes:</p>
+<p><span id="eq-pop-ols"><span class="math display">\[
 \begin{pmatrix}
 \hat{\alpha}^{(g)} \\
 \hat{\boldsymbol{\beta}}^{(g)}
@@ -218,18 +229,20 @@ p_{t,k}(\theta) = P\big(y_{t,k} = 1 \mid \mathbf{s}_t, c_t; \theta\big) = \frac{
 \bar{\boldsymbol{\beta}}^{(g)}(\theta)
 \end{pmatrix}
 = \mathbf{A}^{(g)}\bar{\mathbf{o}}^{(g)}(\theta),
-\tag{3}\]</span></span> where <span class="math inline">\(\hat{\alpha}^{(g)}\)</span> and <span class="math inline">\(\bar{\alpha}^{(g)}(\theta)\)</span> are the intercepts, <span class="math inline">\(\hat{\boldsymbol{\beta}}^{(g)}\)</span> is the full-sample human slope benchmark, and <span class="math inline">\(\bar{\boldsymbol{\beta}}^{(g)}(\theta)\)</span> collects the <span class="math inline">\(d_g\)</span> model-implied treatment or attribute slopes. Because <span class="math inline">\(\mathbf{X}^{(g)}\)</span> is fixed and OLS is linear in the outcome vector, <span class="math inline">\(\bar{\boldsymbol{\beta}}^{(g)}(\theta)\)</span> equals the exact expectation of the OLS slope estimator over synthetic choices drawn from <span class="math inline">\(p_{t,k}(\theta)\)</span>, with zero Monte Carlo variance. Note that <a href="#eq-pop-ols" class="quarto-xref">Equation&nbsp;3</a> targets point-estimate recovery rather than plug-in standard errors, because regressing deterministic expectations <span class="math inline">\(\bar{\mathbf{o}}^{(g)}(\theta)\)</span> omits realization-level sampling variance.</p>
-<p>Because all <span class="math inline">\(G\)</span> regressions within each study share identical outcome units, we measure aggregate slope recovery across all <span class="math inline">\(d = \sum_{g=1}^G d_g\)</span> slopes via mean squared error <span class="citation" data-cites="wang2026large">(<a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>: <span id="eq-eval-mse"><span class="math display">\[
+\tag{4}\]</span></span></p>
+<p>where <span class="math inline">\(\hat{\alpha}^{(g)}\)</span> and <span class="math inline">\(\bar{\alpha}^{(g)}(\theta)\)</span> are the intercepts, <span class="math inline">\(\hat{\boldsymbol{\beta}}^{(g)}\)</span> is the full-sample human slope benchmark, and <span class="math inline">\(\bar{\boldsymbol{\beta}}^{(g)}(\theta)\)</span> is the vector of <span class="math inline">\(d_g\)</span> synthetic treatment or attribute slopes. Because <span class="math inline">\(\mathbf{X}^{(g)}\)</span> is fixed and OLS is linear in the outcome vector, <span class="math inline">\(\bar{\boldsymbol{\beta}}^{(g)}(\theta)\)</span> equals the exact expectation of the OLS slope estimator over synthetic choices drawn from <span class="math inline">\(p_{t,k}(\theta)\)</span>, with zero Monte Carlo variance.<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a></p>
+<p>Because all <span class="math inline">\(G\)</span> regressions within a dataset share identical outcome units, we measure aggregate slope recovery across all <span class="math inline">\(d = \sum_{g=1}^G d_g\)</span> slopes via mean squared error <span class="citation" data-cites="wang2026large">(<a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>:</p>
+<p><span id="eq-eval-mse"><span class="math display">\[
 \mathrm{MSE}_{\beta}(\theta) = \frac{1}{d} \sum_{g=1}^G \left\lVert \bar{\boldsymbol{\beta}}^{(g)}(\theta) - \hat{\boldsymbol{\beta}}^{(g)} \right\rVert_2^2.
-\tag{4}\]</span></span> As a complementary individual-level diagnostic, we also report held-out empirical cross-entropy in nats by evaluating <a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a> over all tasks in each unseen study alongside <a href="#eq-eval-mse" class="quarto-xref">Equation&nbsp;4</a> in <a href="#tbl-results-mse" class="quarto-xref">Table&nbsp;2</a>.</p>
+\tag{5}\]</span></span></p>
+<p>Alongside <a href="#eq-eval-mse" class="quarto-xref">Equation&nbsp;5</a>, we evaluate <a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a> across all tasks in each dataset to report held-out cross-entropy in nats (<a href="#tbl-results-mse" class="quarto-xref">Table&nbsp;2</a>). Whereas <a href="#eq-eval-mse" class="quarto-xref">Equation&nbsp;5</a> measures aggregate slope recovery, cross-entropy captures how accurately <span class="math inline">\(\mathbf{p}_t(\theta)\)</span> predicts conditional choice distributions given <span class="math inline">\((\mathbf{s}_t, c_t)\)</span> (<a href="#eq-ce-kl" class="quarto-xref">Equation&nbsp;3</a>).</p>
 </section>
 <section id="sec-setup" class="level1">
 <h1>Experimental setup</h1>
-<!-- create a figure diagram showing sample Kev state/instructions with personas questions and options. use examples from both training and test datasets -->
-<section id="datasets-and-transfer-design" class="level2">
-<h2 class="anchored" data-anchor-id="datasets-and-transfer-design">Datasets and transfer design</h2>
-<p>We evaluate choice training across seven choice datasets spanning various product and policy domains, with no overlap between training, validation, and testing (<a href="#tbl-datasets" class="quarto-xref">Table&nbsp;1</a>). Two datasets provide respondent-level training microdata: a paired electricity-plan conjoint <span class="citation" data-cites="wu2025partisan">(<code>Electricity</code>; <a href="#ref-wu2025partisan" role="doc-biblioref">Wu 2025</a>)</span>, and a discrete-choice experiment on drone versus ground delivery across four vendor contexts <span class="citation" data-cites="berke2023drone">(<code>Drones</code>; <a href="#ref-berke2023drone" role="doc-biblioref">Berke et al. 2023</a>)</span>. Both training datasets vary price (monthly bill or delivery fee) alongside non-price attributes. To prevent held-out test datasets from informing model selection, we designate the <code>Flights</code> dataset <span class="citation" data-cites="goldfarb2026comfort">(<a href="#ref-goldfarb2026comfort" role="doc-biblioref">Goldfarb et al. 2026</a>)</span> as a dedicated validation dataset that selects every training run’s checkpoint.</p>
-<p>Our four held-out test datasets never enter training, hyperparameter tuning, or checkpoint selection. Two include price over wider ranges than training (<code>Consumer rights</code> and <code>AI &amp; offshoring</code>), whereas the other two share no attributes with training (<code>Food labels</code> and <code>Vaccines</code>). Together, these test datasets span paired conjoints, a three-option conjoint with an opt-out (<code>Vaccines</code>), a five-point ordinal rating conjoint (<code>AI &amp; offshoring</code>), and a six-arm randomized trial (<code>Food labels</code>). Across all seven datasets, each choice task conditions on the respondent’s observed covariates <span class="math inline">\(\mathbf{s}_t\)</span> in a standardized text format (<a href="#fig-pipeline" class="quarto-xref">Figure&nbsp;2</a>, panel a; mappings appear in the Web Appendix).</p>
+<section id="datasets" class="level2">
+<h2 class="anchored" data-anchor-id="datasets">Datasets</h2>
+<p>For choice training, we use seven datasets from distinct product and policy domains (<a href="#tbl-datasets" class="quarto-xref">Table&nbsp;1</a>). Two datasets provide the respondent-level training microdata: a paired electricity-plan conjoint <span class="citation" data-cites="wu2025partisan">(<code>Electricity</code>; <a href="#ref-wu2025partisan" role="doc-biblioref">Wu 2025</a>)</span> and a discrete-choice experiment on drone versus ground delivery across four vendor contexts <span class="citation" data-cites="berke2023drone">(<code>Drones</code>; <a href="#ref-berke2023drone" role="doc-biblioref">Berke et al. 2023</a>)</span>. Both training datasets vary price (monthly bill or delivery fee) alongside non-price attributes. A separate airline conjoint <span class="citation" data-cites="goldfarb2026comfort">(<code>Flights</code>; <a href="#ref-goldfarb2026comfort" role="doc-biblioref">Goldfarb et al. 2026</a>)</span> dataset serves as our validation set, which we use to tune hyper-parameters and select the best checkpoint (lowest <span class="math inline">\(\mathrm{MSE}_\beta\)</span>). Finally, we use four held-out test datasets to evaluate generalizability to new studies, domains, and choice format.</p>
+<p>Two test datasets include prices on products with price ranges absent from training (<code>Consumer rights</code> and <code>AI &amp; offshoring</code>), whereas the other two share no attributes with the training datasets (<code>Food labels</code> and <code>Vaccines</code>). Response formats in the test sets are also different from the binary choices used in training (<a href="#tbl-datasets" class="quarto-xref">Table&nbsp;1</a>). The test datasets have a three-option conjoint with an outside option (<code>Vaccines</code>), a three-option identification task (<code>Food labels</code>), and a five-point ordinal rating (<code>AI &amp; offshoring</code>). Across all seven datasets, each choice task conditions on the respondent’s observed covariates <span class="math inline">\(\mathbf{s}_t\)</span> in a standardized text format (<a href="#fig-pipeline" class="quarto-xref">Figure&nbsp;2</a>, panel a).</p>
 <div id="tbl-datasets" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-datasets-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -238,85 +251,112 @@ Table&nbsp;1: Summary of training, validation, and held-out test datasets
 <div aria-describedby="tbl-datasets-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table" data-custom-style="APATable">
 <colgroup>
+<col style="width: 24%">
+<col style="width: 24%">
+<col style="width: 25%">
+<col style="width: 4%">
+<col style="width: 7%">
 <col style="width: 8%">
-<col style="width: 12%">
-<col style="width: 28%">
-<col style="width: 28%">
-<col style="width: 8%">
-<col style="width: 8%">
-<col style="width: 8%">
+<col style="width: 5%">
 </colgroup>
 <thead>
 <tr class="header">
-<th style="text-align: left;">Role</th>
 <th style="text-align: left;">Dataset</th>
 <th style="text-align: left;">Price attributes</th>
 <th style="text-align: left;">Non-price attributes</th>
-<th style="text-align: right;">Respondents</th>
+<th style="text-align: right;"><span class="math inline">\(K\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(N\)</span></th>
 <th style="text-align: right;">Tasks</th>
 <th style="text-align: right;"><span class="math inline">\(d\)</span></th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;">Training</td>
+<td style="text-align: left;"><em>Training</em></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr class="even">
 <td style="text-align: left;">Electricity <span class="citation" data-cites="wu2025partisan">(<a href="#ref-wu2025partisan" role="doc-biblioref">Wu 2025</a>)</span></td>
 <td style="text-align: left;">Monthly bill ($105 to $125)</td>
 <td style="text-align: left;">Renewable share (10% to 100%), local renewables</td>
+<td style="text-align: right;">2</td>
 <td style="text-align: right;">1,861</td>
 <td style="text-align: right;">18,591</td>
 <td style="text-align: right;">8</td>
 </tr>
-<tr class="even">
-<td style="text-align: left;">Training</td>
+<tr class="odd">
 <td style="text-align: left;">Drones <span class="citation" data-cites="berke2023drone">(<a href="#ref-berke2023drone" role="doc-biblioref">Berke et al. 2023</a>)</span></td>
 <td style="text-align: left;">Delivery fee ($0 to $10)</td>
 <td style="text-align: left;">Wait time, drone privacy</td>
+<td style="text-align: right;">2</td>
 <td style="text-align: right;">3,625</td>
 <td style="text-align: right;">36,297</td>
 <td style="text-align: right;">28</td>
 </tr>
+<tr class="even">
+<td style="text-align: left;"><em>Validation</em></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
 <tr class="odd">
-<td style="text-align: left;">Validation</td>
 <td style="text-align: left;">Flights <span class="citation" data-cites="goldfarb2026comfort">(<a href="#ref-goldfarb2026comfort" role="doc-biblioref">Goldfarb et al. 2026</a>)</span></td>
 <td style="text-align: left;">Ticket price ($250 to $325)</td>
 <td style="text-align: left;">Sustainable aviation fuel, airline, baggage, legroom, seat</td>
+<td style="text-align: right;">2</td>
 <td style="text-align: right;">1,000</td>
 <td style="text-align: right;">5,000</td>
 <td style="text-align: right;">12</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">Test</td>
+<td style="text-align: left;"><em>Test</em></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr class="odd">
 <td style="text-align: left;">Consumer rights <span class="citation" data-cites="kantorowicz2026consumers">(<a href="#ref-kantorowicz2026consumers" role="doc-biblioref">Kantorowicz-Reznichenko et al. 2026</a>)</span></td>
 <td style="text-align: left;">Laptop ($500 to $2,000) and laundry ($400 to $1,400) price</td>
 <td style="text-align: left;">Brand, specs, warranty, privacy, liability, conflict resolution</td>
+<td style="text-align: right;">2</td>
 <td style="text-align: right;">2,242</td>
 <td style="text-align: right;">26,823</td>
 <td style="text-align: right;">38</td>
 </tr>
-<tr class="odd">
-<td style="text-align: left;">Test</td>
+<tr class="even">
 <td style="text-align: left;">AI &amp; offshoring <span class="citation" data-cites="magistro2026attitudes">(<a href="#ref-magistro2026attitudes" role="doc-biblioref">Magistro et al. 2026</a>)</span></td>
 <td style="text-align: left;">Smartphone price ($300 to $600)</td>
 <td style="text-align: left;">Customer service, factory, and data science jobs</td>
+<td style="text-align: right;">5</td>
 <td style="text-align: right;">5,525</td>
 <td style="text-align: right;">21,005</td>
 <td style="text-align: right;">32</td>
 </tr>
-<tr class="even">
-<td style="text-align: left;">Test</td>
+<tr class="odd">
 <td style="text-align: left;">Food labels <span class="citation" data-cites="grummon2025nutrition">(<a href="#ref-grummon2025nutrition" role="doc-biblioref">Grummon et al. 2025</a>)</span></td>
 <td style="text-align: left;">None</td>
 <td style="text-align: left;">Front-of-package warning labels (6 arms)</td>
+<td style="text-align: right;">3</td>
 <td style="text-align: right;">5,633</td>
 <td style="text-align: right;">33,798</td>
 <td style="text-align: right;">5</td>
 </tr>
-<tr class="odd">
-<td style="text-align: left;">Test</td>
+<tr class="even">
 <td style="text-align: left;">Vaccines <span class="citation" data-cites="kreps2020factors">(<a href="#ref-kreps2020factors" role="doc-biblioref">Kreps et al. 2020</a>)</span></td>
 <td style="text-align: left;">None</td>
 <td style="text-align: left;">Efficacy, duration, side effects, FDA, origin, endorsements</td>
+<td style="text-align: right;">3</td>
 <td style="text-align: right;">1,971</td>
 <td style="text-align: right;">9,855</td>
 <td style="text-align: right;">11</td>
@@ -327,26 +367,24 @@ Table&nbsp;1: Summary of training, validation, and held-out test datasets
 </figure>
 </div>
 <div data-custom-style="Table Note">
-<p><em>Note.</em> Shorthand dataset labels in the Dataset column are used throughout all tables and figures. The column <span class="math inline">\(d\)</span> reports the total number of non-reference treatment or attribute slopes across each dataset’s experimental design (<a href="#sec-methodology" class="quarto-xref">Section&nbsp;3</a>): <code>Drones</code> spans four vendor contexts of 7 slopes each (28 total), <code>Consumer rights</code> spans two product conjoints of 19 slopes each (38 total), and <code>AI &amp; offshoring</code> spans four country-by-arm regressions of 8 slopes each (32 total) on a five-point support scale (1 to 5). Training datasets (<code>Electricity</code> and <code>Drones</code>) enter exclusively as respondent-level choice microdata via <a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a>, whereas validation and test datasets are evaluated via <a href="#eq-pop-ols" class="quarto-xref">Equation&nbsp;3</a> and <a href="#eq-eval-mse" class="quarto-xref">Equation&nbsp;4</a>.</p>
+<p><em>Note.</em> Shorthand labels in the Dataset column are used throughout the paper. <span class="math inline">\(K\)</span> is the number of response options per choice task. <span class="math inline">\(N\)</span> is the number of respondents. <span class="math inline">\(d\)</span> reports the total number of non-reference treatment or attribute slopes across each dataset’s experimental design (<a href="#sec-methodology" class="quarto-xref">Section&nbsp;3</a>). Specifically, <code>Consumer rights</code> spans two product conjoints of 19 slopes each (38 total), and <code>AI &amp; offshoring</code> spans four country-by-arm regressions of 8 slopes each (32 total) on a five-point support scale (1 to 5).</p>
 </div>
 </section>
-<section id="choice-training-regimes" class="level2">
-<h2 class="anchored" data-anchor-id="choice-training-regimes">Choice-training regimes</h2>
-<p>Across every model scale, we evaluate a <span class="math inline">\(2 \times 2\)</span> choice-training design toggling inclusion of <code>Electricity</code> and <code>Drones</code> across four regimes. <code>Off-the-shelf</code> evaluates the unmodified decision model without choice training (<span class="math inline">\(0\)</span> steps). <code>Electricity</code> trains on the 18,591 choice tasks from <span class="citation" data-cites="wu2025partisan">Wu (<a href="#ref-wu2025partisan" role="doc-biblioref">2025</a>)</span> (1,395 steps over <span class="math inline">\(3\)</span> epochs), whereas <code>Drones</code> trains on the 36,297 choice tasks from <span class="citation" data-cites="berke2023drone">Berke et al. (<a href="#ref-berke2023drone" role="doc-biblioref">2023</a>)</span> (2,730 steps over <span class="math inline">\(3\)</span> epochs). Finally, <code>Drones + Electricity</code> pools all 54,888 choice tasks from both datasets under <a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a> (4,125 steps over <span class="math inline">\(3\)</span> epochs). This factorial design isolates whether single-dataset training already transfers to unseen datasets, whether training-domain composition matters, and whether pooling distinct choice datasets compounds unseen-study gains.</p>
-</section>
-<section id="models-training-protocol-and-evaluation" class="level2">
-<h2 class="anchored" data-anchor-id="models-training-protocol-and-evaluation">Models, training protocol, and evaluation</h2>
-<p>We evaluate the <code>KEV-0.8B</code>, <code>KEV-4B</code>, and <code>KEV-9B</code> open-weight decision models <span class="citation" data-cites="palmer2026kev">(<a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>, each loaded in <code>bfloat16</code> precision with unit temperature. Choice training updates LoRA adapters (rank <span class="math inline">\(r = 64\)</span>, scaling <span class="math inline">\(\alpha_{\mathrm{LoRA}} = 128\)</span>, dropout <span class="math inline">\(0.05\)</span>) across all linear backbone projections jointly with the trainable pointer head via <a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a>. Every trained run uses AdamW with a <span class="math inline">\(5 \times 10^{-6}\)</span> peak learning rate, a OneCycle schedule (<span class="math inline">\(10\%\)</span> warmup and cosine decay), weight decay <span class="math inline">\(0.01\)</span>, and gradient-norm clipping at <span class="math inline">\(1.0\)</span>. Training runs for <span class="math inline">\(3\)</span> epochs with mini-batch size <span class="math inline">\(|S| = 40\)</span> and random seed <span class="math inline">\(42\)</span>. Within each epoch, tasks are shuffled independently within each dataset (and within each vendor context in <code>Drones</code>), partitioned into single-dataset mini-batches, and interleaved randomly. We validate each run on <code>Flights</code> at step <span class="math inline">\(0\)</span>, every <span class="math inline">\(32\)</span> steps (<span class="math inline">\(1,280\)</span> tasks), and the final step, selecting the checkpoint with the lowest validation <span class="math inline">\(\mathrm{MSE}_\beta\)</span> (<a href="#eq-eval-mse" class="quarto-xref">Equation&nbsp;4</a>). Main-text results in <a href="#tbl-results-mse" class="quarto-xref">Table&nbsp;2</a> report <span class="math inline">\(\mathrm{MSE}_\beta\)</span> (<a href="#eq-eval-mse" class="quarto-xref">Equation&nbsp;4</a>) multiplied by <span class="math inline">\(10^3\)</span> alongside held-out empirical cross-entropy in nats (<a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a>). The Web Appendix reports the off-the-shelf generative LLM protocol used in <a href="#fig-intro-off-the-shelf" class="quarto-xref">Figure&nbsp;1</a> (<a href="#apptbl-llm-baseline" class="quarto-xref">Table W1</a>) and full attribute-level slope tables and subset diagnostics (<a href="#appfig-flights-slopes" class="quarto-xref">Figure W2</a>; <a href="#apptbl-vaccines-slopes" class="quarto-xref">Table W2</a> through <a href="#apptbl-magistro-subsets" class="quarto-xref">Table W7</a>).</p>
+<section id="choice-training-regimes-and-protocol" class="level2">
+<h2 class="anchored" data-anchor-id="choice-training-regimes-and-protocol">Choice-training regimes and protocol</h2>
+<p>At each model scale, we use a <span class="math inline">\(2 \times 2\)</span> design crossing the inclusion of <code>Electricity</code> (excluded vs.&nbsp;included) with the inclusion of <code>Drones</code> (excluded vs.&nbsp;included) studies. This forms four choice-training regimes: <code>Off-the-shelf</code> (neither dataset), <code>Electricity</code> (18,591 tasks), <code>Drones</code> (36,297 tasks), and <code>Drones + Electricity</code> (54,888 tasks). <code>Off-the-shelf</code> evaluates the unmodified decision model without choice training. This design tests whether single-dataset training transfers to unseen datasets and whether pooling both choice datasets improves the model beyond each individual dataset.</p>
+<p>We evaluate the <code>KEV-0.8B</code>, <code>KEV-4B</code>, and <code>KEV-9B</code> open-weight decision models <span class="citation" data-cites="palmer2026kev">(<a href="#ref-palmer2026kev" role="doc-biblioref">Palmer 2026</a>)</span>, each loaded in <code>bfloat16</code> precision with unit temperature. Choice training updates LoRA adapters (rank <span class="math inline">\(r = 64\)</span>, scaling <span class="math inline">\(\alpha_{\mathrm{LoRA}} = 128\)</span>, dropout <span class="math inline">\(0.05\)</span>) across all linear backbone projections jointly with the trainable pointer head via <a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a>. Every trained run uses AdamW with a <span class="math inline">\(5 \times 10^{-6}\)</span> peak learning rate, a OneCycle schedule (<span class="math inline">\(10\%\)</span> warmup and cosine decay), weight decay <span class="math inline">\(0.01\)</span>, and gradient-norm clipping at <span class="math inline">\(1.0\)</span>, for <span class="math inline">\(3\)</span> epochs with mini-batch size <span class="math inline">\(|S| = 40\)</span> and random seed <span class="math inline">\(42\)</span>. Within each epoch, tasks are shuffled by dataset (and by vendor context in <code>Drones</code>), partitioned into single-dataset mini-batches, and interleaved randomly.</p>
+<p>The Web Appendix details the off-the-shelf generative LLM protocol behind <a href="#fig-intro-off-the-shelf" class="quarto-xref">Figure&nbsp;1</a> (<a href="#apptbl-llm-baseline" class="quarto-xref">Table W1</a>) alongside full attribute-level slope tables and subset diagnostics (<a href="#appfig-flights-slopes" class="quarto-xref">Figure W2</a>; <a href="#apptbl-vaccines-slopes" class="quarto-xref">Table W2</a> through <a href="#apptbl-magistro-subsets" class="quarto-xref">Table W7</a>).</p>
 </section>
 </section>
 <section id="sec-results" class="level1">
 <h1>Results</h1>
 <section id="unseen-study-transfer-across-domains-and-model-scales" class="level2">
 <h2 class="anchored" data-anchor-id="unseen-study-transfer-across-domains-and-model-scales">Unseen-study transfer across domains and model scales</h2>
-<p><a href="#tbl-results-mse" class="quarto-xref">Table&nbsp;2</a> and <a href="#fig-results-overall" class="quarto-xref">Figure&nbsp;3</a> report unseen-study treatment-effect error (<span class="math inline">\(\mathrm{MSE}_\beta\)</span>) and held-out empirical cross-entropy (CE) across all three model scales, four choice-training regimes, and five evaluation datasets. Pooled choice training (<code>Drones + Electricity</code>) lowers <span class="math inline">\(\mathrm{MSE}_\beta\)</span> relative to the off-the-shelf checkpoint in all 15 model-dataset cells, including all 12 held-out test cells, and achieves the lowest CE in every cell. Across held-out test datasets, <span class="math inline">\(\mathrm{MSE}_\beta\)</span> falls by 22% to 89%. These gains extend well beyond <code>Flights</code> and the two held-out price datasets (<code>Consumer rights</code> and <code>AI &amp; offshoring</code>). Some of the sharpest improvements occur on non-price test datasets that share no attributes with training, cutting <span class="math inline">\(\mathrm{MSE}_\beta\)</span> by 79% to 88% on <code>Vaccines</code> and by 35% to 89% on <code>Food labels</code> across scales. Choice training also transfers across response formats, moving from binary paired choices in training to three-option opt-out conjoints (<code>Vaccines</code>), a six-arm randomized trial (<code>Food labels</code>), and five-point ordinal ratings (<code>AI &amp; offshoring</code>, where larger raw <span class="math inline">\(\mathrm{MSE}_\beta\)</span> values reflect the 1 to 5 outcome scale; see <a href="#apptbl-magistro-subsets" class="quarto-xref">Table W7</a>).</p>
-<p>Comparing single-dataset regimes against <code>Drones + Electricity</code> shows why pooling distinct choice datasets matters (<a href="#tbl-results-mse" class="quarto-xref">Table&nbsp;2</a> and <a href="#fig-results-overall" class="quarto-xref">Figure&nbsp;3</a>). Training on <code>Electricity</code> or <code>Drones</code> alone already improves <span class="math inline">\(\mathrm{MSE}_\beta\)</span> substantially on binary and three-option tasks, yet both single-dataset regimes prove brittle under the format shift to five-point ordinal ratings on <code>AI &amp; offshoring</code>. Each single-dataset regime worsens <code>AI &amp; offshoring</code> <span class="math inline">\(\mathrm{MSE}_\beta\)</span> on two of the three model scales relative to the off-the-shelf checkpoint. Pooling <code>Drones + Electricity</code> reverses every single-dataset regression, lowering <code>AI &amp; offshoring</code> <span class="math inline">\(\mathrm{MSE}_\beta\)</span> by 22% to 35% across scales. Overall, pooled choice training attains the lowest <span class="math inline">\(\mathrm{MSE}_\beta\)</span> among all four regimes in 13 of 15 cells, trailing a single-dataset model only on <code>KEV-9B</code> for <code>Consumer rights</code> and <code>Food labels</code>, while still recording the lowest CE in both cells.</p>
-<p>Across model scales, choice training dominates off-the-shelf parameter scaling. Echoing the off-the-shelf generative LLM pattern in <a href="#fig-intro-off-the-shelf" class="quarto-xref">Figure&nbsp;1</a>, scaling off-the-shelf decision models from <code>KEV-0.8B</code> to <code>KEV-9B</code> does not reliably improve treatment-effect recovery. Off-the-shelf <code>KEV-9B</code> incurs higher <span class="math inline">\(\mathrm{MSE}_\beta\)</span> than off-the-shelf <code>KEV-0.8B</code> on three of the four held-out test datasets (<code>AI &amp; offshoring</code>, <code>Food labels</code>, and <code>Vaccines</code>), improving monotonically with scale only on <code>Consumer rights</code>. By contrast, pooled choice training overturns an order-of-magnitude gap in parameter count. Choice-trained <code>KEV-0.8B</code> outperforms off-the-shelf <code>KEV-9B</code> on four of five datasets, trailing only on <code>Consumer rights</code>. At the middle scale, choice-trained <code>KEV-4B</code> achieves the lowest <span class="math inline">\(\mathrm{MSE}_\beta\)</span> overall on <code>Flights</code>, <code>Food labels</code>, and <code>Vaccines</code>, and virtually matches choice-trained <code>KEV-9B</code> on <code>AI &amp; offshoring</code>.</p>
-<p>The CE columns in <a href="#tbl-results-mse" class="quarto-xref">Table&nbsp;2</a> clarify why off-the-shelf scaling breaks down and confirm that aggregate OLS slope gains reflect genuine individual-level probability improvements. Consistent with the objective-pretraining mechanism in <a href="#sec-methodology" class="quarto-xref">Section&nbsp;3</a>, off-the-shelf decision models exhibit severe overconfidence, with held-out CE (<a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a>) exceeding uniform random guessing (<span class="math inline">\(\ln K\)</span>, for option counts <span class="math inline">\(K \in \{2, 3, 5\}\)</span> in <a href="#tbl-datasets" class="quarto-xref">Table&nbsp;1</a>) in 14 of 15 cells. Moreover, off-the-shelf CE rises with parameter scale on <code>Food labels</code>, <code>Vaccines</code>, and <code>AI &amp; offshoring</code>, showing that larger off-the-shelf models concentrate probability mass even more sharply onto extreme options and amplify OLS slope distortion. Pooled choice training reverses this collapse across every scale and dataset, reducing CE strictly below <span class="math inline">\(\ln K\)</span> in 11 of 15 cells and bringing the remaining cells close to or effectively at that threshold, including a drop of roughly 0.7 to 0.8 nats across scales on five-point <code>AI &amp; offshoring</code>. Because <a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a> penalizes misallocated respondent-level probabilities directly, these parallel drops in CE and <span class="math inline">\(\mathrm{MSE}_\beta\)</span> (<a href="#eq-eval-mse" class="quarto-xref">Equation&nbsp;4</a>) rule out slope-level error cancellation across respondents or attributes.</p>
+<p>Relative to the off-the-shelf checkpoints, pooled choice training (<code>Drones + Electricity</code>) lowers both <span class="math inline">\(\mathrm{MSE}_\beta\)</span> and CE in all 12 held-out test cells, reducing <span class="math inline">\(\mathrm{MSE}_\beta\)</span> by 22% to 89%. Notably, these gains extend both to datasets that share no attributes with the training studies (<code>Food labels</code> and <code>Vaccines</code>) and to response formats absent from training (<a href="#fig-results-overall" class="quarto-xref">Figure&nbsp;3</a>).<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a> In particular, although the training data contain only binary choices, pooled models still transfer to three-option choices and five-point ordinal ratings.</p>
+<p>The CE columns in <a href="#tbl-results-mse" class="quarto-xref">Table&nbsp;2</a> point to overconfidence, consistent with the objective-pretraining mechanism in <a href="#sec-methodology" class="quarto-xref">Section&nbsp;3</a>. Off-the-shelf CE exceeds uniform random guessing (<span class="math inline">\(\ln 2 = 0.693\)</span> for binary choices, <span class="math inline">\(\ln 3 = 1.099\)</span> for three-option tasks, and <span class="math inline">\(\ln 5 = 1.609\)</span> for five-point ratings) in 11 of 12 held-out test cells. Pooled choice training instead lowers CE in every cell, bringing 8 of 12 held-out test cells below <span class="math inline">\(\ln K\)</span> and leaving the remaining four only slightly above it.</p>
+<p>The two single-dataset regimes test whether transfer depends on the specific historical dataset used for training. Each regime (<code>Electricity</code> or <code>Drones</code> alone) lowers <span class="math inline">\(\mathrm{MSE}_\beta\)</span> relative to off-the-shelf checkpoints in 10 of 12 held-out test cells, showing that unseen-study transfer does not hinge on any single training dataset. However, every single-dataset failure occurs when transferring from binary choices to five-point ordinal ratings. Single-dataset training nevertheless lowers CE in all 24 held-out test cells, including those four failures. As a result, lower CE does not guarantee lower treatment-effect error. Pooling both datasets eliminates these ordinal-transfer failures and attains the lowest <span class="math inline">\(\mathrm{MSE}_\beta\)</span> among the four regimes in 10 of 12 held-out test cells.</p>
+<p>Choice training also reduces error more reliably than parameter scaling. Echoing the generative LLM pattern in <a href="#fig-intro-off-the-shelf" class="quarto-xref">Figure&nbsp;1</a>, scaling off-the-shelf decision models fails to improve treatment-effect recovery consistently. In fact, off-the-shelf <code>KEV-9B</code> incurs higher <span class="math inline">\(\mathrm{MSE}_\beta\)</span> than off-the-shelf <code>KEV-0.8B</code> on three of the four held-out test datasets. By contrast, choice-trained <code>KEV-0.8B</code> outperforms off-the-shelf <code>KEV-9B</code> on those same three datasets despite having an order of magnitude fewer parameters.</p>
 <div id="tbl-results-mse" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-results-mse-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -355,22 +393,20 @@ Table&nbsp;2: OLS treatment-effect error and empirical cross-entropy across data
 <div aria-describedby="tbl-results-mse-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table" data-custom-style="APATable">
 <colgroup>
-<col style="width: 6%">
-<col style="width: 14%">
-<col style="width: 6%">
+<col style="width: 15%">
+<col style="width: 8%">
 <col style="width: 7%">
-<col style="width: 6%">
+<col style="width: 8%">
 <col style="width: 7%">
+<col style="width: 8%">
 <col style="width: 7%">
+<col style="width: 8%">
 <col style="width: 7%">
-<col style="width: 7%">
-<col style="width: 7%">
-<col style="width: 6%">
+<col style="width: 8%">
 <col style="width: 7%">
 </colgroup>
 <thead>
 <tr class="header">
-<th rowspan="2" style="text-align: left;">Model</th>
 <th rowspan="2" style="text-align: left;">Trained on</th>
 <th colspan="2" style="text-align: center;">Flights</th>
 <th colspan="2" style="text-align: center;">Consumer rights</th>
@@ -379,21 +415,23 @@ Table&nbsp;2: OLS treatment-effect error and empirical cross-entropy across data
 <th colspan="2" style="text-align: center;">Vaccines</th>
 </tr>
 <tr class="even">
-<th style="text-align: right;">MSE</th>
+<th style="text-align: right;"><span class="math inline">\(\mathrm{MSE}_\beta\)</span></th>
 <th style="text-align: right;">CE</th>
-<th style="text-align: right;">MSE</th>
+<th style="text-align: right;"><span class="math inline">\(\mathrm{MSE}_\beta\)</span></th>
 <th style="text-align: right;">CE</th>
-<th style="text-align: right;">MSE</th>
+<th style="text-align: right;"><span class="math inline">\(\mathrm{MSE}_\beta\)</span></th>
 <th style="text-align: right;">CE</th>
-<th style="text-align: right;">MSE</th>
+<th style="text-align: right;"><span class="math inline">\(\mathrm{MSE}_\beta\)</span></th>
 <th style="text-align: right;">CE</th>
-<th style="text-align: right;">MSE</th>
+<th style="text-align: right;"><span class="math inline">\(\mathrm{MSE}_\beta\)</span></th>
 <th style="text-align: right;">CE</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;">KEV-0.8B</td>
+<td colspan="11" style="text-align: center;"><em>KEV-0.8B</em></td>
+</tr>
+<tr class="even">
 <td style="text-align: left;">Off-the-shelf</td>
 <td style="text-align: right;">17.75</td>
 <td style="text-align: right;">1.086</td>
@@ -406,8 +444,7 @@ Table&nbsp;2: OLS treatment-effect error and empirical cross-entropy across data
 <td style="text-align: right;">12.07</td>
 <td style="text-align: right;">1.185</td>
 </tr>
-<tr class="even">
-<td style="text-align: left;"></td>
+<tr class="odd">
 <td style="text-align: left;">Electricity</td>
 <td style="text-align: right;">8.91</td>
 <td style="text-align: right;">0.693</td>
@@ -420,8 +457,7 @@ Table&nbsp;2: OLS treatment-effect error and empirical cross-entropy across data
 <td style="text-align: right;">3.73</td>
 <td style="text-align: right;">1.082</td>
 </tr>
-<tr class="odd">
-<td style="text-align: left;"></td>
+<tr class="even">
 <td style="text-align: left;">Drones</td>
 <td style="text-align: right;">9.68</td>
 <td style="text-align: right;">0.709</td>
@@ -434,8 +470,7 @@ Table&nbsp;2: OLS treatment-effect error and empirical cross-entropy across data
 <td style="text-align: right;">4.08</td>
 <td style="text-align: right;">1.105</td>
 </tr>
-<tr class="even">
-<td style="text-align: left;"></td>
+<tr class="odd">
 <td style="text-align: left;">Drones + Electricity</td>
 <td style="text-align: right;"><strong>4.62</strong></td>
 <td style="text-align: right;"><strong>0.647</strong></td>
@@ -448,8 +483,10 @@ Table&nbsp;2: OLS treatment-effect error and empirical cross-entropy across data
 <td style="text-align: right;"><strong>2.56</strong></td>
 <td style="text-align: right;"><strong>1.067</strong></td>
 </tr>
+<tr class="even">
+<td colspan="11" style="text-align: center;"><em>KEV-4B</em></td>
+</tr>
 <tr class="odd">
-<td style="text-align: left;">KEV-4B</td>
 <td style="text-align: left;">Off-the-shelf</td>
 <td style="text-align: right;">4.10</td>
 <td style="text-align: right;">0.811</td>
@@ -463,7 +500,6 @@ Table&nbsp;2: OLS treatment-effect error and empirical cross-entropy across data
 <td style="text-align: right;">1.525</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;"></td>
 <td style="text-align: left;">Electricity</td>
 <td style="text-align: right;">1.72</td>
 <td style="text-align: right;">0.625</td>
@@ -477,7 +513,6 @@ Table&nbsp;2: OLS treatment-effect error and empirical cross-entropy across data
 <td style="text-align: right;">1.120</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;"></td>
 <td style="text-align: left;">Drones</td>
 <td style="text-align: right;">1.00</td>
 <td style="text-align: right;">0.623</td>
@@ -491,7 +526,6 @@ Table&nbsp;2: OLS treatment-effect error and empirical cross-entropy across data
 <td style="text-align: right;">1.195</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;"></td>
 <td style="text-align: left;">Drones + Electricity</td>
 <td style="text-align: right;"><strong>0.73</strong></td>
 <td style="text-align: right;"><strong>0.588</strong></td>
@@ -505,7 +539,9 @@ Table&nbsp;2: OLS treatment-effect error and empirical cross-entropy across data
 <td style="text-align: right;"><strong>1.046</strong></td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;">KEV-9B</td>
+<td colspan="11" style="text-align: center;"><em>KEV-9B</em></td>
+</tr>
+<tr class="even">
 <td style="text-align: left;">Off-the-shelf</td>
 <td style="text-align: right;">5.12</td>
 <td style="text-align: right;">0.833</td>
@@ -518,8 +554,7 @@ Table&nbsp;2: OLS treatment-effect error and empirical cross-entropy across data
 <td style="text-align: right;">14.30</td>
 <td style="text-align: right;">1.422</td>
 </tr>
-<tr class="even">
-<td style="text-align: left;"></td>
+<tr class="odd">
 <td style="text-align: left;">Electricity</td>
 <td style="text-align: right;">2.17</td>
 <td style="text-align: right;">0.647</td>
@@ -532,8 +567,7 @@ Table&nbsp;2: OLS treatment-effect error and empirical cross-entropy across data
 <td style="text-align: right;">4.25</td>
 <td style="text-align: right;">1.203</td>
 </tr>
-<tr class="odd">
-<td style="text-align: left;"></td>
+<tr class="even">
 <td style="text-align: left;">Drones</td>
 <td style="text-align: right;">2.62</td>
 <td style="text-align: right;">0.646</td>
@@ -546,8 +580,7 @@ Table&nbsp;2: OLS treatment-effect error and empirical cross-entropy across data
 <td style="text-align: right;">9.54</td>
 <td style="text-align: right;">1.165</td>
 </tr>
-<tr class="even">
-<td style="text-align: left;"></td>
+<tr class="odd">
 <td style="text-align: left;">Drones + Electricity</td>
 <td style="text-align: right;"><strong>0.93</strong></td>
 <td style="text-align: right;"><strong>0.604</strong></td>
@@ -566,7 +599,7 @@ Table&nbsp;2: OLS treatment-effect error and empirical cross-entropy across data
 </figure>
 </div>
 <div data-custom-style="Table Note">
-<p><em>Note.</em> MSE reports population OLS treatment-effect error <span class="math inline">\(\mathrm{MSE}_\beta \times 10^3\)</span> (<a href="#eq-eval-mse" class="quarto-xref">Equation&nbsp;4</a>) and CE reports mean empirical cross-entropy (negative log-likelihood per choice task, in nats; <a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a>); lower is better for both metrics. Uniform random guessing yields <span class="math inline">\(\mathrm{CE} = \ln 2 = 0.693\)</span> on <code>Flights</code> and <code>Consumer rights</code>, <span class="math inline">\(\ln 3 = 1.099\)</span> on <code>Food labels</code> and <code>Vaccines</code>, and <span class="math inline">\(\ln 5 = 1.609\)</span> on <code>AI &amp; offshoring</code>. Bold marks the lowest value per model, dataset, and metric. <code>Flights</code> is the validation dataset that selects each run’s checkpoint; <code>Consumer rights</code> and <code>AI &amp; offshoring</code> are held-out test price datasets; <code>Food labels</code> and <code>Vaccines</code> are held-out test non-price datasets.</p>
+<p><em>Note.</em> <span class="math inline">\(\mathrm{MSE}_\beta\)</span> reports population OLS treatment-effect error <span class="math inline">\(\times 10^3\)</span> (<a href="#eq-eval-mse" class="quarto-xref">Equation&nbsp;5</a>). CE reports mean empirical cross-entropy (negative log-likelihood per choice task, in nats; <a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a>). Lower is better for both metrics. Uniform random guessing yields <span class="math inline">\(\mathrm{CE} = \ln 2 = 0.693\)</span> on <code>Flights</code> and <code>Consumer rights</code>, <span class="math inline">\(\ln 3 = 1.099\)</span> on <code>Food labels</code> and <code>Vaccines</code>, and <span class="math inline">\(\ln 5 = 1.609\)</span> on <code>AI &amp; offshoring</code>. Bold marks the lowest value per model, dataset, and metric.</p>
 </div>
 <div id="fig-results-overall" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
@@ -581,9 +614,9 @@ Figure&nbsp;3: Population OLS treatment-effect error across datasets and choice-
 </section>
 <section id="attribute-level-transfer-across-shared-and-unseen-attributes" class="level2">
 <h2 class="anchored" data-anchor-id="attribute-level-transfer-across-shared-and-unseen-attributes">Attribute-level transfer across shared and unseen attributes</h2>
-<p>Because both training datasets include a price attribute, aggregate <span class="math inline">\(\mathrm{MSE}_\beta\)</span> reductions could in principle stem from price sensitivity transferring alone while unseen non-price attributes remain distorted. Attribute-level estimates on held-out <code>Consumer rights</code> rule out that explanation (<a href="#fig-results-laptops-slopes" class="quarto-xref">Figure&nbsp;4</a>; full laptop and laundry estimates in <a href="#apptbl-consumer-rights-slopes" class="quarto-xref">Table W4</a>). Across all 34 unseen non-price slopes, pooled choice training lowers non-price <span class="math inline">\(\mathrm{MSE}_\beta\)</span> at every model scale, by 24% to 41%. On <code>KEV-9B</code>, where pooled training slightly overshoots price slopes relative to the off-the-shelf model, the entire net improvement on <code>Consumer rights</code> comes from unseen non-price attributes. In the laptop conjoint (<a href="#fig-results-laptops-slopes" class="quarto-xref">Figure&nbsp;4</a>), off-the-shelf <code>KEV-0.8B</code> and <code>KEV-4B</code> compress hardware, warranty, and price slopes toward zero while inverting brand and consumer-rights signs. Pooled choice training lifts price, RAM, storage, and ten-year warranty slopes toward the human benchmark and corrects inverted signs on Apple MacBook, full privacy, and conflict resolution, although brand premia and ten-year warranty effects remain attenuated relative to human choices.</p>
-<p>The non-price <code>Vaccines</code> conjoint provides an even cleaner test because it shares no attributes with either training dataset (<a href="#fig-results-vaccines-slopes" class="quarto-xref">Figure&nbsp;5</a> and <a href="#apptbl-vaccines-slopes" class="quarto-xref">Table W2</a>). Here, choice training corrects two opposite off-the-shelf distortions at once. First, off-the-shelf models sharply exaggerate socially and politically salient cues, overstating CDC and WHO endorsement effects across all three scales and overshooting high vaccine efficacy and China-origin penalties at <code>KEV-4B</code> and <code>KEV-9B</code>. Pooled choice training cuts those endorsement overshoots by more than half across scales and pulls efficacy and origin slopes back toward human estimates. Second, choice training simultaneously lifts underweighted clinical and regulatory slopes rather than shrinking all effects toward zero. Across scales, it raises five-year duration and severe side-effect slopes toward human magnitudes and moderates the <code>KEV-4B</code> emergency-authorization distortion. Because choice training pulls exaggerated slopes downward while lifting suppressed slopes upward within the same task, unseen-study transfer cannot be explained by simple temperature rescaling or uniform shrinkage.</p>
-<p>The remaining Web Appendix breakdowns reinforce both the breadth and the limits of attribute-level transfer. On held-out <code>Food labels</code> (<a href="#apptbl-food-slopes" class="quarto-xref">Table W3</a>), off-the-shelf <code>KEV-4B</code> and <code>KEV-9B</code> invert the <code>HighIn</code> warning label into a large negative slope while exaggerating nutrition-information arms. Pooled choice training nearly eliminates that sign inversion and brings <code>KEV-4B</code> close to human estimates across arms. On held-out <code>AI &amp; offshoring</code> (<a href="#apptbl-ai-offshoring-slopes" class="quarto-xref">Table W5</a> and <a href="#apptbl-magistro-subsets" class="quarto-xref">Table W7</a>), pooled training cuts non-price job-change <span class="math inline">\(\mathrm{MSE}_\beta\)</span> by 33% to 34% across all three scales and moderates extreme off-the-shelf overreactions to factory-job gains. However, factory-job slopes remain inflated at <code>KEV-4B</code> and <code>KEV-9B</code>, and <code>KEV-9B</code> overshoots price slopes under the five-point ordinal scale, underscoring that transfer across response formats remains harder than transfer within binary or three-option designs. Finally, the <code>Flights</code> validation breakdown (<a href="#appfig-flights-slopes" class="quarto-xref">Figure W2</a> and <a href="#apptbl-flights-slopes" class="quarto-xref">Table W6</a>) exhibits the same dual improvement across shared price levels and unseen airline, baggage, and sustainable-fuel attributes.</p>
+<p>Because both training datasets include price, aggregate gains could in principle reflect price-sensitivity transfer alone, yet attribute-level estimates rule out that explanation. On <code>Consumer rights</code>, pooled choice training lowers <span class="math inline">\(\mathrm{MSE}_\beta\)</span> across the 34 non-price slopes by 23% to 41% at every model scale (<a href="#fig-results-laptops-slopes" class="quarto-xref">Figure&nbsp;4</a> and <a href="#apptbl-consumer-rights-slopes" class="quarto-xref">Table W4</a>). Similarly, it cuts error across the 24 non-price job slopes on <code>AI &amp; offshoring</code> by 33% to 34% at every scale (<a href="#apptbl-ai-offshoring-slopes" class="quarto-xref">Table W5</a>). Because <code>Food labels</code> and <code>Vaccines</code> share no attributes with training, their gains likewise cannot stem from price transfer.</p>
+<p>On <code>Vaccines</code>, pooled choice training also adjusts slopes in both directions within the same task (<a href="#fig-results-vaccines-slopes" class="quarto-xref">Figure&nbsp;5</a> and <a href="#apptbl-vaccines-slopes" class="quarto-xref">Table W2</a>). At every scale, off-the-shelf models overstate endorsement effects, and choice training pulls those slopes down toward the human benchmark. Conversely, it lifts underweighted duration and severe side-effect slopes upward toward human levels across all three scales. Because choice training simultaneously damps exaggerated effects and strengthens suppressed ones, uniform shrinkage toward zero cannot explain the <code>Vaccines</code> gains.</p>
+<p>Despite these improvements, pooled choice training narrows rather than closes the gap to human estimates, leaving some of the largest human effects attenuated or overshot at every scale (<a href="#fig-results-laptops-slopes" class="quarto-xref">Figure&nbsp;4</a> and <a href="#fig-results-vaccines-slopes" class="quarto-xref">Figure&nbsp;5</a>). Full attribute-level estimates for the remaining datasets appear in the Web Appendix (<a href="#apptbl-food-slopes" class="quarto-xref">Table W3</a>, <a href="#apptbl-magistro-subsets" class="quarto-xref">Table W7</a>, <a href="#appfig-flights-slopes" class="quarto-xref">Figure W2</a>, and <a href="#apptbl-flights-slopes" class="quarto-xref">Table W6</a>).</p>
 <div id="fig-results-laptops-slopes" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-results-laptops-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -608,44 +641,36 @@ Figure&nbsp;5: Vaccines OLS treatment effects by attribute for off-the-shelf and
 </section>
 <section id="sec-conclusion" class="level1">
 <h1>Conclusion</h1>
-<!-- Note explaining the limitations of training only on the CE loss. For Food Labels 9B has the lowest CE loss but the highest MSE_beta. Motivation for future research to address training both CE loss and a beta loss -->
+<p>Off-the-shelf foundation models, whether generative LLMs or single-pass decision models, struggle to recover human treatment effects in unseen choice studies, and neither larger parameter counts nor higher reasoning effort reliably resolves this error. Instead, pre-inference choice training of compact open-weight decision models delivers consistent improvements. Training on just two historical choice datasets lowers both OLS treatment-effect error and cross-entropy across every held-out test dataset and model scale. Crucially, these gains extend to unseen attributes and new response formats without any target-study human data.</p>
+<p>These results clarify how choice training fits alongside existing approaches to synthetic respondents. Unlike post-inference adjustment methods that require human data from the target study <span class="citation" data-cites="wang2026large leng2026reducing">(<a href="#ref-leng2026reducing" role="doc-biblioref">Leng et al. 2026</a>, <a href="#ref-wang2026large" role="doc-biblioref">Wang et al. 2026</a>)</span>, choice training relies strictly on historical datasets and can serve as a stronger starting point before any statistical adjustment <span class="citation" data-cites="hullman2026human">(<a href="#ref-hullman2026human" role="doc-biblioref">Hullman et al. 2026</a>)</span>. It also generalizes beyond prior within-category conjoint training, which failed to transfer across product categories <span class="citation" data-cites="brand2023using">(<a href="#ref-brand2023using" role="doc-biblioref">Brand et al. 2023</a>)</span>, by transferring across unrelated domains and response formats. Finally, whereas large-scale behavioral models depend on hundreds of studies and autoregressive text generation <span class="citation" data-cites="binz2025foundation kolluri2025finetuning">(<a href="#ref-binz2025foundation" role="doc-biblioref"><span class="nocase">Binz et al.</span> 2025</a>, <a href="#ref-kolluri2025finetuning" role="doc-biblioref">Kolluri et al. 2025</a>)</span>, our approach achieves unseen-study transfer from two datasets using a compact single-pass architecture.</p>
+<p>For marketing researchers, these findings carry clear practical implications. Before any human data is collected, choice-trained decision models offer a stronger starting point that can support exploratory pre-testing and experimental design while potentially reducing the residual bias left for post-inference adjustment. In addition, pooling both training datasets yields more dependable transfer than single-dataset training, and choice training reduces error more consistently than scaling parameter counts. Because single-pass decision models also return exact choice probabilities with zero refusals and no Monte Carlo sampling cost, these gains remain practical at modest compute.</p>
+<p>Our results also expose a limitation of training on cross-entropy alone. Single-dataset training lowers cross-entropy on every held-out test cell, yet it sometimes raises treatment-effect error when transferring to five-point ordinal ratings. Lower cross-entropy therefore does not guarantee more accurate experimental slopes. One plausible reason is that cross-entropy weights every choice task equally without directly penalizing bias in treatment-versus-control contrasts. Because single-pass decision models yield exact, differentiable expected OLS slopes (<a href="#eq-pop-ols" class="quarto-xref">Equation&nbsp;4</a>), future research can train jointly on respondent-level cross-entropy and a direct treatment-effect loss.</p>
+<p>Several remaining boundaries point to concrete avenues for future work. Because pooled training combines two datasets and more choice tasks than either single-dataset run, matched-volume ablations are needed to separate dataset diversity from data volume. Similarly, choice-training generative LLMs alongside decision models would isolate architectural advantages from training-data gains. On the estimation side, choice-trained models still attenuate or overshoot some of the largest human effects at every scale, and our evaluation targets population point estimates rather than plug-in standard errors or subgroup-level heterogeneous treatment effects. Extending choice training to ordinal scales, opt-out tasks, non-US samples, and richer respondent covariates therefore offers a natural next step toward more general synthetic respondents.</p>
 </section>
 <section id="declarations" class="level1 unnumbered">
 <h1 class="unnumbered">Declarations</h1>
 <section id="funding-and-competing-interests" class="level2 unnumbered">
-<h2 class="unnumbered anchored" data-anchor-id="funding-and-competing-interests">Funding and Competing Interests</h2>
+<h2 class="unnumbered anchored" data-anchor-id="funding-and-competing-interests">Funding and competing interests</h2>
 <p>All authors certify that they have no affiliations with or involvement in any organization or entity with any financial interest or non-financial interest in the subject matter or materials discussed in this manuscript. The authors have no funding to report.</p>
 </section>
 </section>
 <section id="references" class="level1 unnumbered">
 <h1 class="unnumbered">References</h1>
 <div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" role="list">
-<div id="ref-angelopoulos2023prediction" class="csl-entry" role="listitem">
-Angelopoulos AN, Bates S, Fannjiang C, Jordan MI, Zrnic T (2023) Prediction-powered inference. <em>Science</em> 382(6671):669–674.
-</div>
 <div id="ref-argyle2023out" class="csl-entry" role="listitem">
 Argyle LP, Busby EC, Fulda N, Gubler JR, Rytting C, Wingate D (2023) Out of one, many: Using language models to simulate human samples. <em>Political Analysis</em> 31(3):337–351.
-</div>
-<div id="ref-asseri2026calibratedwhompersonalanguage" class="csl-entry" role="listitem">
-Asseri B, Asseri A (2026) <a href="https://arxiv.org/abs/2609.36399">Calibrated to whom? Persona and language effects on cultural values in <span>JEV</span></a>. <em>arXiv preprint arXiv:2609.36399</em>.
-</div>
-<div id="ref-bentegeac2025token" class="csl-entry" role="listitem">
-Bentegeac R, Le Guellec B, Kuchcinski G, Amouyel P, Hamroun A (2025) Token probabilities to mitigate large language models overconfidence in answering medical questions: Quantitative study. <em>Journal of Medical Internet Research</em> 27:e64348.
 </div>
 <div id="ref-berke2023drone" class="csl-entry" role="listitem">
 Berke A, Ding G, Chin C, Gopalakrishnan K, Larson K, Balakrishnan H, Li MZ (2023) Drone delivery and the value of customer privacy: A discrete choice experiment with US consumers. <em>Transportation Research Part C: Emerging Technologies</em> 157:104391.
 </div>
+<div id="ref-binz2025foundation" class="csl-entry" role="listitem">
+<span class="nocase">Binz M, Akata E, Bethge M, Brändle F, Callaway F, Coda-Forno J, Dayan P, et al.</span> (2025) A foundation model to predict and capture human cognition. <em>Nature</em> 644(8078):1002–1009.
+</div>
 <div id="ref-brand2023using" class="csl-entry" role="listitem">
 Brand J, Israeli A, Ngwe D (2023) <em>Using <span>LLMs</span> for market research</em>. Working Paper 23-062 (Harvard Business School).
 </div>
-<div id="ref-deas-mckeown-2025-artificial" class="csl-entry" role="listitem">
-Deas N, McKeown K (2025) <a href="https://doi.org/10.18653/v1/2025.emnlp-main.981">Artificial impressions: Evaluating large language model behavior through the lens of trait impressions</a>. <em>Proceedings of the 2025 conference on <span class="nocase">Empirical Methods in Natural Language Processing</span></em>, 19418–19444.
-</div>
 <div id="ref-deusser2026evaluatingbenchmarkingmodeljev" class="csl-entry" role="listitem">
 Deußer T, Sparrenberg L, Sifa R (2026) <a href="https://arxiv.org/abs/2609.37647">Evaluating and benchmarking the system one model <span>Jev</span></a>. <em>arXiv preprint arXiv:2609.37647</em>.
-</div>
-<div id="ref-durmus2024towards" class="csl-entry" role="listitem">
-Durmus E, Nguyen K, Liao T, Schiefer N, Askell A, Bakhtin A, Chen C, et al. (2024) <a href="https://openreview.net/forum?id=zl16jLb91v">Towards measuring the representation of subjective global opinions in language models</a>. <em>First <span class="nocase">Conference on Language Modeling</span></em>.
 </div>
 <div id="ref-gao2026choicesfewerdecisionsordinalscale" class="csl-entry" role="listitem">
 Gao T, Li J, Li Z, Chang Y, Wu Y (2026) <a href="https://arxiv.org/abs/2609.38827">More choices, fewer decisions: Ordinal-scale bias in <span>JEV</span>-like direct-decision models</a>. <em>arXiv preprint arXiv:2609.38827</em>.
@@ -671,11 +696,8 @@ Hu EJ, Shen Y, Wallis P, Allen-Zhu Z, Li Y, Wang S, Wang L, Chen W (2021) Lora: 
 <div id="ref-huang-etal-2026-distribution" class="csl-entry" role="listitem">
 Huang J, Li M, Shao S (2026) <a href="https://doi.org/10.18653/v1/2026.findings-acl.457">Distribution shift alignment helps <span>LLM</span>s simulate survey response distributions</a>. <em>Findings of the <span>A</span>ssociation for <span>C</span>omputational <span>L</span>inguistics: <span>ACL</span> 2026</em>, 9395–9409.
 </div>
-<div id="ref-jung-etal-2026-psychometric" class="csl-entry" role="listitem">
-Jung J, Lutz M, Sen I, Strohmaier M (2026) <a href="https://doi.org/10.18653/v1/2026.eacl-long.380">Do psychometric tests work for large language models? Evaluation of tests on sexism, racism, and morality</a>. <em>Proceedings of the 19th conference of the <span class="nocase">European Chapter of the Association for Computational Linguistics</span> (volume 1: Long papers)</em>, 8143–8173.
-</div>
-<div id="ref-kabir-etal-2025-break" class="csl-entry" role="listitem">
-Kabir M, Abrar A, Ananiadou S (2025) <a href="https://doi.org/10.18653/v1/2025.emnlp-main.2">Break the checkbox: Challenging closed-style evaluations of cultural alignment in <span>LLM</span>s</a>. <em>Proceedings of the 2025 conference on <span class="nocase">Empirical Methods in Natural Language Processing</span></em>, 24–51.
+<div id="ref-hullman2026human" class="csl-entry" role="listitem">
+Hullman J, Broska D, Sun H, Shaw A (2026) This human study did not involve human subjects: Validating LLM simulations as behavioral evidence. <em>arXiv preprint arXiv:2602.15785</em>.
 </div>
 <div id="ref-kadavath2022language" class="csl-entry" role="listitem">
 <span class="nocase">Kadavath S, Conerly T, Askell A, Henighan T, Drain D, Perez E, Schiefer N, et al.</span> (2022) Language models (mostly) know what they know. <em>arXiv preprint arXiv:2207.05221</em>.
@@ -683,8 +705,8 @@ Kabir M, Abrar A, Ananiadou S (2025) <a href="https://doi.org/10.18653/v1/2025.e
 <div id="ref-kantorowicz2026consumers" class="csl-entry" role="listitem">
 Kantorowicz-Reznichenko E, Van Heusden A, Kantorowicz J (2026) Consumers’ rights in the shadow of the brand: A conjoint experiment on the valuation and trade-offs of contractual rights. <em>Journal of Law &amp; Empirical Analysis</em> 3(1):105–126.
 </div>
-<div id="ref-koo2024benchmarking" class="csl-entry" role="listitem">
-Koo R, Lee M, Raheja V, Park JI, Kim ZM, Kang D (2024) Benchmarking cognitive biases in large language models as evaluators. <em>Findings of the <span class="nocase">Association for Computational Linguistics</span>: <span>ACL</span> 2024</em>, 517–545.
+<div id="ref-kolluri2025finetuning" class="csl-entry" role="listitem">
+Kolluri A, Wu S, Park JS, Bernstein MS (2025) Finetuning llms for human behavior prediction in social science experiments. <em>Proceedings of the 2025 conference on empirical methods in natural language processing</em>, 30084–30099.
 </div>
 <div id="ref-kreps2020factors" class="csl-entry" role="listitem">
 Kreps S, Prasad S, Brownstein JS, Hswen Y, Garibaldi BT, Zhang B, Kriner DL (2020) Factors associated with <span>US</span> adults’ likelihood of accepting COVID-19 vaccination. <em>JAMA Network Open</em> 3(10):e2025594.
@@ -692,23 +714,11 @@ Kreps S, Prasad S, Brownstein JS, Hswen Y, Garibaldi BT, Zhang B, Kriner DL (202
 <div id="ref-ku2026siliconsamplingcrosssurveytransfer" class="csl-entry" role="listitem">
 Ku CT, Hsu C, Huang PC, Liu FC, Cheng IL, Kang Y (2026) <a href="https://arxiv.org/abs/2607.03091">Silicon sampling via cross-survey transfer</a>. <em>arXiv preprint arXiv:2607.03091</em>.
 </div>
-<div id="ref-kuribayashi-etal-2024-psychometric" class="csl-entry" role="listitem">
-Kuribayashi T, Oseki Y, Baldwin T (2024) <a href="https://doi.org/10.18653/v1/2024.findings-naacl.129">Psychometric predictive power of large language models</a>. <em>Findings of the <span class="nocase">Association for Computational Linguistics</span>: <span>NAACL</span> 2024</em>, 1983–2005.
-</div>
 <div id="ref-leng2026reducing" class="csl-entry" role="listitem">
 Leng Y, Sang Y, Agarwal A (2026) Reducing disparity between <span>LLM</span>s and humans: Optimal <span>LLM</span> sample calibration. <em>Marketing Science</em>. <a href="https://doi.org/10.1287/mksc.2024.0983">https://doi.org/10.1287/mksc.2024.0983</a>.
 </div>
-<div id="ref-li2026kitescalingjevpopulation" class="csl-entry" role="listitem">
-Li H (2026) <a href="https://arxiv.org/abs/2609.27535"><span>KITE</span>: Scaling <span>Jev</span> population experiments with sparse flagship calibration</a>. <em>arXiv preprint arXiv:2609.27535</em>.
-</div>
-<div id="ref-li2026llmasjevllmsjevstyledecision" class="csl-entry" role="listitem">
-Li Y, Wagle J (2026) <a href="https://arxiv.org/abs/2610.02076"><span class="nocase">LLM-as-Jev</span>: <span>LLMs</span> are already <span>Jev</span>-style decision models – when and how to fine-tune them</a>. <em>arXiv preprint arXiv:2610.02076</em>.
-</div>
 <div id="ref-magistro2026attitudes" class="csl-entry" role="listitem">
 Magistro B, Borwein S, Alvarez RM, Bonikowski B, Loewen PJ (2026) Attitudes toward artificial intelligence (AI) and globalization: Common microfoundations and political implications. <em>American Journal of Political Science</em> 70(1):348–365.
-</div>
-<div id="ref-mcfadden1972conditional" class="csl-entry" role="listitem">
-McFadden D (1972) Conditional logit analysis of qualitative choice behavior.
 </div>
 <div id="ref-palmer2026kev" class="csl-entry" role="listitem">
 Palmer J (2026) Kev: Small <span>Jev</span>-like decision models. <a href="https://github.com/jaredpalmer/kev">https://github.com/jaredpalmer/kev</a>.
@@ -716,17 +726,11 @@ Palmer J (2026) Kev: Small <span>Jev</span>-like decision models. <a href="https
 <div id="ref-pmlr-v202-santurkar23a" class="csl-entry" role="listitem">
 Santurkar S, Durmus E, Ladhak F, Lee C, Liang P, Hashimoto T (2023) <a href="https://proceedings.mlr.press/v202/santurkar23a.html">Whose opinions do language models reflect?</a> <em>Proceedings of the 40th <span class="nocase">International Conference on Machine Learning</span></em>, 29971–30004.
 </div>
-<div id="ref-sarstedt2024using" class="csl-entry" role="listitem">
-Sarstedt M, Adler SJ, Rau L, Schmitt B (2024) Using large language models to generate silicon samples in consumer and marketing research: Challenges, opportunities, and guidelines. <em>Psychology &amp; Marketing</em> 41(6):1254–1270.
-</div>
-<div id="ref-shu-etal-2024-dont" class="csl-entry" role="listitem">
-Shu B, Zhang L, Choi M, Dunagan L, Logeswaran L, Lee M, Card D, Jurgens D (2024) <a href="https://doi.org/10.18653/v1/2024.naacl-long.295">You don<span>’</span>t need a personality test to know these models are unreliable: Assessing the reliability of large language models on psychometric instruments</a>. <em>Proceedings of the 2024 conference of the <span class="nocase">North American Chapter of the Association for Computational Linguistics</span>: <span>Human Language Technologies</span> (volume 1: Long papers)</em>, 5263–5281.
-</div>
 <div id="ref-suh-etal-2025-language" class="csl-entry" role="listitem">
 Suh J, Jahanparast E, Moon S, Kang M, Chang S (2025) <a href="https://doi.org/10.18653/v1/2025.acl-long.1028">Language model fine-tuning on scaled survey data for predicting distributions of public opinions</a>. <em>Proceedings of the 63rd annual meeting of the <span>A</span>ssociation for <span>C</span>omputational <span>L</span>inguistics (volume 1: Long papers)</em>, 21147–21170.
 </div>
-<div id="ref-train2009discrete" class="csl-entry" role="listitem">
-Train KE (2009) <em>Discrete choice methods with simulation</em> (Cambridge university press).
+<div id="ref-toubia2025database" class="csl-entry" role="listitem">
+Toubia O, Gui GZ, Peng T, Merlau DJ, Li A, Chen H (2025) Database report: <span>Twin-2K-500</span>: A data set for building digital twins of over 2,000 people based on their answers to over 500 questions. <em>Marketing Science</em> 44(6):1446–1455.
 </div>
 <div id="ref-wadi2025monte" class="csl-entry" role="listitem">
 Wadi D, Fredette M (2025) A <span>Monte-Carlo</span> sampling framework for reliable evaluation of large language models using behavioral analysis. <em>Findings of the <span class="nocase">Association for Computational Linguistics</span>: <span>EMNLP</span> 2025</em>, 9414–9432.
@@ -734,14 +738,20 @@ Wadi D, Fredette M (2025) A <span>Monte-Carlo</span> sampling framework for reli
 <div id="ref-wadi2026every" class="csl-entry" role="listitem">
 Wadi D, Ghodrat M, Philp M (2026) Every token counts: Exact <span>Likert</span>-scale distributions for measuring LLM attitudes and biases. <em>arXiv preprint arXiv:2608.10503</em>.
 </div>
+<div id="ref-wadi2026whom" class="csl-entry" role="listitem">
+Wadi D, Ma Y (2026) Whom do AI agents serve? Role-induced sponsorship bias in decision models and generative LLMs. <em>arXiv preprint arXiv:2609.17989</em>.
+</div>
 <div id="ref-wang2026large" class="csl-entry" role="listitem">
 Wang M, Zhang DJ, Zhang H (2026) Large language models for market research: A data-augmentation approach. <em>Marketing Science</em> 45(4):728–751. <a href="https://doi.org/10.1287/mksc.2025.0009">https://doi.org/10.1287/mksc.2025.0009</a>.
+</div>
+<div id="ref-wang2025can" class="csl-entry" role="listitem">
+Wang S, Hunt K, Tang S, Joseph K (2025) Can finetuing LLMs on small human samples increase heterogeneity, alignment, and belief-action coherence? <em>arXiv preprint arXiv:2511.21218</em>.
 </div>
 <div id="ref-wu2025partisan" class="csl-entry" role="listitem">
 Wu VY (2025) Partisan energy preferences in the united states: Republicans prioritize price, democrats also consider renewables. <em>Energy Research &amp; Social Science</em> 123:103997.
 </div>
-<div id="ref-zahradnickova2026ai" class="csl-entry" role="listitem">
-Zahradnickova K, Polisensky J, Lukeš M, Hranický R, Pouč P (2026) Which AI? A comparative evaluation of generative AI and neuro-symbolic AI for silicon sampling. <em>Psychology &amp; Marketing</em>. <a href="https://doi.org/10.1002/mar.70272">https://doi.org/10.1002/mar.70272</a>.
+<div id="ref-ye2025fine" class="csl-entry" role="listitem">
+Ye Z, Zhao J, Wang L (2025) Fine-tune, then rectify. <em>arXiv e-prints</em>:arXiv–2511.
 </div>
 </div>
 <div style="page-break-after: always;"></div>
@@ -797,14 +807,14 @@ Table W1: Off-the-shelf generative LLMs and decision models on the 200-responden
 <div aria-describedby="apptbl-llm-baseline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table" data-custom-style="APATable">
 <colgroup>
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
+<col style="width: 22%">
+<col style="width: 14%">
+<col style="width: 10%">
+<col style="width: 8%">
+<col style="width: 13%">
+<col style="width: 7%">
+<col style="width: 13%">
+<col style="width: 10%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -812,7 +822,7 @@ Table W1: Off-the-shelf generative LLMs and decision models on the 200-responden
 <th style="text-align: left;">Reasoning effort</th>
 <th style="text-align: right;">Refusals</th>
 <th style="text-align: right;">Opt-out</th>
-<th style="text-align: right;"><span class="math inline">\(\mathrm{MSE}_\beta \times 10^3\)</span></th>
+<th style="text-align: right;"><span class="math inline">\(\mathrm{MSE}_\beta\)</span> <span class="math inline">\(\times 10^3\)</span></th>
 <th style="text-align: right;">MAE</th>
 <th style="text-align: right;">Spearman <span class="math inline">\(\rho\)</span></th>
 <th style="text-align: right;">Sign acc.</th>
@@ -988,14 +998,14 @@ Table W2: Vaccines (held-out test) OLS treatment effects by attribute
 <div aria-describedby="apptbl-vaccines-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table" data-custom-style="APATable">
 <colgroup>
+<col style="width: 27%">
+<col style="width: 9%">
+<col style="width: 10%">
 <col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
+<col style="width: 9%">
+<col style="width: 10%">
+<col style="width: 9%">
+<col style="width: 10%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -1146,14 +1156,14 @@ Table W3: Food labels (held-out test) OLS treatment effects by arm
 <div aria-describedby="apptbl-food-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table" data-custom-style="APATable">
 <colgroup>
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
+<col style="width: 28%">
+<col style="width: 9%">
+<col style="width: 10%">
+<col style="width: 11%">
+<col style="width: 9%">
+<col style="width: 10%">
+<col style="width: 9%">
+<col style="width: 10%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -1244,14 +1254,14 @@ Table W4: Consumer rights (held-out test) OLS treatment effects by attribute
 <div aria-describedby="apptbl-consumer-rights-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table" data-custom-style="APATable">
 <colgroup>
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
+<col style="width: 32%">
+<col style="width: 9%">
+<col style="width: 9%">
+<col style="width: 10%">
+<col style="width: 9%">
+<col style="width: 10%">
+<col style="width: 9%">
+<col style="width: 10%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -1692,14 +1702,14 @@ Table W5: AI &amp; offshoring (held-out test) OLS treatment effects by attribute
 <div aria-describedby="apptbl-ai-offshoring-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table" data-custom-style="APATable">
 <colgroup>
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
+<col style="width: 30%">
+<col style="width: 9%">
+<col style="width: 9%">
+<col style="width: 10%">
+<col style="width: 9%">
+<col style="width: 10%">
+<col style="width: 9%">
+<col style="width: 10%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -2080,14 +2090,14 @@ Table W6: Flights (validation) OLS treatment effects by attribute
 <div aria-describedby="apptbl-flights-slopes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table" data-custom-style="APATable">
 <colgroup>
+<col style="width: 26%">
+<col style="width: 9%">
+<col style="width: 10%">
 <col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
-<col style="width: 12%">
+<col style="width: 9%">
+<col style="width: 11%">
+<col style="width: 9%">
+<col style="width: 11%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -2243,26 +2253,24 @@ Table W6: Flights (validation) OLS treatment effects by attribute
 <div id="apptbl-magistro-subsets" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-apptbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-apptbl" id="apptbl-magistro-subsets-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table W7: AI &amp; offshoring OLS treatment-effect error by country, arm, and attribute type
+Table W7: AI &amp; offshoring OLS treatment-effect error (<span class="math inline">\(\mathrm{MSE}_\beta \times 10^3\)</span>) by country, arm, and attribute type
 </figcaption>
 <div aria-describedby="apptbl-magistro-subsets-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <table class="caption-top table" data-custom-style="APATable">
 <colgroup>
+<col style="width: 12%">
+<col style="width: 8%">
+<col style="width: 8%">
+<col style="width: 10%">
+<col style="width: 8%">
 <col style="width: 9%">
+<col style="width: 8%">
 <col style="width: 9%">
-<col style="width: 9%">
-<col style="width: 9%">
-<col style="width: 9%">
-<col style="width: 9%">
-<col style="width: 9%">
-<col style="width: 9%">
-<col style="width: 9%">
-<col style="width: 9%">
-<col style="width: 9%">
+<col style="width: 8%">
+<col style="width: 8%">
 </colgroup>
 <thead>
 <tr class="header">
-<th style="text-align: left;">Model</th>
 <th style="text-align: left;">Trained on</th>
 <th style="text-align: right;">All (32)</th>
 <th style="text-align: right;">US (16)</th>
@@ -2277,7 +2285,9 @@ Table W7: AI &amp; offshoring OLS treatment-effect error by country, arm, and at
 </thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;">KEV-0.8B</td>
+<td colspan="10" style="text-align: center;"><em>KEV-0.8B</em></td>
+</tr>
+<tr class="even">
 <td style="text-align: left;">Off-the-shelf</td>
 <td style="text-align: right;">33.92</td>
 <td style="text-align: right;">41.48</td>
@@ -2289,8 +2299,7 @@ Table W7: AI &amp; offshoring OLS treatment-effect error by country, arm, and at
 <td style="text-align: right;">77.60</td>
 <td style="text-align: right;">19.36</td>
 </tr>
-<tr class="even">
-<td style="text-align: left;"></td>
+<tr class="odd">
 <td style="text-align: left;">Electricity</td>
 <td style="text-align: right;">29.60</td>
 <td style="text-align: right;">35.59</td>
@@ -2302,8 +2311,7 @@ Table W7: AI &amp; offshoring OLS treatment-effect error by country, arm, and at
 <td style="text-align: right;">71.71</td>
 <td style="text-align: right;">15.57</td>
 </tr>
-<tr class="odd">
-<td style="text-align: left;"></td>
+<tr class="even">
 <td style="text-align: left;">Drones</td>
 <td style="text-align: right;">34.41</td>
 <td style="text-align: right;">41.14</td>
@@ -2315,8 +2323,7 @@ Table W7: AI &amp; offshoring OLS treatment-effect error by country, arm, and at
 <td style="text-align: right;">83.27</td>
 <td style="text-align: right;">18.12</td>
 </tr>
-<tr class="even">
-<td style="text-align: left;"></td>
+<tr class="odd">
 <td style="text-align: left;">Drones + Electricity</td>
 <td style="text-align: right;"><strong>26.61</strong></td>
 <td style="text-align: right;"><strong>32.17</strong></td>
@@ -2328,8 +2335,10 @@ Table W7: AI &amp; offshoring OLS treatment-effect error by country, arm, and at
 <td style="text-align: right;"><strong>67.37</strong></td>
 <td style="text-align: right;"><strong>13.03</strong></td>
 </tr>
+<tr class="even">
+<td colspan="10" style="text-align: center;"><em>KEV-4B</em></td>
+</tr>
 <tr class="odd">
-<td style="text-align: left;">KEV-4B</td>
 <td style="text-align: left;">Off-the-shelf</td>
 <td style="text-align: right;">99.01</td>
 <td style="text-align: right;">93.76</td>
@@ -2342,7 +2351,6 @@ Table W7: AI &amp; offshoring OLS treatment-effect error by country, arm, and at
 <td style="text-align: right;">126.66</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;"></td>
 <td style="text-align: left;">Electricity</td>
 <td style="text-align: right;">113.26</td>
 <td style="text-align: right;">106.45</td>
@@ -2355,7 +2363,6 @@ Table W7: AI &amp; offshoring OLS treatment-effect error by country, arm, and at
 <td style="text-align: right;">147.13</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;"></td>
 <td style="text-align: left;">Drones</td>
 <td style="text-align: right;">74.69</td>
 <td style="text-align: right;">67.29</td>
@@ -2368,7 +2375,6 @@ Table W7: AI &amp; offshoring OLS treatment-effect error by country, arm, and at
 <td style="text-align: right;">97.52</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;"></td>
 <td style="text-align: left;">Drones + Electricity</td>
 <td style="text-align: right;"><strong>63.98</strong></td>
 <td style="text-align: right;"><strong>56.05</strong></td>
@@ -2381,7 +2387,9 @@ Table W7: AI &amp; offshoring OLS treatment-effect error by country, arm, and at
 <td style="text-align: right;"><strong>83.42</strong></td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;">KEV-9B</td>
+<td colspan="10" style="text-align: center;"><em>KEV-9B</em></td>
+</tr>
+<tr class="even">
 <td style="text-align: left;">Off-the-shelf</td>
 <td style="text-align: right;">82.89</td>
 <td style="text-align: right;">75.34</td>
@@ -2393,8 +2401,7 @@ Table W7: AI &amp; offshoring OLS treatment-effect error by country, arm, and at
 <td style="text-align: right;"><strong>21.31</strong></td>
 <td style="text-align: right;">103.41</td>
 </tr>
-<tr class="even">
-<td style="text-align: left;"></td>
+<tr class="odd">
 <td style="text-align: left;">Electricity</td>
 <td style="text-align: right;">95.68</td>
 <td style="text-align: right;">83.68</td>
@@ -2406,8 +2413,7 @@ Table W7: AI &amp; offshoring OLS treatment-effect error by country, arm, and at
 <td style="text-align: right;">37.05</td>
 <td style="text-align: right;">115.23</td>
 </tr>
-<tr class="odd">
-<td style="text-align: left;"></td>
+<tr class="even">
 <td style="text-align: left;">Drones</td>
 <td style="text-align: right;">87.42</td>
 <td style="text-align: right;">79.58</td>
@@ -2419,8 +2425,7 @@ Table W7: AI &amp; offshoring OLS treatment-effect error by country, arm, and at
 <td style="text-align: right;">37.14</td>
 <td style="text-align: right;">104.18</td>
 </tr>
-<tr class="even">
-<td style="text-align: left;"></td>
+<tr class="odd">
 <td style="text-align: left;">Drones + Electricity</td>
 <td style="text-align: right;"><strong>63.49</strong></td>
 <td style="text-align: right;"><strong>54.14</strong></td>
@@ -2443,7 +2448,14 @@ Table W7: AI &amp; offshoring OLS treatment-effect error by country, arm, and at
 </section>
 </section>
 
-</main>
+
+<div id="quarto-appendix" class="default"><section id="footnotes" class="footnotes footnotes-end-of-document" role="doc-endnotes"><h2 class="anchored quarto-appendix-heading">Footnotes</h2>
+
+<ol>
+<li id="fn1"><p>Note that <a href="#eq-pop-ols" class="quarto-xref">Equation&nbsp;4</a> evaluates point estimates rather than OLS standard errors, because replacing random choices with expected outcomes removes choice-level variance.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2"><p>In the table, the larger raw <span class="math inline">\(\mathrm{MSE}_\beta\)</span> values on <code>AI &amp; offshoring</code> reflect its 1 to 5 ordinal scale rather than a binary indicator.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section></div></main>
 <!-- /main column -->
 <script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {
