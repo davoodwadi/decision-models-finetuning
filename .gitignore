@@ -53,3 +53,5 @@ kev/runs/
 
 # beta-training run checkpoints (stats CSVs and run.json stay trackable)
 code/train-notebooks/beta-training/runs/*/*/checkpoints/
+
+/.luarc.json

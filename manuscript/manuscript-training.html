@@ -157,7 +157,7 @@ TERMINOLOGY GUIDE (enforce strictly across all sections, tables, figures, and no
 8. Our seven empirical data collections -> "dataset" / "datasets" and "study" / "studies" are both allowed (e.g., "training datasets", "two training studies", "held-out test datasets"). Never call test datasets "test benchmarks", "benchmark studies", or "benchmark designs", and never call the validation dataset a "validation set". Reserve "benchmark" for the full-sample human slope benchmark and pretrained objective single-label benchmarks.
 -->
 <p><strong>Abstract.</strong><br>
-[TODO]</p>
+Researchers increasingly use large language models (LLMs) as synthetic respondents in market research, conjoint analysis, and randomized experiments. However, synthetic choice data from off-the-shelf generative LLMs bias downstream econometric inference. Neither proprietary models nor higher reasoning effort reliably reduces this bias. We investigate decision models (System One architectures) for silicon sampling. Using choice training, we update KEV model weights on historical respondent-level choice microdata by conditional maximum likelihood, before inference and without target-study data. Across three model scales, training on two discrete choice experiments lowers treatment-effect error by 22% to 89% on four held-out studies from new domains (vaccines, nutrition labels, consumer rights, and AI) and new response formats. A small choice-trained model outperforms a much larger off-the-shelf model on three of the four studies. Although training on single studies lowers cross-entropy, it can exacerbate treatment-effect error. Choice training thus complements post-inference calibration by providing a stronger starting point for estimating human preferences.</p>
 <p><strong>Keywords.</strong> Decision models, large language models, synthetic respondents, econometric inference, marketing research</p>
 <section id="sec-intro" class="level1">
 <h1>Introduction</h1>
@@ -191,7 +191,7 @@ Figure&nbsp;1: OLS treatment-effect error across off-the-shelf generative LLMs a
 <div id="fig-pipeline" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-pipeline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="diagrams-tikz/fig_pipeline_v5.png" class="img-fluid figure-img" style="width:100.0%">
+<embed src="diagrams-tikz/fig_pipeline_v8.pdf" class="img-fluid" style="width:90.0%">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-pipeline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 Figure&nbsp;2: Choice training and unseen-study evaluation of decision models
@@ -382,6 +382,16 @@ Table&nbsp;1: Summary of training, validation, and held-out test datasets
 <section id="unseen-study-transfer-across-domains-and-model-scales" class="level2">
 <h2 class="anchored" data-anchor-id="unseen-study-transfer-across-domains-and-model-scales">Unseen-study transfer across domains and model scales</h2>
 <p>Relative to the off-the-shelf checkpoints, pooled choice training (<code>Drones + Electricity</code>) lowers both <span class="math inline">\(\mathrm{MSE}_\beta\)</span> and CE in all 12 held-out test cells, reducing <span class="math inline">\(\mathrm{MSE}_\beta\)</span> by 22% to 89% (<a href="#tbl-results-mse" class="quarto-xref">Table&nbsp;2</a>). Notably, these gains extend both to datasets that share no attributes with the training studies (<code>Food labels</code> and <code>Vaccines</code>) and to response formats absent from training (<a href="#fig-results-overall" class="quarto-xref">Figure&nbsp;3</a>).<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a> In particular, although the training data contain only binary choices, pooled models still transfer to three-option choices and five-point ordinal ratings.</p>
+<div id="fig-results-overall" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-results-overall-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="manuscript-training-assets/fig-results-overall.png" class="img-fluid figure-img" style="width:100.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-results-overall-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: Population OLS treatment-effect error across datasets and choice-training regimes
+</figcaption>
+</figure>
+</div>
 <p>Training on a single dataset, however, transfers to unseen studies less reliably. Training on <code>Electricity</code> alone and <code>Drones</code> alone each reduces <span class="math inline">\(\mathrm{MSE}_\beta\)</span> on three test datasets, yet raises <span class="math inline">\(\mathrm{MSE}_\beta\)</span> above off-the-shelf levels in four of six cells in <code>AI &amp; offshoring</code> (<a href="#fig-results-overall" class="quarto-xref">Figure&nbsp;3</a>). <code>AI &amp; offshoring</code> is the test dataset that has a five-point rating scale for its outcome variable. These failures arise even though single-dataset training lowers CE in all 24 held-out test cells. A closer approximation of individual choices (i.e., lower CE) therefore does not guarantee more accurate treatment effects. Pooling both training datasets eliminates these failures, making unseen-study transfer more robust than training on either dataset alone.</p>
 <p>Choice training also reduces error more reliably than scaling model parameters. Similar to the pattern seen for generative LLMs (<a href="#fig-intro-off-the-shelf" class="quarto-xref">Figure&nbsp;1</a>), scaling off-the-shelf decision models fails to improve treatment-effect recovery consistently. Interestingly, choice-trained <code>KEV-0.8B</code> outperforms off-the-shelf <code>KEV-9B</code> on three of the four test datasets, despite having an order of magnitude fewer parameters.</p>
 <div id="tbl-results-mse" class="quarto-float quarto-figure quarto-figure-center anchored">
@@ -600,16 +610,6 @@ Table&nbsp;2: OLS treatment-effect error and empirical cross-entropy across data
 <div data-custom-style="Table Note">
 <p><em>Note.</em> <span class="math inline">\(\mathrm{MSE}_\beta\)</span> reports population OLS treatment-effect error <span class="math inline">\(\times 10^3\)</span> (<a href="#eq-eval-mse" class="quarto-xref">Equation&nbsp;5</a>). CE reports mean empirical cross-entropy (negative log-likelihood per choice task, in nats; <a href="#eq-resp-ce" class="quarto-xref">Equation&nbsp;2</a>). Lower is better for both metrics. Bold marks the lowest value per model, dataset, and metric.</p>
 </div>
-<div id="fig-results-overall" class="quarto-float quarto-figure quarto-figure-center anchored">
-<figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-results-overall-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="manuscript-training-assets/fig-results-overall.png" class="img-fluid figure-img" style="width:100.0%">
-</div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-results-overall-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;3: Population OLS treatment-effect error across datasets and choice-training regimes
-</figcaption>
-</figure>
-</div>
 </section>
 <section id="attribute-level-transfer-across-shared-and-unseen-attributes" class="level2">
 <h2 class="anchored" data-anchor-id="attribute-level-transfer-across-shared-and-unseen-attributes">Attribute-level transfer across shared and unseen attributes</h2>
@@ -758,12 +758,14 @@ Ye Z, Zhao J, Wang L (2025) Fine-tune, then rectify. <em>arXiv e-prints</em>:arX
 <h1 class="unnumbered">Web Appendix</h1>
 <section id="token-serialization-query-key-readout-and-covariate-mappings" class="level2 unnumbered">
 <h2 class="unnumbered anchored" data-anchor-id="token-serialization-query-key-readout-and-covariate-mappings">Token serialization, query-key readout, and covariate mappings</h2>
-<p><strong>Serialization.</strong> Each respondent’s covariates <span class="math inline">\(\mathbf{s}_t\)</span> form a state block of “Label: Value” lines (<a href="#apptbl-covariates" class="quarto-xref">Table W1</a>), opened by a state marker. Each task context <span class="math inline">\(c_t\)</span> follows as a branch that opens with a question marker and the task instructions, wraps each of the <span class="math inline">\(K_t\)</span> options in option-start and option-end markers, and closes with a decision marker (<a href="#appfig-input-vaccines" class="quarto-xref">Figure W1</a>). The five markers reuse reserved tokens of the backbone vocabulary, so serialization adds no new embeddings. Every task branch attends to the shared state block, so several tasks of the same respondent can be scored against one encoded state.</p>
-<p><strong>Query-key readout.</strong> Let <span class="math inline">\(\mathbf{h}_t^{\mathrm{dec}}\)</span> denote the final-layer hidden state at the decision marker of task <span class="math inline">\(t\)</span>, and <span class="math inline">\(\mathbf{h}_{t,k}\)</span> the hidden state at the option-end marker of option <span class="math inline">\(k\)</span>. The pointer head maps both to a <span class="math inline">\(d_p\)</span>-dimensional space, <span id="eq-pointer-readout"><span class="math display">\[
+<p><strong>Serialization.</strong> For each respondent, the covariates <span class="math inline">\(\mathbf{s}_t\)</span> are rendered as a state block of “Label: Value” lines (<a href="#apptbl-covariates" class="quarto-xref">Table W1</a>), opened by a state marker. Each task context <span class="math inline">\(c_t\)</span> then appears as a branch that begins with a question marker and the task instructions, places each of the <span class="math inline">\(K_t\)</span> options between an option-start and an option-end marker, and ends with a decision marker (<a href="#appfig-input-vaccines" class="quarto-xref">Figure W1</a>). The five markers reuse reserved tokens from the backbone vocabulary, so the serialization introduces no new embeddings. Because every task branch attends to the same shared state block, several tasks for one respondent can be scored against a single encoded state.</p>
+<p><strong>Query-key readout.</strong> Let <span class="math inline">\(\mathbf{h}_t^{\mathrm{dec}}\)</span> be the final-layer hidden state at the decision marker of task <span class="math inline">\(t\)</span>, and <span class="math inline">\(\mathbf{h}_{t,k}\)</span> the hidden state at the option-end marker of option <span class="math inline">\(k\)</span>. The pointer head projects both into a <span class="math inline">\(d_p\)</span>-dimensional space,</p>
+<p><span id="eq-pointer-readout"><span class="math display">\[
 \mathbf{a}_t = \mathbf{W}_Q \mathbf{h}_t^{\mathrm{dec}} + \mathbf{c}_Q, \qquad
 \mathbf{b}_{t,k} = \mathbf{W}_K \mathbf{h}_{t,k} + \mathbf{c}_K, \qquad
 z_{t,k}(\theta) = \frac{\mathbf{b}_{t,k}^{\top} \mathbf{a}_t}{\sqrt{d_p}},
-\tag{6}\]</span></span> with <span class="math inline">\(d_p = 256\)</span>, and <a href="#eq-model-pmf" class="quarto-xref">Equation&nbsp;1</a> converts the scores into choice probabilities. Because each score depends on its option’s own position in the sequence, the head accommodates any number of options <span class="math inline">\(K_t\)</span> without changing its parameters.</p>
+\tag{6}\]</span></span></p>
+<p>with <span class="math inline">\(d_p = 256\)</span>, and <a href="#eq-model-pmf" class="quarto-xref">Equation&nbsp;1</a> turns the scores into choice probabilities. Because the same projections score each option-end marker separately and <a href="#eq-model-pmf" class="quarto-xref">Equation&nbsp;1</a> normalizes over the listed options, the head handles any number of options <span class="math inline">\(K_t\)</span>.</p>
 <div id="apptbl-covariates" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-apptbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-apptbl" id="apptbl-covariates-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">

@@ -1,0 +1,8 @@
+diagrams-tikz/fig_input_vaccines.png
+diagrams-tikz/fig_pipeline_v8.pdf
+manuscript-training-assets/appfig-flights-slopes.png
+manuscript-training-assets/appfig-training-curves.png
+manuscript-training-assets/fig-intro-off-the-shelf.png
+manuscript-training-assets/fig-results-laptops-slopes.png
+manuscript-training-assets/fig-results-overall.png
+manuscript-training-assets/fig-results-vaccines-slopes.png

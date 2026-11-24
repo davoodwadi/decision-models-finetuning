@@ -1,0 +1,51 @@
+% Shared look for the pipeline figures. Sizes are final print sizes (no scaling in the manuscript).
+% Colors (v6): taken from the manuscript plots (code/train-notebooks/beta-training/ms_paper_beta_loss/manuscript-training-assets).
+% Navy = model prediction (KEV_COLOR), dark red = trainable theta (GEMINI_HIGH_COLOR), near-black = human / data (HUMAN_COLOR),
+% warm grays = MUTED / REF_LINE / GRID colours of the plots.
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{array}
+\renewcommand{\familydefault}{\sfdefault}
+\usetikzlibrary{positioning,arrows.meta,calc,fit,backgrounds}
+\pgfdeclarelayer{back}\pgfsetlayers{back,background,main}
+
+\definecolor{cpred}{HTML}{1B365D}
+\definecolor{ctrain}{HTML}{9E2A2B}
+\definecolor{chuman}{HTML}{2B2B2B}
+\definecolor{cline}{HTML}{6E6A64}
+\definecolor{cfield}{HTML}{F4F4F2}
+\definecolor{cframe}{HTML}{D4D2CC}
+\definecolor{ctok}{HTML}{52514E}  % plots MUTED_COLOR: special tokens (neutral, no extra hue)
+\definecolor{cgrid}{HTML}{D4D2CC}  % plots GRID_COLOR: neutral fills
+
+\tikzset{
+  >={Stealth[length=3.5pt]},
+  every node/.append style={execute at begin node={\hyphenpenalty=10000\exhyphenpenalty=10000}},
+  flow/.style={->, line width=0.6pt, draw=cline},
+  pred/.style={->, line width=0.9pt, draw=cpred},
+  grad/.style={->, line width=0.8pt, draw=ctrain, dash pattern=on 3pt off 2pt},
+  panel/.style={draw=cframe, line width=0.5pt, rounded corners=3pt},
+  ptitle/.style={font=\footnotesize\bfseries, anchor=north west, inner sep=0pt},
+  raw/.style={draw=cframe, fill=white, rounded corners=1.5pt, font=\scriptsize, align=left, inner sep=2.5pt},
+  field/.style={draw=cline, fill=cfield, rounded corners=1.5pt, font=\scriptsize, align=left, inner sep=2.5pt},
+  box/.style={draw=cline, fill=white, rounded corners=2pt, align=center, font=\footnotesize, inner sep=2.5pt},
+  predbox/.style={box, draw=cpred, line width=0.8pt},
+  humanbox/.style={box, draw=chuman, line width=0.8pt},
+  trainbox/.style={box, draw=ctrain, line width=0.9pt},
+  rawtxt/.style={raw, draw=none, fill=none},
+  fieldtxt/.style={field, draw=none, fill=none},
+  note/.style={font=\scriptsize, text=cline, align=left, inner sep=0pt, anchor=north west},
+}
+\newcommand{\tok}[1]{\textcolor{ctok}{\textbf{\texttt{#1}}}}
+% \rowboxes{raw node}{field node}{bottom coordinate}: draws both boxes down to the lower of the two bottoms,
+% so a raw item and its input field always have the same height, and links them with an arrow at mid-height.
+\newcommand{\rowboxes}[3]{%
+  \path let \p1=(#1.south), \p2=(#2.south), \n1={min(\y1,\y2)} in coordinate (#3) at (0,\n1);
+  \begin{scope}[on background layer]
+    \draw[raw]   (#1.north west) rectangle (#1.east |- #3);
+    \draw[field] (#2.north west) rectangle (#2.east |- #3);
+  \end{scope}
+  \coordinate (#3-mid) at ($(#1.north east)!0.5!(#1.east |- #3)$);
+  \draw[flow] (#3-mid) -- (#3-mid -| #2.west);
+}

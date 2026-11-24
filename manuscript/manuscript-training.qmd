@@ -104,10 +104,18 @@ TERMINOLOGY GUIDE (enforce strictly across all sections, tables, figures, and no
 -->
 
 **Abstract.**  
-[TODO]
+Researchers increasingly use large language models (LLMs) as synthetic respondents in market research, conjoint analysis, and randomized experiments.
+However, synthetic choice data from off-the-shelf generative LLMs bias downstream econometric inference. 
+Neither proprietary models nor higher reasoning effort reliably reduces this bias.
+We investigate decision models (System One architectures) for silicon sampling.
+Using choice training, we update KEV model weights on historical respondent-level choice microdata by conditional maximum likelihood, before inference and without target-study data.
+Across three model scales, training on two discrete choice experiments lowers treatment-effect error by 22% to 89% on four held-out studies from new domains (vaccines, nutrition labels, consumer rights, and AI) and new response formats.
+A small choice-trained model outperforms a much larger off-the-shelf model on three of the four studies.
+Although training on single studies lowers cross-entropy, it can exacerbate treatment-effect error.
+Choice training thus complements post-inference calibration by providing a stronger starting point for estimating human preferences.
 
 
-**Keywords.** Decision models, large language models, synthetic respondents, econometric inference, marketing research
+**Keywords.** decision models, large language models, synthetic respondents, econometric inference, marketing research
 
 
 # Introduction {#sec-intro}
@@ -187,7 +195,7 @@ In the following section, we formalize our training and evaluation methodology f
 
 # Methodology {#sec-methodology}
 
-![Choice training and unseen-study evaluation of decision models](diagrams-tikz/fig_pipeline_v5.png){#fig-pipeline width=100%}
+![Choice training and unseen-study evaluation of decision models](diagrams-tikz/fig_pipeline_v8.pdf){#fig-pipeline width=90%}
 
 **Decision model parameterization.**
 Consider a choice study composed of discrete-choice tasks indexed by $t$ (@fig-pipeline, panel a).
@@ -336,6 +344,7 @@ In particular, although the training data contain only binary choices, pooled mo
 
 [^large-offshoring-mse]: In the table, the larger raw $\mathrm{MSE}_\beta$ values on `AI & offshoring` reflect its 1 to 5 ordinal scale rather than a binary indicator.
 
+![Population OLS treatment-effect error across datasets and choice-training regimes](manuscript-training-assets/fig-results-overall.png){#fig-results-overall width=100%}
 
 Training on a single dataset, however, transfers to unseen studies less reliably.
 Training on `Electricity` alone and `Drones` alone each reduces $\mathrm{MSE}_\beta$ on three test datasets, yet raises $\mathrm{MSE}_\beta$ above off-the-shelf levels in four of six cells in `AI & offshoring` (@fig-results-overall). `AI & offshoring` is the test dataset that has a five-point rating scale for its outcome variable.
@@ -362,7 +371,7 @@ Lower is better for both metrics.
 Bold marks the lowest value per model, dataset, and metric. 
 :::
 
-![Population OLS treatment-effect error across datasets and choice-training regimes](manuscript-training-assets/fig-results-overall.png){#fig-results-overall width=100%}
+
 
 ## Attribute-level transfer across shared and unseen attributes
 
@@ -427,20 +436,21 @@ All authors certify that they have no affiliations with or involvement in any or
 
 ## Token serialization, query-key readout, and covariate mappings {.unnumbered}
 
-**Serialization.** Each respondent's covariates $\mathbf{s}_t$ form a state block of "Label: Value" lines (@apptbl-covariates), opened by a state marker.
-Each task context $c_t$ follows as a branch that opens with a question marker and the task instructions, wraps each of the $K_t$ options in option-start and option-end markers, and closes with a decision marker (@appfig-input-vaccines).
-The five markers reuse reserved tokens of the backbone vocabulary, so serialization adds no new embeddings.
-Every task branch attends to the shared state block, so several tasks of the same respondent can be scored against one encoded state.
+**Serialization.** For each respondent, the covariates $\mathbf{s}_t$ are rendered as a state block of "Label: Value" lines (@apptbl-covariates), opened by a state marker. Each task context $c_t$ then appears as a branch that begins with a question marker and the task instructions, places each of the $K_t$ options between an option-start and an option-end marker, and ends with a decision marker (@appfig-input-vaccines). The five markers reuse reserved tokens from the backbone vocabulary, so the serialization introduces no new embeddings. Because every task branch attends to the same shared state block, several tasks for one respondent can be scored against a single encoded state.
 
-**Query-key readout.** Let $\mathbf{h}_t^{\mathrm{dec}}$ denote the final-layer hidden state at the decision marker of task $t$, and $\mathbf{h}_{t,k}$ the hidden state at the option-end marker of option $k$.
-The pointer head maps both to a $d_p$-dimensional space,
+**Query-key readout.** 
+Let $\mathbf{h}_t^{\mathrm{dec}}$ be the final-layer hidden state at the decision marker of task $t$, and $\mathbf{h}_{t,k}$ the hidden state at the option-end marker of option $k$. 
+The pointer head projects both into a $d_p$-dimensional space,
+
 $$
 \mathbf{a}_t = \mathbf{W}_Q \mathbf{h}_t^{\mathrm{dec}} + \mathbf{c}_Q, \qquad
 \mathbf{b}_{t,k} = \mathbf{W}_K \mathbf{h}_{t,k} + \mathbf{c}_K, \qquad
 z_{t,k}(\theta) = \frac{\mathbf{b}_{t,k}^{\top} \mathbf{a}_t}{\sqrt{d_p}},
 $$ {#eq-pointer-readout}
-with $d_p = 256$, and @eq-model-pmf converts the scores into choice probabilities.
-Because each score depends on its option's own position in the sequence, the head accommodates any number of options $K_t$ without changing its parameters.
+
+with $d_p = 256$, and @eq-model-pmf turns the scores into choice probabilities. 
+Because the same projections score each option-end marker separately and @eq-model-pmf normalizes over the listed options, the head handles any number of options $K_t$.
+
 
 ::: {#apptbl-covariates size="footnotesize"}
 
