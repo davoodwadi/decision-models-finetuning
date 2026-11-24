@@ -95,6 +95,39 @@
 \makeatother
 
 
+% definitions for citeproc citations
+\NewDocumentCommand\citeproctext{}{}
+\NewDocumentCommand\citeproc{mm}{%
+  \begingroup\def\citeproctext{#2}\cite{#1}\endgroup}
+\makeatletter
+ % allow citations to break across lines
+ \let\@cite@ofmt\@firstofone
+ % avoid brackets around text for \cite:
+ \def\@biblabel#1{}
+ \def\@cite#1#2{{#1\if@tempswa , #2\fi}}
+\makeatother
+\newlength{\cslhangindent}
+\setlength{\cslhangindent}{1.5em}
+\newlength{\csllabelwidth}
+\setlength{\csllabelwidth}{3em}
+\newenvironment{CSLReferences}[2] % #1 hanging-indent, #2 entry-spacing
+ {\begin{list}{}{%
+  \setlength{\itemindent}{0pt}
+  \setlength{\leftmargin}{0pt}
+  \setlength{\parsep}{0pt}
+  % turn on hanging indent if param 1 is 1
+  \ifodd #1
+   \setlength{\leftmargin}{\cslhangindent}
+   \setlength{\itemindent}{-1\cslhangindent}
+  \fi
+  % set entry spacing
+  \setlength{\itemsep}{#2\baselineskip}}}
+ {\end{list}}
+\usepackage{calc}
+\newcommand{\CSLBlock}[1]{\hfill\break\parbox[t]{\linewidth}{\strut\ignorespaces#1\strut}}
+\newcommand{\CSLLeftMargin}[1]{\parbox[t]{\csllabelwidth}{\strut#1\strut}}
+\newcommand{\CSLRightInline}[1]{\parbox[t]{\linewidth - \csllabelwidth}{\strut#1\strut}}
+\newcommand{\CSLIndent}[1]{\hspace{\cslhangindent}#1}
 
 
 
@@ -161,7 +194,7 @@
 
 % Caption label for appendix tables typeset as breakable longtables (breakable-apptbl.lua);
 % position=top restores the skip between the caption and the table's top rule
-\AtBeginDocument{\providecommand*\apptblname{Table W}}
+\AtBeginDocument{\providecommand*\apptblname{Table A}}
 \captionsetup[apptbl]{position=top}
 
 % ACL-style title block: bold title; one column per author (bold name, regular
@@ -200,38 +233,34 @@
 \@ifpackageloaded{float}{}{\usepackage{float}}
 \floatstyle{plain}
 \@ifundefined{c@chapter}{\newfloat{apptbl}{h}{loapptbl}}{\newfloat{apptbl}{h}{loapptbl}[chapter]}
-\floatname{apptbl}{Table W}
+\floatname{apptbl}{Table A}
 \floatstyle{plaintop}
 \restylefloat{apptbl}
-\newcommand*\quartoapptblref[1]{Table \hyperref[#1]{W\ref{#1}}}
+\newcommand*\quartoapptblref[1]{Table \hyperref[#1]{A\ref{#1}}}
 \@ifpackageloaded{caption}{}{\usepackage{caption}}
 \DeclareCaptionLabelFormat{quartoapptblreflabelformat}{#1#2}
 \captionsetup[apptbl]{labelformat=quartoapptblreflabelformat}
-\newcommand*\listofapptbls{\listof{apptbl}{List of Table Ws}}
+\newcommand*\listofapptbls{\listof{apptbl}{List of Table As}}
 \makeatother
 \makeatletter
 \@ifpackageloaded{float}{}{\usepackage{float}}
 \floatstyle{plain}
 \@ifundefined{c@chapter}{\newfloat{appfig}{h}{loappfig}}{\newfloat{appfig}{h}{loappfig}[chapter]}
-\floatname{appfig}{Figure W}
-\newcommand*\quartoappfigref[1]{Figure \hyperref[#1]{W\ref{#1}}}
+\floatname{appfig}{Figure A}
+\newcommand*\quartoappfigref[1]{Figure \hyperref[#1]{A\ref{#1}}}
 \@ifpackageloaded{caption}{}{\usepackage{caption}}
 \DeclareCaptionLabelFormat{quartoappfigreflabelformat}{#1#2}
 \captionsetup[appfig]{labelformat=quartoappfigreflabelformat}
-\newcommand*\listofappfigs{\listof{appfig}{List of Figure Ws}}
+\newcommand*\listofappfigs{\listof{appfig}{List of Figure As}}
 \makeatother
 \makeatletter
 \@ifpackageloaded{float}{}{\usepackage{float}}
 \floatstyle{plain}
 \@ifundefined{c@chapter}{\newfloat{appenv}{h}{loapp}}{\newfloat{appenv}{h}{loapp}[chapter]}
-\floatname{appenv}{Web Appendix}
+\floatname{appenv}{Appendix}
 \floatstyle{plaintop}
 \restylefloat{appenv}
-\newcommand*\quartoappref[1]{Web \hyperref[#1]{Appendix\ref{#1}}}
-\@ifpackageloaded{caption}{}{\usepackage{caption}}
-\DeclareCaptionLabelFormat{quartoappreflabelformat}{#1#2}
-\captionsetup[appenv]{labelformat=quartoappreflabelformat}
-\newcommand*\listofappenvs{\listof{appenv}{List of Web Appendixs}}
+\newcommand*\listofappenvs{\listof{appenv}{List of Appendixs}}
 \makeatother
 \makeatletter
 \@ifpackageloaded{caption}{}{\usepackage{caption}}
@@ -307,35 +336,381 @@
 
 \section{Literature review}\label{sec-lit}
 
-\section{Methodology}\label{sec-methodology}
+\subsection{Silicon sampling, persona prompting, and System 2
+drift}\label{silicon-sampling-persona-prompting-and-system-2-drift}
 
-\section{Experimental setup}\label{sec-setup}
+Consumer and marketing researchers increasingly explore silicon samples,
+defined as AI-generated synthetic respondents used to approximate human
+survey responses (Argyle et al., 2023; Arora et al., 2025; Sarstedt et
+al., 2024). Early work demonstrated that generative large language
+models (LLMs) conditioned on demographic backstories can sometimes
+mirror broad patterns of political attitudes and consumer preferences
+(Argyle et al., 2023). However, systematic evidence across behavioral
+and marketing domains reveals inconsistent correspondence with human
+samples (Goli \& Singh, 2024; Sarstedt et al., 2024). Reviewing 28
+empirical comparisons, Sarstedt et al. (2024) conclude that silicon
+samples from off-the-shelf generative LLMs are currently better suited
+to upstream qualitative pretesting than to quantitative main studies.
+
+A central reason for this gap is that modern generative LLMs have
+shifted progressively toward deliberative System 2 processing. As
+Hagendorff et al. (2023) show and Sarstedt et al. (2024) highlight,
+while early language models exhibited human-like intuitive System 1
+patterns, newer instruction-tuned and chain-of-thought models behave
+like System 2 rational agents chasing a single defensible answer.
+Trained on massive web corpora without a clearly defined human
+population and shaped by safety guardrails, these models compress
+interpersonal variability, exhibit a deterministic correct-answer
+effect, and flatten minority or subgroup viewpoints (Santurkar et al.,
+2023; Sarstedt et al., 2024).
+
+Crucially, recent evidence in Psychology \& Marketing shows that
+supplying accurate demographic personas in the prompt does not resolve
+these distortions. Zahradnickova et al. (2026) demonstrate that even
+when a frontier generative LLM receives official population
+distributions in its context or is conditioned directly on the exact
+demographic profiles of human survey respondents (Study 2 and Study 4,
+Table 5; Zahradnickova et al., 2026), its attitudinal responses still
+diverge sharply from human benchmarks and collapse variance.
+Consequently, the limitations of persona-prompted silicon sampling stem
+not merely from missing demographic context, but from a deeper mismatch
+between generative language modeling and respondent-level distributional
+simulation.
+
+\subsection{Architecture dependence and System One decision
+models}\label{architecture-dependence-and-system-one-decision-models}
+
+To evaluate synthetic respondents systematically, Zahradnickova et al.
+(2026) conceptualize distributional fidelity across four levels, namely
+univariate fidelity (marginal distributions and dispersion),
+multivariate fidelity (joint variable structure), subgroup fidelity
+(preservation within demographic subpopulations), and semantic fidelity
+(open-ended text). Their central thesis is that distributional fidelity
+in silicon sampling is not architecture-neutral. Comparing generative
+LLMs against a proprietary neuro-symbolic AI system (Lakmoos AI) across
+demographic benchmarks in Czechia, Germany, and France and a
+315-respondent Czech housing survey, Zahradnickova et al. (2026) show
+that separating structured statistical representation from free-form
+text generation yields markedly closer alignment with human
+distributions.
+
+Yet this architectural turn leaves two critical gaps for consumer and
+marketing researchers. First, both systems evaluated by Zahradnickova et
+al. (2026) are proprietary black boxes, restricting transparency,
+independent auditing, and exact reproducibility. Second, their empirical
+test of subgroup fidelity evaluates census demographic headcounts
+(gender by age) rather than attitudinal differences across segments,
+while their attitudinal benchmark spans six closed-ended items in a
+single narrow domain. Whether an open, generalizable architecture can
+recover between-group attitudinal contrasts across diverse unseen survey
+topics remains an open empirical question.
+
+Decision models offer a distinct, open-weight architectural alternative
+explicitly designed as System One models (Deußer et al., 2026; Geuter et
+al., 2026; Palmer, 2026). Instead of generating text tokens
+sequentially, a decision model replaces a language model's
+text-generation head with a pointer head that scores candidate options
+directly in a single forward pass. This design produces exact analytical
+probability distributions over valid survey responses, eliminating Monte
+Carlo sampling noise, temperature tuning, safety refusals, and the
+duplicate-persona redundancy that degrades effective sample size in
+generative protocols (Zahradnickova et al., 2026). Even so, a System One
+architecture alone is not sufficient. Because off-the-shelf decision
+models are pretrained on objective single-label benchmarks, they possess
+the fast inference structure of System 1 without calibrated human social
+priors, leading to ordinal-scale distortion and cultural miscalibration
+prior to survey training (Asseri \& Asseri, 2026; Gao et al., 2026).
+
+\subsection{From prompting personas to learning
+personas}\label{from-prompting-personas-to-learning-personas}
+
+A growing stream of research therefore moves beyond off-the-shelf
+prompting by adapting models with human behavioral or survey data,
+spanning three distinct paradigms. Post-inference calibration and
+data-augmentation methods adjust fixed model outputs to reduce
+econometric bias, yet they require collecting human responses from the
+target study itself (Leng et al., 2026; M. Wang et al., 2026).
+Individual-level digital twins capture rich personal heterogeneity but
+require extensive prior questionnaires from each target individual
+(Toubia et al., 2025), whereas cognitive foundation models trained on
+behavioral task trials lack demographic persona structure for
+population-level sampling ({Binz et al.}, 2025). As Zahradnickova et al.
+(2026) note, benchmarking population-level trained models that
+generalize without target-study data remains open future work.
+
+Pre-inference survey training addresses this gap by updating model
+weights directly on historical human survey microdata so the model
+learns how demographic attributes map onto response distributions on
+unseen questions (Huang et al., 2026; Kolluri et al., 2025; Ku et al.,
+2026; Suh et al., 2025; S. Wang et al., 2025). In consumer and marketing
+research, however, training models on demographic group data raises an
+explicit theoretical tension. Whereas off-the-shelf persona prompting
+tends to flatten demographic differences and compress within-group
+variance, Sarstedt et al. (2024) draw on Santurkar et al. (2023) to warn
+that training models to mimic group responses may backfire in the
+opposite direction by pushing models to embody exaggerated caricatures
+of those groups or by failing to generalize beyond the training survey.
+
+Table~\ref{tbl-lit-positioning} summarizes where our research stands
+relative to these existing silicon-sampling paradigms. Because
+open-weight Kev decision models (Palmer, 2026) are built directly on
+pretrained Qwen3.5 backbones, we can isolate explicit System 2
+deliberation (Qwen3.5 with reasoning enabled versus disabled), System
+One pointer-head architecture alone (off-the-shelf Kev), and learned
+demographic priors (survey-trained Kev) on the exact same foundation
+backbone across matched parameter scales. Training System One decision
+models on large-scale persona-rich human surveys (ISSP and Twin-2K-500)
+and evaluating zero-shot transfer on unseen multi-topic questions across
+eight demographic dimensions (Suh et al., 2025) directly tests whether
+learned System 1 personas recover between-group attitudinal differences
+and within-group dispersion without collapsing into flattening or
+caricature.
+
+\nexttablesize{\scriptsize}
+
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1429}}@{}}
+
+\caption{\label{tbl-lit-positioning}Positioning of survey-trained System
+One decision models within the silicon-sampling literature}
+
+\tabularnewline
+
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Paradigm
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Representative studies
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Open and reproducible
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Persona mechanism
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Target-study human data required
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Exact option probabilities
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Evaluates unseen attitudinal subgroup contrasts
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Persona-prompted GenAI &
+Argyle et al. (2023);
+Sarstedt et al. (2024)
+& Partial or API-dependent & Zero-shot text prompt & No & No (Monte
+Carlo) & Mixed (flattening and variance collapse) \\
+Proprietary NSAI &
+Zahradnickova et al. (2026)
+& No (proprietary) & Tabular census generator plus constrained LLM & No
+(anchored to census tables) & No (sampled virtual population) & No (six
+items in one domain, aggregate focus) \\
+Digital twins and cognitive FMs &
+Toubia et al. (2025);
+{Binz et al.} (2025)
+& Mixed & Individual survey history or non-demographic trials & Yes
+(target individual) or N/A & Varies & No \\
+Post-inference calibration &
+M. Wang et al. (2026);
+Leng et al. (2026)
+& Yes & Fixed model plus statistical reweighting & Yes (target study) &
+Depends on base model & No (experimental treatment slopes) \\
+Survey-trained System One decision models & Present study & Yes
+(open-weight) & Learned from public human survey microdata & No
+(zero-shot unseen items) & Yes (single forward pass) & Yes (eight
+demographic axes on unseen questions) \\
+
+\end{longtable}
+
+\emph{Note.} GenAI refers to generative artificial intelligence; NSAI
+refers to neuro-symbolic artificial intelligence; FM refers to
+foundation model.
+
+\section{Materials and methods}\label{sec-methods}
+
+\subsection{Methodology}\label{sec-methodology}
+
+\subsection{Experimental setup}\label{sec-setup}
 
 \section{Results}\label{sec-results}
 
+\section{Discussion}\label{sec-discussion}
+
 \section{Conclusion}\label{sec-conclusion}
 
-\section*{Declarations}\label{declarations}
-\addcontentsline{toc}{section}{Declarations}
+\section*{Funding}\label{funding}
+\addcontentsline{toc}{section}{Funding}
 
-\subsection*{Funding and competing
-interests}\label{funding-and-competing-interests}
-\addcontentsline{toc}{subsection}{Funding and competing interests}
+The authors have no funding to report.
 
-All authors certify that they have no affiliations with or involvement
-in any organization or entity with any financial interest or
-non-financial interest in the subject matter or materials discussed in
-this manuscript. The authors have no funding to report.
+\section*{Ethics statement}\label{ethics-statement}
+\addcontentsline{toc}{section}{Ethics statement}
+
+This study uses publicly available, anonymized secondary human survey
+datasets and open-weight AI models; no new human subjects data were
+collected.
+
+\section*{Conflicts of interest}\label{conflicts-of-interest}
+\addcontentsline{toc}{section}{Conflicts of interest}
+
+The authors declare no conflicts of interest.
+
+\section*{AI disclosure}\label{ai-disclosure}
+\addcontentsline{toc}{section}{AI disclosure}
+
+Open-weight language and decision models were used as research
+instruments to generate silicon samples as part of the formal
+experimental design.
+
+\section*{Data availability
+statement}\label{data-availability-statement}
+\addcontentsline{toc}{section}{Data availability statement}
+
+All code, training recipes, evaluation scripts, and public dataset
+references supporting the findings of this study will be made openly
+available upon publication.
 
 \section*{References}\label{references}
 \addcontentsline{toc}{section}{References}
 
 \protect\phantomsection\label{refs}
+\begin{CSLReferences}{1}{0}
+\bibitem[\citeproctext]{ref-argyle2023out}
+Argyle, L. P., Busby, E. C., Fulda, N., Gubler, J. R., Rytting, C., \&
+Wingate, D. (2023). Out of one, many: Using language models to simulate
+human samples. \emph{Political Analysis}, \emph{31}(3), 337--351.
+
+\bibitem[\citeproctext]{ref-arora2025ai}
+Arora, N., Chakraborty, I., \& Nishimura, Y. (2025). AI--human hybrids
+for marketing research: Leveraging large language models (LLMs) as
+collaborators. \emph{Journal of Marketing}, \emph{89}(2), 43--70.
+
+\bibitem[\citeproctext]{ref-asseri2026calibratedwhompersonalanguage}
+Asseri, B., \& Asseri, A. (2026). Calibrated to whom? Persona and
+language effects on cultural values in {JEV}. \emph{arXiv Preprint
+arXiv:2609.36399}. \url{https://arxiv.org/abs/2609.36399}
+
+\bibitem[\citeproctext]{ref-binz2025foundation}
+{Binz, M., Akata, E., Bethge, M., Brändle, F., Callaway, F., Coda-Forno,
+J., Dayan, P., Demircan, C., Eckstein, M. K., Éltető, N., et al.}
+(2025). A foundation model to predict and capture human cognition.
+\emph{Nature}, \emph{644}(8078), 1002--1009.
+
+\bibitem[\citeproctext]{ref-deusser2026evaluatingbenchmarkingmodeljev}
+Deußer, T., Sparrenberg, L., \& Sifa, R. (2026). Evaluating and
+benchmarking the system one model {Jev}. \emph{arXiv Preprint
+arXiv:2609.37647}. \url{https://arxiv.org/abs/2609.37647}
+
+\bibitem[\citeproctext]{ref-gao2026choicesfewerdecisionsordinalscale}
+Gao, T., Li, J., Li, Z., Chang, Y., \& Wu, Y. (2026). More choices,
+fewer decisions: Ordinal-scale bias in {JEV}-like direct-decision
+models. \emph{arXiv Preprint arXiv:2609.38827}.
+\url{https://arxiv.org/abs/2609.38827}
+
+\bibitem[\citeproctext]{ref-geuter2026releasinginnerjevsimple}
+Geuter, J., Cheng, A., \& Alvarez-Melis, D. (2026). Releasing the inner
+{Jev}: A simple recipe for open decision models. \emph{arXiv Preprint
+arXiv:2610.17205}. \url{https://arxiv.org/abs/2610.17205}
+
+\bibitem[\citeproctext]{ref-goli2024frontiers}
+Goli, A., \& Singh, A. (2024). Frontiers: Can large language models
+capture human preferences? \emph{Marketing Science}, \emph{43}(4),
+709--722.
+
+\bibitem[\citeproctext]{ref-hagendorff2023human}
+Hagendorff, T., Fabi, S., \& Kosinski, M. (2023). Human-like intuitive
+behavior and reasoning biases emerged in large language models but
+disappeared in ChatGPT. \emph{Nature Computational Science},
+\emph{3}(10), 833--838.
+
+\bibitem[\citeproctext]{ref-huang-etal-2026-distribution}
+Huang, J., Li, M., \& Shao, S. (2026). Distribution shift alignment
+helps {LLM}s simulate survey response distributions. In M. Liakata, V.
+P. Moreira, J. Zhang, \& D. Jurgens (Eds.), \emph{Findings of the
+{A}ssociation for {C}omputational {L}inguistics: {ACL} 2026} (pp.
+9395--9409). Association for Computational Linguistics.
+\url{https://doi.org/10.18653/v1/2026.findings-acl.457}
+
+\bibitem[\citeproctext]{ref-kolluri2025finetuning}
+Kolluri, A., Wu, S., Park, J. S., \& Bernstein, M. S. (2025). Finetuning
+llms for human behavior prediction in social science experiments.
+\emph{Proceedings of the 2025 Conference on Empirical Methods in Natural
+Language Processing}, 30084--30099.
+
+\bibitem[\citeproctext]{ref-ku2026siliconsamplingcrosssurveytransfer}
+Ku, C.-T., Hsu, C., Huang, P.-C., Liu, F. C., Cheng, I.-L., \& Kang, Y.
+(2026). Silicon sampling via cross-survey transfer. \emph{arXiv Preprint
+arXiv:2607.03091}. \url{https://arxiv.org/abs/2607.03091}
+
+\bibitem[\citeproctext]{ref-leng2026reducing}
+Leng, Y., Sang, Y., \& Agarwal, A. (2026). Reducing disparity between
+{LLM}s and humans: Optimal {LLM} sample calibration. \emph{Marketing
+Science}. \url{https://doi.org/10.1287/mksc.2024.0983}
+
+\bibitem[\citeproctext]{ref-palmer2026kev}
+Palmer, J. (2026). \emph{Kev: Small {Jev}-like decision models}.
+\url{https://github.com/jaredpalmer/kev}.
+\url{https://github.com/jaredpalmer/kev}
+
+\bibitem[\citeproctext]{ref-pmlr-v202-santurkar23a}
+Santurkar, S., Durmus, E., Ladhak, F., Lee, C., Liang, P., \& Hashimoto,
+T. (2023). Whose opinions do language models reflect? In A. Krause, E.
+Brunskill, K. Cho, B. Engelhardt, S. Sabato, \& J. Scarlett (Eds.),
+\emph{Proceedings of the 40th {International Conference on Machine
+Learning}} (Vol. 202, pp. 29971--30004). PMLR.
+\url{https://proceedings.mlr.press/v202/santurkar23a.html}
+
+\bibitem[\citeproctext]{ref-sarstedt2024using}
+Sarstedt, M., Adler, S. J., Rau, L., \& Schmitt, B. (2024). Using large
+language models to generate silicon samples in consumer and marketing
+research: Challenges, opportunities, and guidelines. \emph{Psychology \&
+Marketing}, \emph{41}(6), 1254--1270.
+
+\bibitem[\citeproctext]{ref-suh-etal-2025-language}
+Suh, J., Jahanparast, E., Moon, S., Kang, M., \& Chang, S. (2025).
+Language model fine-tuning on scaled survey data for predicting
+distributions of public opinions. In W. Che, J. Nabende, E. Shutova, \&
+M. T. Pilehvar (Eds.), \emph{Proceedings of the 63rd annual meeting of
+the {A}ssociation for {C}omputational {L}inguistics (volume 1: Long
+papers)} (pp. 21147--21170). Association for Computational Linguistics.
+\url{https://doi.org/10.18653/v1/2025.acl-long.1028}
+
+\bibitem[\citeproctext]{ref-toubia2025database}
+Toubia, O., Gui, G. Z., Peng, T., Merlau, D. J., Li, A., \& Chen, H.
+(2025). Database report: {Twin-2K-500}: A data set for building digital
+twins of over 2,000 people based on their answers to over 500 questions.
+\emph{Marketing Science}, \emph{44}(6), 1446--1455.
+
+\bibitem[\citeproctext]{ref-wang2026large}
+Wang, M., Zhang, D. J., \& Zhang, H. (2026). Large language models for
+market research: A data-augmentation approach. \emph{Marketing Science},
+\emph{45}(4), 728--751. \url{https://doi.org/10.1287/mksc.2025.0009}
+
+\bibitem[\citeproctext]{ref-wang2025can}
+Wang, S., Hunt, K., Tang, S., \& Joseph, K. (2025). Can finetuing LLMs
+on small human samples increase heterogeneity, alignment, and
+belief-action coherence? \emph{arXiv Preprint arXiv:2511.21218}.
+
+\bibitem[\citeproctext]{ref-zahradnickova2026ai}
+Zahradnickova, K., Polisensky, J., Lukeš, M., Hranický, R., \& Pouč, P.
+(2026). Which AI? A comparative evaluation of generative AI and
+neuro-symbolic AI for silicon sampling. \emph{Psychology \& Marketing}.
+\url{https://doi.org/10.1002/mar.70272}
+
+\end{CSLReferences}
 
 \newpage{}
 
-\section*{Web Appendix}\label{web-appendix}
-\addcontentsline{toc}{section}{Web Appendix}
+\section*{Appendix}\label{appendix}
+\addcontentsline{toc}{section}{Appendix}
 
 
 

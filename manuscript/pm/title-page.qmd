@@ -1,0 +1,42 @@
+---
+format:
+  docx:
+    reference-doc: quarto-files/ms_template.docx
+    number-sections: false
+    toc: false
+  pdf:
+    documentclass: article
+    fontsize: 11pt
+    pdf-engine: pdflatex
+    number-sections: false
+    toc: false
+    geometry:
+      - margin=1in
+    papersize: letter
+---
+
+<!--
+Standalone Title Page for Psychology & Marketing submission.
+Required elements:
+(i) short informative title containing major keywords, without abbreviations;
+(ii) short running title of less than 40 characters;
+(iii) full names of authors and ORCID iDs;
+(iv) institutional affiliations where the work was carried out (plus present address footnote if different);
+(v) corresponding author contact details and acknowledgments.
+-->
+
+# Title to be decided
+
+**Running title.** Running title under 40 characters
+
+**Authors.** Davood Wadi (ORCID: 0000-0000-0000-0000) and Yu Ma (ORCID: 0000-0000-0000-0000).
+
+**Affiliation.** Desautels Faculty of Management, McGill University, Montreal, Quebec, Canada.
+
+**Corresponding author.** Davood Wadi, Desautels Faculty of Management, McGill University, Montreal, Quebec, Canada (email: davood.wadi@hec.ca).
+
+**Acknowledgments.** To be added prior to submission. Financial and material support should be noted here rather than in the anonymized main manuscript file.
+
+**Conflict of interest statement.** The authors declare no conflicts of interest.
+
+**Funding.** The authors have no funding to report.

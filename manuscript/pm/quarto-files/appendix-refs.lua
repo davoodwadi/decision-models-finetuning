@@ -20,7 +20,7 @@ function Pandoc(doc)
       if #el.citations == 1 then
         local id = el.citations[1].id
         if appendix_letters[id] then
-          return pandoc.Str("Web Appendix " .. appendix_letters[id])
+          return pandoc.Str("Appendix " .. appendix_letters[id])
         end
       end
 
@@ -43,7 +43,7 @@ function Pandoc(doc)
           joined = table.concat(letters_found, ", ", 1, #letters_found - 1)
                   .. ", and " .. letters_found[#letters_found]
         end
-        return pandoc.Str("Web Appendices " .. joined)
+        return pandoc.Str("Appendices " .. joined)
       end
 
       return el

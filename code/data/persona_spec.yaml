@@ -1,0 +1,2340 @@
+# Global persona attribute specifications (single source of truth).
+# Each attribute defines:
+#   prompt:    human-readable label shown in model prompts
+#   levels:    allowed canonical string values (raw values already in levels pass through)
+#   aliases:   (optional) raw value -> canonical level (shared across all datasets)
+#   missing:   (optional) raw values mapped to NaN
+#   overrides: (optional) dataset -> {raw value -> canonical level or null}
+
+country:
+  prompt: Country
+  levels:
+    - United States
+    - Canada
+  aliases:
+    US: United States
+
+gender:
+  prompt: Gender
+  levels:
+    - Male
+    - Female
+    - Non-binary
+    - Other
+    - Prefer not to say
+  aliases:
+    "1. Male": Male
+    "2. Female": Female
+    Man: Male
+    Woman: Female
+    "Prefer not to answer": Prefer not to say
+    "Prefer to self-describe": Other
+  missing:
+    - "-9. No answer"
+
+age:
+  prompt: Age
+  levels:
+    # US Census 6-bin (used for exact numeric ages in issp, wvs7, covid, grummon2023, grummon2025, kriner2026; native in berke2023, wu2025)
+    - 18-24
+    - 25-34
+    - 35-44
+    - 45-54
+    - 55-64
+    - 65+
+    # Other survey brackets (kept as union levels with unified wording)
+    - 18-29
+    - 30-49
+    - 50-64
+    - 30-44
+    - 45-64
+    - 65-74
+    - 75-84
+    - 85+
+    - Younger
+    - Older
+  numeric_bins:
+    - {min: 18, max: 24, label: 18-24}
+    - {min: 25, max: 34, label: 25-34}
+    - {min: 35, max: 44, label: 35-44}
+    - {min: 45, max: 54, label: 45-54}
+    - {min: 55, max: 64, label: 55-64}
+    - {min: 65, max: 120, label: 65+}
+  aliases:
+    "18 - 24": 18-24
+    "25 - 34": 25-34
+    "35 - 44": 35-44
+    "45 - 54": 45-54
+    "55 - 64": 55-64
+    "65 - 74": 65-74
+    "75 - 84": 75-84
+    "18 - 24 years": 18-24
+    "25 - 34 years": 25-34
+    "35 - 44 years": 35-44
+    "45 - 54 years": 45-54
+    "55 - 64 years": 55-64
+    "65 or older": 65+
+    "65 - 74 years": 65-74
+    "75 - 84 years": 75-84
+    "85 or older": 85+
+    "18 to 29": 18-29
+    "30 to 44": 30-44
+    "45 to 64": 45-64
+    "89. 89 years; US: 89 years or more": 65+
+    "89. 89 years old; US: 89 years or more": 65+
+    "89. 89 years; US: 89 years or older": 65+
+    "89 (US: 89 years or older)": 65+
+  missing:
+    - "-9. No answer"
+    - "No answer"
+    - "999. No answer"
+
+region:
+  prompt: Region
+  levels:
+    # 4 US Census regions (subpop, covid, berke2023, kriner2026, wu2025, magistro2025 US, twin2k)
+    - Northeast
+    - Midwest
+    - South
+    - West
+    # Twin-2K non-contiguous Pacific and contiguous West (kept distinct from full US Census West)
+    - Pacific (HI, AK)
+    - West (excluding HI, AK)
+    # ISSP 9 US Census divisions (kept as union levels without collapsing)
+    - New England
+    - Middle Atlantic
+    - East North Central
+    - West North Central
+    - South Atlantic
+    - East South Central
+    - West South Central
+    - Mountain
+    - Pacific
+  aliases:
+    # Strip ISSP numeric prefixes ("1. New England" -> "New England")
+    "1. New England": New England
+    "2. Middle Atlantic": Middle Atlantic
+    "3. East North Central": East North Central
+    "4. West North Central": West North Central
+    "5. South Atlantic": South Atlantic
+    "6. East South Central": East South Central
+    "7. West South Central": West South Central
+    "8. Mountain": Mountain
+    "9. Pacific": Pacific
+    # Strip Twin-2K parenthetical state lists
+    "Northeast (PA, NY, NJ, RI, CT, MA, VT, NH, ME)": Northeast
+    "Midwest (ND, SD, NE, KS, MN, IA, MO, WI, IL, MI, IN, OH)": Midwest
+    "South (TX, OK, AR, LA, KY, TN, MS, AL, WV, DC, MD, DE, VA, NC, SC, GA, FL)": South
+    "West (WA, OR, ID, MT, WY, CA, NV, UT, CO, AZ, NM)": West (excluding HI, AK)
+
+state:
+  prompt: State or province
+  levels:
+    # 50 US states + District of Columbia
+    - Alabama
+    - Alaska
+    - Arizona
+    - Arkansas
+    - California
+    - Colorado
+    - Connecticut
+    - Delaware
+    - District of Columbia
+    - Florida
+    - Georgia
+    - Hawaii
+    - Idaho
+    - Illinois
+    - Indiana
+    - Iowa
+    - Kansas
+    - Kentucky
+    - Louisiana
+    - Maine
+    - Maryland
+    - Massachusetts
+    - Michigan
+    - Minnesota
+    - Mississippi
+    - Missouri
+    - Montana
+    - Nebraska
+    - Nevada
+    - New Hampshire
+    - New Jersey
+    - New Mexico
+    - New York
+    - North Carolina
+    - North Dakota
+    - Ohio
+    - Oklahoma
+    - Oregon
+    - Pennsylvania
+    - Rhode Island
+    - South Carolina
+    - South Dakota
+    - Tennessee
+    - Texas
+    - Utah
+    - Vermont
+    - Virginia
+    - Washington
+    - West Virginia
+    - Wisconsin
+    - Wyoming
+    # Canadian provinces and territories (magistro2025)
+    - Alberta
+    - British Columbia
+    - Manitoba
+    - New Brunswick
+    - Newfoundland and Labrador
+    - Northwest Territories
+    - Nova Scotia
+    - Ontario
+    - Prince Edward Island
+    - Quebec
+    - Saskatchewan
+  aliases:
+    # Strip WVS7 ISO-3166-2 prefixes ("US-XX Name" -> "Name")
+    "US-AL Alabama": Alabama
+    "US-AK Alaska": Alaska
+    "US-AZ Arizona": Arizona
+    "US-AR Arkansas": Arkansas
+    "US-CA California": California
+    "US-CO Colorado": Colorado
+    "US-CT Connecticut": Connecticut
+    "US-DE Delaware": Delaware
+    "US-DC District of Columbia": District of Columbia
+    "US-FL Florida": Florida
+    "US-GA Georgia": Georgia
+    "US-HI Hawaii": Hawaii
+    "US-ID Idaho": Idaho
+    "US-IL Illinois": Illinois
+    "US-IN Indiana": Indiana
+    "US-IA Iowa": Iowa
+    "US-KS Kansas": Kansas
+    "US-KY Kentucky": Kentucky
+    "US-LA Louisiana": Louisiana
+    "US-ME Maine": Maine
+    "US-MD Maryland": Maryland
+    "US-MA Massachusetts": Massachusetts
+    "US-MI Michigan": Michigan
+    "US-MN Minnesota": Minnesota
+    "US-MS Mississippi": Mississippi
+    "US-MO Missouri": Missouri
+    "US-MT Montana": Montana
+    "US-NE Nebraska": Nebraska
+    "US-NV Nevada": Nevada
+    "US-NH New Hampshire": New Hampshire
+    "US-NJ New Jersey": New Jersey
+    "US-NM New Mexico": New Mexico
+    "US-NY New York": New York
+    "US-NC North Carolina": North Carolina
+    "US-ND North Dakota": North Dakota
+    "US-OH Ohio": Ohio
+    "US-OK Oklahoma": Oklahoma
+    "US-OR Oregon": Oregon
+    "US-PA Pennsylvania": Pennsylvania
+    "US-RI Rhode Island": Rhode Island
+    "US-SC South Carolina": South Carolina
+    "US-SD South Dakota": South Dakota
+    "US-TN Tennessee": Tennessee
+    "US-TX Texas": Texas
+    "US-UT Utah": Utah
+    "US-VT Vermont": Vermont
+    "US-VA Virginia": Virginia
+    "US-WA Washington": Washington
+    "US-WV West Virginia": West Virginia
+    "US-WI Wisconsin": Wisconsin
+    "US-WY Wyoming": Wyoming
+
+education:
+  prompt: Education
+  levels:
+    # US / standard degree levels
+    - Less than high school
+    - High school or less
+    - High school graduate
+    - Some college
+    - Some college, no degree
+    - Some college or technical school
+    - Associate's degree
+    - Bachelor's degree
+    - College graduate/some postgrad
+    - Master's degree
+    - Professional degree
+    - Doctoral degree
+    - Postgraduate
+    - Graduate or professional degree
+    # Binary higher-education levels (kantorowicz2026)
+    - Below higher education
+    - Higher education
+    # ISCED international levels (issp, wvs7)
+    - No formal education
+    - No formal education, incomplete primary
+    - Early childhood or no education
+    - Primary education
+    - Lower secondary education
+    - Upper secondary education
+    - Post-secondary non-tertiary education
+    - Lower level tertiary, first stage
+    - Short-cycle tertiary education
+    - Upper level tertiary (Master, Doctor)
+    - PhD, post-tertiary specialization
+  aliases:
+    # Exact spelling / capitalization / formatting matches
+    "Less than High School": Less than high school
+    "Less than high school degree": Less than high school
+    "HS or less": High school or less
+    "High School / GED": High school graduate
+    "High school graduate (or GED)": High school graduate
+    "High school graduate (high school diploma or equivalent including GED)": High school graduate
+    "Some college but no degree": Some college, no degree
+    "2-year College Degree": Associate's degree
+    "Associate degree in college (2-year)": Associate's degree
+    "4-year College Degree": Bachelor's degree
+    "Bachelor's degree in college (4-year)": Bachelor's degree
+    "College grad": Bachelor's degree
+    "6. Lower level tertiary, BA": Bachelor's degree
+    "6. Lower tertiary, BA": Bachelor's degree
+    "Bachelor or equivalent (ISCED 6)": Bachelor's degree
+    "Master's Degree": Master's degree
+    "7. Upper level tertiary, MA": Master's degree
+    "7. Upper tertiary, MA": Master's degree
+    "Master or equivalent (ISCED 7)": Master's degree
+    "Professional Degree": Professional degree
+    "Professional degree (JD, MD)": Professional degree
+    "Doctoral Degree": Doctoral degree
+    "Doctoral or equivalent (ISCED 8)": Doctoral degree
+    "Postgrad": Postgraduate
+    "Below higher edu.": Below higher education
+    "Higher edu.": Higher education
+    # ISCED prefix stripping & Stata truncation cleanup
+    "0. No formal education": No formal education
+    "0. No (formal) education, incomplete primary": No formal education, incomplete primary
+    "0. No education, incomplete primary": No formal education, incomplete primary
+    "Early childhood education (ISCED 0) / no education": Early childhood or no education
+    "1. Primary education": Primary education
+    "1. Primary school": Primary education
+    "1. Primary school (elementary education)": Primary education
+    "Primary school (elementary education)": Primary education
+    "2. Lower secondary": Lower secondary education
+    "2. Lower secondary education": Lower secondary education
+    "2. Lower secondary (secondary completed that does not allow entry to university: end of obligatory school)": Lower secondary education
+    "Lower secondary (secondary completed that does not allow entry to university: end of obligatory school)": Lower secondary education
+    "Lower secondary (secondary completed does not allow entry to": Lower secondary education
+    "Lower secondary (secondary completed that does not allow ent": Lower secondary education
+    "Lower secondary education (ISCED 2)": Lower secondary education
+    "3. Upper secondary": Upper secondary education
+    "3. Upper secondary education": Upper secondary education
+    "3. Upper secondary (programs that allow entry to university)": Upper secondary education
+    "3. Upper secondary (programs that allows entry to university)": Upper secondary education
+    "Upper secondary (programs that allows entry to university)": Upper secondary education
+    "Upper secondary (programs that allows entry to university": Upper secondary education
+    "Upper secondary education (ISCED 3)": Upper secondary education
+    "4. Post secondary, non-tertiary (other upper secondary programs toward the labour market or technical formation)": Post-secondary non-tertiary education
+    "Post secondary, non-tertiary (other upper secondary programs toward the labour market or technical formation)": Post-secondary non-tertiary education
+    "Post secondary, non-tertiary (other upper secondary programs": Post-secondary non-tertiary education
+    "Post-secondary non-tertiary education (ISCED 4)": Post-secondary non-tertiary education
+    "5. Lower level tertiary, first stage (also technical schools at a tertiary level)": Lower level tertiary, first stage
+    "Lower level tertiary, first stage (also technical schools at a tertiary level)": Lower level tertiary, first stage
+    "Lower level tertiary, first stage (also technical schools at": Lower level tertiary, first stage
+    "5. Short-cycle tertiary": Short-cycle tertiary education
+    "Short-cycle tertiary education (ISCED 5)": Short-cycle tertiary education
+    "6. Upper level tertiary (Master, Doctor)": Upper level tertiary (Master, Doctor)
+    "8. PhD, Post Tertiary Specialization": PhD, post-tertiary specialization
+    "8. PhD, Post tertiary specialization": PhD, post-tertiary specialization
+  overrides:
+    # covid and kriner2026 have a separate "2-year College Degree" option, so "Some College" means no degree;
+    # magistro2025 has no Associate's option, so its "Some college" stays "Some college".
+    covid:
+      "Some College": Some college, no degree
+    kriner2026:
+      "Some College": Some college, no degree
+  missing:
+    - "-9. No answer"
+    - "-9. No answer, not classifiable"
+    - "-9. No answer, not elsewhere classified"
+    - "9. No answer"
+    - "No answer"
+    - "No answer, other"
+
+family_income:
+  prompt: Family income
+  levels:
+    - "Less than $1,000"
+    - "Less than $10,000"
+    - "Less than $25,000"
+    - "Less than $30,000"
+    - "$1,000-$2,999"
+    - "$3,000-$3,999"
+    - "$4,000-$4,999"
+    - "$5,000-$5,999"
+    - "$6,000-$6,999"
+    - "$7,000-$7,999"
+    - "$8,000-$9,999"
+    - "$10,000-$12,499"
+    - "$10,000-$14,999"
+    - "$10,000-$19,999"
+    - "$12,500-$14,999"
+    - "$15,000-$17,499"
+    - "$15,000-$24,999"
+    - "$17,500-$19,999"
+    - "$20,000-$22,499"
+    - "$20,000-$29,999"
+    - "$22,500-$24,999"
+    - "$25,000-$29,999"
+    - "$25,000-$34,999"
+    - "$25,000-$49,999"
+    - "$30,000-$34,999"
+    - "$30,000-$39,999"
+    - "$30,000-$50,000"
+    - "$35,000-$39,999"
+    - "$35,000-$49,999"
+    - "$40,000-$49,999"
+    - "$50,000-$59,999"
+    - "$50,000-$74,999"
+    - "$50,000-$75,000"
+    - "$60,000-$69,999"
+    - "$60,000-$74,999"
+    - "$70,000-$79,999"
+    - "$75,000-$89,999"
+    - "$75,000-$99,999"
+    - "$75,000-$100,000"
+    - "$80,000-$89,999"
+    - "$90,000-$99,999"
+    - "$90,000-$109,999"
+    - "$100,000-$149,999"
+    - "$110,000-$129,999"
+    - "$130,000-$149,999"
+    - "$150,000-$169,999"
+    - "$150,000-$199,999"
+    - "$100,000 or more"
+    - "$150,000 or more"
+    - "$170,000 or more"
+    - "$200,000 or more"
+  aliases:
+    "500. Under 1 000 USD per year, before taxes": "Less than $1,000"
+    "500. Under 1.000 USD last year, before taxes": "Less than $1,000"
+    "500. Under 1.000 USD per year, before taxes": "Less than $1,000"
+    "Under 1.000 USD per year": "Less than $1,000"
+    "Under 1.000 USD per year, before taxes": "Less than $1,000"
+    "1.000-2.999 USD": "$1,000-$2,999"
+    "2000. 1 000 - 2 999 USD": "$1,000-$2,999"
+    "2000. 1.000-2.999 USD": "$1,000-$2,999"
+    "3.000-3.999 USD": "$3,000-$3,999"
+    "3500. 3 000 - 3 999 USD": "$3,000-$3,999"
+    "3500. 3.000-3.999 USD": "$3,000-$3,999"
+    "4.000-4.999 USD": "$4,000-$4,999"
+    "4500. 4 000 - 4 999 USD": "$4,000-$4,999"
+    "4500. 4.000-4.999 USD": "$4,000-$4,999"
+    "5.000-5.999 USD": "$5,000-$5,999"
+    "5500. 5 000 - 5 999 USD": "$5,000-$5,999"
+    "5500. 5.000-5.999 USD": "$5,000-$5,999"
+    "6.000-6.999 USD": "$6,000-$6,999"
+    "6500. 6 000 - 6 999 USD": "$6,000-$6,999"
+    "6500. 6.000-6.999 USD": "$6,000-$6,999"
+    "7.000-7.999 USD": "$7,000-$7,999"
+    "7500. 7 000 - 7 999 USD": "$7,000-$7,999"
+    "7500. 7.000-7.999 USD": "$7,000-$7,999"
+    "8.000-9.999 USD": "$8,000-$9,999"
+    "9000. 8 000 - 9 999 USD": "$8,000-$9,999"
+    "9000. 8.000-9.999 USD": "$8,000-$9,999"
+    "10.000-12.499 USD": "$10,000-$12,499"
+    "10.000-12499 USD": "$10,000-$12,499"
+    "11250. 10 000 - 12 499 USD": "$10,000-$12,499"
+    "11250. 10.000-12.499 USD": "$10,000-$12,499"
+    "$10,000 to $14,999": "$10,000-$14,999"
+    "$10,000 to $19,999": "$10,000-$19,999"
+    "12.500-14.999 USD": "$12,500-$14,999"
+    "13750. 12 500 - 14 999 USD": "$12,500-$14,999"
+    "13750. 12.500-14.999 USD": "$12,500-$14,999"
+    "15.000-17.499 USD": "$15,000-$17,499"
+    "16750. 15 000 - 17 499 USD": "$15,000-$17,499"
+    "16750. 15.000-17.499 USD": "$15,000-$17,499"
+    "$15,000 to $24,999": "$15,000-$24,999"
+    "17.500-19.999 USD": "$17,500-$19,999"
+    "18750. 17 500 - 19 999 USD": "$17,500-$19,999"
+    "18750. 17.500-19.999 USD": "$17,500-$19,999"
+    "20.000-22.499 USD": "$20,000-$22,499"
+    "21750. 20 000 - 22 499 USD": "$20,000-$22,499"
+    "21750. 20.000-22.499 USD": "$20,000-$22,499"
+    "$20,000 to $29,999": "$20,000-$29,999"
+    "22.500-24.999 USD": "$22,500-$24,999"
+    "23750. 22 500 - 24 999 USD": "$22,500-$24,999"
+    "23750. 22.500-24.999 USD": "$22,500-$24,999"
+    "25.000-29.999 USD": "$25,000-$29,999"
+    "27500. 25 000 - 29 999 USD": "$25,000-$29,999"
+    "27500. 25.000-29.999 USD": "$25,000-$29,999"
+    "$25,000 to $34,999": "$25,000-$34,999"
+    "$25,000 to $49,999": "$25,000-$49,999"
+    "30.000-34.999 USD": "$30,000-$34,999"
+    "32500. 30 000 - 34 999 USD": "$30,000-$34,999"
+    "32500. 30.000-34.999 USD": "$30,000-$34,999"
+    "$30,000 to $39,999": "$30,000-$39,999"
+    "35.000-39.999 USD": "$35,000-$39,999"
+    "37500. 35 000 - 39 999 USD": "$35,000-$39,999"
+    "37500. 35.000-39.999 USD": "$35,000-$39,999"
+    "$35,000 to $49,999": "$35,000-$49,999"
+    "$40,000 to $49,999": "$40,000-$49,999"
+    "40.000-49.999 USD": "$40,000-$49,999"
+    "45000. 40 000 - 49 999 USD": "$40,000-$49,999"
+    "45000. 40.000-49.999 USD": "$40,000-$49,999"
+    "$50,000 to $59,999": "$50,000-$59,999"
+    "50.000-59.999 USD": "$50,000-$59,999"
+    "55000. 50 000 - 59 999 USD": "$50,000-$59,999"
+    "55000. 50.000-59.999 USD": "$50,000-$59,999"
+    "$50,000 to $74,999": "$50,000-$74,999"
+    "$60,000 to $69,999": "$60,000-$69,999"
+    "60.000-74.999 USD": "$60,000-$74,999"
+    "67500. 60 000 - 74 999 USD": "$60,000-$74,999"
+    "67500. 60.000-74.999 USD": "$60,000-$74,999"
+    "$70,000 to $79,999": "$70,000-$79,999"
+    "75.000-89.999 USD": "$75,000-$89,999"
+    "82500. 75 000 - 89 999 USD": "$75,000-$89,999"
+    "82500. 75.000-89.999 USD": "$75,000-$89,999"
+    "$75,000 to $99,999": "$75,000-$99,999"
+    "$80,000 to $89,999": "$80,000-$89,999"
+    "$90,000 to $99,999": "$90,000-$99,999"
+    "100000. 90 000 - 109 999 USD": "$90,000-$109,999"
+    "100000. 90.000-109.999 USD": "$90,000-$109,999"
+    "90.000-109.999 USD": "$90,000-$109,999"
+    "$100,000 to $149,999": "$100,000-$149,999"
+    "110.000-129.999 USD": "$110,000-$129,999"
+    "120000. 110 000 - 129 999 USD": "$110,000-$129,999"
+    "120000. 110.000-129.999 USD": "$110,000-$129,999"
+    "130.000-149.999 USD": "$130,000-$149,999"
+    "140000. 130 000 - 149 999 USD": "$130,000-$149,999"
+    "140000. 130.000-149.999 USD": "$130,000-$149,999"
+    "150.000-169.999 USD": "$150,000-$169,999"
+    "160000. 150 000 - 169 999 USD": "$150,000-$169,999"
+    "160000. 150.000-169.999 USD": "$150,000-$169,999"
+    "$150,000 to $199,999": "$150,000-$199,999"
+    "170.000 USD or more per year": "$170,000 or more"
+    "170.000 USD or more per year, before taxes": "$170,000 or more"
+    "180000. 170 000 USD or more per year, before taxes": "$170,000 or more"
+    "180000. 170.000 USD or more last year, before taxes": "$170,000 or more"
+    "180000. 170.000 USD or more per year, before taxes": "$170,000 or more"
+  missing:
+    - "-9. No answer"
+    - "-8. Don't know"
+    - "-7. Refused"
+    - "999997. Refused"
+    - "999998. Don't know"
+    - "Refused"
+    - "Don't know"
+
+income:
+  prompt: Income
+  levels:
+    - "Less than $20,000"
+    - "Less than $30,000"
+    - "$20,000-$39,999"
+    - "$40,000-$59,999"
+    - "$60,000-$79,999"
+    - "$80,000-$99,999"
+    - "$100,000 or more"
+    - "Low"
+    - "Middle"
+    - "High"
+    - "Lower income"
+    - "Higher income"
+  aliases:
+    "Below $20,000": "Less than $20,000"
+    "$20,000 - $39,999": "$20,000-$39,999"
+    "$40,000 - $59,999": "$40,000-$59,999"
+    "$60,000 - $79,999": "$60,000-$79,999"
+    "$80,000 - $99,999": "$80,000-$99,999"
+
+race:
+  prompt: Race
+  multi_select: true
+  levels:
+    - White
+    - Black or African American
+    - Hispanic or Latino
+    - Asian
+    - Asian/Pacific Islander
+    - American Indian
+    - American Indian or Alaska Native
+    - Native Hawaiian or Other Pacific Islander
+    - Multiracial
+    - Other
+    # WVS7 non-Hispanic qualified single-choice categories
+    - "White, non-Hispanic"
+    - "Black, non-Hispanic"
+    - "Other, non-Hispanic"
+    - "Two plus, non-Hispanic"
+  aliases:
+    "Black": Black or African American
+    "Hispanic": Hispanic or Latino
+    "US: Hispanic": Hispanic or Latino
+    "Native Hawaiian or Pacific Islander": Native Hawaiian or Other Pacific Islander
+    "Another race": Other
+    "Multi-racial": Multiracial
+    "US: White, non-Hispanic": "White, non-Hispanic"
+    "US: Black, Non-Hispanic": "Black, non-Hispanic"
+    "US: Other, Non-Hispanic": "Other, non-Hispanic"
+    "US: Two plus, non-Hispanic": "Two plus, non-Hispanic"
+
+hispanic:
+  prompt: Are you of Hispanic, Latino, or Spanish origin?
+  levels:
+    - "Yes"
+    - "No"
+  aliases:
+    "Spanish, Hispanic, or Latino": "Yes"
+    "None of these": "No"
+
+religion:
+  prompt: Religion
+  levels:
+    - Protestant
+    - Catholic
+    - Orthodox
+    - Other Christian
+    - Mormon
+    - Jewish
+    - Muslim
+    - Buddhist
+    - Hindu
+    - Other Asian religions
+    - Other
+    - No religion
+    - Nothing in particular
+    - Agnostic
+    - Atheist
+  aliases:
+    "2. Protestant": Protestant
+    "1. Catholic": Catholic
+    "Roman Catholic": Catholic
+    "3. Orthodox": Orthodox
+    "Orthodox (Russian/Greek/etc.)": Orthodox
+    "Orthodox such as Greek or Russian Orthodox": Orthodox
+    "4. Other Christian": Other Christian
+    "4. Other Christian; NZ: Christian (without Catholics)": Other Christian
+    "4. Other Christian; NZ: (Other) Christian": Other Christian
+    "4. Other Christian, NZ: Christian": Other Christian
+    "Other Christian, NZ: Christian": Other Christian
+    "Other Christian, NZ,PL: Christian": Other Christian
+    "Other Christian; NZ: Christian": Other Christian
+    "Other Christian (Evangelical/Pentecostal/Fee church/etc.)": Other Christian
+    "5. Jewish": Jewish
+    "Jew": Jewish
+    "6. Islamic": Muslim
+    "Islamic": Muslim
+    "7. Buddhist": Buddhist
+    "8. Hindu": Hindu
+    "9. Other Asian Religions": Other Asian religions
+    "Other Asian Religions": Other Asian religions
+    "10. Other Religions": Other
+    "Other Religions": Other
+    "Other religions": Other
+    "Something else": Other
+    "0. No religion": No religion
+    "None": No religion
+    "Do not belong to a denomination": No religion
+  missing:
+    - "-9. No answer"
+    - "99. No answer"
+    - "No answer"
+    - "-8. Information insufficient"
+
+religious_attendance:
+  prompt: How often do you attend religious services?
+  levels:
+    - Several times a week or more often
+    - More than once a week
+    - Once a week
+    - 2 or 3 times a month or nearly every week
+    - 2 or 3 times a month
+    - Once or twice a month
+    - Once a month
+    - Several times a year
+    - A few times a year
+    - Only on special holy days
+    - Once or twice a year
+    - Once a year
+    - Less frequently than once a year
+    - Less often
+    - Seldom
+    - Never, practically never
+    - Never
+  aliases:
+    "1. Several times a week or more often": Several times a week or more often
+    "1. Several times a week or more often (incl. every day, several times a day)": Several times a week or more often
+    "Several times a week or more often (incl. every day, several": Several times a week or more often
+    "Several times a week or more often (incl. every day, several times a day)": Several times a week or more often
+    "2. Once a week": Once a week
+    "2. Once a week; CZ: Every week/Nearly every week": Once a week
+    "Once a week;GB:O.a w.or more;US:Every week": Once a week
+    "Once a week;GB:Once a week or more": Once a week
+    "3. 2 or 3 times a month": 2 or 3 times a month
+    "2 or 3 times a month;DE:1-3 times a month;US:+nearly every week": 2 or 3 times a month or nearly every week
+    "2 or 3 times a month; DE:1-3 times/month; HU,US:incl.nearly every week": 2 or 3 times a month or nearly every week
+    "4. Once a month": Once a month
+    "5. Several times a year": Several times a year
+    "Several times a year;GB:At least twice a year": Several times a year
+    "Several times a year; GB:At least twice a year": Several times a year
+    "6. Once a year; CH, CZ, NZ: Once or twice a year": Once a year
+    "6. Once a year; CH, HU: About once or twice a year": Once a year
+    "6. Once a year; CH, NO, US: Once or twice a year": Once or twice a year
+    "6. Once a year; US, ZA: Once or twice a year": Once or twice a year
+    "6. Once a year; CH, US: Once or twice a year": Once or twice a year
+    "6. Once a year; CH, HU, US: Once or twice a year": Once or twice a year
+    "6. Once a year; US: Once or twice a year": Once or twice a year
+    "Once a year;CN,US: about once or twice a year": Once or twice a year
+    "Once a year; CH,HU,US,ZA:Once or twice a year": Once or twice a year
+    "7. Less frequently than once a year": Less frequently than once a year
+    "Less frequently than once a year;AT,DE:than sev times a year": Less frequently than once a year
+    "Less frequently than once a year;DE:L.f.than sev. times a year": Less frequently than once a year
+    "8. Never": Never
+  missing:
+    - "-9. No answer"
+    - "99. No answer"
+    - "No answer"
+
+political_party:
+  prompt: Political party
+  levels:
+    - Democrat
+    - Republican
+    - Independent
+    - Strong Democrat
+    - Moderate Democrat
+    - Lean Democrat
+    - Lean Republican
+    - Moderate Republican
+    - Strong Republican
+    - Libertarian
+    - Green Party
+    - Conservative Party of Canada
+    - Liberal Party of Canada
+    - New Democratic Party
+    - Other
+    - "Other/don't know"
+  aliases:
+    "2. Democrat": Democrat
+    "Democrat (Obama)": Democrat
+    "USA: Democratic Party": Democrat
+    "Democratic": Democrat
+    "6. Republican": Republican
+    "Republican (Romney)": Republican
+    "USA: Republican Party": Republican
+    "USA: Libertarian": Libertarian
+    "USA: Green Party of the United States": Green Party
+    "CPC": Conservative Party of Canada
+    "LPC": Liberal Party of Canada
+    "NDP": New Democratic Party
+    "Something else": Other
+    "4. Other candidate": Other
+    "Other Candidate": Other
+  missing:
+    - "-9. No answer"
+    - "99. No answer"
+    - "No answer"
+    - "-4. NAP (Code 2, -4, -7 in VOTE_LE)"
+    - "-4. NAP (code 2, -4, -7 in VOTE_LE)"
+    - "-4. Not applicable (Code 2, -4, -7 in VOTE_LE)"
+    - "0. NAP (Code 0, 2, 7 in VOTE_LE)"
+    - "NAP (Code 0, 2, 7 in VOTE_LE)"
+    - "NAP, Did not vote in last election"
+
+political_ideology:
+  prompt: Political ideology
+  levels:
+    - Very liberal
+    - Liberal
+    - Somewhat liberal
+    - Slightly liberal
+    - Moderate
+    - Slightly conservative
+    - Somewhat conservative
+    - Conservative
+    - Very conservative
+    # ISSP PARTY_LR
+    - Left / center-left
+    - Center / liberal
+    - Right / conservative
+    - Other
+    # WVS7 Q240 1-10 Left-Right scale
+    - "1 (1 = Left, 10 = Right)"
+    - "2 (1 = Left, 10 = Right)"
+    - "3 (1 = Left, 10 = Right)"
+    - "4 (1 = Left, 10 = Right)"
+    - "5 (1 = Left, 10 = Right)"
+    - "6 (1 = Left, 10 = Right)"
+    - "7 (1 = Left, 10 = Right)"
+    - "8 (1 = Left, 10 = Right)"
+    - "9 (1 = Left, 10 = Right)"
+    - "10 (1 = Left, 10 = Right)"
+  aliases:
+    "Very Liberal": Very liberal
+    "Somewhat Liberal": Somewhat liberal
+    "Moderate; middle of the road": Moderate
+    "Somewhat Conservative": Somewhat conservative
+    "Very Conservative": Very conservative
+    "2. Left /center left": Left / center-left
+    "Left, center left": Left / center-left
+    "3. Center / liberal": Center / liberal
+    "Center, liberal": Center / liberal
+    "4. Right / conservative": Right / conservative
+    "Right, conservative": Right / conservative
+    "6. Other": Other
+    "6. Other; PH also: no party affiliation": Other
+    "Left": "1 (1 = Left, 10 = Right)"
+    "2": "2 (1 = Left, 10 = Right)"
+    "3": "3 (1 = Left, 10 = Right)"
+    "4": "4 (1 = Left, 10 = Right)"
+    "5": "5 (1 = Left, 10 = Right)"
+    "6": "6 (1 = Left, 10 = Right)"
+    "7": "7 (1 = Left, 10 = Right)"
+    "8": "8 (1 = Left, 10 = Right)"
+    "9": "9 (1 = Left, 10 = Right)"
+    "Right": "10 (1 = Left, 10 = Right)"
+  missing:
+    - "-9. No answer"
+    - "99. No answer"
+    - "No answer"
+    - "No answer;SK: No answer, don\x92t know"
+    - "-4. NAP (Code 2, -4, -7 in VOTE_LE)"
+    - "-4. NAP (Code -4, 2, -7 in VOTE_LE)"
+    - "-4. NAP (code 2, -4, -7 in VOTE_LE)"
+    - "0. NAP (C.0,2,7 VOTE_LE); NAV (BG,GB,PH,SR,TW,ZA)"
+    - "NAP (Code 0, 2, 7 in VOTE_LE);NAV (CN,GB,GE,PH,SR,TW)"
+    - "NAP (Code 0,2,7 in VOTE_LE); NAV (GB,GE,PH,SR,TW,VE)"
+    - "NAP (Code 0,2,7 in VOTE_LE); NAV (CN,GB,PH,SR,TW)"
+
+marital_status:
+  prompt: Marital status
+  levels:
+    - Married
+    - Living with a partner
+    - Living together as married
+    - Divorced
+    - Separated
+    - Widowed
+    - Never married
+    - Single
+  aliases:
+    "1. Married": Married
+    "Never been married": Never married
+    "6. Never married/never in a civil partnership": Never married
+    "6. Never married/ never in a civil partnership": Never married
+    "6. Never married/ never in a civil partnership, single": Never married
+    "Never married/ never in a civil partnership, single": Never married
+    "4. Divorced from spouse/legally separated from civil partner": Divorced
+    "4. Divorced from spouse/ legally separated from civil partner; AT: Divorced/ Separated": Divorced
+    "4. Divorced from spouse/legally separated from civil partner; AT: Divorced/ Separated": Divorced
+    "4. Divorced from spouse/ legally separated from civil partner; AT: Div./Sep.": Divorced
+    "Divorced from spouse/ legally separated from civil partner": Divorced
+    "Divorced from spouse/ legally separated from civil partner,": Divorced
+    "5. Widowed/civil partner died": Widowed
+    "5. Widowed/ civil partner died": Widowed
+    "Widowed/ civil partner died": Widowed
+    "3. Separated from spouse/civil partner (still legally married/still legally in a civil partnership)": Separated
+    "3. Separated from spouse/ civil partner (still legally married/ still legally in a civil partnership)": Separated
+    "Separated from spouse/ civil partner (still legally married/": Separated
+    "Separated from spouse/ civil partner (still legally married/ still legally in a civil partnership)": Separated
+  missing:
+    - "-9. No answer"
+    - "-9. No answer; CN: Cohabit"
+    - "9. No answer"
+    - "No answer"
+    - "NA, CN: Cohabit"
+
+employment_status:
+  prompt: Employment status
+  levels:
+    - Full-time employed
+    - Part-time employed
+    - Self-employed
+    - In paid work
+    - Working (paid employee)
+    - Unemployed
+    - Unemployed and looking for work
+    - Not working (temporary layoff)
+    - Retired
+    - Student
+    - Domestic work
+    - Homemaker
+    - Housewife not otherwise employed
+    - Permanently sick or disabled
+    - Not working (disabled)
+    - Not working (other)
+    - Other
+    - Prefer not to say
+  aliases:
+    "Full-time employment": Full-time employed
+    "Full time (30 hours a week or more)": Full-time employed
+    "Part-time employment": Part-time employed
+    "Part time (less than 30 hours a week)": Part-time employed
+    "Self employed": Self-employed
+    "Working (self-employed)": Self-employed
+    "1. In paid work": In paid work
+    "2. Unemployed and looking for a job": Unemployed and looking for work
+    "Unemployed and looking for a job": Unemployed and looking for work
+    "Not working (looking for work)": Unemployed and looking for work
+    "Not working (temporary layoff from a job)": Not working (temporary layoff)
+    "6. Retired": Retired
+    "Retired/pensioned": Retired
+    "Not working (retired)": Retired
+    "3. In education": Student
+    "In education": Student
+    "7. Domestic work": Domestic work
+    "Home-maker": Homemaker
+    "5. Permanently sick or disabled": Permanently sick or disabled
+    "9. Other": Other
+    "9. Other; AT, CZ: Incl. on parental leave; CL: Incl. rentier": Other
+    "Prefer not to answer": Prefer not to say
+  missing:
+    - "-9. No answer"
+    - "-9. No answer; BG: Don't know; TH: NA incl. doing nothing"
+    - "No answer"
+    - "No answer; TH: NA incl. don't do anything"
+    - "99. No answer; CZ, GE: Ref., DK; TH: NA incl. doing nothing"
+
+household_size:
+  prompt: Household size
+  levels:
+    - "1"
+    - "2"
+    - "3"
+    - "4"
+    - "5"
+    - "6"
+    - "7 or more"
+    - "More than 4"
+  numeric_bins:
+    - {min: 1, max: 1, label: "1"}
+    - {min: 2, max: 2, label: "2"}
+    - {min: 3, max: 3, label: "3"}
+    - {min: 4, max: 4, label: "4"}
+    - {min: 5, max: 5, label: "5"}
+    - {min: 6, max: 6, label: "6"}
+    - {min: 7, max: 100, label: "7 or more"}
+  aliases:
+    "1. One person (only respondent)": "1"
+    "One person (only respondent)": "1"
+    "2. Two persons": "2"
+    "Two persons": "2"
+    "3. Three persons": "3"
+    "Three persons": "3"
+    "4. Four persons": "4"
+    "Four persons": "4"
+    "5. Five persons": "5"
+    "Five persons": "5"
+    "6. Six persons": "6"
+    "Six persons": "6"
+    "7. Seven persons": "7 or more"
+    "Seven persons": "7 or more"
+    "8. Eight persons": "7 or more"
+    "Eight persons": "7 or more"
+    "8. Eight persons, AT: 8 or more persons": "7 or more"
+    "Eight persons, AT: 8 persons or more": "7 or more"
+    "9. Nine persons": "7 or more"
+    "Nine persons": "7 or more"
+    "Ten persons": "7 or more"
+    "11. Eleven persons": "7 or more"
+    "Eleven persons": "7 or more"
+    "Eleven persons, US: 11 persons or more": "7 or more"
+    "12. Twelve persons": "7 or more"
+  missing:
+    - "-9. No answer"
+
+children_in_household:
+  prompt: How many children (ages 0-18) currently live in your household?
+  levels:
+    - "0"
+    - "1"
+    - "2"
+    - "3"
+    - "4"
+    - "5"
+    - "6"
+    - "7 or more"
+  numeric_bins:
+    - {min: 0, max: 0, label: "0"}
+    - {min: 1, max: 1, label: "1"}
+    - {min: 2, max: 2, label: "2"}
+    - {min: 3, max: 3, label: "3"}
+    - {min: 4, max: 4, label: "4"}
+    - {min: 5, max: 5, label: "5"}
+    - {min: 6, max: 6, label: "6"}
+    - {min: 7, max: 100, label: "7 or more"}
+
+children_ever_had:
+  prompt: How many children do you have?
+  levels:
+    - "0"
+    - "1"
+    - "2"
+    - "3"
+    - "4"
+    - "5"
+    - "6"
+    - "7 or more"
+  aliases:
+    "No children": "0"
+    "1 child": "1"
+    "2 children": "2"
+    "3 children": "3"
+    "4 children": "4"
+    "5 children": "5"
+    "6 children": "6"
+    "25.- 7 or more children": "7 or more"
+    "8": "7 or more"
+    "9": "7 or more"
+    "10": "7 or more"
+    "12": "7 or more"
+    "15": "7 or more"
+
+urban_rural:
+  prompt: Which best describes where you live?
+  levels:
+    - Urban
+    - Suburban
+    - Rural
+    - A big city
+    - The suburbs or outskirts of a big city
+    - A town or a small city
+    - A country village
+    - A farm or home in the country
+  aliases:
+    "1. A big city": A big city
+    "1. A big city; SR: Paramaribo": A big city
+    "1. A big city; ZA: Urban, Formal": A big city
+    "2. The suburbs or outskirts of a big city": The suburbs or outskirts of a big city
+    "2. The suburbs or outskirts of a big city; SR: The suburbs or outskirts of  Paramaribo": The suburbs or outskirts of a big city
+    "2. The suburbs or outskirts of a big city; ZA: Urban, Informal": The suburbs or outskirts of a big city
+    "3. A town or a small city": A town or a small city
+    "4. A country village": A country village
+    "4. A country village, SR: Rural, not Interior": A country village
+    "4. A country village; ZA: Trad. Auth Areas": A country village
+    "5. A farm or home in the country": A farm or home in the country
+    "5. A farm or home in the country; ZA: Farms": A farm or home in the country
+    "5. A farm or home in the country; SR: Interior (Amazon forest)": A farm or home in the country
+  missing:
+    - "I don't know"
+
+voted_last_election:
+  prompt: Did you vote in the last general election?
+  levels:
+    - "Yes"
+    - "No"
+    - Not eligible to vote
+    - Not registered to vote
+    - Too young to vote
+  aliases:
+    "1. Yes": "Yes"
+    "I voted": "Yes"
+    "2. No": "No"
+    "No, NZ: incl. was not eligible": "No"
+    "No (NZ: includes not eligible)": "No"
+    "2. No; TR: incl. not eligible to vote": "No"
+    "I did not vote": "No"
+    "-4. Not eligible to vote in last election": Not eligible to vote
+    "-4. NAP, not eligible to vote in last election": Not eligible to vote
+    "0. NAP, not eligible to vote at last election; NAV (GB, ZA)": Not eligible to vote
+    "NAP, not eligible to vote at last election; NAV (GB)": Not eligible to vote
+    "NAP, not eligible to vote at last election;NAV(GB)": Not eligible to vote
+    "I was not registered to vote": Not registered to vote
+    "I was too young to vote": Too young to vote
+  missing:
+    - "-9. No answer"
+    - "-9. No answer; ZA: No answer/ Refused"
+    - "-9. No answer; DE, NZ: NA, Don't know/ Can't remember"
+    - "-9. No answer; PL: No answer +  Don't remember"
+    - No answer
+    - "9. No answer"
+
+union_member:
+  prompt: Labor union membership
+  levels:
+    - Member
+    - Active member
+    - Inactive member
+    - Not a member
+  aliases:
+    "1. Yes, currently; US: Yes": Member
+    "1. Yes, currently; US: Yes, belong": Member
+    "Yes, currently": Member
+    "Yes, currently; US: Yes, belong": Member
+    "3. No, never; US: No": Not a member
+    "3. No, never, US: No": Not a member
+    "3. No, never; US: No, don't belong": Not a member
+    "No, never": Not a member
+    "No, never; US: No, don't belong": Not a member
+  missing:
+    - "-1. Not available (US)"
+    - "-9. No answer"
+    - "-9. No answer; NL: No answer/ Don't know"
+    - "-9. No answer; BG, GB: Can't choose; VE: No answer, Don't know"
+    - No answer
+    - "9. No answer"
+
+residence_type:
+  prompt: What type of residence do you live in?
+  levels:
+    - Private home
+    - Single family home
+    - Apartment
+    - Townhouse
+    - Condominium
+    - Mobile home
+    - Other
+  aliases:
+    "Something else": Other
+
+citizen:
+  prompt: Are you a citizen of this country?
+  levels:
+    - "Yes"
+    - "No"
+  aliases:
+    "Yes, I am a citizen of this country": "Yes"
+    "Not, I am not a citizen of this country": "No"
+
+employer_sector:
+  prompt: Sector of employment
+  levels:
+    - Public employer
+    - Private employer
+    - Government or public institution
+    - Private business or industry
+    - Private non-profit organization
+  aliases:
+    "1. Public employer": Public employer
+    "2. Private employer": Private employer
+  missing:
+    - "-4. NAP (Code 3 in WORK)"
+    - "-4. NAP (code 3 in WORK)"
+    - "0. NAP (Code 3 in WORK)"
+    - "NAP (Code 3 in WORK)"
+    - "NAP (Code 3 in WORK; NZ: Code 2-9 MAINSTAT)"
+    - "Don't know"
+    - "-8. Don't know"
+    - "-8. Don't know; NO: Other"
+    - "8. Don't know; GB: DK incl. other type of organisation"
+    - "Don't know, GB: DK incl. other type of organ"
+    - "-9. No answer"
+    - "-9. No answer; BG: Refused"
+    - No answer
+    - "No answer; EE: Other"
+    - "9. No answer; GE: Refused"
+
+spouse_education:
+  prompt: Spouse or partner's education
+  levels:
+    - No formal education, incomplete primary
+    - Early childhood or no education
+    - Primary education
+    - Lower secondary education
+    - Upper secondary education
+    - Post-secondary non-tertiary education
+    - Short-cycle tertiary education
+    - Bachelor's degree
+    - Master's degree
+    - Doctoral degree
+    - PhD, post-tertiary specialization
+  aliases:
+    "0. No (formal) education, incomplete primary": No formal education, incomplete primary
+    "Early childhood education (ISCED 0) / no education": Early childhood or no education
+    "1. Primary education": Primary education
+    "2. Lower secondary": Lower secondary education
+    "Lower secondary education (ISCED 2)": Lower secondary education
+    "3. Upper secondary": Upper secondary education
+    "Upper secondary education (ISCED 3)": Upper secondary education
+    "Post-secondary non-tertiary education (ISCED 4)": Post-secondary non-tertiary education
+    "5. Short-cycle tertiary": Short-cycle tertiary education
+    "Short-cycle tertiary education (ISCED 5)": Short-cycle tertiary education
+    "6. Lower level tertiary, BA": Bachelor's degree
+    "Bachelor or equivalent (ISCED 6)": Bachelor's degree
+    "7. Upper level tertiary, MA": Master's degree
+    "Master or equivalent (ISCED 7)": Master's degree
+    "Doctoral or equivalent (ISCED 8)": Doctoral degree
+    "8. PhD, Post tertiary specialization": PhD, post-tertiary specialization
+  missing:
+    - "-4. NAP (c. 3,-7 PARTLIV; IT, RU: c. 2,3,-7 PARTLIV; AT: c. 3-6 MARITAL); NO: sep. instruction 'If no partner, skip question"
+    - "-9. No answer, not classifiable; AT, ES, TW: DK/NA; CH: DK/ not codable; PL: Hard to say/NA"
+
+spouse_employment:
+  prompt: Spouse or partner's employment status
+  levels:
+    - Full-time employed
+    - Part-time employed
+    - Self-employed
+    - In paid work
+    - Unemployed
+    - Unemployed and looking for work
+    - Retired
+    - Student
+    - Domestic work
+    - Housewife not otherwise employed
+    - Permanently sick or disabled
+    - Other
+  aliases:
+    "Full time (30 hours a week or more)": Full-time employed
+    "Part time (less than 30 hours a week)": Part-time employed
+    "Self employed": Self-employed
+    "1. In paid work": In paid work
+    "2. Unemployed and looking for a job": Unemployed and looking for work
+    "Unemployed and looking for a job": Unemployed and looking for work
+    "6. Retired": Retired
+    "Retired/pensioned": Retired
+    "3. In education": Student
+    "In education": Student
+    "7. Domestic work": Domestic work
+    "5. Permanently sick or disabled": Permanently sick or disabled
+    "9. Other": Other
+    "9. Other; AT, CZ: Other incl. on parental leave; CL: Incl. rentier": Other
+  missing:
+    - "-4. NAP (Code 3, -7 PARTLIV; US: C. 2 (if neither married nor cohabitating with partner), 3 in PARTLIV)"
+    - "-4. NAP (C. 3, -7 PARTLIV; AT: C. 3-6 MARITAL; US: C. 2 (if neither married nor cohabitating with partner),3 PARTLIV)"
+    - "-4. NAP (Code 3, -7 in PARTLIV); CN: (Code -4), TW: (Code -4,-7) in PARTLIV; US: C. 2,3 PARTLIV (2 if R is neither married n"
+    - "-4. NAP (C.3,-7 PARTLIV; IT: C.-4,3 SPWORK; BG, NZ, TW: C.-4,-7 PARTLIV; GB: C.3-6 MARITAL+no partner in HH; US:C. 2,3 PARTL"
+    - "NAP (C.3,7 in PARTLIV);TW (C.3,7 PARTLIV,C.3 SPWORK);GB: C.3-6 MARITAL+no partner in HH"
+    - "NAP (C.3,7 PARTLIV; GB:C.3-6 MARITAL+no partner in HH)"
+    - "-4. NAP (C. 3 or -7 in PARTLIV; US: C. 2 (if neither married nor cohabitating with partner), 3 in PARTLIV)"
+    - "0. NAP (C.3,7 PARTLIV; GB:C.3-6 MARITAL+no partn HH; GE,IT:C.0,3 SPWORK; NZ:C.0 PARTLIV; US:C.3 PARTLIV, partn not liv HH)"
+    - "-4. NAP (c.3,-7 PARTLIV; US: c. 2 (if neither married nor cohabitating with partner),3 PARTLIV; AT: code 3-6 in MARITAL)"
+    - "NAP (C.3, 7 in PARTLIV), GB: NAP (C.3-6 MARITAL+no partner i"
+    - "No answer; NZ: NA incl. no spouse/partner; TH: NA incl. doesn't do anything"
+    - "No answer;NZ: No answer incl. no spouse/partner"
+    - "NA; TH: incl. doesn't do anything, NZ: incl. no spouse/partn"
+    - "-9. No answer"
+    - "-9. No answer; NL: No answer/ Don't know"
+    - "-9. NA; BG: NA+Can't choose+Ref.; GB: Ref.; TH: NA incl. doing nothing; VE: NA, Don't know"
+    - "99. No answer; CZ, GE: Ref., DK; TH: NA incl. doing nothing"
+
+nutrition_label_use:
+  prompt: How often do you use the Nutrition Facts label when deciding to buy a food product?
+  levels:
+    - Never
+    - Rarely
+    - Sometimes
+    - Most of the time
+    - Always
+
+ancestry:
+  prompt: From what countries or part of the world did your ancestors come?
+  multi_select: true
+  levels:
+    - Africa
+    - Algeria
+    - American Indian
+    - American only
+    - Arabic
+    - Argentina
+    - Australia
+    - Austria
+    - Bangladesh
+    - Belgium
+    - Belize
+    - Bolivia
+    - Brazil
+    - Canada
+    - Chile
+    - China
+    - Colombia
+    - Costa Rica
+    - Cuba
+    - Czechoslovakia
+    - Democratic Republic of the Congo
+    - Denmark
+    - Dominican Republic
+    - Ecuador
+    - Egypt
+    - El Salvador
+    - England and Wales
+    - Ethiopia
+    - Finland
+    - France
+    - French Canada
+    - French Guiana
+    - Germany
+    - Greece
+    - Guatemala
+    - Guyana
+    - Haiti
+    - Honduras
+    - Hungary
+    - India
+    - Indonesia
+    - Iran
+    - Iraq
+    - Ireland
+    - Israel
+    - Italy
+    - Jamaica
+    - Japan
+    - Jordan
+    - Kenya
+    - Lithuania
+    - Mexico
+    - Netherlands
+    - New Zealand
+    - Nicaragua
+    - Nigeria
+    - Non-Spanish West Indies
+    - Norway
+    - Other
+    - Other African
+    - Other Asian
+    - Other Caribbean
+    - Other Central American
+    - Other European
+    - Other Middle Eastern
+    - Other North American
+    - Other Oceanian
+    - Other South American
+    - Other Spanish
+    - Pakistan
+    - Panama
+    - Papua New Guinea
+    - Peru
+    - Philippines
+    - Poland
+    - Portugal
+    - Puerto Rico
+    - Romania
+    - Russia
+    - Samoa
+    - Saudi Arabia
+    - Scotland
+    - South Africa
+    - South Korea
+    - Spain
+    - Sudan
+    - Suriname
+    - Sweden
+    - Switzerland
+    - Syria
+    - Tanzania
+    - Thailand
+    - Turkey
+    - Uganda
+    - United Arab Emirates
+    - Uruguay
+    - Venezuela
+    - Vietnam
+    - West Indies
+    - Yemen
+    - Yugoslavia
+  aliases:
+    "1. Africa": Africa
+    "1. Austria": Austria
+    "10. France": France
+    "10. Hungary": Hungary
+    "11. Germany": Germany
+    "11. Ireland": Ireland
+    "12. Greece": Greece
+    "12. Italy": Italy
+    "13. Hungary": Hungary
+    "13. Lithuania": Lithuania
+    "14. Ireland": Ireland
+    "14. Netherlands (Dutch / Holland)": Netherlands
+    "14. Netherlands (Dutch/ Holland)": Netherlands
+    "14. Netherlands (Dutch/Holland)": Netherlands
+    "15. Italy": Italy
+    "15. Norway": Norway
+    "16. Japan": Japan
+    "16. Poland": Poland
+    "17. Mexico": Mexico
+    "17. Portugal": Portugal
+    "18. Netherlands": Netherlands
+    "18. Romania": Romania
+    "19. Norway": Norway
+    "19. Russia (USSR)": Russia
+    "2. Austria": Austria
+    "2. Belgium": Belgium
+    "20. Philippines": Philippines
+    "20. Scotland": Scotland
+    "21. Poland": Poland
+    "21. Spain": Spain
+    "22. Puerto Rico": Puerto Rico
+    "22. Sweden": Sweden
+    "23. Russia": Russia
+    "23. Switzerland": Switzerland
+    "24. Scotland": Scotland
+    "24. Tuerkiye": Turkey
+    "24. Turkey": Turkey
+    "24. Turkiye": Turkey
+    "25. Spain": Spain
+    "25. Yugoslavia": Yugoslavia
+    "26. Europe, Country not specified": Other European
+    "26. Other European": Other European
+    "26. Sweden": Sweden
+    "27. Algeria": Algeria
+    "27. Switzerland": Switzerland
+    "28. Democratic Republic of the Congo": Democratic Republic of the Congo
+    "28. West Indies": West Indies
+    "29. Egypt": Egypt
+    "29. Other": Other
+    "3. Czechoslovakia": Czechoslovakia
+    "3. French Canada": French Canada
+    "30. American Indian": American Indian
+    "30. Ethiopia": Ethiopia
+    "31. India": India
+    "31. Kenya": Kenya
+    "32. Nigeria": Nigeria
+    "32. Portugal": Portugal
+    "33. Lithuania": Lithuania
+    "33. South Africa": South Africa
+    "34. Sudan": Sudan
+    "34. Yugoslavia": Yugoslavia
+    "35. Romania": Romania
+    "35. Tanzania": Tanzania
+    "36. Belgium": Belgium
+    "36. Uganda": Uganda
+    "37. Africa, Country not specified": Other African
+    "37. Arabic": Arabic
+    "37. Other African": Other African
+    "38. Bangladesh": Bangladesh
+    "38. Other Spanish": Other Spanish
+    "39. China": China
+    "39. Non-Span Windies": Non-Spanish West Indies
+    "4. Denmark": Denmark
+    "4. Other Canada": Canada
+    "40. India": India
+    "40. Other Asian": Other Asian
+    "41. Indonesia": Indonesia
+    "41. Other European": Other European
+    "42. Japan": Japan
+    "43. Pakistan": Pakistan
+    "44. Philippines": Philippines
+    "45. South Korea": South Korea
+    "46. Thailand": Thailand
+    "47. Vietnam": Vietnam
+    "48. Asia, Country not specified": Other Asian
+    "48. Other Asian": Other Asian
+    "49. Iran": Iran
+    "5. China": China
+    "5. England and Wales": England and Wales
+    "50. Iraq": Iraq
+    "51. Israel": Israel
+    "52. Jordan": Jordan
+    "53. Saudi Arabia": Saudi Arabia
+    "54. Syria": Syria
+    "55. United Arab Emirates": United Arab Emirates
+    "56. Yemen": Yemen
+    "57. Middle East, Country not specified": Other Middle Eastern
+    "57. Other Middle Eastern": Other Middle Eastern
+    "58. Argentina": Argentina
+    "59. Bolivia": Bolivia
+    "6. Czechoslovakia": Czechoslovakia
+    "6. Finland": Finland
+    "60. Brazil": Brazil
+    "61. Chile": Chile
+    "62. Colombia": Colombia
+    "63. Ecuador": Ecuador
+    "64.  French Guiana": French Guiana
+    "64. French Guiana": French Guiana
+    "65. Guyana": Guyana
+    "67. Peru": Peru
+    "68. Suriname": Suriname
+    "69. Uruguay": Uruguay
+    "7. Denmark": Denmark
+    "7. France": France
+    "70. Venezuela": Venezuela
+    "71. Other South American": Other South American
+    "71. South America, Country Not Specified": Other South American
+    "72. Belize": Belize
+    "73. Costa Rica": Costa Rica
+    "74. El Salvador": El Salvador
+    "75. Guatemala": Guatemala
+    "76. Honduras": Honduras
+    "77. Mexico": Mexico
+    "78. Nicaragua": Nicaragua
+    "79. Panama": Panama
+    "8. England & Wales": England and Wales
+    "8. Germany": Germany
+    "80. Central America, Country not specified": Other Central American
+    "80. Other Central American": Other Central American
+    "81. American Indian": American Indian
+    "82. Canada": Canada
+    "83. Canada (French)": French Canada
+    "84. Puerto Rico": Puerto Rico
+    "85. North America, Country not specified": Other North American
+    "85. Other North American": Other North American
+    "86. Cuba": Cuba
+    "87. Haiti": Haiti
+    "88. Dominican Republic": Dominican Republic
+    "89. Jamaica": Jamaica
+    "9. Finland": Finland
+    "9. Greece": Greece
+    "90. Caribbean, Country not specified": Other Caribbean
+    "90. Other Caribbean": Other Caribbean
+    "91. Australia": Australia
+    "92. Papua New Guinea": Papua New Guinea
+    "93. New Zealand": New Zealand
+    "94. Samoa": Samoa
+    "96. American Only": American only
+    "96. Oceania, Country not specified": Other Oceanian
+    "96. Other Oceanean": Other Oceanian
+    "American Only": American only
+    "England & Wales": England and Wales
+    "Non-Span Windies": Non-Spanish West Indies
+    "Other Canada": Canada
+  missing:
+    - "-1. Not available"
+    - "-7. Refused"
+    - "-8. Don't know"
+    - "-9. No answer"
+    - "-9. No answer incl. no second mention"
+    - "98. Don't know"
+    - "99. No answer"
+    - "99. No answer, no second country"
+    - "Don't know"
+    - "No answer"
+    - "No answer, no second country"
+    - "Refused"
+
+personal_income:
+  prompt: Personal income
+  levels:
+    - "No income"
+    - "Less than $1,000"
+    - "$1,000-$2,999"
+    - "$3,000-$3,999"
+    - "$4,000-$4,999"
+    - "$5,000-$5,999"
+    - "$6,000-$6,999"
+    - "$7,000-$7,999"
+    - "$8,000-$9,999"
+    - "$10,000-$12,499"
+    - "$12,500-$14,999"
+    - "$15,000-$17,499"
+    - "$17,500-$19,999"
+    - "$20,000-$22,499"
+    - "$22,500-$24,999"
+    - "$25,000-$29,999"
+    - "$30,000-$34,999"
+    - "$35,000-$39,999"
+    - "$40,000-$49,999"
+    - "$50,000-$59,999"
+    - "$60,000-$74,999"
+    - "$75,000-$89,999"
+    - "$90,000-$109,999"
+    - "$110,000-$129,999"
+    - "$130,000-$149,999"
+    - "$150,000-$169,999"
+    - "$170,000 or more"
+  aliases:
+    "0. No income (earned from job last year)": "No income"
+    "1.000-2.999 USD": "$1,000-$2,999"
+    "10.000-12.499 USD": "$10,000-$12,499"
+    "100000. 90 000 - 109 999 USD": "$90,000-$109,999"
+    "100000. 90.000-109.999 USD": "$90,000-$109,999"
+    "110.000-129.999 USD": "$110,000-$129,999"
+    "11250. 10 000 - 12 499 USD": "$10,000-$12,499"
+    "11250. 10.000-12.499 USD": "$10,000-$12,499"
+    "12.500-14.999 USD": "$12,500-$14,999"
+    "120000. 110 000 - 129 999 USD": "$110,000-$129,999"
+    "120000. 110.000-129.999 USD": "$110,000-$129,999"
+    "130.000-149.999 USD": "$130,000-$149,999"
+    "13750. 12 500 - 14 999 USD": "$12,500-$14,999"
+    "13750. 12.500-14.999 USD": "$12,500-$14,999"
+    "140000. 130 000 - 149 999 USD": "$130,000-$149,999"
+    "140000. 130.000-149.999 USD": "$130,000-$149,999"
+    "15.000-17.499 USD": "$15,000-$17,499"
+    "150.000-169.999 USD": "$150,000-$169,999"
+    "160000. 150 000 - 169 999 USD": "$150,000-$169,999"
+    "160000. 150.000-169.999 USD": "$150,000-$169,999"
+    "16750. 15 000 - 17 499 USD": "$15,000-$17,499"
+    "16750. 15.000-17.499 USD": "$15,000-$17,499"
+    "17.500-19.999 USD": "$17,500-$19,999"
+    "170.000 USD or more per year": "$170,000 or more"
+    "170.000 USD or more per year, before taxes": "$170,000 or more"
+    "180000. 170 000 USD or more per year, before taxes": "$170,000 or more"
+    "180000. 170.000 USD or more last year, before taxes": "$170,000 or more"
+    "180000. 170.000 USD or more per year, before taxes": "$170,000 or more"
+    "18750. 17 500 - 19 999 USD": "$17,500-$19,999"
+    "18750. 17.500-19.999 USD": "$17,500-$19,999"
+    "20.000-22.499 USD": "$20,000-$22,499"
+    "2000. 1 000 - 2 999 USD": "$1,000-$2,999"
+    "2000. 1.000-2.999 USD": "$1,000-$2,999"
+    "21750. 20 000 - 22 499 USD": "$20,000-$22,499"
+    "21750. 20.000-22.499 USD": "$20,000-$22,499"
+    "22.500-24.999 USD": "$22,500-$24,999"
+    "23750. 22 500 - 24 999 USD": "$22,500-$24,999"
+    "23750. 22.500-24.999 USD": "$22,500-$24,999"
+    "25.000-29.999 USD": "$25,000-$29,999"
+    "27500. 25 000 - 29 999 USD": "$25,000-$29,999"
+    "27500. 25.000-29.999 USD": "$25,000-$29,999"
+    "3.000-3.999 USD": "$3,000-$3,999"
+    "30.000-34.999 USD": "$30,000-$34,999"
+    "32500. 30 000 - 34 999 USD": "$30,000-$34,999"
+    "32500. 30.000-34.999 USD": "$30,000-$34,999"
+    "35.000-39.999 USD": "$35,000-$39,999"
+    "3500. 3 000 - 3 999 USD": "$3,000-$3,999"
+    "3500. 3.000-3.999 USD": "$3,000-$3,999"
+    "37500. 35 000 - 39 999 USD": "$35,000-$39,999"
+    "37500. 35.000-39.999 USD": "$35,000-$39,999"
+    "4.000-4.999 USD": "$4,000-$4,999"
+    "40.000-49.999 USD": "$40,000-$49,999"
+    "4500. 4 000 - 4 999 USD": "$4,000-$4,999"
+    "4500. 4.000-4.999 USD": "$4,000-$4,999"
+    "45000. 40 000 - 49 999 USD": "$40,000-$49,999"
+    "45000. 40.000-49.999 USD": "$40,000-$49,999"
+    "5.000-5.999 USD": "$5,000-$5,999"
+    "50.000-59.999 USD": "$50,000-$59,999"
+    "500. Under 1 000 USD per year, before taxes": "Less than $1,000"
+    "500. Under 1.000 USD last year, before taxes": "Less than $1,000"
+    "500. Under 1.000 USD per year, before taxes": "Less than $1,000"
+    "5500. 5 000 - 5 999 USD": "$5,000-$5,999"
+    "5500. 5.000-5.999 USD": "$5,000-$5,999"
+    "55000. 50 000 - 59 999 USD": "$50,000-$59,999"
+    "55000. 50.000-59.999 USD": "$50,000-$59,999"
+    "6.000-6.999 USD": "$6,000-$6,999"
+    "60.000-74.999 USD": "$60,000-$74,999"
+    "6500. 6 000 - 6 999 USD": "$6,000-$6,999"
+    "6500. 6.000-6.999 USD": "$6,000-$6,999"
+    "67500. 60 000 - 74 999 USD": "$60,000-$74,999"
+    "67500. 60.000-74.999 USD": "$60,000-$74,999"
+    "7.000-7.999 USD": "$7,000-$7,999"
+    "75.000-89.999 USD": "$75,000-$89,999"
+    "7500. 7 000 - 7 999 USD": "$7,000-$7,999"
+    "7500. 7.000-7.999 USD": "$7,000-$7,999"
+    "8.000-9.999 USD": "$8,000-$9,999"
+    "82500. 75 000 - 89 999 USD": "$75,000-$89,999"
+    "82500. 75.000-89.999 USD": "$75,000-$89,999"
+    "90.000-109.999 USD": "$90,000-$109,999"
+    "9000. 8 000 - 9 999 USD": "$8,000-$9,999"
+    "9000. 8.000-9.999 USD": "$8,000-$9,999"
+    "No income, currently not working and never worked for as long as one year": "No income"
+    "Under 1.000 USD per year": "Less than $1,000"
+    "Under 1.000 USD per year, before taxes": "Less than $1,000"
+  missing:
+    - "-7. Refused"
+    - "-8. Don't know"
+    - "-9. No answer"
+    - "999997. Refused"
+    - "999998. Don't know"
+    - "Don't know"
+    - "Refused"
+
+occupation:
+  prompt: Occupation
+  levels:
+    - "Accountants"
+    - "Accounting and bookkeeping clerks"
+    - "Actors"
+    - "Administrative and executive secretaries"
+    - "Advertising and marketing professionals"
+    - "Advertising and public relations managers"
+    - "Agricultural and forestry production managers"
+    - "Agricultural and industrial machinery mechanics and repairers"
+    - "Agricultural technicians"
+    - "Air conditioning and refrigeration mechanics"
+    - "Air traffic controllers"
+    - "Aircraft engine mechanics and repairers"
+    - "Aircraft pilots and related associate professionals"
+    - "Ambulance workers"
+    - "Announcers on radio, television and other media"
+    - "Applications programmers"
+    - "Archivists and curators"
+    - "Armed forces occupations, other ranks"
+    - "Assemblers not elsewhere classified"
+    - "Audiologists and speech therapists"
+    - "Authors and related writers"
+    - "Bakers, pastry-cooks and confectionery makers"
+    - "Bank tellers and related clerks"
+    - "Bartenders"
+    - "Beauticians and related workers"
+    - "Biologists, botanists, zoologists and related professionals"
+    - "Bookmakers, croupiers and related gaming workers"
+    - "Bricklayers and related workers"
+    - "Broadcasting and audio-visual technicians"
+    - "Building and related electricians"
+    - "Building architects"
+    - "Building construction labourers"
+    - "Building frame and related trades workers not elsewhere classified"
+    - "Bus and tram drivers"
+    - "Business services agents not elsewhere classified"
+    - "Business services and administration managers not elsewhere classified"
+    - "Butchers, fishmongers and related food preparers"
+    - "Buyers"
+    - "Cabinet-makers and related workers"
+    - "Car, taxi and van drivers"
+    - "Carpenters and joiners"
+    - "Cartographers and surveyors"
+    - "Cashiers and ticket clerks"
+    - "Chefs"
+    - "Chemical and physical science technicians"
+    - "Chemical engineers"
+    - "Chemical processing plant controllers"
+    - "Chemists"
+    - "Child care workers"
+    - "Civil engineering labourers"
+    - "Civil engineering technicians"
+    - "Civil engineers"
+    - "Cleaners and helpers in offices, hotels and other establishments"
+    - "Cleaning and housekeeping supervisors in offices, hotels and other establishments"
+    - "Clearing and forwarding agents"
+    - "Clerical support workers not elsewhere classified"
+    - "Client information workers not elsewhere classified"
+    - "Coding, proof-reading and related clerks"
+    - "Commercial sales representatives"
+    - "Commissioned armed forces officers"
+    - "Computer network professionals"
+    - "Concrete placers, concrete finishers and related workers"
+    - "Conference and event planners"
+    - "Construction managers"
+    - "Construction supervisors"
+    - "Contact centre information clerks"
+    - "Contact centre salespersons"
+    - "Cooks"
+    - "Crane, hoist and related plant operators"
+    - "Creative and performing artists not elsewhere classified"
+    - "Credit and loans officers"
+    - "Crop farm labourers"
+    - "Dancers and choreographers"
+    - "Data entry clerks"
+    - "Database and network professionals not elsewhere classified"
+    - "Database designers and administrators"
+    - "Debt-collectors and related workers"
+    - "Dental assistants and therapists"
+    - "Dentists"
+    - "Dieticians and nutritionists"
+    - "Dispensing opticians"
+    - "Domestic cleaners and helpers"
+    - "Draughtspersons"
+    - "Early childhood educators"
+    - "Earthmoving and related plant operators"
+    - "Economists"
+    - "Education managers"
+    - "Electrical and electronic equipment assemblers"
+    - "Electrical and electronic trades workers"
+    - "Electrical engineers"
+    - "Electrical line installers and repairers"
+    - "Electrical mechanics and fitters"
+    - "Electronics engineers"
+    - "Electronics mechanics and servicers"
+    - "Elementary workers not elsewhere classified"
+    - "Engineering professionals not elsewhere classified"
+    - "Enquiry clerks"
+    - "Environmental and occupational health and hygiene professionals"
+    - "Environmental and occupational health inspectors and associates"
+    - "Environmental engineers"
+    - "Farming, forestry and fisheries advisers"
+    - "Fibre preparing, spinning and winding machine operators"
+    - "Field crop and vegetable growers"
+    - "Filing and copying clerks"
+    - "Film, stage and related directors and producers"
+    - "Finance managers"
+    - "Financial analysts"
+    - "Financial and investment advisers"
+    - "Fire-fighters"
+    - "Fitness and recreation instructors and program leaders"
+    - "Floor layers and tile setters"
+    - "Food and beverage tasters and graders"
+    - "Food and related products machine operators"
+    - "Food service counter attendants"
+    - "Forestry and related workers"
+    - "Forestry labourers"
+    - "Fumigators and other pest and weed controllers"
+    - "Garbage and recycling collectors"
+    - "Garden and horticultural labourers"
+    - "Gardeners, horticultural and nursery growers"
+    - "Garment and related pattern-makers and cutters"
+    - "General office clerks"
+    - "Geologists and geophysicists"
+    - "Glass and ceramics plant operators"
+    - "Glaziers"
+    - "Government licensing officials"
+    - "Government social benefits officials"
+    - "Government tax and excise officials"
+    - "Hairdressers"
+    - "Hand launderers and pressers"
+    - "Hand packers"
+    - "Handicraft workers in wood, basketry and related materials"
+    - "Health associate professionals not elsewhere classified"
+    - "Health care assistants"
+    - "Health professionals not elsewhere classified"
+    - "Health services managers"
+    - "Heavy truck and lorry drivers"
+    - "Home-based personal care workers"
+    - "Hotel managers"
+    - "Hotel receptionists"
+    - "Human resource managers"
+    - "Hunters and trappers"
+    - "Incinerator and water treatment plant operators"
+    - "Industrial and production engineers"
+    - "Information and communications technology installers and servicers"
+    - "Information and communications technology operations technicians"
+    - "Information and communications technology sales professionals"
+    - "Information and communications technology service managers"
+    - "Information and communications technology user support technicians"
+    - "Insulation workers"
+    - "Insurance representatives"
+    - "Interior designers and decorators"
+    - "Jewellery and precious-metal workers"
+    - "Journalists"
+    - "Judges"
+    - "Kitchen helpers"
+    - "Laundry machine operators"
+    - "Lawyers"
+    - "Legal and related associate professionals"
+    - "Legislators"
+    - "Librarians and related information professionals"
+    - "Library clerks"
+    - "Life science technicians (excluding medical)"
+    - "Lifting truck operators"
+    - "Locomotive engine drivers"
+    - "Locomotive engine drivers and related workers"
+    - "Mail carriers and sorting clerks"
+    - "Management and organization analysts"
+    - "Managing directors and chief executives"
+    - "Manufacturing labourers not elsewhere classified"
+    - "Manufacturing managers"
+    - "Manufacturing supervisors"
+    - "Mathematicians, actuaries and statisticians"
+    - "Mechanical engineering technicians"
+    - "Mechanical engineers"
+    - "Mechanical machinery assemblers"
+    - "Medical and dental prosthetic technicians"
+    - "Medical and pathology laboratory technicians"
+    - "Medical and pharmaceutical technicians"
+    - "Medical assistants"
+    - "Medical imaging and therapeutic equipment technicians"
+    - "Medical records and health information technicians"
+    - "Medical secretaries"
+    - "Messengers, package deliverers and luggage porters"
+    - "Metal finishing, plating and coating machine operators"
+    - "Metal moulders and coremakers"
+    - "Metal polishers, wheel grinders and tool sharpeners"
+    - "Metal processing plant operators"
+    - "Metal working machine tool setters and operators"
+    - "Meteorologists"
+    - "Meter readers and vending-machine collectors"
+    - "Midwifery professionals"
+    - "Mineral and stone processing plant operators"
+    - "Miners and quarriers"
+    - "Mining and metallurgical technicians"
+    - "Mining engineers, metallurgists and related professionals"
+    - "Motor vehicle mechanics and repairers"
+    - "Motorcycle drivers"
+    - "Musicians, singers and composers"
+    - "Non-commissioned armed forces officers"
+    - "Nursing associate professionals"
+    - "Nursing professionals"
+    - "Odd job persons"
+    - "Office supervisors"
+    - "Optometrists and ophthalmic opticians"
+    - "Other artistic and cultural associate professionals"
+    - "Other cleaning workers"
+    - "Packing, bottling and labelling machine operators"
+    - "Painters and related workers"
+    - "Paramedical practitioners"
+    - "Payroll clerks"
+    - "Personal care workers in health services not elsewhere classified"
+    - "Personal service workers"
+    - "Personal services workers not elsewhere classified"
+    - "Personnel and careers professionals"
+    - "Personnel clerks"
+    - "Pet groomers and animal care workers"
+    - "Petroleum and natural gas refining plant operators"
+    - "Pharmacists"
+    - "Photographers"
+    - "Photographic products machine operators"
+    - "Physical and earth science professionals"
+    - "Physicists and astronomers"
+    - "Physiotherapists"
+    - "Physiotherapy technicians and assistants"
+    - "Plasterers"
+    - "Plumbers and pipe fitters"
+    - "Police inspectors and detectives"
+    - "Police officers"
+    - "Power production plant operators"
+    - "Pre-press technicians"
+    - "Precision-instrument makers and repairers"
+    - "Primary school teachers"
+    - "Print finishing and binding workers"
+    - "Printers"
+    - "Prison guards"
+    - "Process control technicians"
+    - "Product graders and testers (excluding foods and beverages)"
+    - "Production clerks"
+    - "Protective services workers not elsewhere classified"
+    - "Psychologists"
+    - "Public relations professionals"
+    - "Pulp and papermaking plant operators"
+    - "Railway brake, signal and switch operators"
+    - "Real estate agents and property managers"
+    - "Receptionists (general)"
+    - "Refuse workers and other elementary workers"
+    - "Religious associate professionals"
+    - "Religious professionals"
+    - "Research and development managers"
+    - "Restaurant managers"
+    - "Roofers"
+    - "Rubber products machine operators"
+    - "Sales and marketing managers"
+    - "Sales demonstrators"
+    - "Sales workers"
+    - "Sales workers not elsewhere classified"
+    - "Science and engineering associate professionals"
+    - "Secondary education teachers"
+    - "Securities and finance dealers and brokers"
+    - "Security guards"
+    - "Senior government officials"
+    - "Service station attendants"
+    - "Sewing machine operators"
+    - "Sewing, embroidery and related workers"
+    - "Sheet-metal workers"
+    - "Ships' deck crews and related workers"
+    - "Ships' deck officers and pilots"
+    - "Ships' engineers"
+    - "Shoemakers and related workers"
+    - "Shoemaking and related machine operators"
+    - "Shop sales assistants"
+    - "Shop supervisors"
+    - "Shotfirers and blasters"
+    - "Sign writers, decorative painters, engravers and etchers"
+    - "Social welfare managers"
+    - "Social work and counselling professionals"
+    - "Social work associate professionals"
+    - "Sociologists, anthropologists and related professionals"
+    - "Software developers"
+    - "Special needs teachers"
+    - "Specialist medical practitioners"
+    - "Sports coaches, instructors and officials"
+    - "Sports, recreation and cultural centre managers"
+    - "Stationary plant and machine operators"
+    - "Statistical, finance and insurance clerks"
+    - "Statistical, mathematical and related associate professionals"
+    - "Steam engine and boiler operators"
+    - "Stock clerks"
+    - "Structural-metal preparers and erectors"
+    - "Supply, distribution and related managers"
+    - "Survey and market research interviewers"
+    - "Systems administrators"
+    - "Systems analysts"
+    - "Teachers' aides"
+    - "Teaching professionals"
+    - "Teaching professionals not elsewhere classified"
+    - "Telephone switchboard operators"
+    - "Textile, fur and leather products machine operators not elsewhere classified"
+    - "Toolmakers and related workers"
+    - "Town and traffic planners"
+    - "Training and staff development professionals"
+    - "Translators, interpreters and other linguists"
+    - "Transport and storage labourers"
+    - "Travel attendants and travel stewards"
+    - "Travel consultants and clerks"
+    - "Travel guides"
+    - "Typists and word processing operators"
+    - "Undertakers and embalmers"
+    - "University and higher education teachers"
+    - "Valuers and loss assessors"
+    - "Vehicle cleaners"
+    - "Veterinarians"
+    - "Veterinary technicians and assistants"
+    - "Visual artists"
+    - "Waiters"
+    - "Weaving and knitting machine operators"
+    - "Web and multimedia developers"
+    - "Welders and flamecutters"
+    - "Well drillers and borers and related workers"
+    - "Wood processing plant operators"
+    - "Woodworking-machine tool setters and operators"
+    - "Professional and technical (for example: doctor, teacher, engineer, artist, accountant, nurse)"
+    - "Higher administrative (for example: banker, executive in big business, high government official, union official)"
+    - "Clerical (for example: secretary, clerk, office manager, civil servant, bookkeeper)"
+    - "Sales (for example: sales manager, shop owner, shop assistant, insurance agent, buyer)"
+    - "Service (for example: restaurant owner, police officer, waitress, barber, caretaker)"
+    - "Skilled worker (for example: foreman, motor mechanic, printer, seamstress, tool and die maker, electrician)"
+    - "Semi-skilled worker (for example: bricklayer, bus driver, cannery worker, carpenter, sheet metal worker, baker)"
+    - "Unskilled worker (for example: labourer, porter, unskilled factory worker, cleaner)"
+    - "Farm worker (for example: farm labourer, tractor driver)"
+    - "Farm owner, farm manager"
+    - "Never had a job"
+    - "Other"
+  aliases:
+    "1111. Legislators": "Legislators"
+    "1112. Senior government officials": "Senior government officials"
+    "1120. Managing directors and chief executives": "Managing directors and chief executives"
+    "1211. Finance managers": "Finance managers"
+    "1212. Human resource managers": "Human resource managers"
+    "1219. Business services and administration managers not elsewhere classified": "Business services and administration managers not elsewhere classified"
+    "1221. Sales and marketing managers": "Sales and marketing managers"
+    "1222. Advertising and public relations managers": "Advertising and public relations managers"
+    "1223. Research and development managers": "Research and development managers"
+    "1311. Agricultural and forestry production managers": "Agricultural and forestry production managers"
+    "1321. Manufacturing managers": "Manufacturing managers"
+    "1323. Construction managers": "Construction managers"
+    "1324. Supply, distribution and related managers": "Supply, distribution and related managers"
+    "1330. Information and communications technology service managers": "Information and communications technology service managers"
+    "1342. Health services managers": "Health services managers"
+    "1344. Social welfare managers": "Social welfare managers"
+    "1345. Education managers": "Education managers"
+    "1411. Hotel managers": "Hotel managers"
+    "1412. Restaurant managers": "Restaurant managers"
+    "1431. Sports, recreation and cultural centre managers": "Sports, recreation and cultural centre managers"
+    "2110. Physical and earth science professionals": "Physical and earth science professionals"
+    "2111. Physicists and astronomers": "Physicists and astronomers"
+    "2112. Meteorologists": "Meteorologists"
+    "2113. Chemists": "Chemists"
+    "2114. Geologists and geophysicists": "Geologists and geophysicists"
+    "2120. Mathematicians, actuaries and statisticians": "Mathematicians, actuaries and statisticians"
+    "2131. Biologists, botanists, zoologists and related professionals": "Biologists, botanists, zoologists and related professionals"
+    "2132. Farming, forestry and fisheries advisers": "Farming, forestry and fisheries advisers"
+    "2141. Industrial and production engineers": "Industrial and production engineers"
+    "2142. Civil engineers": "Civil engineers"
+    "2143. Environmental engineers": "Environmental engineers"
+    "2144. Mechanical engineers": "Mechanical engineers"
+    "2145. Chemical engineers": "Chemical engineers"
+    "2146. Mining engineers, metallurgists and related professionals": "Mining engineers, metallurgists and related professionals"
+    "2149. Engineering professionals not elsewhere classified": "Engineering professionals not elsewhere classified"
+    "2151. Electrical engineers": "Electrical engineers"
+    "2152. Electronics engineers": "Electronics engineers"
+    "2161. Building architects": "Building architects"
+    "2164. Town and traffic planners": "Town and traffic planners"
+    "2165. Cartographers and surveyors": "Cartographers and surveyors"
+    "2212. Specialist medical practitioners": "Specialist medical practitioners"
+    "2221. Nursing professionals": "Nursing professionals"
+    "2222. Midwifery professionals": "Midwifery professionals"
+    "2240. Paramedical practitioners": "Paramedical practitioners"
+    "2250. Veterinarians": "Veterinarians"
+    "2261. Dentists": "Dentists"
+    "2262. Pharmacists": "Pharmacists"
+    "2263. Environmental and occupational health and hygiene professionals": "Environmental and occupational health and hygiene professionals"
+    "2264. Physiotherapists": "Physiotherapists"
+    "2265. Dieticians and nutritionists": "Dieticians and nutritionists"
+    "2266. Audiologists and speech therapists": "Audiologists and speech therapists"
+    "2267. Optometrists and ophthalmic opticians": "Optometrists and ophthalmic opticians"
+    "2269. Health professionals not elsewhere classified": "Health professionals not elsewhere classified"
+    "2300. Teaching professionals": "Teaching professionals"
+    "2310. University and higher education teachers": "University and higher education teachers"
+    "2330. Secondary education teachers": "Secondary education teachers"
+    "2341. Primary school teachers": "Primary school teachers"
+    "2342. Early childhood educators": "Early childhood educators"
+    "2352. Special needs teachers": "Special needs teachers"
+    "2359. Teaching professionals not elsewhere classified": "Teaching professionals not elsewhere classified"
+    "2411. Accountants": "Accountants"
+    "2412. Financial and investment advisers": "Financial and investment advisers"
+    "2413. Financial analysts": "Financial analysts"
+    "2421. Management and organization analysts": "Management and organization analysts"
+    "2423. Personnel and careers professionals": "Personnel and careers professionals"
+    "2424. Training and staff development professionals": "Training and staff development professionals"
+    "2431. Advertising and marketing professionals": "Advertising and marketing professionals"
+    "2432. Public relations professionals": "Public relations professionals"
+    "2434. Information and communications technology sales professionals": "Information and communications technology sales professionals"
+    "2511. Systems analysts": "Systems analysts"
+    "2512. Software developers": "Software developers"
+    "2513. Web and multimedia developers": "Web and multimedia developers"
+    "2514. Applications programmers": "Applications programmers"
+    "2521. Database designers and administrators": "Database designers and administrators"
+    "2522. Systems administrators": "Systems administrators"
+    "2523. Computer network professionals": "Computer network professionals"
+    "2529. Database and network professionals not elsewhere classified": "Database and network professionals not elsewhere classified"
+    "2611. Lawyers": "Lawyers"
+    "2612. Judges": "Judges"
+    "2621. Archivists and curators": "Archivists and curators"
+    "2622. Librarians and related information professionals": "Librarians and related information professionals"
+    "2632. Sociologists, anthropologists and related professionals": "Sociologists, anthropologists and related professionals"
+    "2634. Psychologists": "Psychologists"
+    "2635. Social work and counselling professionals": "Social work and counselling professionals"
+    "2636. Religious professionals": "Religious professionals"
+    "2641. Authors and related writers": "Authors and related writers"
+    "2642. Journalists": "Journalists"
+    "2643. Translators, interpreters and other linguists": "Translators, interpreters and other linguists"
+    "2651. Visual artists": "Visual artists"
+    "2652. Musicians, singers and composers": "Musicians, singers and composers"
+    "2654. Film, stage and related directors and producers": "Film, stage and related directors and producers"
+    "2655. Actors": "Actors"
+    "2656. Announcers on radio, television and other media": "Announcers on radio, television and other media"
+    "2659. Creative and performing artists not elsewhere classified": "Creative and performing artists not elsewhere classified"
+    "310. Armed forces occupations, other ranks": "Armed forces occupations, other ranks"
+    "3100. Science and engineering associate professionals": "Science and engineering associate professionals"
+    "3111. Chemical and physical science technicians": "Chemical and physical science technicians"
+    "3112. Civil engineering technicians": "Civil engineering technicians"
+    "3115. Mechanical engineering technicians": "Mechanical engineering technicians"
+    "3117. Mining and metallurgical technicians": "Mining and metallurgical technicians"
+    "3118. Draughtspersons": "Draughtspersons"
+    "3122. Manufacturing supervisors": "Manufacturing supervisors"
+    "3123. Construction supervisors": "Construction supervisors"
+    "3130. Process control technicians": "Process control technicians"
+    "3131. Power production plant operators": "Power production plant operators"
+    "3132. Incinerator and water treatment plant operators": "Incinerator and water treatment plant operators"
+    "3133. Chemical processing plant controllers": "Chemical processing plant controllers"
+    "3134. Petroleum and natural gas refining plant operators": "Petroleum and natural gas refining plant operators"
+    "3141. Life science technicians (excluding medical)": "Life science technicians (excluding medical)"
+    "3151. Ships' engineers": "Ships' engineers"
+    "3153. Aircraft pilots and related associate professionals": "Aircraft pilots and related associate professionals"
+    "3154. Air traffic controllers": "Air traffic controllers"
+    "3210. Medical and pharmaceutical technicians": "Medical and pharmaceutical technicians"
+    "3211. Medical imaging and therapeutic equipment technicians": "Medical imaging and therapeutic equipment technicians"
+    "3212. Medical and pathology laboratory technicians": "Medical and pathology laboratory technicians"
+    "3214. Medical and dental prosthetic technicians": "Medical and dental prosthetic technicians"
+    "3221. Nursing associate professionals": "Nursing associate professionals"
+    "3240. Veterinary technicians and assistants": "Veterinary technicians and assistants"
+    "3251. Dental assistants and therapists": "Dental assistants and therapists"
+    "3252. Medical records and health information technicians": "Medical records and health information technicians"
+    "3254. Dispensing opticians": "Dispensing opticians"
+    "3255. Physiotherapy technicians and assistants": "Physiotherapy technicians and assistants"
+    "3256. Medical assistants": "Medical assistants"
+    "3257. Environmental and occupational health inspectors and associates": "Environmental and occupational health inspectors and associates"
+    "3258. Ambulance workers": "Ambulance workers"
+    "3259. Health associate professionals not elsewhere classified": "Health associate professionals not elsewhere classified"
+    "3311. Securities and finance dealers and brokers": "Securities and finance dealers and brokers"
+    "3312. Credit and loans officers": "Credit and loans officers"
+    "3314. Statistical, mathematical and related associate professionals": "Statistical, mathematical and related associate professionals"
+    "3315. Valuers and loss assessors": "Valuers and loss assessors"
+    "3321. Insurance representatives": "Insurance representatives"
+    "3322. Commercial sales representatives": "Commercial sales representatives"
+    "3323. Buyers": "Buyers"
+    "3331. Clearing and forwarding agents": "Clearing and forwarding agents"
+    "3332. Conference and event planners": "Conference and event planners"
+    "3334. Real estate agents and property managers": "Real estate agents and property managers"
+    "3339. Business services agents not elsewhere classified": "Business services agents not elsewhere classified"
+    "3341. Office supervisors": "Office supervisors"
+    "3343. Administrative and executive secretaries": "Administrative and executive secretaries"
+    "3344. Medical secretaries": "Medical secretaries"
+    "3352. Government tax and excise officials": "Government tax and excise officials"
+    "3353. Government social benefits officials": "Government social benefits officials"
+    "3354. Government licensing officials": "Government licensing officials"
+    "3355. Police inspectors and detectives": "Police inspectors and detectives"
+    "3411. Legal and related associate professionals": "Legal and related associate professionals"
+    "3412. Social work associate professionals": "Social work associate professionals"
+    "3413. Religious associate professionals": "Religious associate professionals"
+    "3422. Sports coaches, instructors and officials": "Sports coaches, instructors and officials"
+    "3423. Fitness and recreation instructors and program leaders": "Fitness and recreation instructors and program leaders"
+    "3431. Photographers": "Photographers"
+    "3432. Interior designers and decorators": "Interior designers and decorators"
+    "3434. Chefs": "Chefs"
+    "3435. Other artistic and cultural associate professionals": "Other artistic and cultural associate professionals"
+    "3511. Information and communications technology operations technicians": "Information and communications technology operations technicians"
+    "3512. Information and communications technology user support technicians": "Information and communications technology user support technicians"
+    "3521. Broadcasting and audio-visual technicians": "Broadcasting and audio-visual technicians"
+    "4110. General office clerks": "General office clerks"
+    "4131. Typists and word processing operators": "Typists and word processing operators"
+    "4132. Data entry clerks": "Data entry clerks"
+    "4211. Bank tellers and related clerks": "Bank tellers and related clerks"
+    "4212. Bookmakers, croupiers and related gaming workers": "Bookmakers, croupiers and related gaming workers"
+    "4214. Debt-collectors and related workers": "Debt-collectors and related workers"
+    "4221. Travel consultants and clerks": "Travel consultants and clerks"
+    "4222. Contact centre information clerks": "Contact centre information clerks"
+    "4223. Telephone switchboard operators": "Telephone switchboard operators"
+    "4224. Hotel receptionists": "Hotel receptionists"
+    "4225. Enquiry clerks": "Enquiry clerks"
+    "4226. Receptionists (general)": "Receptionists (general)"
+    "4227. Survey and market research interviewers": "Survey and market research interviewers"
+    "4229. Client information workers not elsewhere classified": "Client information workers not elsewhere classified"
+    "4311. Accounting and bookkeeping clerks": "Accounting and bookkeeping clerks"
+    "4312. Statistical, finance and insurance clerks": "Statistical, finance and insurance clerks"
+    "4313. Payroll clerks": "Payroll clerks"
+    "4321. Stock clerks": "Stock clerks"
+    "4322. Production clerks": "Production clerks"
+    "4411. Library clerks": "Library clerks"
+    "4412. Mail carriers and sorting clerks": "Mail carriers and sorting clerks"
+    "4413. Coding, proof-reading and related clerks": "Coding, proof-reading and related clerks"
+    "4415. Filing and copying clerks": "Filing and copying clerks"
+    "4416. Personnel clerks": "Personnel clerks"
+    "4419. Clerical support workers not elsewhere classified": "Clerical support workers not elsewhere classified"
+    "5100. Personal service workers": "Personal service workers"
+    "5111. Travel attendants and travel stewards": "Travel attendants and travel stewards"
+    "5113. Travel guides": "Travel guides"
+    "5120. Cooks": "Cooks"
+    "5131. Waiters": "Waiters"
+    "5132. Bartenders": "Bartenders"
+    "5141. Hairdressers": "Hairdressers"
+    "5142. Beauticians and related workers": "Beauticians and related workers"
+    "5151. Cleaning and housekeeping supervisors in offices, hotels and other establishments": "Cleaning and housekeeping supervisors in offices, hotels and other establishments"
+    "5163. Undertakers and embalmers": "Undertakers and embalmers"
+    "5164. Pet groomers and animal care workers": "Pet groomers and animal care workers"
+    "5169. Personal services workers not elsewhere classified": "Personal services workers not elsewhere classified"
+    "5200. Sales workers": "Sales workers"
+    "5222. Shop supervisors": "Shop supervisors"
+    "5223. Shop sales assistants": "Shop sales assistants"
+    "5230. Cashiers and ticket clerks": "Cashiers and ticket clerks"
+    "5242. Sales demonstrators": "Sales demonstrators"
+    "5244. Contact centre salespersons": "Contact centre salespersons"
+    "5245. Service station attendants": "Service station attendants"
+    "5246. Food service counter attendants": "Food service counter attendants"
+    "5249. Sales workers not elsewhere classified": "Sales workers not elsewhere classified"
+    "5311. Child care workers": "Child care workers"
+    "5312. Teachers' aides": "Teachers' aides"
+    "5321. Health care assistants": "Health care assistants"
+    "5322. Home-based personal care workers": "Home-based personal care workers"
+    "5329. Personal care workers in health services not elsewhere classified": "Personal care workers in health services not elsewhere classified"
+    "5411. Fire-fighters": "Fire-fighters"
+    "5412. Police officers": "Police officers"
+    "5413. Prison guards": "Prison guards"
+    "5414. Security guards": "Security guards"
+    "5419. Protective services workers not elsewhere classified": "Protective services workers not elsewhere classified"
+    "6111. Field crop and vegetable growers": "Field crop and vegetable growers"
+    "6113. Gardeners, horticultural and nursery growers": "Gardeners, horticultural and nursery growers"
+    "6224. Hunters and trappers": "Hunters and trappers"
+    "7112. Bricklayers and related workers": "Bricklayers and related workers"
+    "7114. Concrete placers, concrete finishers and related workers": "Concrete placers, concrete finishers and related workers"
+    "7115. Carpenters and joiners": "Carpenters and joiners"
+    "7119. Building frame and related trades workers not elsewhere classified": "Building frame and related trades workers not elsewhere classified"
+    "7121. Roofers": "Roofers"
+    "7122. Floor layers and tile setters": "Floor layers and tile setters"
+    "7123. Plasterers": "Plasterers"
+    "7124. Insulation workers": "Insulation workers"
+    "7125. Glaziers": "Glaziers"
+    "7126. Plumbers and pipe fitters": "Plumbers and pipe fitters"
+    "7127. Air conditioning and refrigeration mechanics": "Air conditioning and refrigeration mechanics"
+    "7131. Painters and related workers": "Painters and related workers"
+    "7211. Metal moulders and coremakers": "Metal moulders and coremakers"
+    "7212. Welders and flamecutters": "Welders and flamecutters"
+    "7213. Sheet-metal workers": "Sheet-metal workers"
+    "7214. Structural-metal preparers and erectors": "Structural-metal preparers and erectors"
+    "7222. Toolmakers and related workers": "Toolmakers and related workers"
+    "7223. Metal working machine tool setters and operators": "Metal working machine tool setters and operators"
+    "7224. Metal polishers, wheel grinders and tool sharpeners": "Metal polishers, wheel grinders and tool sharpeners"
+    "7231. Motor vehicle mechanics and repairers": "Motor vehicle mechanics and repairers"
+    "7232. Aircraft engine mechanics and repairers": "Aircraft engine mechanics and repairers"
+    "7233. Agricultural and industrial machinery mechanics and repairers": "Agricultural and industrial machinery mechanics and repairers"
+    "7311. Precision-instrument makers and repairers": "Precision-instrument makers and repairers"
+    "7313. Jewellery and precious-metal workers": "Jewellery and precious-metal workers"
+    "7316. Sign writers, decorative painters, engravers and etchers": "Sign writers, decorative painters, engravers and etchers"
+    "7317. Handicraft workers in wood, basketry and related materials": "Handicraft workers in wood, basketry and related materials"
+    "7321. Pre-press technicians": "Pre-press technicians"
+    "7322. Printers": "Printers"
+    "7323. Print finishing and binding workers": "Print finishing and binding workers"
+    "7400. Electrical and electronic trades workers": "Electrical and electronic trades workers"
+    "7411. Building and related electricians": "Building and related electricians"
+    "7412. Electrical mechanics and fitters": "Electrical mechanics and fitters"
+    "7413. Electrical line installers and repairers": "Electrical line installers and repairers"
+    "7421. Electronics mechanics and servicers": "Electronics mechanics and servicers"
+    "7422. Information and communications technology installers and servicers": "Information and communications technology installers and servicers"
+    "7511. Butchers, fishmongers and related food preparers": "Butchers, fishmongers and related food preparers"
+    "7512. Bakers, pastry-cooks and confectionery makers": "Bakers, pastry-cooks and confectionery makers"
+    "7515. Food and beverage tasters and graders": "Food and beverage tasters and graders"
+    "7522. Cabinet-makers and related workers": "Cabinet-makers and related workers"
+    "7523. Woodworking-machine tool setters and operators": "Woodworking-machine tool setters and operators"
+    "7532. Garment and related pattern-makers and cutters": "Garment and related pattern-makers and cutters"
+    "7533. Sewing, embroidery and related workers": "Sewing, embroidery and related workers"
+    "7536. Shoemakers and related workers": "Shoemakers and related workers"
+    "7542. Shotfirers and blasters": "Shotfirers and blasters"
+    "7543. Product graders and testers (excluding foods and beverages)": "Product graders and testers (excluding foods and beverages)"
+    "7544. Fumigators and other pest and weed controllers": "Fumigators and other pest and weed controllers"
+    "8100. Stationary plant and machine operators": "Stationary plant and machine operators"
+    "8111. Miners and quarriers": "Miners and quarriers"
+    "8112. Mineral and stone processing plant operators": "Mineral and stone processing plant operators"
+    "8113. Well drillers and borers and related workers": "Well drillers and borers and related workers"
+    "8121. Metal processing plant operators": "Metal processing plant operators"
+    "8122. Metal finishing, plating and coating machine operators": "Metal finishing, plating and coating machine operators"
+    "8132. Photographic products machine operators": "Photographic products machine operators"
+    "8141. Rubber products machine operators": "Rubber products machine operators"
+    "8151. Fibre preparing, spinning and winding machine operators": "Fibre preparing, spinning and winding machine operators"
+    "8152. Weaving and knitting machine operators": "Weaving and knitting machine operators"
+    "8153. Sewing machine operators": "Sewing machine operators"
+    "8156. Shoemaking and related machine operators": "Shoemaking and related machine operators"
+    "8157. Laundry machine operators": "Laundry machine operators"
+    "8159. Textile, fur and leather products machine operators not elsewhere classified": "Textile, fur and leather products machine operators not elsewhere classified"
+    "8160. Food and related products machine operators": "Food and related products machine operators"
+    "8171. Pulp and papermaking plant operators": "Pulp and papermaking plant operators"
+    "8172. Wood processing plant operators": "Wood processing plant operators"
+    "8181. Glass and ceramics plant operators": "Glass and ceramics plant operators"
+    "8182. Steam engine and boiler operators": "Steam engine and boiler operators"
+    "8183. Packing, bottling and labelling machine operators": "Packing, bottling and labelling machine operators"
+    "8211. Mechanical machinery assemblers": "Mechanical machinery assemblers"
+    "8212. Electrical and electronic equipment assemblers": "Electrical and electronic equipment assemblers"
+    "8219. Assemblers not elsewhere classified": "Assemblers not elsewhere classified"
+    "8310. Locomotive engine drivers and related workers": "Locomotive engine drivers and related workers"
+    "8311. Locomotive engine drivers": "Locomotive engine drivers"
+    "8312. Railway brake, signal and switch operators": "Railway brake, signal and switch operators"
+    "8321. Motorcycle drivers": "Motorcycle drivers"
+    "8322. Car, taxi and van drivers": "Car, taxi and van drivers"
+    "8331. Bus and tram drivers": "Bus and tram drivers"
+    "8332. Heavy truck and lorry drivers": "Heavy truck and lorry drivers"
+    "8342. Earthmoving and related plant operators": "Earthmoving and related plant operators"
+    "8343. Crane, hoist and related plant operators": "Crane, hoist and related plant operators"
+    "8344. Lifting truck operators": "Lifting truck operators"
+    "8350. Ships' deck crews and related workers": "Ships' deck crews and related workers"
+    "9111. Domestic cleaners and helpers": "Domestic cleaners and helpers"
+    "9112. Cleaners and helpers in offices, hotels and other establishments": "Cleaners and helpers in offices, hotels and other establishments"
+    "9121. Hand launderers and pressers": "Hand launderers and pressers"
+    "9122. Vehicle cleaners": "Vehicle cleaners"
+    "9129. Other cleaning workers": "Other cleaning workers"
+    "9211. Crop farm labourers": "Crop farm labourers"
+    "9214. Garden and horticultural labourers": "Garden and horticultural labourers"
+    "9215. Forestry labourers": "Forestry labourers"
+    "9312. Civil engineering labourers": "Civil engineering labourers"
+    "9313. Building construction labourers": "Building construction labourers"
+    "9321. Hand packers": "Hand packers"
+    "9329. Manufacturing labourers not elsewhere classified": "Manufacturing labourers not elsewhere classified"
+    "9330. Transport and storage labourers": "Transport and storage labourers"
+    "9412. Kitchen helpers": "Kitchen helpers"
+    "9600. Refuse workers and other elementary workers": "Refuse workers and other elementary workers"
+    "9611. Garbage and recycling collectors": "Garbage and recycling collectors"
+    "9621. Messengers, package deliverers and luggage porters": "Messengers, package deliverers and luggage porters"
+    "9622. Odd job persons": "Odd job persons"
+    "9623. Meter readers and vending-machine collectors": "Meter readers and vending-machine collectors"
+    "9629. Elementary workers not elsewhere classified": "Elementary workers not elsewhere classified"
+    "Agricultural and industrial machinery mechanics and repairer": "Agricultural and industrial machinery mechanics and repairers"
+    "Business services and administration managers not elsewhere": "Business services and administration managers not elsewhere classified"
+    "Cleaners and helpers in offices, hotels and other establishm": "Cleaners and helpers in offices, hotels and other establishments"
+    "Cleaning and housekeeping supervisors in offices, hotels and": "Cleaning and housekeeping supervisors in offices, hotels and other establishments"
+    "Environmental and occupational health and hygiene profession": "Environmental and occupational health and hygiene professionals"
+    "Information and communications technology installers and ser": "Information and communications technology installers and servicers"
+    "Information and communications technology operations technic": "Information and communications technology operations technicians"
+    "Information and communications technology user support techn": "Information and communications technology user support technicians"
+    "Personal care workers in health services not elsewhere class": "Personal care workers in health services not elsewhere classified"
+    "Textile, fur and leather products machine operators not else": "Textile, fur and leather products machine operators not elsewhere classified"
+    "Clerical (for example: secretary, clerk, office manager, civil servant, bookkeeper": "Clerical (for example: secretary, clerk, office manager, civil servant, bookkeeper)"
+    "JP,KG,TJ: Other": "Other"
+  missing:
+    - "-4. NAP (Code 3 in WORK)"
+    - "-4. NAP (code 3 in WORK)"
+    - "-9. No answer"
+    - "-9. No answer; BG: Refused"
+    - "-9. No answer; NO: No answer, inadequately described"
+    - "0. NAP (Code 3 in WORK)"
+    - "9999. No answer; GE: Refused"
+    - "NAP (Code 3 in WORK)"
+    - "NAP (Code 3 in WORK; NZ:Code 2-9 MAINSTAT)"
+    - "No answer"
+
+town_size:
+  prompt: Town population size
+  levels:
+    - "20,000-50,000"
+    - "50,000-100,000"
+    - "100,000-500,000"
+    - "500,000 and more"
+  aliases: {}
+  missing: []
+
+immigrant_status:
+  prompt: Immigrant status
+  levels:
+    - "I am born in this country"
+    - "I am an immigrant to this country (born outside this country)"
+  aliases: {}
+  missing: []
+
+lives_with_parents:
+  prompt: Do you live with your parents?
+  levels:
+    - "No"
+    - "Yes, own parent(s)"
+    - "Yes, parent(s) in law"
+    - "Yes, both own parent(s) and parent(s) in law"
+  aliases: {}
+  missing: []
+
+home_language:
+  prompt: What language do you normally speak at home?
+  levels:
+    - English
+    - "Spanish; Castilian"
+    - "Standard Chinese; Mandarin; Putonghua; Guoyu"
+    - Vietnamese
+    - Japanese
+    - Other
+  aliases: {}
+  missing: []
+
+chief_wage_earner:
+  prompt: Are you the chief wage earner in your house?
+  levels:
+    - "Yes"
+    - "No"
+  aliases: {}
+  missing: []

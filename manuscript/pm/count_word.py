@@ -1,11 +1,11 @@
-"""Count words in manuscript.docx before the "Web Appendix" heading.
+"""Count words in manuscript-pm.docx before the "Appendix" heading.
 
-Marketing Science Frontiers limit: 6,000 words for all pages of the paper,
-including references, tables, graphs, and appendices; online appendices do
-not count. So everything (title, abstract, body, tables, references,
-footnotes) up to the "Web Appendix" heading is counted.
+Psychology & Marketing Research Article limit: less than 9,000 words total,
+including abstract, references, tables, and figures, excluding appendices and
+supporting information. Everything (title, abstract, keywords, body, tables,
+end-matter, references, footnotes) up to the "Appendix" heading is counted.
 
-Usage: python count_word.py [path/to/manuscript.docx] [--limit 6000]
+Usage: python count_word.py [path/to/manuscript-pm.docx] [--limit 9000]
 """
 
 import argparse
@@ -16,7 +16,7 @@ import docx
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 
-STOP_HEADING = "web appendix"
+STOP_HEADING = "appendix"
 WORD_RE = re.compile(r"\S+")
 
 
@@ -65,8 +65,8 @@ def footnote_texts(document):
 def main():
     here = Path(__file__).resolve().parent
     ap = argparse.ArgumentParser()
-    ap.add_argument("path", nargs="?", default=here / "manuscript.docx")
-    ap.add_argument("--limit", type=int, default=6000)
+    ap.add_argument("path", nargs="?", default=here / "manuscript-pm.docx")
+    ap.add_argument("--limit", type=int, default=9000)
     args = ap.parse_args()
 
     document = docx.Document(args.path)
@@ -90,14 +90,14 @@ def main():
         sections[current] = sections.get(current, 0) + words
 
     if not found_stop:
-        raise ValueError(f'No Heading 1 titled "Web Appendix" found in {args.path}')
+        raise ValueError(f'No Heading 1 titled "Appendix" found in {args.path}')
 
     total = sum(sections.values())
     width = max(len(s) for s in sections)
     for name, words in sections.items():
         print(f"{name:<{width}}  {words:>6,}")
     print("-" * (width + 8))
-    print(f"{'Total before Web Appendix':<{width}}  {total:>6,}")
+    print(f"{'Total before Appendix':<{width}}  {total:>6,}")
     print(f"{'Limit':<{width}}  {args.limit:>6,}")
     diff = total - args.limit
     label = "Over limit by" if diff > 0 else "Under limit by"

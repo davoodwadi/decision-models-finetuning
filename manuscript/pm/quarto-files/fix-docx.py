@@ -1,19 +1,19 @@
-"""Post-process a Quarto-rendered docx for Marketing Science / INFORMS submission:
+"""Post-process a Quarto-rendered docx for Psychology & Marketing submission:
 
 1. Bake explicit top/bottom/header cell borders into APATable tables, instead
    of relying on Word table-style conditional formatting (w:tblStylePr
    type="firstRow"), which LibreOffice and the journal's docx-to-PDF pipeline
    render inconsistently.
-2. Left-justify the first (stub) column of every APATable, per APA/INFORMS style.
-3. Set table and figure captions in INFORMS style: "Table 1. Caption",
-   the label bold with a trailing period, text roman, flush left, kept with float.
+2. Left-justify the first (stub) column of every APATable, per APA style.
+3. Set table and figure captions cleanly ("Table 1. Caption"), the label bold
+   with a trailing period, text roman, flush left, kept with float.
 4. Ensure a centered page-number footer and strip author metadata from core.xml
    for double-anonymous review.
 
 The input is left untouched; the result is written alongside it with a "_"
-appended to the stem, e.g. manuscript.docx -> manuscript_.docx.
+appended to the stem, e.g. manuscript-pm.docx -> manuscript-pm_.docx.
 
-Usage: python3 fix-docx.py [manuscript.docx]
+Usage: python3 fix-docx.py [manuscript-pm.docx]
 """
 import re
 import sys
@@ -209,9 +209,9 @@ CAPTION_SPACE_AFTER = "120"   # 6pt below, holding it against its float
 CAPTION_STYLE = "ImageCaption"
 CAPTION_STYLES = {"ImageCaption", "TableCaption", "Caption"}
 
-# Longer labels first: "Table W" and "Figure W" must win over "Table" and "Figure".
+# Longer labels first: "Table A"/"Figure A"/"Table S"/"Figure S" must win over "Table"/"Figure".
 CAPTION_PREFIX_RE = re.compile(
-    r"^[\s ]*(Table W|Figure W|Online Resource|Table|Figure|Fig\.)"
+    r"^[\s ]*(Table A|Figure A|Table S|Figure S|Table W|Figure W|Online Resource|Table|Figure|Fig\.)"
     r"([\s ]*)(\d+(?:\.\d+)?)[\s .:]*",
     re.S,
 )
@@ -853,7 +853,7 @@ def fix_document_xml(xml_bytes, footer_rid):
 
 
 def main():
-    docx_path = sys.argv[1] if len(sys.argv) > 1 else "manuscript.docx"
+    docx_path = sys.argv[1] if len(sys.argv) > 1 else "manuscript-pm.docx"
     # Leave the Quarto output untouched; write a sibling with a "_" suffix.
     src = pathlib.Path(docx_path)
     out_path = src.with_name(src.stem + "_" + src.suffix)
@@ -892,7 +892,7 @@ def main():
 
     print(f"Baked borders, left-aligned stub column and fitted column widths in {fixed} "
           f"APATable table(s).")
-    print(f"Reformatted {captions} float caption(s) to INFORMS style.")
+    print(f"Reformatted {captions} float caption(s).")
     print(f"Set {equations} equation number(s) flush right.")
     print(f"Added a {PAGE_NUMBER_ALIGN}ed page-number footer to {sections} section(s).")
     print(f"Wrote {out_path}.")

@@ -1,0 +1,255 @@
+# Psychology & Marketing
+
+-   [Journal](#)
+    
+    -   [About](#)
+        -   [Overview](/page/journal/15206793/homepage/productinformation.html)
+        -   [Journal Metrics](/journal/15206793/journal-metrics)
+        -   [Editorial Board](/page/journal/15206793/homepage/editorialboard.html)
+        -   [Become a Wiley Editor](https://form.typeform.com/to/CP5B8fYd?utm_source=WOL) 
+        -   [OA Advantages](/page/journal/15206793/homepage/oa-advantages)
+        -   [Advertise](/page/journal/15206793/homepage/advertise.html)
+        -   [Permissions](/page/journal/15206793/homepage/permissions.html)
+        -   [Reviewer Resources](https://authorservices.wiley.com/Reviewers/journal-reviewers/index.html) 
+    -   [Authors](#)
+        -   [Author Guidelines](/page/journal/15206793/homepage/forauthors.html)
+        -   [Open Access](/page/journal/15206793/homepage/fundedaccess.html)
+        -   [Submit a Manuscript](/page/journal/15206793/homepage/forauthors.html)
+        -   [Call for Papers](/page/journal/15206793/homepage/call-for-papers)
+    
+-   [_![](/pb-assets/hub-assets/pericles/articles_1-1499257321163.png)_Articles](#)
+    
+    -   [Browse](#)
+        -   [Early View](/toc/15206793/0/0)
+        -   [Current Issue](/toc/15206793/current)
+        -   [All Issues](/loi/15206793)
+    
+
+-   [Actions](#)
+    
+    ## Tools
+    
+    -   [Journal Metrics](/journal/15206793/journal-metrics)
+    
+    ## Follow journal
+    
+    -   [Alert](/action/doUpdateAlertSettings?action=addJournal&journalCode=15206793)
+    -   [X channel](https://twitter.com/PsychMarJournal "Twitter channel")
+    -   [Most recent (RSS)](/feed/15206793/most-recent)
+    -   [Most cited (RSS)](/feed/15206793/most-cited)
+    
+
+[Psychology & Marketing ![Psychology & Marketing](/pb-assets/journal-banners/15206793-1501384723663.jpg)](/journal/15206793 "Psychology & Marketing homepage") 
+
+[](#undefined "menu drawer")
+
+## Author Guidelines
+
+**Contents**
+
+1.  [**Submission**](#Submission)
+2.  [**Aims and Scope**](#Aims_and_Scope)
+3.  [**Preparing the Submission**](#Preparing_The_Submission)
+4.  [**Editorial Policies and Ethical Considerations**](#Editorial_Policies_and_Ethical_Considerations)
+5.  [**Author Licensing**](#Author_Licensing)
+6.  [**Publication Process After Acceptance**](#Publication_Process_After_Acceptance)
+7.  [**Editorial Office Contact Details**](#Editorial_Office_Contact_Details)
+
+**1\. SUBMISSION**
+
+Authors should kindly note that submission implies that the content has not been published or submitted for publication elsewhere except as a brief abstract in the proceedings of a scientific meeting or symposium.  
+  
+New submissions should be made via the [Research Exchange submission portal](https://authors.wiley.com/journal/MAR)_._ Should your manuscript proceed to the revision stage, you will be directed to make your revisions via the same submission portal. You may check the status of your submission at anytime by logging on to submission.wiley.com and clicking the “My Submissions” button. For technical help with the submission system, please review our [FAQs](https://submissionhelp.wiley.com/) or contact [submissionhelp@wiley.com](mailto:submissionhelp@wiley.com).  
+  
+The submission system will prompt you to use an ORCID iD (a unique author identifier) to help distinguish your work from that of other researchers. [Click here](https://authorservices.wiley.com/author-resources/Journal-Authors/Submission/orcid.html) to find out more.
+
+By submitting a manuscript to or reviewing for this publication, your name, email address, and affiliation, and other contact details the publication might require, will be used for the regular operations of the publication, including, when necessary, sharing with the publisher (Wiley) and partners for production and publication. The publication and the publisher recognize the importance of protecting the personal information collected from users in the operation of these services, and have practices in place to ensure that steps are taken to maintain the security, integrity, and privacy of the personal data collected and processed. You can learn more at [https://authorservices.wiley.com/statements/data-protection-policy.html](https://authorservices.wiley.com/statements/data-protection-policy.html).
+
+**2. AIMS AND SCOPE**
+
+Psychology & Marketing (P&M) publishes original research articles, reviews and notes dealing with the application of psychological theories and techniques to marketing. As an interdisciplinary journal, P&M encourages courageous and bold new ideas, focusing on contribution. P&M fosters the exploration of online and offline marketing phenomena spanning the entire spectrum of products (goods & services), price, promotion (advertising, publicity, public relations, and selling), place (channels and distribution), and politics (public opinion, law, and ethics), all revolving around the individual and collective psyche of consumers. P&M requires a research design with a high standard of methodological transparency. Manuscripts may be conceptual or empirical in nature, and feature quantitative and/or qualitative analysis with well-illustrated tables, figures, and supportive material to enhance readers’ readability. P&M expects manuscripts to present research with no fatal methodological flaws, and with generalizable findings that go beyond a single cross-sectional study measuring self-reported behavioral intentions.
+
+**3\. PREPARING THE SUBMISSION**
+
+**Article Preparation Support**
+
+[**Wiley Editing Services**](https://wileyeditingservices.com/en/article-preparation/?utm_source=wol&utm_medium=backlink&utm_term=ag&utm_content=prep&utm_campaign=prodops) offers expert help with English Language Editing, as well as translation, manuscript formatting, figure illustration, figure formatting, and graphical abstract design – so you can submit your manuscript with confidence.
+
+Also, check out our resources for [**Preparing Your Article**](https://authorservices.wiley.com/author-resources/Journal-Authors/Prepare/index.html?utm_source=wol&utm_medium=backlink&utm_term=ag&utm_content=prepresources&utm_campaign=prodops) for general guidance about writing and preparing your manuscript.   
+
+**Free format submission**
+
+_Psychology & Marketing_ now offers free format submission for a simplified and streamlined submission process. Please make sure to include the tables and figures close to the relevant text of the article (and not at the end of the manuscript).
+
+**Style and Length**There are different formats of submission to P&M and submitted manuscripts should respect the following length requirements:
+
+**Research Articles**: less than 9000 words, _including_ abstract, references, tables and figures, but not including the supporting information. Please see guidelines below on what each section should include.
+
+**Review Articles**: less than 9000 words, _including_ abstract, references, tables and figures, but not including the supporting information. They can be in the form of a systematic review or a meta-analysis of published findings. These articles should offer insights into important conditions under which findings for an important topic do or do not hold. 
+
+**Registered Reports:** _Psychology & Marketing_ now accepts Registered Reports. Please refer to the separate [author guidelines for Registered Reports](/journal/page/15206793/homepage/psychologyandmarketingregisteredreports).
+
+**_Parts of the Manuscript_**  
+  
+**_Title page_**  
+The title page should contain:  
+(i) a short informative title that contains the major key words. The title should not contain abbreviations (see Wiley's [**best practice SEO tips**](https://authorservices.wiley.com/author-resources/Journal-Authors/Prepare/writing-for-seo.html));  
+(ii) a short running title of less than 40 characters;  
+(iii) the full names of the authors;  
+(iv) the author's institutional affiliations at which the work was carried out;  
+(v) acknowledgements.  
+The present address of any author, if different from that where the work was carried out, should be supplied in a footnote.  
+  
+**_Authorship_**  
+Please refer to the journal’s authorship policy in the Editorial Policies and Ethical Considerations section for details on eligibility for author listing.  
+  
+**_Acknowledgments_**  
+Contributions from anyone who does not meet the criteria for authorship should be listed, with permission from the contributor, in an Acknowledgments section. Financial and material support should also be mentioned. Personal notes and thanks to anonymous reviewers are not appropriate.
+
+**_Conflict of Interest Statement_**  
+Authors will be asked to provide a conflict of interest statement during the submission process.  Any interest or relationship, financial or otherwise that might be perceived as influencing an author's objectivity is considered a potential source of conflict of interest. These must be disclosed when directly relevant or directly related to the work that the authors describe in their manuscript. Potential sources of conflict of interest include, but are not limited to, patent or stock ownership, membership of a company board of directors, membership of an advisory board or committee for a company, and consultancy for or receipt of speaker's fees from a company. The existence of a conflict of interest does not preclude publication. If the authors have no conflict of interest to declare, they must also state this at submission. It is the responsibility of the corresponding author to review this policy and to ensure all co-authors agree with the final statement.
+
+**_Main text file  
+_**As papers are double-blind peer reviewed, the main text file should not include any information that might identify the authors. 
+
+Manuscripts should be uploaded either as a single document (containing the main text, tables and figures.
+
+Your main document file should include:
+
+-   A short informative title containing the major key words. The title should not contain abbreviations
+-   Acknowledgments;
+-   Abstract (no more than 200 words);
+-   3 to 7 keywords to reflect the topic and content of the manuscript;
+-   Main body: formatted as introduction, materials & methods, results, discussion, conclusion;
+-   Please include the tables and figures close to the relevant text of the article (and NOT at the end of the manuscript) to facilitate the readability of your work;
+-   References;
+-   Endnotes: Endnotes should be avoided.
+
+**_Appendices_**
+
+Appendices will be published after the references. For submission they should be supplied as separate files but referred to in the text. For greater transparency, authors are invited to provide additional details about the specific methodology (e.g., specific stimuli text or image, scales, etc.) used in quantitative research in the appendices. This information would help both the review team to future readers of the published article replicate the research precisely.   
+  
+**_Supporting Information_**  
+Supporting information is information that is not essential to the article but that provides greater depth and background. It is hosted online, and appears without editing or typesetting. It may include tables, figures, videos, datasets, etc. Click [**here**](https://authorservices.wiley.com/author-resources/Journal-Authors/Prepare/manuscript-preparation-guidelines.html/supporting-information.html) for Wiley’s FAQs on supporting information.
+
+As papers are double-blind peer reviewed the main text file should not include any information that might identify the authors. The journal uses British/US spelling, however authors may submit using either option as spelling of accepted papers is converted during the production  
+  
+**_Guidelines for Suggesting Peer Reviewers During the Submission of Your Manuscript at Psychology & Marketing_**
+
+During the submission process at Psychology & Marketing, you have to suggest at least 3 reviewers for your manuscript. Here are some guidelines for selecting potential reviewers to suggest during the submission process:
+
+-   They have specific theoretical or methodological expertise related to the manuscript you are submitting. While your suggested reviewers may be part of the Editorial Review Board of Psychology and Marketing, it is **_not_** mandatory that they are.
+-   They have published in this specific area in the last years (e.g., over the last decade)
+-   There is no conflict of interest with these researchers (i.e., they are not related to you or your coauthors, and they are not in the same division with the authors).
+
+The editorial team will not necessarily invite your suggested reviewers, but these suggestions can help speed up the peer review process.
+
+**4\. EDITORIAL POLICIES AND ETHICAL CONSIDERATIONS**
+
+**_Editorial Review and Acceptance_**
+
+The acceptance criteria for all papers are the quality and originality of the research and its significance to our readership. Except where otherwise stated, manuscripts are double-blind peer reviewed. Papers will only be sent to review if the Editor-in-Chief determines that the paper meets the appropriate quality and relevance requirements. Wiley's policy on confidentiality of the review process is [**available here**](https://authorservices.wiley.com/Reviewers/journal-reviewers/review-confidentiality-policy.html).  
+  
+_**Refer and Transfer Program**_ 
+
+Wiley believes that no valuable research should go unshared. This journal participates in Wiley’s [Refer & Transfer program](https://authorservices.wiley.com/author-resources/Journal-Authors/submission-peer-review/manuscript-transfer.html). If your manuscript is not accepted, you may receive a recommendation to transfer your manuscript to another suitable Wiley journal, either through a referral from the journal’s editor or through our Transfer Desk Assistant. **_Data Sharing and Data Accessibility_**
+
+In favor of transparency, authors are required to include a data availability statement during the submission. If the data is unavailable to access or unsuitable to post, authors will have the opportunity to indicate why during the submission process, for example by stating that the research data is confidential or that the data is available by the authors upon reasonable request (sample statements are available [**http://authorservices.wiley.com**](http://authorservices.wiley.com/)).
+
+**_Plagiarism_**
+
+Submitted manuscripts undergo a plagiarism check during the submission process using _iThenticate_. P&M takes the issue of plagiarism very seriously and invites authors to check their papers before submission to avoid any issues related to plagiarism.
+
+**_Human Studies and Subjects_**
+
+For manuscripts reporting medical studies involving human participants, we require a statement identifying the ethics committee that approved the study, and that the study conforms to recognized standards, for example: [**Declaration of Helsinki**](http://www.wma.net/en/30publications/10policies/b3/); [**US Federal Policy for the Protection of Human Subjects**](https://www.hhs.gov/ohrp/regulations-and-policy/regulations/common-rule/index.html); or [**European Medicines Agency Guidelines for Good Clinical Practice**](http://www.ema.europa.eu/docs/en_GB/document_library/Scientific_guideline/2009/09/WC500002874.pdf).  
+Images and information from individual participants will only be published where the authors have obtained the individual's free prior informed consent.  
+  
+**_Research Reporting Guidelines_**
+
+Accurate and complete reporting enables readers to fully appraise research, replicate it, and use it. We encourage authors to adhere to the following research reporting standards.  
+  
+**_Author Name Change Policy_  
+**In cases where authors wish to change their name following publication, Wiley will update and republish the paper and redeliver the updated metadata to indexing services. Our editorial and production teams will use discretion in recognizing that name changes may be of a sensitive and private nature for various reasons including (but not limited to) alignment with gender identity, or as a result of marriage, divorce, or religious conversion. Accordingly, to protect the author’s privacy, we will not publish a correction notice to the paper, and we will not notify co-authors of the change. Authors should contact the journal’s Editorial Office with their name change request.
+
+**5\. AUTHOR LICENSING**  
+
+Authors may choose to publish under the terms of the journal’s standard copyright agreement, or [**Open Access**](https://authorservices.wiley.com/author-resources/Journal-Authors/licensing-open-access/open-access/onlineopen.html) under the terms of a Creative Commons License.  
+General information regarding licensing and copyright is available [**here**](https://authorservices.wiley.com/author-resources/Journal-Authors/licensing-open-access/licensing/licensing-info-faqs.html). To review the Creative Commons License options offered under Open Access, please [**click here**](https://authorservices.wiley.com/author-resources/Journal-Authors/licensing-open-access/licensing/open-access-agreements.html). (Note that certain funders mandate that a particular type of CC license has to be used; to check this please [**click here**](https://authorservices.wiley.com/author-resources/Journal-Authors/licensing-open-access/open-access/author-compliance-tool.html).)  
+_**Self-Archiving definitions and policies**_. Note that the journal’s standard copyright agreement allows for self-archiving of different versions of the article under specific conditions. Please click [**here**](https://authorservices.wiley.com/author-resources/Journal-Authors/licensing-open-access/open-access/self-archiving.html) for more detailed information about self-archiving definitions and policies.  
+_**Open Access fees**_: If you choose to publish using Open Access you will be charged a fee. A list of Article Publication Charges for Wiley journals is available [**here**](https://authorservices.wiley.com/author-resources/Journal-Authors/licensing-open-access/open-access/article-publication-charges.html).  
+_**Funder Open Access**_: Please click [**here**](https://authorservices.wiley.com/author-resources/Journal-Authors/licensing-open-access/open-access/article-publication-charges.html) for more information on Wiley’s compliance with specific Funder Open Access Policies.
+
+**6\. PUBLICATION PROCESS AFTER ACCEPTANCE**
+
+To promote the wider dissemination and impact of your research and thus benefit our academic field, we request you to send to PMadmin@wiley.com the names and email addresses of 5 people who would find your paper relevant for their own research. We will then send them a complimentary copy of the pre-publication PDF of your article once it is available. When the accepted article is received by Wiley’s production team, the corresponding author will receive an email asking you to login or register with [**Author Services**](https://authorservices.wiley.com/home.html). The author will be asked to sign a publication license at this point. Authors will receive an e-mail notification with a link and instructions for accessing HTML page proofs online. Proofs must be returned within 48 hours of receipt of the email. Return of proofs via e-mail is possible in the event that the online system cannot be used or accessed.
+
+_**Access and sharing**_  
+When the article is published online, the authors will receive an email alert with also a link to share the published article through social media. Authors have free access to your paper (after accepting the Terms & Conditions of use) and they can nominate up to ten colleagues to receive a publication alert and free online access to your article. Authors can order print copies of the article (instructions are sent at proofing stage or use the below contact details). Email: [**chris.jones@sheridan.com**](mailto:chris.jones@sheridan.com).  
+ 
+
+**7\. EDITORIAL OFFICE CONTACT DETAILS**
+
+_P&M_ Editorial Office Email:  
+[PMadmin@wiley.com](mailto:PMadmin@wiley.com)
+
+_Author Guidelines updated January 2025_
+
+### Sign up for email alerts
+
+Enter your email to receive alerts when new articles and issues are published.
+
+Email address\*
+
+Please select your location and accept the terms of use.
+
+Country or location\*
+
+Open this select menuAfghanistanÅland IslandsAlbaniaAlgeriaAmerican SamoaAndorraAngolaAnguillaAntarcticaAntigua And BarbudaArgentinaArmeniaArubaAustraliaAustriaAzerbaijanBahamasBahrainBangladeshBarbadosBelarusBelgiumBelizeBeninBermudaBhutanBoliviaBonaire, Sint Eustatius And SabaBosnia And HerzegovinaBotswanaBouvet IslandBrazilBritish Indian Ocean TerritoryBrunei DarussalamBulgariaBurkina FasoBurundiCambodiaCameroonCanadaCape VerdeCayman IslandsCentral African RepublicChadChileChinaChristmas IslandCocos (keeling) IslandsColombiaComorosCongoCongo, The Democratic Republic Of TheCook IslandsCosta RicaCôte D'ivoireCroatiaCubaCuraçaoCyprusCzech RepublicDenmarkDjiboutiDominicaDominican RepublicEcuadorEgyptEl SalvadorEquatorial GuineaEritreaEstoniaEthiopiaFalkland Islands (malvinas)Faroe IslandsFijiFinlandFranceFrench GuianaFrench PolynesiaFrench Southern TerritoriesGabonGambiaGeorgiaGermanyGhanaGibraltarGreeceGreenlandGrenadaGuadeloupeGuamGuatemalaGuernseyGuineaGuinea-bissauGuyanaHaitiHeard Island And Mcdonald IslandsHoly See (vatican City State)HondurasHong KongHungaryIcelandIndiaIndonesiaIran, Islamic Republic OfIraqIrelandIsle Of ManIsraelItalyJamaicaJapanJerseyJordanKazakhstanKenyaKiribatiKorea, Democratic People's Republic OfKorea, Republic OfKosovo, Republic OfKuwaitKyrgyzstanLao People's Democratic RepublicLatviaLebanonLesothoLiberiaLibyan Arab JamahiriyaLiechtensteinLithuaniaLuxembourgMacaoMacedonia, The Former Yugoslav Republic OfMadagascarMalawiMalaysiaMaldivesMaliMaltaMarshall IslandsMartiniqueMauritaniaMauritiusMayotteMexicoMicronesia, Federated States OfMoldova, Republic OfMonacoMongoliaMontenegroMontserratMoroccoMozambiqueMyanmarNamibiaNauruNepalNetherlandsNetherlands AntillesNew CaledoniaNew ZealandNicaraguaNigerNigeriaNiueNorfolk IslandNorthern Mariana IslandsNorwayOmanPakistanPalauPalestinian Territory, OccupiedPanamaPapua New GuineaParaguayPeruPhilippinesPitcairnPolandPortugalPuerto RicoQatarReunionRomaniaRussian FederationRwandaSaint BarthélemySaint HelenaSaint Kitts And NevisSaint LuciaSaint MartinSaint Pierre And MiquelonSaint Vincent And The GrenadinesSamoaSan MarinoSao Tome And PrincipeSaudi ArabiaSenegalSerbiaSeychellesSierra LeoneSingaporeSint MaartenSlovakiaSloveniaSolomon IslandsSomaliaSouth AfricaSouth Georgia And The South Sandwich IslandsSouth SudanSpainSri LankaSudanSurinameSvalbard And Jan MayenSwazilandSwedenSwitzerlandSyrian Arab RepublicTaiwanTajikistanTanzania, United Republic OfThailandTimor-lesteTogoTokelauTongaTrinidad And TobagoTunisiaTürkiyeTurkmenistanTurks And Caicos IslandsTuvaluUgandaUkraineUnited Arab EmiratesUnited KingdomUnited StatesUnited States Minor Outlying IslandsUruguayUzbekistanVanuatuVenezuela, Bolivarian Republic OfViet NamVirgin Islands, BritishVirgin Islands, U.s.Wallis And FutunaWestern SaharaYemenZambiaZimbabwe
+
+I consent to Wiley Online Library’s [Terms of Use](https://onlinelibrary.wiley.com/termsAndConditions) and processing of my personal data as disclosed in Wiley’s [Privacy Policy](https://www.wiley.com/privacy)._\*_I consent to my personal information being transferred outside of the People’s Republic of China as laid out in Wiley’s Privacy Policy.\*(Optional) I consent to special offers, newsletter & promotions from Wiley. See [Privacy Policy](https://www.wiley.com/privacy) for more details.
+
+Sign up to alerts
+
+Continue
+
+## Submit an article
+
+_Psychology & Marketing_ manuscripts are submitted and tracked through [Wiley Authors](https://authors.wiley.com).
+
+[Start your submission](https://authors.wiley.com/journal/MAR) [Track your submissions](https://authors.wiley.com/dashboard)
+
+For submissions started prior to September 15, 2021, please visit [Manuscript Central](https://mc.manuscriptcentral.com/mar) to manage or complete your submission.
+
+-   [Journal Metrics](/journal/15206793/journal-metrics)
+
+## More from this journal
+
+-   [Guidelines for Authors](/page/journal/15206793/homepage/forauthors.html)
+-   [Training the Reviewer Initiative](/page/journal/15206793/homepage/training_the_reviewer)
+-   [Call for Proposals to Guest-Edit](/page/journal/15206793/homepage/callforproposals)
+-   [Sign-up for content alerts](/page/journal/15206793/homepage/sign-up_for_content_alerts.htm)
+-   [Jobs](/page/journal/15206793/homepage/jobs.html)
+-   [Video Gallery](/page/journal/15206793/homepage/video-gallery)
+
+[![](https://pubads.g.doubleclick.net/gampad/ad?iu=$googlePublisherCategory&sz=160x600|160x320|160x160|120x600&tile=2&c=$random)](/action/clickThrough?id=1011&url=https%3A%2F%2Fpubads.g.doubleclick.net%2Fgampad%2Fjump%3Fiu%3D%24googlePublisherCategory%26amp%3Bsz%3D160x600%7C160x320%7C160x160%7C120x600%26amp%3Btile%3D2%26amp%3Bc%3D%24random&loc=%2Fpage%2Fjournal%2F15206793%2Fhomepage%2Fforauthors.html&pubId=41612763&placeholderId=1014&productId=101018)
+
+<iframe id="twitter-widget-0" scrolling="no" frameborder="0" allowtransparency="true" allowfullscreen="true" class="" title="Twitter Timeline" src="https://syndication.twitter.com/srv/timeline-profile/screen-name/PsychMarJournal?dnt=false&amp;embedId=twitter-widget-0&amp;features=eyJ0ZndfdGltZWxpbmVfbGlzdCI6eyJidWNrZXQiOltdLCJ2ZXJzaW9uIjpudWxsfSwidGZ3X2ZvbGxvd2VyX2NvdW50X3N1bnNldCI6eyJidWNrZXQiOnRydWUsInZlcnNpb24iOm51bGx9LCJ0ZndfdHdlZXRfZWRpdF9iYWNrZW5kIjp7ImJ1Y2tldCI6Im9uIiwidmVyc2lvbiI6bnVsbH0sInRmd19yZWZzcmNfc2Vzc2lvbiI6eyJidWNrZXQiOiJvbiIsInZlcnNpb24iOm51bGx9LCJ0ZndfZm9zbnJfc29mdF9pbnRlcnZlbnRpb25zX2VuYWJsZWQiOnsiYnVja2V0Ijoib24iLCJ2ZXJzaW9uIjpudWxsfSwidGZ3X21peGVkX21lZGlhXzE1ODk3Ijp7ImJ1Y2tldCI6InRyZWF0bWVudCIsInZlcnNpb24iOm51bGx9LCJ0ZndfZXhwZXJpbWVudHNfY29va2llX2V4cGlyYXRpb24iOnsiYnVja2V0IjoxMjA5NjAwLCJ2ZXJzaW9uIjpudWxsfSwidGZ3X3Nob3dfYmlyZHdhdGNoX3Bpdm90c19lbmFibGVkIjp7ImJ1Y2tldCI6Im9uIiwidmVyc2lvbiI6bnVsbH0sInRmd19kdXBsaWNhdGVfc2NyaWJlc190b19zZXR0aW5ncyI6eyJidWNrZXQiOiJvbiIsInZlcnNpb24iOm51bGx9LCJ0ZndfdXNlX3Byb2ZpbGVfaW1hZ2Vfc2hhcGVfZW5hYmxlZCI6eyJidWNrZXQiOiJvbiIsInZlcnNpb24iOm51bGx9LCJ0ZndfdmlkZW9faGxzX2R5bmFtaWNfbWFuaWZlc3RzXzE1MDgyIjp7ImJ1Y2tldCI6InRydWVfYml0cmF0ZSIsInZlcnNpb24iOm51bGx9LCJ0ZndfbGVnYWN5X3RpbWVsaW5lX3N1bnNldCI6eyJidWNrZXQiOnRydWUsInZlcnNpb24iOm51bGx9LCJ0ZndfdHdlZXRfZWRpdF9mcm9udGVuZCI6eyJidWNrZXQiOiJvbiIsInZlcnNpb24iOm51bGx9fQ%3D%3D&amp;frame=false&amp;hideBorder=false&amp;hideFooter=false&amp;hideHeader=false&amp;hideScrollBar=false&amp;lang=en&amp;maxHeight=650px&amp;origin=https%3A%2F%2Fonlinelibrary.wiley.com%2Fpage%2Fjournal%2F15206793%2Fhomepage%2Fforauthors.html&amp;sessionId=9d42a0791b04a8733269affd1c0ed738398b4b0b&amp;showHeader=true&amp;showReplies=false&amp;transparent=false&amp;widgetsVersion=6a3ad42b224df%3A1778106238597" style="position: absolute; visibility: hidden; width: 0px; height: 0px; display: block; flex-grow: 1;"></iframe>
+
+[Posts by PsychMarJournal](https://twitter.com/PsychMarJournal?ref_src=twsrc%5Etfw)
+
+<iframe src="https://www.diversityinresearch.careers/widget/bootstrap/job/#i=404" id="mdgxWidgetiFrame" style="width: 100%; border: 0; height: 400px; background: 0" frameborder="0"></iframe>
+
+## Wiley Editing Services
+
+Professionally-edited manuscripts are **accepted more than twice as often**. Take the stress out of manuscript writing with Article Preparation services.
+
+-   [Quick Language Fix](https://wileyeditingservices.com/en/article-preparation/english-language-editing?utm_source=wol&utm_medium=referral&utm_campaign=right_hand_rail_ses)
+-   [In-depth language support and editing](https://wileyeditingservices.com/en/article-preparation/english-language-editing?utm_source=wol&utm_medium=referral&utm_campaign=right_hand_rail_pes)
+-   [Top Journal Editing](https://wileyeditingservices.com/en/article-preparation/scientific-editing/?utm_source=wol&utm_medium=referral&utm_campaign=right_hand_rail_sce)
+-   [Submission Ready Formatting Service](https://wileyeditingservices.com/en/article-preparation/manuscript-formatting?utm_source=wol&utm_medium=referral&utm_campaign=right_hand_rail_mf)
+-   [Graphical Abstract Design](https://wileyeditingservices.com/en/article-preparation/graphical-abstract-design?utm_source=wol&utm_medium=referral&utm_campaign=right_hand_rail_ga)
+-   [One-Click Language Check (FREE)](https://en.wileyeditingservices.com/english-language-checker-service-recommender?utm_source=wol&utm_medium=referral&utm_campaign=right_hand_rail_lssr)
+-   [Pre-Submission Technical Review](https://wileyeditingservices.com/en/article-preparation/pre-submission-technical-review/)
+
+## Embedded Content

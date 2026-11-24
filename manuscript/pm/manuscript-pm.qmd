@@ -37,7 +37,7 @@ format:
       - quarto-files/title.latex
     include-in-header:
       - file: quarto-files/preamble.tex
-csl: quarto-files/informs.csl
+csl: quarto-files/apa.csl
 filters:
   - at: pre-quarto
     path: quarto-files/apa-table.lua
@@ -56,22 +56,22 @@ crossref:
   custom:
     - kind: float
       key: apptbl
-      reference-prefix: Table W
-      caption-prefix: Table W
+      reference-prefix: Table A
+      caption-prefix: Table A
       caption-location: top
       latex-env: apptbl
-      space-before-numbering: false  
+      space-before-numbering: false
     - kind: float
       key: appfig
-      reference-prefix: Figure W
-      caption-prefix: Figure W
+      reference-prefix: Figure A
+      caption-prefix: Figure A
       caption-location: bottom
       latex-env: appfig
-      space-before-numbering: false  
+      space-before-numbering: false
     - kind: float
       key: app
-      reference-prefix: Web Appendix
-      caption-prefix: Web Appendix
+      reference-prefix: Appendix
+      caption-prefix: Appendix
       caption-location: top
       latex-env: appenv
       space-before-numbering: false
@@ -87,9 +87,11 @@ bibliography:
   - refs/silicon-sampling.bib
 ---
 
-<!-- To submit to Marketing Science: Frontiers track -->
-
-<!-- **** Strictly 6,000 words total (including references, tables, figures; online appendix excluded). -->
+<!--
+Target journal: Psychology & Marketing (Research Article)
+Length limit: less than 9,000 words total (including abstract, references, tables, and figures; excluding appendices and supporting information).
+Requirements: abstract <= 200 words; 3 to 7 keywords; no abbreviations in title; avoid endnotes; place tables and figures inline close to relevant text; double-blind main text file (separate title page with running title < 40 characters).
+-->
 
 **Abstract.**  
 
@@ -99,19 +101,102 @@ bibliography:
 
 # Literature review {#sec-lit}
 
-# Methodology {#sec-methodology}
+## Silicon sampling, persona prompting, and System 2 drift
 
-# Experimental setup {#sec-setup}
+Consumer and marketing researchers increasingly explore silicon samples, defined as AI-generated synthetic respondents used to approximate human survey responses [@argyle2023out; @sarstedt2024using; @arora2025ai].
+Early work demonstrated that generative large language models (LLMs) conditioned on demographic backstories can sometimes mirror broad patterns of political attitudes and consumer preferences [@argyle2023out].
+However, systematic evidence across behavioral and marketing domains reveals inconsistent correspondence with human samples [@sarstedt2024using; @goli2024frontiers].
+Reviewing 28 empirical comparisons, @sarstedt2024using conclude that silicon samples from off-the-shelf generative LLMs are currently better suited to upstream qualitative pretesting than to quantitative main studies.
+
+A central reason for this gap is that modern generative LLMs have shifted progressively toward deliberative System 2 processing.
+As @hagendorff2023human show and @sarstedt2024using highlight, while early language models exhibited human-like intuitive System 1 patterns, newer instruction-tuned and chain-of-thought models behave like System 2 rational agents chasing a single defensible answer.
+Trained on massive web corpora without a clearly defined human population and shaped by safety guardrails, these models compress interpersonal variability, exhibit a deterministic correct-answer effect, and flatten minority or subgroup viewpoints [@pmlr-v202-santurkar23a; @sarstedt2024using].
+
+Crucially, recent evidence in Psychology & Marketing shows that supplying accurate demographic personas in the prompt does not resolve these distortions.
+@zahradnickova2026ai demonstrate that even when a frontier generative LLM receives official population distributions in its context or is conditioned directly on the exact demographic profiles of human survey respondents [Study 2 and Study 4, Table 5\; @zahradnickova2026ai], its attitudinal responses still diverge sharply from human benchmarks and collapse variance.
+Consequently, the limitations of persona-prompted silicon sampling stem not merely from missing demographic context, but from a deeper mismatch between generative language modeling and respondent-level distributional simulation.
+
+## Architecture dependence and System One decision models
+
+To evaluate synthetic respondents systematically, @zahradnickova2026ai conceptualize distributional fidelity across four levels, namely univariate fidelity (marginal distributions and dispersion), multivariate fidelity (joint variable structure), subgroup fidelity (preservation within demographic subpopulations), and semantic fidelity (open-ended text).
+Their central thesis is that distributional fidelity in silicon sampling is not architecture-neutral.
+Comparing generative LLMs against a proprietary neuro-symbolic AI system (Lakmoos AI) across demographic benchmarks in Czechia, Germany, and France and a 315-respondent Czech housing survey, @zahradnickova2026ai show that separating structured statistical representation from free-form text generation yields markedly closer alignment with human distributions.
+
+Yet this architectural turn leaves two critical gaps for consumer and marketing researchers.
+First, both systems evaluated by @zahradnickova2026ai are proprietary black boxes, restricting transparency, independent auditing, and exact reproducibility.
+Second, their empirical test of subgroup fidelity evaluates census demographic headcounts (gender by age) rather than attitudinal differences across segments, while their attitudinal benchmark spans six closed-ended items in a single narrow domain.
+Whether an open, generalizable architecture can recover between-group attitudinal contrasts across diverse unseen survey topics remains an open empirical question.
+
+Decision models offer a distinct, open-weight architectural alternative explicitly designed as System One models [@deusser2026evaluatingbenchmarkingmodeljev; @geuter2026releasinginnerjevsimple; @palmer2026kev].
+Instead of generating text tokens sequentially, a decision model replaces a language model's text-generation head with a pointer head that scores candidate options directly in a single forward pass.
+This design produces exact analytical probability distributions over valid survey responses, eliminating Monte Carlo sampling noise, temperature tuning, safety refusals, and the duplicate-persona redundancy that degrades effective sample size in generative protocols [@zahradnickova2026ai].
+Even so, a System One architecture alone is not sufficient.
+Because off-the-shelf decision models are pretrained on objective single-label benchmarks, they possess the fast inference structure of System 1 without calibrated human social priors, leading to ordinal-scale distortion and cultural miscalibration prior to survey training [@gao2026choicesfewerdecisionsordinalscale; @asseri2026calibratedwhompersonalanguage].
+
+## From prompting personas to learning personas
+
+A growing stream of research therefore moves beyond off-the-shelf prompting by adapting models with human behavioral or survey data, spanning three distinct paradigms.
+Post-inference calibration and data-augmentation methods adjust fixed model outputs to reduce econometric bias, yet they require collecting human responses from the target study itself [@wang2026large; @leng2026reducing].
+Individual-level digital twins capture rich personal heterogeneity but require extensive prior questionnaires from each target individual [@toubia2025database], whereas cognitive foundation models trained on behavioral task trials lack demographic persona structure for population-level sampling [@binz2025foundation].
+As @zahradnickova2026ai note, benchmarking population-level trained models that generalize without target-study data remains open future work.
+
+Pre-inference survey training addresses this gap by updating model weights directly on historical human survey microdata so the model learns how demographic attributes map onto response distributions on unseen questions [@suh-etal-2025-language; @kolluri2025finetuning; @wang2025can; @huang-etal-2026-distribution; @ku2026siliconsamplingcrosssurveytransfer].
+In consumer and marketing research, however, training models on demographic group data raises an explicit theoretical tension.
+Whereas off-the-shelf persona prompting tends to flatten demographic differences and compress within-group variance, @sarstedt2024using draw on @pmlr-v202-santurkar23a to warn that training models to mimic group responses may backfire in the opposite direction by pushing models to embody exaggerated caricatures of those groups or by failing to generalize beyond the training survey.
+
+@tbl-lit-positioning summarizes where our research stands relative to these existing silicon-sampling paradigms.
+Because open-weight Kev decision models [@palmer2026kev] are built directly on pretrained Qwen3.5 backbones, we can isolate explicit System 2 deliberation (Qwen3.5 with reasoning enabled versus disabled), System One pointer-head architecture alone (off-the-shelf Kev), and learned demographic priors (survey-trained Kev) on the exact same foundation backbone across matched parameter scales.
+Training System One decision models on large-scale persona-rich human surveys (ISSP and Twin-2K-500) and evaluating zero-shot transfer on unseen multi-topic questions across eight demographic dimensions [@suh-etal-2025-language] directly tests whether learned System 1 personas recover between-group attitudinal differences and within-group dispersion without collapsing into flattening or caricature.
+
+::: {#tbl-lit-positioning size="scriptsize"}
+
+| Paradigm | Representative studies | Open and reproducible | Persona mechanism | Target-study human data required | Exact option probabilities | Evaluates unseen attitudinal subgroup contrasts |
+| --- | --- | --- | --- | --- | --- | --- |
+| Persona-prompted GenAI | @argyle2023out; @sarstedt2024using | Partial or API-dependent | Zero-shot text prompt | No | No (Monte Carlo) | Mixed (flattening and variance collapse) |
+| Proprietary NSAI | @zahradnickova2026ai | No (proprietary) | Tabular census generator plus constrained LLM | No (anchored to census tables) | No (sampled virtual population) | No (six items in one domain, aggregate focus) |
+| Digital twins and cognitive FMs | @toubia2025database; @binz2025foundation | Mixed | Individual survey history or non-demographic trials | Yes (target individual) or N/A | Varies | No |
+| Post-inference calibration | @wang2026large; @leng2026reducing | Yes | Fixed model plus statistical reweighting | Yes (target study) | Depends on base model | No (experimental treatment slopes) |
+| Survey-trained System One decision models | Present study | Yes (open-weight) | Learned from public human survey microdata | No (zero-shot unseen items) | Yes (single forward pass) | Yes (eight demographic axes on unseen questions) |
+
+Positioning of survey-trained System One decision models within the silicon-sampling literature
+
+:::
+
+::: {custom-style="Table Note"}
+*Note.* GenAI refers to generative artificial intelligence; NSAI refers to neuro-symbolic artificial intelligence; FM refers to foundation model.
+:::
+
+# Materials and methods {#sec-methods}
+
+## Methodology {#sec-methodology}
+
+## Experimental setup {#sec-setup}
 
 # Results {#sec-results}
 
+# Discussion {#sec-discussion}
+
 # Conclusion {#sec-conclusion}
 
-# Declarations {.unnumbered}
+# Funding {.unnumbered}
 
-## Funding and competing interests {.unnumbered}
+The authors have no funding to report.
 
-All authors certify that they have no affiliations with or involvement in any organization or entity with any financial interest or non-financial interest in the subject matter or materials discussed in this manuscript. The authors have no funding to report.
+# Ethics statement {.unnumbered}
+
+This study uses publicly available, anonymized secondary human survey datasets and open-weight AI models; no new human subjects data were collected.
+
+# Conflicts of interest {.unnumbered}
+
+The authors declare no conflicts of interest.
+
+# AI disclosure {.unnumbered}
+
+Open-weight language and decision models were used as research instruments to generate silicon samples as part of the formal experimental design.
+
+# Data availability statement {.unnumbered}
+
+All code, training recipes, evaluation scripts, and public dataset references supporting the findings of this study will be made openly available upon publication.
 
 # References {.unnumbered}
 
@@ -120,4 +205,4 @@ All authors certify that they have no affiliations with or involvement in any or
 
 {{< pagebreak >}}
 
-# Web Appendix {.unnumbered}
+# Appendix {.unnumbered}
