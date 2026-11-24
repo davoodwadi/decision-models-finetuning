@@ -1,0 +1,16 @@
+$if(title)$
+\title{$title$$if(thanks)$\thanks{$thanks$}$endif$}
+$endif$
+$if(subtitle)$
+\usepackage{etoolbox}
+\makeatletter
+\providecommand{\subtitle}[1]{% add subtitle to \maketitle
+  \apptocmd{\@title}{\par {\large #1 \par}}{}{}
+}
+\makeatother
+\subtitle{$subtitle$}
+$endif$
+$-- This supports Quarto's authors normalization
+% \author{$for(authors)$$it.name.literal$$sep$ \and $endfor$}
+\author{$for(by-author)$$by-author.name.literal$\thanks{$for(by-author.affiliations)$$it.department$, $it.name$$sep$; $endfor$$if(by-author.email)$. \texttt{$by-author.email$}$endif$}$sep$ \and $endfor$}
+\date{$date$}
