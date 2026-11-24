@@ -7,12 +7,17 @@ and figures. Nothing is written yet.
 
 | From `code/` (shared by every paper, never copied) | This paper's own copy (`src/`) |
 |---|---|
-| `kev/` (Kev model library) | Training and analysis modules, copied in when a notebook first needs them (e.g. `training/`, `beta_ols/`, `beta_train/` from another paper's `src/`); empty for now |
-| `data/` (dataset files and loaders) | |
-| `models/` (`KevPointerModel`) | |
+| `kev/` (Kev model library) | `data/`: this paper's copy of the loader code (`base.py`, `persona.py`, `marginals.py`, `issp.py`, `twin2k.py`, `twin2k_megastudy.py`, `wvs.py`) and of the survey dataset folders, raw files included (issp2015–issp2024, Twin-2K-500, Twin-2K-500-Mega-Study, not-clean-WVS-Wave7-unclean, subpop) |
+| `models/` (`KevPointerModel`) | Training and analysis modules, copied in when a notebook first needs them (e.g. `training/`, `beta_ols/`, `beta_train/` from another paper's `src/`) |
 
 - Notebooks and modules are copied, not shared: a change here never changes another paper, and the reverse.
-- Large files are not copied: a notebook here may read another paper's checkpoints and run folders
+- Data is copied: `src/data/` is this paper's own copy, so personas and datasets can change here without changing the
+  finished papers. `code/data/` is a frozen archive read only by the history folders. `wvs.py` reads
+  `WVS-Wave7/wvs7_US_long.parquet`, but the folder is `not-clean-WVS-Wave7-unclean`, so WVS does not load as it is.
+- Cache: `data.base.DEFAULT_CACHE_DIR` and every notebook's `CACHE_DIR` is this paper's `.cache/`, not `code/.cache/`.
+  The persona-record cache (`build_persona_dataset`) is keyed on row count, columns and question IDs, not row values,
+  so clear `.cache/` after re-exporting a dataset.
+- Checkpoints and run folders are not copied: a notebook here may read another paper's checkpoints and run folders
   (`code/papers/<paper>/runs-*/`), but never writes into another paper's folder.
 - Environment: the repository's `.venv-cu13` (locally) and `~/envs/kev-cu13` (on the clusters).
 
@@ -32,7 +37,7 @@ and figures. Nothing is written yet.
 ## Standard setup cell
 
 The first code cell of every notebook in this paper. It finds `code/` by walking up from the notebook's folder, then
-puts `src/` ahead of `code/` on `sys.path`, so this paper's modules load from `src/` and `kev`, `data` and `models`
+puts `src/` ahead of `code/` on `sys.path`, so `data` and this paper's modules load from `src/` and `kev` and `models`
 load from `code/`.
 
 ```python
@@ -50,6 +55,7 @@ if CODE_DIR is None:
 
 PAPER_DIR = CODE_DIR / "papers" / "pm"
 SRC_DIR = PAPER_DIR / "src"
+CACHE_DIR = PAPER_DIR / ".cache"
 
 # Run from `code/` so data loaders and shared disk caches resolve as in the other papers
 os.chdir(CODE_DIR)

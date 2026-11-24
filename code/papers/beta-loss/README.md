@@ -9,13 +9,20 @@ The manuscript folder is `manuscript/beta-loss/`. Its `manuscript-beta-loss.qmd`
 | From `code/` (shared by every paper, never copied) | This paper's own copy (`src/`) |
 |---|---|
 | `kev/` (Kev model library) | `training/` |
-| `data/` (dataset files and loaders) | `beta_ols/` (dataset OLS modules and the beta loss) |
-| `models/` (`KevPointerModel`) | `beta_train/` |
+| `models/` (`KevPointerModel`) | `beta_ols/` (dataset OLS modules and the beta loss) |
+| | `beta_train/` |
 | | `paper_beta/` (regime trainer and run summaries) |
+| | `data/`: this paper's copy of the loader code (`base.py`, `persona.py`, `marginals.py`, `grummon2023.py`, `grummon2025.py`) and of the dataset folders it uses, raw files included (berke2023, wu2025, Kriner2026, kantorowicz2026, covid, magistro2025, nutrition) |
 
 Every notebook finds `code/` by walking up to the first folder with `kev/`, `data/` and `models/`, then puts `src/`
-ahead of `code/` on `sys.path`. Environment: the repository's `.venv-cu13` (locally) and `~/envs/kev-cu13` (on the
+ahead of `code/` on `sys.path`, so `data` and this paper's modules load from `src/`. Environment: the repository's `.venv-cu13` (locally) and `~/envs/kev-cu13` (on the
 clusters).
+
+Data and cache: `src/data/` is this paper's own copy, so a change to personas or datasets in another paper never changes
+this one. Its default cache, and every notebook's `CACHE_DIR`, is this paper's `.cache/` (not `code/.cache/`). The
+persona-record cache (`build_persona_dataset`) is keyed on row count, columns and question IDs, not row values, so clear
+`.cache/` after re-exporting a dataset. `code/data/` is a frozen archive read only by the history folders. The
+`exploration/` notebooks keep reading `code/data/`.
 
 ## Folders
 

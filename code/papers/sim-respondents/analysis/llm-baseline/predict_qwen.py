@@ -40,7 +40,7 @@ SRC_DIR = PAPER_DIR / "src"
 OUT_DIR = PAPER_DIR / "analysis" / "llm-baseline"
 PREDS_DIR = OUT_DIR / "preds"
 GEMINI_DIR = CODE_DIR / "proprietary-llms" / "gemini" / "data_sample1000"
-STATA_PATH = CODE_DIR / "data" / "covid" / "dataverse_files" / "Kreps_etal_vax_replication_data.dta"
+STATA_PATH = SRC_DIR / "data" / "covid" / "dataverse_files" / "Kreps_etal_vax_replication_data.dta"
 
 for p in (str(CODE_DIR), str(SRC_DIR)):
     if p not in sys.path:
