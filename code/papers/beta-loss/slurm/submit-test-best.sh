@@ -1,5 +1,6 @@
 #!/bin/bash
-# Submits one slurm/test-best.sbatch job per run of a test-best notebook, all at once: one per finished run folder (a folder with run.json whose status is "finished") in the notebook's runs folders.
+# Submits one slurm/test-best.sbatch job per run of a test-best notebook, all at once: one per finished run folder
+# (a folder with run.json whose status is "finished") in the notebook's runs folders.
 # Runs already tested on every dataset in the notebook's TEST_DATASETS get no job (no GPU time spent on a model load
 # that would only skip).
 # Each job is named <notebook>-<run> (log: <notebook>-<run>-<jobid>.out in the paper folder).

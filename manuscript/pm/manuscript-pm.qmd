@@ -1,0 +1,123 @@
+---
+title: "Title to be decided"
+# Separate title page holds author details; authors don't show in the DOCX export
+author:
+    - name: Davood Wadi
+      email: davood.wadi@hec.ca
+      affiliations:
+        - ref: mcgill
+    - name: Yu Ma
+      email: yu.ma@mcgill.ca
+      affiliations:
+        - ref: mcgill
+affiliations:
+      - id: mcgill
+        name: McGill University
+        department: Desautels Faculty of Management
+        city: Montreal
+        region: Quebec
+        country: Canada
+format:
+  docx:
+    reference-doc: quarto-files/ms_template.docx
+    number-sections: true
+    toc: false
+  pdf:
+    documentclass: article
+    fontsize: 11pt
+    pdf-engine: pdflatex
+    number-sections: true
+    toc: false
+    keep-tex: true
+    geometry:
+      - margin=1in
+    papersize: letter
+    template-partials:
+      - quarto-files/fonts.latex
+      - quarto-files/title.latex
+    include-in-header:
+      - file: quarto-files/preamble.tex
+csl: quarto-files/informs.csl
+filters:
+  - at: pre-quarto
+    path: quarto-files/apa-table.lua
+  - at: pre-quarto
+    path: quarto-files/appendix-refs.lua
+  - at: pre-quarto
+    path: quarto-files/table-size.lua
+  - at: post-render
+    path: quarto-files/breakable-apptbl.lua
+  - at: post-render
+    path: quarto-files/note-in-float.lua
+  - at: post-quarto
+    path: quarto-files/anonymize-docx.lua
+
+crossref:
+  custom:
+    - kind: float
+      key: apptbl
+      reference-prefix: Table W
+      caption-prefix: Table W
+      caption-location: top
+      latex-env: apptbl
+      space-before-numbering: false  
+    - kind: float
+      key: appfig
+      reference-prefix: Figure W
+      caption-prefix: Figure W
+      caption-location: bottom
+      latex-env: appfig
+      space-before-numbering: false  
+    - kind: float
+      key: app
+      reference-prefix: Web Appendix
+      caption-prefix: Web Appendix
+      caption-location: top
+      latex-env: appenv
+      space-before-numbering: false
+
+bibliography:
+  - refs/myrefs.bib
+  - refs/custom.bib
+  - refs/custom_2.bib
+  - refs/others.bib
+  - refs/acl-refs.bib
+  - refs/marketing.bib
+  - refs/ai-marketing.bib
+  - refs/silicon-sampling.bib
+---
+
+<!-- To submit to Marketing Science: Frontiers track -->
+
+<!-- **** Strictly 6,000 words total (including references, tables, figures; online appendix excluded). -->
+
+**Abstract.**  
+
+**Keywords.**  
+
+# Introduction {#sec-intro}
+
+# Literature review {#sec-lit}
+
+# Methodology {#sec-methodology}
+
+# Experimental setup {#sec-setup}
+
+# Results {#sec-results}
+
+# Conclusion {#sec-conclusion}
+
+# Declarations {.unnumbered}
+
+## Funding and competing interests {.unnumbered}
+
+All authors certify that they have no affiliations with or involvement in any organization or entity with any financial interest or non-financial interest in the subject matter or materials discussed in this manuscript. The authors have no funding to report.
+
+# References {.unnumbered}
+
+::: {#refs}
+:::
+
+{{< pagebreak >}}
+
+# Web Appendix {.unnumbered}
