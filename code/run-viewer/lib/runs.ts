@@ -14,8 +14,12 @@ export type RunSource = { name: string; root: string };
 
 // Default sources, relative to this app's folder (code/run-viewer)
 const DEFAULT_SOURCES: { name: string; relativeRoot: string[] }[] = [
-  { name: "beta-training", relativeRoot: ["..", "train-notebooks", "beta-training", "runs"] },
-  { name: "ms-paper-beta-loss", relativeRoot: ["..", "train-notebooks", "beta-training", "ms_paper_beta_loss", "runs"] },
+  { name: "beta-loss-exploration", relativeRoot: ["..", "papers", "beta-loss", "exploration", "runs"] },
+  { name: "beta-loss", relativeRoot: ["..", "papers", "beta-loss", "runs"] },
+  { name: "beta-loss-rorqual", relativeRoot: ["..", "papers", "beta-loss", "runs-rorqual"] },
+  { name: "beta-loss-nibi", relativeRoot: ["..", "papers", "beta-loss", "runs-nibi"] },
+  { name: "sim-respondents-rorqual", relativeRoot: ["..", "papers", "sim-respondents", "runs-rorqual"] },
+  { name: "sim-respondents-nibi", relativeRoot: ["..", "papers", "sim-respondents", "runs-nibi"] },
 ];
 
 const SOURCE_NAME = /^[a-z0-9][a-z0-9-]*$/;

@@ -5,7 +5,7 @@
 # that would only skip).
 # Each job is named <notebook>-<run> (log: <notebook>-<run>-<jobid>.out in the paper folder).
 # Meant for 04-test-best-9b.ipynb, whose runs are in runs-rorqual/kev-9b and runs-nibi/kev-9b (pushed by
-# ./push-nibi-test-runs.sh). The model slug is the second argument.
+# sync/push-nibi-test-runs.sh). The model slug is the second argument.
 # Extra arguments go to sbatch and override the script's defaults (h100_3g.40gb, 4 CPUs, 48G, 1 h).
 # Run on Nibi from anywhere:
 #   slurm/submit-test-best.sh analysis/test-best/04-test-best-9b.ipynb kev-9b
@@ -30,7 +30,7 @@ NOTEBOOK_NAME="$(basename "$NOTEBOOK_PATH" .ipynb)"
 
 for runs_dir in "runs-rorqual/${MODEL_SLUG}" "runs-nibi/${MODEL_SLUG}"; do
     if [ ! -d "$runs_dir" ]; then
-        echo "No runs folder $runs_dir in $PWD (push it with ./push-nibi-test-runs.sh)" >&2
+        echo "No runs folder $runs_dir in $PWD (push it with sync/push-nibi-test-runs.sh)" >&2
         exit 1
     fi
 done

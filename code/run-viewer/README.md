@@ -15,8 +15,9 @@ Charts: drag to pan, ctrl + scroll to zoom, toolbar for box zoom / reset / PNG, 
 Validation charts of one run are linked (shared crosshair, zoom and legend). Add components with `pnpm dlx shadcn@4.23.0 add <name>`.
 
 - Run folders (each a section on the home page, URLs `/s/<folder>/n/<notebook>/r/<run>`):
-  - `beta-training`: `../train-notebooks/beta-training/runs`
-  - `ms-paper-beta-loss`: `../train-notebooks/beta-training/ms_paper_beta_loss/runs`
+  - `beta-loss-exploration`: `../papers/beta-loss/exploration/runs`
+  - `beta-loss`, `beta-loss-rorqual`, `beta-loss-nibi`: `../papers/beta-loss/runs`, `runs-rorqual`, `runs-nibi`
+  - `sim-respondents-rorqual`, `sim-respondents-nibi`: `../papers/sim-respondents/runs-rorqual`, `runs-nibi`
   
   Paths are relative to this folder. Set `RUNS_SOURCES="name=path;name=path"` (for example in `.env.local`) to replace the list,
   such as the main checkout's runs from a git worktree. A missing folder is an error.
