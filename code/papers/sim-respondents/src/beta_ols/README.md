@@ -1,6 +1,6 @@
 # `beta_ols`: dataset OLS modules and the unified beta loss
 
-Used by the notebooks in `train-notebooks/beta-training/`. Their first cell adds this folder to `sys.path`.
+This paper's copy, used by the notebooks in `code/papers/sim-respondents/`. Their first cell adds `src/` to `sys.path`.
 Data and OLS only: no model or tokenizer. The training side (items, gradient step, validation, trainer) is `../beta_train/`.
 
 ## Layout

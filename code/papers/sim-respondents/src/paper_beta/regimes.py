@@ -1,4 +1,4 @@
-"""Step-0 and cross-run summary helpers for `ms_paper_beta_loss`.
+"""Step-0 and cross-run summary helpers for the sim-respondents paper.
 
 Each regime is declared in its own training-notebook cell; its design and paper row code are saved in its run's run.json,
 which is where these helpers read them from.

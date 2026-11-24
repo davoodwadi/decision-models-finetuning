@@ -1,14 +1,14 @@
 # Manuscript-training assets
 
-One notebook per figure or table in `manuscript/manuscript-training.qmd`, named by its Quarto label: `<label>.ipynb`
+One notebook per figure or table in `manuscript/sim-respondents/manuscript-training.qmd`, named by its Quarto label: `<label>.ipynb`
 writes one asset into this folder:
 
 - figures: `<label>.png` (what the manuscript shows) and `<label>.pdf`
 - tables: `<label>.md`, pulled into the manuscript with `{{< include ... >}}`
 
-Nothing is copied into `manuscript/`. `manuscript/manuscript-training-assets` is a symlink to this folder, and the
-manuscript reads `manuscript-training-assets/<label>.png` (or `.md`) through it, so `quarto preview` (which serves only
-`manuscript/`) can show the figures. Run a notebook from this folder; it finds `microdata_analysis.py` in `../src/`.
+Nothing is copied into `manuscript/`. `manuscript/sim-respondents/manuscript-training-assets` is a symlink to this
+folder, and the manuscript reads `manuscript-training-assets/<label>.png` (or `.md`) through it, so `quarto preview`
+(which serves only `manuscript/sim-respondents/`) can show the figures. Run a notebook from this folder; it finds `microdata_analysis.py` in `../src/`.
 
 ## Where to edit what
 
@@ -42,7 +42,7 @@ manuscript reads `manuscript-training-assets/<label>.png` (or `.md`) through it,
 | `apptbl-magistro-subsets` | table | saved runs |
 
 `fig-pipeline` and `appfig-input-vaccines` are TikZ drawings. The manuscript points at
-`manuscript/diagrams-tikz/fig_pipeline_v5.png` and `manuscript/diagrams-tikz/fig_input_vaccines.png`; the build command
+`manuscript/sim-respondents/diagrams-tikz/fig_pipeline_v8.pdf` and `manuscript/sim-respondents/diagrams-tikz/fig_input_vaccines.png`; the build command
 is in each `.tex` header.
 
 `results_summary.csv` comes from `../analysis/llm-baseline/01-gemini-vs-kev-covid-ols.ipynb`; rerun that first when the LLM
