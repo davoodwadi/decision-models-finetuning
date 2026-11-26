@@ -31,6 +31,8 @@ gender:
     "Prefer to self-describe": Other
   missing:
     - "-9. No answer"
+    # hints7 (BirthSex = 3)
+    - "Don't know"
 
 age:
   prompt: Age
@@ -126,6 +128,12 @@ region:
     "Midwest (ND, SD, NE, KS, MN, IA, MO, WI, IL, MI, IN, OH)": Midwest
     "South (TX, OK, AR, LA, KY, TN, MS, AL, WV, DC, MD, DE, VA, NC, SC, GA, FL)": South
     "West (WA, OR, ID, MT, WY, CA, NV, UT, CO, AZ, NM)": West (excluding HI, AK)
+    # shed2025 (ppreg9 hyphenated Census divisions)
+    "Mid-Atlantic": Middle Atlantic
+    "East-North Central": East North Central
+    "West-North Central": West North Central
+    "East-South Central": East South Central
+    "West-South Central": West South Central
 
 state:
   prompt: State or province
@@ -247,14 +255,71 @@ state:
     "US-WV West Virginia": West Virginia
     "US-WI Wisconsin": Wisconsin
     "US-WY Wyoming": Wyoming
+    # shed2025 (ppstaten lowercase USPS abbreviations)
+    al: Alabama
+    ak: Alaska
+    az: Arizona
+    ar: Arkansas
+    ca: California
+    co: Colorado
+    ct: Connecticut
+    de: Delaware
+    dc: District of Columbia
+    fl: Florida
+    ga: Georgia
+    hi: Hawaii
+    id: Idaho
+    il: Illinois
+    in: Indiana
+    ia: Iowa
+    ks: Kansas
+    ky: Kentucky
+    la: Louisiana
+    me: Maine
+    md: Maryland
+    ma: Massachusetts
+    mi: Michigan
+    mn: Minnesota
+    ms: Mississippi
+    mo: Missouri
+    mt: Montana
+    ne: Nebraska
+    nv: Nevada
+    nh: New Hampshire
+    nj: New Jersey
+    nm: New Mexico
+    ny: New York
+    nc: North Carolina
+    nd: North Dakota
+    oh: Ohio
+    ok: Oklahoma
+    or: Oregon
+    pa: Pennsylvania
+    ri: Rhode Island
+    sc: South Carolina
+    sd: South Dakota
+    tn: Tennessee
+    tx: Texas
+    ut: Utah
+    vt: Vermont
+    va: Virginia
+    wa: Washington
+    wv: West Virginia
+    wi: Wisconsin
+    wy: Wyoming
 
 education:
   prompt: Education
   levels:
     # US / standard degree levels
     - Less than high school
+    # hints7 (Education)
+    - Less than 8 years
+    - 8 through 11 years
     - High school or less
     - High school graduate
+    # hints7 (Education)
+    - Vocational or technical training
     - Some college
     - Some college, no degree
     - Some college or technical school
@@ -307,6 +372,18 @@ education:
     "Doctoral Degree": Doctoral degree
     "Doctoral or equivalent (ISCED 8)": Doctoral degree
     "Postgrad": Postgraduate
+    # hints7 (Education)
+    "12 years or completed high school": High school graduate
+    "Post high school training other than college (vocational or technical)": Vocational or technical training
+    "College graduate": Bachelor's degree
+    # shed2025 (ED0)
+    "High school degree or GED": High school graduate
+    "Some college but no degree (including currently enrolled in college)": Some college, no degree
+    "Certificate or technical degree": Vocational or technical training
+    "Associate degree": Associate's degree
+    "Bachelor\u2019s degree": Bachelor's degree
+    "Master\u2019s degree": Master's degree
+    "Professional degree (e.g., MBA, MD, JD)": Professional degree
     "Below higher edu.": Below higher education
     "Higher edu.": Higher education
     # ISCED prefix stripping & Stata truncation cleanup
@@ -363,6 +440,8 @@ family_income:
   prompt: Family income
   levels:
     - "Less than $1,000"
+    # shed2025 (I40)
+    - "Less than $5,000"
     - "Less than $10,000"
     - "Less than $25,000"
     - "Less than $30,000"
@@ -370,6 +449,8 @@ family_income:
     - "$3,000-$3,999"
     - "$4,000-$4,999"
     - "$5,000-$5,999"
+    # shed2025 (I40)
+    - "$5,000-$9,999"
     - "$6,000-$6,999"
     - "$7,000-$7,999"
     - "$8,000-$9,999"
@@ -378,10 +459,16 @@ family_income:
     - "$10,000-$19,999"
     - "$12,500-$14,999"
     - "$15,000-$17,499"
+    # hints7 (IncomeRanges)
+    - "$15,000-$19,999"
     - "$15,000-$24,999"
     - "$17,500-$19,999"
     - "$20,000-$22,499"
+    # shed2025 (I40)
+    - "$20,000-$24,999"
     - "$20,000-$29,999"
+    # hints7 (IncomeRanges)
+    - "$20,000-$34,999"
     - "$22,500-$24,999"
     - "$25,000-$29,999"
     - "$25,000-$34,999"
@@ -405,6 +492,8 @@ family_income:
     - "$90,000-$99,999"
     - "$90,000-$109,999"
     - "$100,000-$149,999"
+    # hints7 (IncomeRanges)
+    - "$100,000-$199,999"
     - "$110,000-$129,999"
     - "$130,000-$149,999"
     - "$150,000-$169,999"
@@ -515,6 +604,18 @@ family_income:
     "180000. 170 000 USD or more per year, before taxes": "$170,000 or more"
     "180000. 170.000 USD or more last year, before taxes": "$170,000 or more"
     "180000. 170.000 USD or more per year, before taxes": "$170,000 or more"
+    # hints7 (IncomeRanges)
+    "$0 to $9,999": "Less than $10,000"
+    "$15,000 to $19,999": "$15,000-$19,999"
+    "$20,000 to $34,999": "$20,000-$34,999"
+    "$100,000 to $199,999": "$100,000-$199,999"
+    # shed2025 (I40)
+    "$5,000 to $9,999": "$5,000-$9,999"
+    "$20,000 to $24,999": "$20,000-$24,999"
+    "$25,000 to $29,999": "$25,000-$29,999"
+    "$30,000 to $34,999": "$30,000-$34,999"
+    "$35,000 to $39,999": "$35,000-$39,999"
+    "$60,000 to $74,999": "$60,000-$74,999"
   missing:
     - "-9. No answer"
     - "-8. Don't know"
@@ -576,6 +677,9 @@ race:
     "US: Black, Non-Hispanic": "Black, non-Hispanic"
     "US: Other, Non-Hispanic": "Other, non-Hispanic"
     "US: Two plus, non-Hispanic": "Two plus, non-Hispanic"
+    # shed2025 (ppracem)
+    "2+ races": Multiracial
+    "Native Hawaiian/Pacific Islander": Native Hawaiian or Other Pacific Islander
 
 hispanic:
   prompt: Are you of Hispanic, Latino, or Spanish origin?
@@ -585,6 +689,19 @@ hispanic:
   aliases:
     "Spanish, Hispanic, or Latino": "Yes"
     "None of these": "No"
+    # hints7 (Hisp_Cat)
+    "Not Hispanic only": "No"
+    "Mexican only": "Yes"
+    "Puerto Rican only": "Yes"
+    "Cuban only": "Yes"
+    "Other Hispanic only": "Yes"
+    "Multiple Hispanic ethnicities selected": "Yes"
+    # shed2025 (pphispan)
+    "No, I am not": "No"
+    "Yes, Mexican, Mexican-American, Chicano": "Yes"
+    "Yes, Puerto Rican": "Yes"
+    "Yes, Cuban, Cuban American": "Yes"
+    "Yes, Other": "Yes"
 
 religion:
   prompt: Religion
@@ -608,6 +725,7 @@ religion:
     "2. Protestant": Protestant
     "1. Catholic": Catholic
     "Roman Catholic": Catholic
+    "Catholic (Roman/Greek/etc)": Catholic
     "3. Orthodox": Orthodox
     "Orthodox (Russian/Greek/etc.)": Orthodox
     "Orthodox such as Greek or Russian Orthodox": Orthodox
@@ -618,7 +736,7 @@ religion:
     "Other Christian, NZ: Christian": Other Christian
     "Other Christian, NZ,PL: Christian": Other Christian
     "Other Christian; NZ: Christian": Other Christian
-    "Other Christian (Evangelical/Pentecostal/Fee church/etc.)": Other Christian
+    "Other Christian (Jehova withness...)": Other Christian
     "5. Jewish": Jewish
     "Jew": Jewish
     "6. Islamic": Muslim
@@ -752,11 +870,18 @@ political_ideology:
     - Somewhat conservative
     - Conservative
     - Very conservative
-    # ISSP PARTY_LR
-    - Left / center-left
-    - Center / liberal
-    - Right / conservative
-    - Other
+    # ISSP 2023 (v46) & 2024 (v59) 0-10 Left-Right self-placement scale
+    - "0 (0 = Left, 10 = Right)"
+    - "1 (0 = Left, 10 = Right)"
+    - "2 (0 = Left, 10 = Right)"
+    - "3 (0 = Left, 10 = Right)"
+    - "4 (0 = Left, 10 = Right)"
+    - "5 (0 = Left, 10 = Right)"
+    - "6 (0 = Left, 10 = Right)"
+    - "7 (0 = Left, 10 = Right)"
+    - "8 (0 = Left, 10 = Right)"
+    - "9 (0 = Left, 10 = Right)"
+    - "10 (0 = Left, 10 = Right)"
     # WVS7 Q240 1-10 Left-Right scale
     - "1 (1 = Left, 10 = Right)"
     - "2 (1 = Left, 10 = Right)"
@@ -774,14 +899,6 @@ political_ideology:
     "Moderate; middle of the road": Moderate
     "Somewhat Conservative": Somewhat conservative
     "Very Conservative": Very conservative
-    "2. Left /center left": Left / center-left
-    "Left, center left": Left / center-left
-    "3. Center / liberal": Center / liberal
-    "Center, liberal": Center / liberal
-    "4. Right / conservative": Right / conservative
-    "Right, conservative": Right / conservative
-    "6. Other": Other
-    "6. Other; PH also: no party affiliation": Other
     "Left": "1 (1 = Left, 10 = Right)"
     "2": "2 (1 = Left, 10 = Right)"
     "3": "3 (1 = Left, 10 = Right)"
@@ -794,16 +911,31 @@ political_ideology:
     "Right": "10 (1 = Left, 10 = Right)"
   missing:
     - "-9. No answer"
+    - "-8. Can't choose"
     - "99. No answer"
     - "No answer"
-    - "No answer;SK: No answer, don\x92t know"
-    - "-4. NAP (Code 2, -4, -7 in VOTE_LE)"
-    - "-4. NAP (Code -4, 2, -7 in VOTE_LE)"
-    - "-4. NAP (code 2, -4, -7 in VOTE_LE)"
-    - "0. NAP (C.0,2,7 VOTE_LE); NAV (BG,GB,PH,SR,TW,ZA)"
-    - "NAP (Code 0, 2, 7 in VOTE_LE);NAV (CN,GB,GE,PH,SR,TW)"
-    - "NAP (Code 0,2,7 in VOTE_LE); NAV (GB,GE,PH,SR,TW,VE)"
-    - "NAP (Code 0,2,7 in VOTE_LE); NAV (CN,GB,PH,SR,TW)"
+  overrides:
+    issp:
+      "0. Left": "0 (0 = Left, 10 = Right)"
+      "1. 1": "1 (0 = Left, 10 = Right)"
+      "2. 2": "2 (0 = Left, 10 = Right)"
+      "3. 3": "3 (0 = Left, 10 = Right)"
+      "4. 4": "4 (0 = Left, 10 = Right)"
+      "5. 5": "5 (0 = Left, 10 = Right)"
+      "6. 6": "6 (0 = Left, 10 = Right)"
+      "7. 7": "7 (0 = Left, 10 = Right)"
+      "8. 8": "8 (0 = Left, 10 = Right)"
+      "9. 9": "9 (0 = Left, 10 = Right)"
+      "10. Right": "10 (0 = Left, 10 = Right)"
+      1: "1 (0 = Left, 10 = Right)"
+      2: "2 (0 = Left, 10 = Right)"
+      3: "3 (0 = Left, 10 = Right)"
+      4: "4 (0 = Left, 10 = Right)"
+      5: "5 (0 = Left, 10 = Right)"
+      6: "6 (0 = Left, 10 = Right)"
+      7: "7 (0 = Left, 10 = Right)"
+      8: "8 (0 = Left, 10 = Right)"
+      9: "9 (0 = Left, 10 = Right)"
 
 marital_status:
   prompt: Marital status
@@ -818,6 +950,11 @@ marital_status:
     - Single
   aliases:
     "1. Married": Married
+    # shed2025 (ppmarit5)
+    "Now married": Married
+    # hints7 (MaritalStatus)
+    "Living as married or living with a romantic partner": Living with a partner
+    "Single, never been married": Never married
     "Never been married": Never married
     "6. Never married/never in a civil partnership": Never married
     "6. Never married/ never in a civil partnership": Never married
@@ -853,15 +990,22 @@ employment_status:
     - Working (paid employee)
     - Unemployed
     - Unemployed and looking for work
+    # hints7 (Occupation2_Cat)
+    - Out of work for 1 year or more
+    - Out of work for less than 1 year
     - Not working (temporary layoff)
     - Retired
     - Student
     - Domestic work
     - Homemaker
-    - Housewife not otherwise employed
+    - Homemaker not otherwise employed
     - Permanently sick or disabled
     - Not working (disabled)
     - Not working (other)
+    # shed2025 (ppemploy)
+    - Not working
+    # hints7 (Occupation2_Cat)
+    - Multiple employment statuses
     - Other
     - Prefer not to say
   aliases:
@@ -869,9 +1013,22 @@ employment_status:
     "Full time (30 hours a week or more)": Full-time employed
     "Part-time employment": Part-time employed
     "Part time (less than 30 hours a week)": Part-time employed
+    # shed2025 (ppemploy)
+    "Working full-time": Full-time employed
+    "Working part-time": Part-time employed
     "Self employed": Self-employed
     "Working (self-employed)": Self-employed
     "1. In paid work": In paid work
+    # hints7 (Occupation2_Cat)
+    "Employed, including self-employed only": In paid work
+    "Out of work for 1 year or more only": Out of work for 1 year or more
+    "Out of work for less than 1 year only": Out of work for less than 1 year
+    "A homemaker/caregiver only": Homemaker
+    "A student only": Student
+    "Retired only": Retired
+    "Disabled only": Not working (disabled)
+    "Multiple Occupation statuses selected": Multiple employment statuses
+    "Other Occupation only": Other
     "2. Unemployed and looking for a job": Unemployed and looking for work
     "Unemployed and looking for a job": Unemployed and looking for work
     "Not working (looking for work)": Unemployed and looking for work
@@ -974,6 +1131,8 @@ children_ever_had:
     - "5"
     - "6"
     - "7 or more"
+  numeric_bins:
+    - {min: 7, max: 30, label: "7 or more"}
   aliases:
     "No children": "0"
     "1 child": "1"
@@ -982,12 +1141,6 @@ children_ever_had:
     "4 children": "4"
     "5 children": "5"
     "6 children": "6"
-    "25.- 7 or more children": "7 or more"
-    "8": "7 or more"
-    "9": "7 or more"
-    "10": "7 or more"
-    "12": "7 or more"
-    "15": "7 or more"
 
 urban_rural:
   prompt: Which best describes where you live?
@@ -1000,7 +1153,20 @@ urban_rural:
     - A town or a small city
     - A country village
     - A farm or home in the country
+    # hints7 (NCHSURCODE2013)
+    - "Metropolitan: large metro"
+    - "Metropolitan: large fringe metro"
+    - "Metropolitan: medium metro"
+    - "Metropolitan: small metro"
+    - "Non-metropolitan: micropolitan"
+    - "Non-metropolitan: noncore"
+    # shed2025 (ppmsacat)
+    - Metropolitan
+    - Non-metropolitan
   aliases:
+    # shed2025 (ppmsacat)
+    Metro: Metropolitan
+    Non-Metro: Non-metropolitan
     "1. A big city": A big city
     "1. A big city; SR: Paramaribo": A big city
     "1. A big city; ZA: Urban, Formal": A big city
@@ -1065,6 +1231,9 @@ union_member:
     "3. No, never; US: No, don't belong": Not a member
     "No, never": Not a member
     "No, never; US: No, don't belong": Not a member
+    # shed2025 (UNION100)
+    "Yes": Member
+    "No": Not a member
   missing:
     - "-1. Not available (US)"
     - "-9. No answer"
@@ -1081,19 +1250,24 @@ residence_type:
     - Apartment
     - Townhouse
     - Condominium
+    # shed2025 (pphouse4)
+    - Condo or townhouse
     - Mobile home
     - Other
   aliases:
     "Something else": Other
+    # shed2025 (pphouse4)
+    "A one-family house detached from any other house": Single family home
+    "Building with 2 or more apartments": Apartment
+    "One-family condo or townhouse attached to other units": Condo or townhouse
+    "Other (mobile home, boat, RV, van, etc.)": Other
 
 citizen:
   prompt: Are you a citizen of this country?
   levels:
     - "Yes"
     - "No"
-  aliases:
-    "Yes, I am a citizen of this country": "Yes"
-    "Not, I am not a citizen of this country": "No"
+  aliases: {}
 
 employer_sector:
   prompt: Sector of employment
@@ -1103,9 +1277,17 @@ employer_sector:
     - Government or public institution
     - Private business or industry
     - Private non-profit organization
+    # shed2025 (ppcm1301)
+    - Self-employed
+    - Family business
   aliases:
     "1. Public employer": Public employer
     "2. Private employer": Private employer
+    # shed2025 (ppcm1301)
+    "Private-for-profit company": Private business or industry
+    Government: Government or public institution
+    "Non-profit organization including tax exempt and charitable organizations": Private non-profit organization
+    "Working in the family business": Family business
   missing:
     - "-4. NAP (Code 3 in WORK)"
     - "-4. NAP (code 3 in WORK)"
@@ -1170,7 +1352,7 @@ spouse_employment:
     - Retired
     - Student
     - Domestic work
-    - Housewife not otherwise employed
+    - Homemaker not otherwise employed
     - Permanently sick or disabled
     - Other
   aliases:
@@ -2338,3 +2520,53 @@ chief_wage_earner:
     - "No"
   aliases: {}
   missing: []
+
+family_savings:
+  prompt: During the past year, did your family
+  levels:
+    - Save money
+    - Just get by
+    - Spent some savings
+    - Spent savings and borrowed money
+  aliases: {}
+  missing: []
+
+social_class:
+  prompt: Social class
+  levels:
+    - Upper class
+    - Upper middle class
+    - Lower middle class
+    - Working class
+    - Lower class
+  aliases: {}
+  missing: []
+
+voting_frequency:
+  prompt: When national elections take place, do you vote always, usually, or never?
+  levels:
+    - Always
+    - Usually
+    - Never
+    - Not allowed to vote
+  aliases: {}
+  missing: []
+
+sexual_orientation:
+  prompt: Sexual orientation
+  levels:
+    # hints7 (SexualOrientation_Recode)
+    - Straight
+    - Gay or lesbian
+    - Bisexual
+    - Other
+  aliases:
+    # hints7 (SexualOrientation_Recode)
+    "Straight, that is, not gay or lesbian": Straight
+    "Lesbian or gay": Gay or lesbian
+    "Something else": Other
+    # shed2025 (pppa_lgb)
+    "Straight, that is, not gay": Straight
+  missing:
+    # hints7 (SexualOrientation_Recode)
+    - "Don't know"

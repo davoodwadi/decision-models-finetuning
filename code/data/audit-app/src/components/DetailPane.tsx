@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import {
   AlertTriangle,
+  BarChart3,
+  BookOpen,
   Check,
   CheckCircle2,
   ChevronLeft,
@@ -12,6 +14,7 @@ import {
   Pencil,
   RotateCcw,
   Save,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,6 +38,8 @@ import type {
   QuestionOverride,
   SchemaKind,
 } from "@/lib/types";
+import { CategoryEditor } from "./CategoryEditor";
+import { QuestionMarginalsPanel } from "./QuestionMarginalsPanel";
 import { TagEditor } from "./TagEditor";
 
 interface DetailPaneProps {
@@ -45,13 +50,21 @@ interface DetailPaneProps {
   effectiveOverride?: QuestionOverride;
   savedTags?: string[];
   allTagCounts?: Array<[string, number]>;
+  allCategoryCounts?: Array<[string, number]>;
   detail: ItemDetail | undefined;
   studyCandidates: ContextCandidate[] | undefined;
   schemaKind: SchemaKind;
   columns: string[];
   positionIndex: number;
   totalFiltered: number;
+  hasPrev?: boolean;
+  hasNext?: boolean;
   activeSubItemIdx: number;
+  detailTab?: "audit" | "marginals";
+  onChangeDetailTab?: (tab: "audit" | "marginals") => void;
+  marginalPersona?: string;
+  onSelectMarginalPersona?: (col: string) => void;
+  marginalsRefreshSeq?: number;
   onSelectSubItemIdx: (idx: number) => void;
   onPrev: () => void;
   onNext: () => void;
@@ -62,10 +75,13 @@ interface DetailPaneProps {
   ) => void;
   onStageTags?: (rowIdx: number, nextTags: string[]) => void;
   onFilterByTag?: (tag: string) => void;
+  onFilterByCategory?: (category: string) => void;
   onSaveRow: (rowIdx: number) => void;
   onDiscardRow: (rowIdx: number) => void;
   onToggleReviewed: (rowIdx: number, nextReviewed: boolean) => void;
   onConfirmAndNext: () => void;
+  /** Open this row in the Source tab (codebook comparison of the saved version). */
+  onViewInSource: (rowKey: string) => void;
 }
 
 function initContextState(rawCsInput: string): {
@@ -105,13 +121,21 @@ export function DetailPane({
   effectiveOverride,
   savedTags = [],
   allTagCounts = [],
+  allCategoryCounts = [],
   detail,
   studyCandidates,
   schemaKind,
   columns,
   positionIndex,
   totalFiltered,
+  hasPrev,
+  hasNext,
   activeSubItemIdx = 0,
+  detailTab = "audit",
+  onChangeDetailTab,
+  marginalPersona = "",
+  onSelectMarginalPersona,
+  marginalsRefreshSeq = 0,
   onSelectSubItemIdx,
   onPrev,
   onNext,
@@ -119,10 +143,12 @@ export function DetailPane({
   onStageOverride,
   onStageTags,
   onFilterByTag,
+  onFilterByCategory,
   onSaveRow,
   onDiscardRow,
   onToggleReviewed,
   onConfirmAndNext,
+  onViewInSource,
 }: DetailPaneProps) {
   const initialCtx = initContextState(row?.data.context_source ?? "");
 
@@ -449,7 +475,7 @@ export function DetailPane({
 
   const totalCount = optionItems.reduce((acc, o) => acc + o.count, 0);
 
-  const handleSetDecision = (target: "score" | "choice" | "exclude" | "noul") => {
+  const handleSetDecision = (target: "score" | "choice" | "exclude") => {
     if (schemaKind === "question_audit") {
       if (target === "exclude") {
         onStageRow(row.rowIdx, { include: "False", kev_type: "" });
@@ -530,21 +556,27 @@ export function DetailPane({
             variant="outline"
             size="icon-sm"
             onClick={onPrev}
-            disabled={positionIndex <= 0}
+            disabled={hasPrev !== undefined ? !hasPrev : positionIndex <= 0}
             className="bg-white cursor-pointer"
             title="Previous (k / ↑)"
           >
             <ChevronLeft className="w-4 h-4 text-slate-700" />
           </Button>
           <span className="text-xs font-mono text-slate-500 min-w-[68px] text-center">
-            {positionIndex + 1} / {totalFiltered}
+            {positionIndex >= 0
+              ? `${positionIndex + 1} / ${totalFiltered}`
+              : `— / ${totalFiltered}`}
           </span>
           <Button
             type="button"
             variant="outline"
             size="icon-sm"
             onClick={onNext}
-            disabled={positionIndex >= totalFiltered - 1}
+            disabled={
+              hasNext !== undefined
+                ? !hasNext
+                : positionIndex >= totalFiltered - 1
+            }
             className="bg-white cursor-pointer"
             title="Next (j / ↓)"
           >
@@ -580,20 +612,6 @@ export function DetailPane({
           >
             Choice <kbd className="ml-1 opacity-75 font-mono text-[10px]">c</kbd>
           </button>
-          {schemaKind === "question_bank" && (
-            <button
-              type="button"
-              onClick={() => handleSetDecision("noul")}
-              className={[
-                "px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer",
-                eff === "noul"
-                  ? "bg-slate-600 text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900",
-              ].join(" ")}
-            >
-              Noul
-            </button>
-          )}
           <button
             type="button"
             onClick={() => handleSetDecision("exclude")}
@@ -610,7 +628,7 @@ export function DetailPane({
           </button>
         </div>
 
-        {schemaKind === "question_bank" && columns.includes("reversed") && (
+        {columns.includes("reversed") && (
           <label className="inline-flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer select-none ml-1">
             <Checkbox
               checked={d.reversed === "True"}
@@ -660,6 +678,22 @@ export function DetailPane({
             </Button>
           </>
         )}
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => onViewInSource(row.rowKey)}
+          className="text-xs cursor-pointer bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+          title={
+            isDirty
+              ? "Open this row in the Source tab (key: v). It compares the saved version: save first to see your staged changes."
+              : "Open this row in the Source tab to compare it with the codebook (key: v)"
+          }
+        >
+          <BookOpen className="w-3.5 h-3.5 text-emerald-700" />
+          View in Source
+        </Button>
 
         {!isDirty && (
           <Button
@@ -711,8 +745,73 @@ export function DetailPane({
         </Button>
       </div>
 
+      {/* Sub-view Tab Bar: Audit & Options vs Persona Marginals */}
+      <div className="bg-white border-b border-slate-200 px-5 flex items-center justify-between gap-3 shrink-0">
+        <div role="tablist" aria-label="Question detail view" className="flex items-center gap-1 -mb-px">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={detailTab === "audit"}
+            onClick={() => onChangeDetailTab?.("audit")}
+            className={[
+              "inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 transition-colors cursor-pointer",
+              detailTab === "audit"
+                ? "border-slate-900 text-slate-900"
+                : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300",
+            ].join(" ")}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            Audit &amp; Options
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={detailTab === "marginals"}
+            onClick={() => onChangeDetailTab?.("marginals")}
+            className={[
+              "inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 transition-colors cursor-pointer",
+              detailTab === "marginals"
+                ? "border-blue-600 text-blue-700"
+                : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300",
+            ].join(" ")}
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+            Persona Marginals
+          </button>
+        </div>
+        <div className="flex items-center gap-2 text-[11px] text-slate-500 font-mono truncate">
+          <span>{d.QuestionID || d.var}</span>
+          {matrixSubItems.length > 1 && activeSubItem && (
+            <span className="text-violet-700">· {activeSubItem.subItemId}</span>
+          )}
+        </div>
+      </div>
+
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto p-5 space-y-4">
+        {detailTab === "marginals" ? (
+          <QuestionMarginalsPanel
+            dsId={dsId}
+            questionId={
+              (schemaKind === "question_audit" ? d.QuestionID : d.var) ||
+              d.QuestionID ||
+              d.var ||
+              ""
+            }
+            subitemId={
+              matrixSubItems.length > 1 && activeSubItem
+                ? activeSubItem.subItemId
+                : undefined
+            }
+            study={d.study || undefined}
+            questionStem={fullStem || effectiveQuestionStem}
+            selectedPersona={marginalPersona}
+            onSelectPersona={(col) => onSelectMarginalPersona?.(col)}
+            refreshSeq={marginalsRefreshSeq}
+            notFieldedIn={row.notFieldedIn}
+          />
+        ) : (
+        <>
         {/* Question Metadata Header Card */}
         <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs space-y-3">
           {isDirty && savedData && (
@@ -820,7 +919,7 @@ export function DetailPane({
                     )}
                   </>
                 )}
-                {schemaKind === "question_bank" && d.data_label && (
+                {d.data_label && (
                   <span className="text-xs text-slate-500">{d.data_label}</span>
                 )}
               </div>
@@ -829,6 +928,17 @@ export function DetailPane({
               row #{row.rowIdx}
             </span>
           </div>
+
+          {columns.includes("category") && (
+            <CategoryEditor
+              category={d.category ?? ""}
+              allCategoryCounts={allCategoryCounts}
+              onChange={(nextCategory) =>
+                onStageRow(row.rowIdx, { category: nextCategory })
+              }
+              onFilterByCategory={onFilterByCategory}
+            />
+          )}
 
           {onStageTags && (
             <TagEditor
@@ -846,6 +956,29 @@ export function DetailPane({
               <span>
                 <strong>Auto-skipped by format ({row.formatSkipLabel}):</strong>{" "}
                 {row.formatSkipReason}. Kept in catalog only for survey flow &amp; context lookup.
+              </span>
+            </div>
+          )}
+
+          {/* Not fielded in a country: informational, the question stays as audited */}
+          {row.notFieldedIn.length > 0 && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 text-xs">
+              <Info className="w-4 h-4 text-slate-400 shrink-0" />
+              <span>
+                <strong>Not fielded in {row.notFieldedIn.join(", ")}:</strong> no valid answers in that
+                country&apos;s sample, so it is left out of that country&apos;s parquet. This is not a
+                problem with the question; keep the audit decision as it is.
+              </span>
+            </div>
+          )}
+
+          {/* Export-blocking banner (computed from the raw data, not saved) */}
+          {row.exportProblem && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-300 text-red-900 text-xs">
+              <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+              <span>
+                <strong>Blocks export:</strong> {row.exportProblem}. Set this question to
+                Exclude, otherwise the Parquet rebuild fails.
               </span>
             </div>
           )}
@@ -1735,7 +1868,9 @@ export function DetailPane({
                   </button>
                 )}
                 <span className="text-xs text-slate-400">
-                  Total responses: {totalCount.toLocaleString()}
+                  {dsId.startsWith("subpop_")
+                    ? `Aggregate share across ${d.n_groups || "?"} subgroups (no microdata N)`
+                    : `Total responses: ${totalCount.toLocaleString()}`}
                 </span>
               </div>
             </div>
@@ -1744,8 +1879,12 @@ export function DetailPane({
                 <tr className="border-b border-slate-200 text-slate-400 text-left">
                   <th className="py-1.5 pr-2 w-8 font-medium">#</th>
                   <th className="py-1.5 pr-3 font-medium">Option label</th>
-                  <th className="py-1.5 pr-3 w-20 text-right font-medium">Count</th>
-                  <th className="py-1.5 pr-3 w-16 text-right font-medium">Share</th>
+                  {!dsId.startsWith("subpop_") && (
+                    <th className="py-1.5 pr-3 w-20 text-right font-medium">Count</th>
+                  )}
+                  <th className="py-1.5 pr-3 w-16 text-right font-medium">
+                    {dsId.startsWith("subpop_") ? "Mean %" : "Share"}
+                  </th>
                   <th className="py-1.5 pr-3 w-36 font-medium">Distribution</th>
                   {(columns.includes("drop_options") ||
                     (onStageOverride && !isMultiRowBipolar)) && (
@@ -1823,9 +1962,11 @@ export function DetailPane({
                           </div>
                         )}
                       </td>
-                      <td className="py-2 pr-3 text-right font-mono text-slate-600">
-                        {o.count.toLocaleString()}
-                      </td>
+                      {!dsId.startsWith("subpop_") && (
+                        <td className="py-2 pr-3 text-right font-mono text-slate-600">
+                          {o.count.toLocaleString()}
+                        </td>
+                      )}
                       <td className="py-2 pr-3 text-right font-mono text-slate-500">
                         {totalCount > 0 ? `${pct.toFixed(1)}%` : "—"}
                       </td>
@@ -2174,6 +2315,8 @@ export function DetailPane({
               className="h-8 w-full text-xs bg-white shadow-none"
             />
           </div>
+        )}
+        </>
         )}
       </div>
     </div>

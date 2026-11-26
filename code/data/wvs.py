@@ -10,20 +10,23 @@ from data.base import (
     build_eval_set,
     filter_by_qids,
 )
-from data.persona import apply_persona_mapping
 
 WVS_PARQUET_PATH = DATA_DIR / "WVS-Wave7" / "wvs7_US_long.parquet"
 
 
 def load_wvs_df(qids=None, parquet_path=WVS_PARQUET_PATH):
-    """Load `wvs7_US_long.parquet`, map its WVS demographic columns to global personas, attach `year`/`qid`/`one_hot`,
-    and optionally filter to `qids`."""
+    """Load `wvs7_US_long.parquet` (already standardized with `persona_spec.yaml` columns),
+    attach `year`/`qid`/`one_hot`, and optionally filter to `qids`."""
     path = Path(parquet_path)
     if not path.exists():
         raise FileNotFoundError(f"WVS parquet not found: {path}")
     df = pd.read_parquet(path)
-    wvs_cols = list(df.columns[1:df.columns.get_loc("v")])   # WVS demographic columns, between CASEID and v
-    df = apply_persona_mapping(df, dataset="wvs").drop(columns=wvs_cols)   # keep only the global persona columns
+    required = {"CASEID", "country", "gender", "v", "option_codes", "option_texts", "answer_code"}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(
+            f"WVS parquet {path} is missing expected standardized columns: {sorted(missing)}"
+        )
     for col in ("option_codes", "option_texts"):
         df[col] = df[col].map(list)
     df["year"] = "wvs7"

@@ -16,9 +16,14 @@ import type {
   DatasetInfo,
   DatasetPayload,
   ItemDetail,
+  MarginalAnswerOption,
+  MarginalGroupRow,
+  MarginalPersonaOption,
+  MarginalSeparationStats,
   PersonaCompletenessFilter,
   PersonasPagePayload,
   PersonaSummaryBundle,
+  QuestionMarginalsPayload,
   QuestionOverride,
   RespondentQuestionsPayload,
   SchemaKind,
@@ -73,10 +78,37 @@ interface CachedPersonas {
   bundle: PersonaSummaryBundle;
 }
 
+interface RawMarginalsQuestion {
+  questionType: string;
+  reversed: boolean;
+  optionCodes: number[];
+  optionTexts: string[];
+  arms: string[];
+  byArm: Record<string, Record<string, number[]>>;
+}
+
+interface RawMarginalsBundle {
+  parquetFile: string;
+  loaderKind: string;
+  isMarginal?: boolean;
+  availablePersonas: MarginalPersonaOption[];
+  selectedPersona: MarginalPersonaOption | null;
+  canonicalLevelOrder: string[] | null;
+  allVs: string[];
+  questions: Record<string, RawMarginalsQuestion>;
+}
+
+interface CachedMarginals {
+  parquetPath: string;
+  parquetMtimeMs: number;
+  bundle: RawMarginalsBundle;
+}
+
 const globalForStore = globalThis as unknown as {
   __auditCache?: Map<string, CachedDataset>;
   __auditLocks?: Map<string, Promise<unknown>>;
   __personaCache?: Map<string, CachedPersonas>;
+  __marginalsCache?: Map<string, CachedMarginals>;
 };
 
 const datasetCache =
@@ -85,6 +117,17 @@ const datasetLocks =
   globalForStore.__auditLocks ?? (globalForStore.__auditLocks = new Map());
 const personaCache =
   globalForStore.__personaCache ?? (globalForStore.__personaCache = new Map());
+const marginalsCache =
+  globalForStore.__marginalsCache ?? (globalForStore.__marginalsCache = new Map());
+
+function clearMarginalsCacheForDataset(dsId: string): void {
+  const prefix = `${dsId}::`;
+  for (const key of Array.from(marginalsCache.keys())) {
+    if (key.startsWith(prefix)) {
+      marginalsCache.delete(key);
+    }
+  }
+}
 
 async function withLock<T>(dsId: string, fn: () => Promise<T>): Promise<T> {
   const prev = datasetLocks.get(dsId) ?? Promise.resolve();
@@ -118,7 +161,7 @@ export async function discoverDatasets(): Promise<{
   const entries = await fs.readdir(DATA_DIR, { withFileTypes: true });
   const datasets: DatasetInfo[] = [];
 
-  const addIfPresent = async (dirName: string, csvFile: string) => {
+  const addIfPresent = async (dirName: string, csvFile: string): Promise<boolean> => {
     const full = path.join(DATA_DIR, dirName, csvFile);
     if (await fileExists(full)) {
       const id = `${dirName}/${csvFile}`;
@@ -130,7 +173,9 @@ export async function discoverDatasets(): Promise<{
           path: full,
         });
       }
+      return true;
     }
+    return false;
   };
 
   await addIfPresent("Twin-2K-500-Mega-Study", "question_audit.csv");
@@ -142,7 +187,6 @@ export async function discoverDatasets(): Promise<{
 
   for (const dirName of sortedDirs) {
     await addIfPresent(dirName, "question_audit.csv");
-    await addIfPresent(dirName, "question_bank.csv");
 
     const subEntries = await fs.readdir(path.join(DATA_DIR, dirName), {
       withFileTypes: true,
@@ -154,12 +198,11 @@ export async function discoverDatasets(): Promise<{
     for (const subName of sortedSubDirs) {
       const relDir = `${dirName}/${subName}`;
       await addIfPresent(relDir, "question_audit.csv");
-      await addIfPresent(relDir, "question_bank.csv");
     }
   }
 
   if (datasets.length === 0) {
-    throw new Error(`No question_audit.csv or question_bank.csv found under ${DATA_DIR}`);
+    throw new Error(`No question_audit.csv found under ${DATA_DIR}`);
   }
 
   return {
@@ -178,10 +221,9 @@ function detectSchemaKind(columns: string[]): SchemaKind {
   ) {
     return "question_audit";
   }
-  if (set.has("v") && set.has("type") && set.has("question") && set.has("options")) {
-    return "question_bank";
-  }
-  throw new Error(`Unrecognized CSV column schema: ${columns.join(", ")}`);
+  throw new Error(
+    `Unsupported CSV column schema (expected question_audit.csv): ${columns.join(", ")}`
+  );
 }
 
 async function resolveDatasetCsvPath(dsId: string): Promise<string> {
@@ -195,18 +237,73 @@ async function resolveDatasetCsvPath(dsId: string): Promise<string> {
 
 const DETAILS_SCHEMA_VERSION = 2;
 
+/** Datasets whose .audit_details.json must carry per-item is_persona flags. */
+function hasPersonaFlags(dirName: string): boolean {
+  return dirName === WVS7_DIR || dirName === HINTS_DIR || dirName === SHED_DIR;
+}
+
+/** ISSP/WVS/HINTS details must carry the computed export checks (and persona flags for WVS/HINTS); older caches are rebuilt. */
+function detailsHaveRequiredChecks(
+  dirName: string,
+  parsed: {
+    items?: Record<
+      string,
+      {
+        export_problem_if_included?: unknown;
+        n_valid_by_country?: unknown;
+        is_persona?: unknown;
+        option_relabeled?: unknown;
+      }
+    >;
+  }
+): boolean {
+  if (!parsed.items) {
+    return false;
+  }
+  const needExport = hasExportChecks(dirName);
+  const needPersona = hasPersonaFlags(dirName);
+  return Object.values(parsed.items).every(
+    (item) =>
+      (!needExport ||
+        (item.export_problem_if_included !== undefined &&
+          item.n_valid_by_country !== undefined &&
+          typeof item.option_relabeled === "boolean")) &&
+      (!needPersona || typeof item.is_persona === "boolean")
+  );
+}
+
 async function ensureDetailsBuilt(datasetDir: string, detailsPath: string): Promise<void> {
+  const dirName = path.basename(datasetDir);
+  const needsChecks = hasExportChecks(dirName) || hasPersonaFlags(dirName);
   if (await fileExists(detailsPath)) {
     try {
       const head = await fs.readFile(detailsPath, "utf8");
-      const parsed = JSON.parse(head) as { version?: number };
-      if (parsed.version === DETAILS_SCHEMA_VERSION) {
+      const parsed = JSON.parse(head) as {
+        version?: number;
+        items?: Record<string, { export_problem_if_included?: unknown; n_valid_by_country?: unknown; is_persona?: unknown }>;
+      };
+      if (
+        parsed.version === DETAILS_SCHEMA_VERSION &&
+        (!needsChecks || detailsHaveRequiredChecks(dirName, parsed))
+      ) {
         return;
       }
     } catch {
       // Rebuild corrupted or outdated index below.
     }
   }
+  await runBuildIndex(datasetDir);
+  if (needsChecks) {
+    const rebuilt = JSON.parse(await fs.readFile(detailsPath, "utf8")) as {
+      items?: Record<string, { export_problem_if_included?: unknown; n_valid_by_country?: unknown; is_persona?: unknown }>;
+    };
+    if (!detailsHaveRequiredChecks(dirName, rebuilt)) {
+      throw new Error(`${detailsPath}: items are missing required export/persona checks after re-indexing`);
+    }
+  }
+}
+
+async function runBuildIndex(datasetDir: string): Promise<void> {
   await execFileAsync(PYTHON_BIN, [BUILD_INDEX_SCRIPT, "--dataset-dir", datasetDir], {
     maxBuffer: 16 * 1024 * 1024,
   });
@@ -231,6 +328,7 @@ async function loadOrRefreshDataset(dsId: string): Promise<CachedDataset> {
   if (
     existing &&
     existing.details.version === DETAILS_SCHEMA_VERSION &&
+    detailsHaveRequiredChecks(path.basename(datasetDir), existing.details) &&
     existing.overrides !== undefined &&
     existing.overridesPath !== undefined &&
     existing.tags !== undefined &&
@@ -256,8 +354,16 @@ async function loadOrRefreshDataset(dsId: string): Promise<CachedDataset> {
       fileExists(overridesPath),
       fileExists(tagsPath),
     ]);
+  const dirName = path.basename(datasetDir);
   const hasNotebook =
-    hasDataNb || (hasStimulus && PYTHON_EXPORT_DIRS.includes(path.basename(datasetDir)));
+    hasDataNb ||
+    ISSP_DIR_RE.test(dirName) ||
+    dirName === WVS7_DIR ||
+    dirName === HINTS_DIR ||
+    dirName === SHED_DIR ||
+    dirName in TWIN2K_EXPORT_FNS ||
+    dirName in SUBPOP_EXPORT_SPLITS ||
+    (hasStimulus && PYTHON_EXPORT_DIRS.includes(dirName));
 
   const { columns, rows: rawRows } = parseCsv(csvText);
   const schemaKind = detectSchemaKind(columns);
@@ -420,15 +526,16 @@ function applyPatchToRow(
       }
     }
   } else {
-    if (!["score", "choice", "noul", "exclude"].includes(cur.type)) {
-      throw new Error(`type must be score/choice/noul/exclude, got "${cur.type}"`);
+    if (!["score", "choice", "exclude"].includes(cur.type)) {
+      throw new Error(`type must be score/choice/exclude, got "${cur.type}"`);
     }
-    if (
-      ds.columns.includes("reversed") &&
-      !["True", "False", ""].includes(cur.reversed)
-    ) {
-      throw new Error(`reversed must be "True", "False", or "", got "${cur.reversed}"`);
-    }
+  }
+
+  if (
+    ds.columns.includes("reversed") &&
+    !["True", "False", ""].includes(cur.reversed)
+  ) {
+    throw new Error(`reversed must be "True", "False", or "", got "${cur.reversed}"`);
   }
 
   ds.rawRows[rowIdx] = cur;
@@ -749,10 +856,26 @@ export async function updateRows(
 
 // Dataset folders whose parquet is written by `data.<folder>.export_<folder>_parquet()` (others use data.ipynb).
 const PYTHON_EXPORT_DIRS = ["grummon2023", "grummon2025", "covid", "Kriner2026", "berke2023", "wu2025", "kantorowicz2026", "magistro2025"];
+const TWIN2K_EXPORT_FNS: Record<string, string> = {
+  "Twin-2K-500": "export_twin2k_parquet",
+  "Twin-2K-500-Mega-Study": "export_twin2k_megastudy_parquet",
+};
+const SUBPOP_EXPORT_SPLITS: Record<string, string> = {
+  subpop_eval: "eval",
+  subpop_train: "train",
+};
+const ISSP_DIR_RE = /^issp(\d{4})$/;
+// WVS Wave 7 US: parquet written by data.wvs_export.export_wvs7(); details carry export checks like ISSP.
+const WVS7_DIR = "WVS-Wave7";
+// NCI HINTS 7 (2024): parquet written by data.hints7_export.export_hints7(); details carry export checks like WVS7.
+const HINTS_DIR = "HINTS";
+// Federal Reserve SHED 2025: parquet written by data.shed2025_export.export_shed2025(); details carry export checks like HINTS.
+const SHED_DIR = "SHED";
 
-// Folders that must be rebuilt before the others: the Twin-2K-500 Mega-Study notebook checks its personas against
-// Twin-2K-500's parquet, so Twin-2K-500 goes first.
-const REBUILD_FIRST_DIRS = ["Twin-2K-500"];
+/** Datasets whose .audit_details.json must carry export_problem_if_included / n_valid_by_country. */
+function hasExportChecks(dirName: string): boolean {
+  return ISSP_DIR_RE.test(dirName) || dirName === WVS7_DIR || dirName === HINTS_DIR || dirName === SHED_DIR;
+}
 
 export interface RebuildResult {
   dsId: string;
@@ -761,7 +884,7 @@ export interface RebuildResult {
   stderr: string;
 }
 
-/** Rebuild every dataset that has an exporter (data.ipynb or Python), in dependency order; stop at the first failure. */
+/** Rebuild every dataset that has an exporter (data.ipynb or Python); stop at the first failure. */
 export async function rebuildAllParquets(): Promise<{ ok: boolean; results: RebuildResult[]; skipped: string[] }> {
   const { datasets } = await discoverDatasets();
   const rebuildable: { dsId: string; dirName: string }[] = [];
@@ -770,12 +893,20 @@ export async function rebuildAllParquets(): Promise<{ ok: boolean; results: Rebu
     const dirName = path.basename(dir);
     const hasNb = await fileExists(path.join(dir, "data.ipynb"));
     const hasStimulus = await fileExists(path.join(dir, "stimulus.py"));
-    if (hasNb || (hasStimulus && PYTHON_EXPORT_DIRS.includes(dirName))) {
+    if (
+      hasNb ||
+      ISSP_DIR_RE.test(dirName) ||
+      dirName === WVS7_DIR ||
+      dirName === HINTS_DIR ||
+      dirName === SHED_DIR ||
+      dirName in TWIN2K_EXPORT_FNS ||
+      dirName in SUBPOP_EXPORT_SPLITS ||
+      (hasStimulus && PYTHON_EXPORT_DIRS.includes(dirName))
+    ) {
       rebuildable.push({ dsId: ds.id, dirName });
     }
   }
-  const rank = (d: string) => (REBUILD_FIRST_DIRS.includes(d) ? REBUILD_FIRST_DIRS.indexOf(d) : REBUILD_FIRST_DIRS.length);
-  rebuildable.sort((a, b) => rank(a.dirName) - rank(b.dirName) || a.dsId.localeCompare(b.dsId));
+  rebuildable.sort((a, b) => a.dsId.localeCompare(b.dsId));
 
   const results: RebuildResult[] = [];
   for (let i = 0; i < rebuildable.length; i++) {
@@ -798,8 +929,14 @@ export async function rebuildDatasetParquet(dsId: string): Promise<{
     const nbPath = path.join(ds.datasetDir, "data.ipynb");
     const hasNb = await fileExists(nbPath);
     const dirBase = path.basename(ds.datasetDir);
+    const isspMatch = ISSP_DIR_RE.exec(dirBase);
+    const isWvs7 = dirBase === WVS7_DIR;
+    const isHints7 = dirBase === HINTS_DIR;
+    const isShed2025 = dirBase === SHED_DIR;
+    const twin2kExportFn = TWIN2K_EXPORT_FNS[dirBase];
+    const subpopSplit = SUBPOP_EXPORT_SPLITS[dirBase];
     const isPythonExport = PYTHON_EXPORT_DIRS.includes(dirBase);
-    if (!hasNb && !isPythonExport) {
+    if (!hasNb && !isspMatch && !isWvs7 && !isHints7 && !isShed2025 && !twin2kExportFn && !subpopSplit && !isPythonExport) {
       throw new Error(
         `No data.ipynb or Python parquet exporter found in ${ds.datasetDir}`
       );
@@ -813,7 +950,111 @@ export async function rebuildDatasetParquet(dsId: string): Promise<{
         PATH: `${venvBinDir}${path.delimiter}${process.env.PATH ?? ""}`,
         PYTHONPATH: codeDir,
       };
-      if (isPythonExport) {
+      let exportReport = "";
+      if (isspMatch) {
+        // Re-index first so the 'Blocks export' flags are current even when the export below fails.
+        await runBuildIndex(ds.datasetDir);
+        datasetCache.delete(dsId);
+        const year = Number(isspMatch[1]);
+        const exported = await execFileAsync(
+          PYTHON_BIN,
+          [
+            "-c",
+            `from data.issp_export import export_issp_wave, format_not_fielded
+_, _, not_fielded = export_issp_wave(${year})
+print(format_not_fielded(${year}, "US", not_fielded))`,
+          ],
+          {
+            cwd: ds.datasetDir,
+            env: execEnv,
+            maxBuffer: 32 * 1024 * 1024,
+          }
+        );
+        exportReport = exported.stdout.trim();
+      } else if (isWvs7) {
+        // Re-index first so the 'Blocks export' flags are current even when the export below fails.
+        await runBuildIndex(ds.datasetDir);
+        datasetCache.delete(dsId);
+        const exported = await execFileAsync(
+          PYTHON_BIN,
+          [
+            "-c",
+            `from data.wvs_export import export_wvs7, format_not_fielded
+_, _, not_fielded = export_wvs7()
+print(format_not_fielded(not_fielded))`,
+          ],
+          {
+            cwd: ds.datasetDir,
+            env: execEnv,
+            maxBuffer: 32 * 1024 * 1024,
+          }
+        );
+        exportReport = exported.stdout.trim();
+      } else if (isHints7) {
+        await runBuildIndex(ds.datasetDir);
+        datasetCache.delete(dsId);
+        const exported = await execFileAsync(
+          PYTHON_BIN,
+          [
+            "-c",
+            `from data.hints7_export import export_hints7, format_not_fielded
+_, _, not_fielded = export_hints7()
+print(format_not_fielded(not_fielded))`,
+          ],
+          {
+            cwd: ds.datasetDir,
+            env: execEnv,
+            maxBuffer: 32 * 1024 * 1024,
+          }
+        );
+        exportReport = exported.stdout.trim();
+      } else if (isShed2025) {
+        await runBuildIndex(ds.datasetDir);
+        datasetCache.delete(dsId);
+        const exported = await execFileAsync(
+          PYTHON_BIN,
+          [
+            "-c",
+            `from data.shed2025_export import export_shed2025, format_not_fielded
+_, _, not_fielded = export_shed2025()
+print(format_not_fielded(not_fielded))`,
+          ],
+          {
+            cwd: ds.datasetDir,
+            env: execEnv,
+            maxBuffer: 32 * 1024 * 1024,
+          }
+        );
+        exportReport = exported.stdout.trim();
+      } else if (twin2kExportFn) {
+        await execFileAsync(
+          PYTHON_BIN,
+          [
+            "-c",
+            `from data.twin2k_export import ${twin2kExportFn}; ${twin2kExportFn}()`,
+          ],
+          {
+            cwd: ds.datasetDir,
+            env: execEnv,
+            maxBuffer: 32 * 1024 * 1024,
+          }
+        );
+      } else if (subpopSplit) {
+        await runBuildIndex(ds.datasetDir);
+        datasetCache.delete(dsId);
+        await execFileAsync(
+          PYTHON_BIN,
+          [
+            "-c",
+            `from data.subpop_export import export_subpop_parquet; export_subpop_parquet(${JSON.stringify(subpopSplit)})`,
+          ],
+          {
+            cwd: ds.datasetDir,
+            env: execEnv,
+            maxBuffer: 32 * 1024 * 1024,
+          }
+        );
+      } else if (isPythonExport) {
         await execFileAsync(
           PYTHON_BIN,
           [
@@ -845,32 +1086,31 @@ nbformat.write(nb, "data.ipynb")`,
         );
       }
       // Re-index details in case *_US_long.parquet counts changed
-      await execFileAsync(
-        PYTHON_BIN,
-        [BUILD_INDEX_SCRIPT, "--dataset-dir", ds.datasetDir],
-        { env: execEnv, maxBuffer: 16 * 1024 * 1024 }
-      );
+      await runBuildIndex(ds.datasetDir);
       datasetCache.delete(dsId);
       personaCache.delete(dsId);
+      clearMarginalsCacheForDataset(dsId);
 
       const { stdout } = await execFileAsync(
         PYTHON_BIN,
         [
           "-c",
           `import glob, os, pandas as pd
-pqs = sorted(glob.glob("*_US_long.parquet"))
+pqs = sorted(glob.glob("*_US_long.parquet") + glob.glob("*_US_marginals.parquet"))
 if pqs:
     df = pd.read_parquet(pqs[0], columns=["CASEID", "v", "type"])
     nc = df[df["type"] == "choice"]["v"].nunique()
     ns = df[df["type"] == "score"]["v"].nunique()
-    print(f"{pqs[0]}: {len(df):,} rows | {df['CASEID'].nunique():,} respondents | {df['v'].nunique():,} questions ({nc:,} choice, {ns:,} score)")
+    unit = "subgroups" if pqs[0].endswith("_marginals.parquet") else "respondents"
+    print(f"{pqs[0]}: {len(df):,} rows | {df['CASEID'].nunique():,} {unit} | {df['v'].nunique():,} questions ({nc:,} choice, {ns:,} score)")
 else:
     print("Notebook executed.")`,
         ],
         { cwd: ds.datasetDir }
       );
 
-      return { ok: true, summary: stdout.trim(), stderr: "" };
+      const summary = exportReport ? `${stdout.trim()} | ${exportReport}` : stdout.trim();
+      return { ok: true, summary, stderr: "" };
     } catch (err: unknown) {
       const e = err as { stderr?: string; message?: string };
       return {
@@ -885,17 +1125,21 @@ else:
 async function findLongParquetPath(datasetDir: string): Promise<string> {
   const entries = await fs.readdir(datasetDir, { withFileTypes: true });
   const matches = entries
-    .filter((e) => e.isFile() && e.name.endsWith("_long.parquet"))
+    .filter(
+      (e) =>
+        e.isFile() &&
+        (e.name.endsWith("_long.parquet") || e.name.endsWith("_marginals.parquet"))
+    )
     .map((e) => e.name)
     .sort();
   if (matches.length === 0) {
     throw new Error(
-      `No *_long.parquet found in ${datasetDir}. Click "Parquet -> This dataset" to build it first.`
+      `No *_long.parquet or *_marginals.parquet found in ${datasetDir}. Click "Parquet -> This dataset" to build it first.`
     );
   }
   if (matches.length > 1) {
     throw new Error(
-      `Expected a single *_long.parquet in ${datasetDir}, found: ${matches.join(", ")}`
+      `Expected a single dataset parquet in ${datasetDir}, found: ${matches.join(", ")}`
     );
   }
   return path.join(datasetDir, matches[0]);
@@ -1004,6 +1248,7 @@ export async function getPersonasPage(
     parquetMtimeMs: bundle.parquetMtimeMs,
     loaderKind: bundle.loaderKind,
     isspRuntimeMapped: bundle.isspRuntimeMapped,
+    isMarginal: bundle.isMarginal,
     nRespondents: bundle.nRespondents,
     nRows: bundle.nRows,
     nQuestions: bundle.nQuestions,
@@ -1051,4 +1296,348 @@ export async function getRespondentQuestions(
   );
   const parsed = JSON.parse(stdout) as Omit<RespondentQuestionsPayload, "dsId">;
   return { dsId, ...parsed };
+}
+
+export interface QuestionMarginalsQuery {
+  questionId: string;
+  subitemId?: string;
+  study?: string;
+  persona?: string;
+  arm?: string;
+}
+
+function matchQuestionVs(
+  allVs: string[],
+  questionId: string,
+  subitemId?: string,
+  study?: string
+): string[] {
+  const vSet = new Set(allVs);
+  const slug = study ? study.replaceAll("_", "-") : undefined;
+
+  if (subitemId) {
+    const cands = slug ? [subitemId, `${slug}-${subitemId}`] : [subitemId];
+    for (const c of cands) {
+      if (vSet.has(c)) return [c];
+    }
+    if (slug) {
+      const pref = `${slug}-${subitemId}_`;
+      const hits = allVs.filter((v) => v.startsWith(pref));
+      if (hits.length > 0) return hits;
+    }
+    const pref = `${subitemId}_`;
+    const hits = allVs.filter((v) => v.startsWith(pref));
+    if (hits.length > 0) return hits;
+  }
+
+  const cands = slug ? [questionId, `${slug}-${questionId}`] : [questionId];
+  for (const c of cands) {
+    if (vSet.has(c)) return [c];
+  }
+  if (slug) {
+    const pref = `${slug}-${questionId}_`;
+    const hits = allVs.filter((v) => v.startsWith(pref));
+    if (hits.length > 0) return hits;
+  }
+  const pref = `${questionId}_`;
+  return allVs.filter((v) => v.startsWith(pref));
+}
+
+async function loadOrRefreshMarginalsBundle(
+  dsId: string,
+  persona?: string
+): Promise<RawMarginalsBundle> {
+  const csvPath = await resolveDatasetCsvPath(dsId);
+  const datasetDir = path.dirname(csvPath);
+  const parquetPath = await findLongParquetPath(datasetDir);
+  const curMtime = await fileMtimeMs(parquetPath);
+
+  const reqKey = `${dsId}::${persona || "__default__"}`;
+  const cached = marginalsCache.get(reqKey);
+  if (
+    cached &&
+    cached.parquetPath === parquetPath &&
+    cached.parquetMtimeMs === curMtime
+  ) {
+    return cached.bundle;
+  }
+
+  const args = [
+    INSPECT_PERSONAS_SCRIPT,
+    "--dataset-dir",
+    datasetDir,
+    "--mode",
+    "marginals-bundle",
+  ];
+  if (persona) {
+    args.push("--persona", persona);
+  }
+
+  const { stdout } = await execFileAsync(PYTHON_BIN, args, {
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  const bundle = JSON.parse(stdout) as RawMarginalsBundle;
+  const entry: CachedMarginals = {
+    parquetPath,
+    parquetMtimeMs: curMtime,
+    bundle,
+  };
+  marginalsCache.set(reqKey, entry);
+  if (bundle.selectedPersona?.col) {
+    marginalsCache.set(`${dsId}::${bundle.selectedPersona.col}`, entry);
+  }
+  return bundle;
+}
+
+export async function getQuestionMarginals(
+  dsId: string,
+  opts: QuestionMarginalsQuery
+): Promise<QuestionMarginalsPayload> {
+  const bundle = await loadOrRefreshMarginalsBundle(dsId, opts.persona);
+
+  const siblingVs = matchQuestionVs(bundle.allVs, opts.questionId, undefined, opts.study);
+  const matchedVs = opts.subitemId
+    ? matchQuestionVs(bundle.allVs, opts.questionId, opts.subitemId, opts.study)
+    : siblingVs;
+  const exposedVs = siblingVs.length > 0 ? siblingVs : matchedVs;
+
+  if (!bundle.selectedPersona) {
+    return {
+      dsId,
+      found: false,
+      reason: "No multi-level persona attributes available in this parquet.",
+      parquetFile: bundle.parquetFile,
+      loaderKind: bundle.loaderKind,
+      availablePersonas: bundle.availablePersonas,
+      selectedPersona: null,
+      matchedVs: exposedVs,
+      availableArms: [],
+      selectedArm: null,
+    };
+  }
+
+  const activeV = matchedVs[0];
+  const qData = activeV ? bundle.questions[activeV] : undefined;
+  if (!activeV || !qData) {
+    return {
+      dsId,
+      found: false,
+      reason: `Question ${JSON.stringify(opts.subitemId || opts.questionId)} is not present in ${bundle.parquetFile} (excluded or not yet rebuilt).`,
+      parquetFile: bundle.parquetFile,
+      loaderKind: bundle.loaderKind,
+      availablePersonas: bundle.availablePersonas,
+      selectedPersona: bundle.selectedPersona,
+      matchedVs: exposedVs,
+      availableArms: [],
+      selectedArm: null,
+    };
+  }
+
+  const availableArms = qData.arms;
+  const selectedArm =
+    opts.arm && availableArms.includes(opts.arm) ? opts.arm : null;
+  const rawGroupCounts =
+    qData.byArm[selectedArm ?? "__all__"] ?? {};
+
+  const isMarginal = Boolean(bundle.isMarginal);
+  const nOpts = qData.optionCodes.length;
+  const overallCounts = new Array<number>(nOpts).fill(0);
+  const groupKeysAll = Object.keys(rawGroupCounts);
+  for (const cnts of Object.values(rawGroupCounts)) {
+    for (let i = 0; i < nOpts; i += 1) {
+      overallCounts[i] += cnts[i] ?? 0;
+    }
+  }
+  const overallN = isMarginal
+    ? groupKeysAll.length
+    : overallCounts.reduce((a, b) => a + b, 0);
+  if (overallN === 0) {
+    return {
+      dsId,
+      found: false,
+      reason: isMarginal
+        ? `No subgroup marginal distributions found for ${JSON.stringify(activeV)} on ${bundle.selectedPersona.promptLabel} in ${bundle.parquetFile}.`
+        : `No valid respondent answers found for ${JSON.stringify(activeV)} in ${bundle.parquetFile}.`,
+      parquetFile: bundle.parquetFile,
+      loaderKind: bundle.loaderKind,
+      isMarginal,
+      availablePersonas: bundle.availablePersonas,
+      selectedPersona: bundle.selectedPersona,
+      matchedVs: exposedVs,
+      availableArms,
+      selectedArm,
+    };
+  }
+
+  const overallSum = overallCounts.reduce((a, b) => a + b, 0);
+  const options: MarginalAnswerOption[] = qData.optionCodes.map((code, i) => ({
+    code,
+    text: qData.optionTexts[i],
+    overallCount: isMarginal ? 0 : overallCounts[i],
+    overallPct:
+      overallSum > 0
+        ? Math.round((overallCounts[i] / overallSum) * 10000) / 100
+        : 0,
+  }));
+
+  const missingKey = "__MISSING__";
+  const nonMissingKeys = Object.keys(rawGroupCounts).filter(
+    (k) => k !== missingKey
+  );
+  const groupSum = (k: string) =>
+    (rawGroupCounts[k] ?? []).reduce((a, b) => a + b, 0);
+
+  if (bundle.canonicalLevelOrder) {
+    const specOrder = new Map<string, number>();
+    bundle.canonicalLevelOrder.forEach((lvl, idx) => specOrder.set(lvl, idx));
+    nonMissingKeys.sort((a, b) => {
+      const ia = specOrder.get(a) ?? 10000;
+      const ib = specOrder.get(b) ?? 10000;
+      if (ia !== ib) return ia - ib;
+      if (!isMarginal) {
+        const diffN = groupSum(b) - groupSum(a);
+        if (diffN !== 0) return diffN;
+      }
+      return a.localeCompare(b);
+    });
+  } else {
+    nonMissingKeys.sort((a, b) => {
+      if (!isMarginal) {
+        const diffN = groupSum(b) - groupSum(a);
+        if (diffN !== 0) return diffN;
+      }
+      return a.localeCompare(b);
+    });
+  }
+
+  const orderedKeys =
+    missingKey in rawGroupCounts
+      ? [...nonMissingKeys, missingKey]
+      : nonMissingKeys;
+
+  const isScore = qData.questionType === "score";
+  const groups: MarginalGroupRow[] = orderedKeys.map((k) => {
+    const cnts = rawGroupCounts[k];
+    const gn = cnts.reduce((a, b) => a + b, 0);
+    const shares = cnts.map((c) =>
+      gn > 0 ? Math.round((c / gn) * 10000) / 100 : 0
+    );
+    let meanScore: number | null = null;
+    if (isScore && gn > 0) {
+      let weighted = 0;
+      for (let i = 0; i < nOpts; i += 1) {
+        weighted += (i + 1) * cnts[i];
+      }
+      meanScore = Math.round((weighted / gn) * 1000) / 1000;
+    }
+    return {
+      level: k === missingKey ? "Missing (NA)" : k,
+      isMissing: k === missingKey,
+      n: isMarginal ? 0 : gn,
+      counts: isMarginal ? new Array<number>(nOpts).fill(0) : cnts,
+      shares,
+      meanScore,
+    };
+  });
+
+  let eligible = isMarginal
+    ? groups.filter((g) => !g.isMissing)
+    : groups.filter((g) => !g.isMissing && g.n >= 15);
+  if (!isMarginal && eligible.length < 2) {
+    eligible = groups.filter((g) => !g.isMissing && g.n > 0);
+  }
+
+  let maxTvdPct = 0;
+  let tvdPair: [string, string] | null = null;
+  let maxOptionDiff: MarginalSeparationStats["maxOptionDiff"] = null;
+  let maxMeanDiff: MarginalSeparationStats["maxMeanDiff"] = null;
+
+  if (eligible.length >= 2) {
+    for (let i = 0; i < eligible.length; i += 1) {
+      for (let j = i + 1; j < eligible.length; j += 1) {
+        const ga = eligible[i];
+        const gb = eligible[j];
+        let l1 = 0;
+        for (let oi = 0; oi < nOpts; oi += 1) {
+          l1 += Math.abs(ga.shares[oi] - gb.shares[oi]);
+        }
+        const tvd = Math.round(0.5 * l1 * 100) / 100;
+        if (tvd > maxTvdPct) {
+          maxTvdPct = tvd;
+          tvdPair = [ga.level, gb.level];
+        }
+        if (ga.meanScore !== null && gb.meanScore !== null) {
+          const md = Math.round(Math.abs(ga.meanScore - gb.meanScore) * 1000) / 1000;
+          if (maxMeanDiff === null || md > maxMeanDiff.delta) {
+            const [hi, lo] =
+              ga.meanScore >= gb.meanScore ? [ga, gb] : [gb, ga];
+            maxMeanDiff = {
+              delta: md,
+              highGroup: hi.level,
+              highMean: hi.meanScore!,
+              lowGroup: lo.level,
+              lowMean: lo.meanScore!,
+            };
+          }
+        }
+      }
+    }
+
+    for (let oi = 0; oi < nOpts; oi += 1) {
+      let hi = eligible[0];
+      let lo = eligible[0];
+      for (const g of eligible) {
+        if (g.shares[oi] > hi.shares[oi]) hi = g;
+        if (g.shares[oi] < lo.shares[oi]) lo = g;
+      }
+      const delta = Math.round((hi.shares[oi] - lo.shares[oi]) * 100) / 100;
+      if (maxOptionDiff === null || delta > maxOptionDiff.deltaPct) {
+        maxOptionDiff = {
+          option: qData.optionTexts[oi],
+          deltaPct: delta,
+          highGroup: hi.level,
+          highPct: hi.shares[oi],
+          lowGroup: lo.level,
+          lowPct: lo.shares[oi],
+        };
+      }
+    }
+  }
+
+  let overallMean: number | null = null;
+  if (isScore && overallSum > 0) {
+    let weighted = 0;
+    for (let i = 0; i < nOpts; i += 1) {
+      weighted += (i + 1) * overallCounts[i];
+    }
+    overallMean = Math.round((weighted / overallSum) * 1000) / 1000;
+  }
+
+  return {
+    dsId,
+    found: true,
+    parquetFile: bundle.parquetFile,
+    loaderKind: bundle.loaderKind,
+    isMarginal,
+    availablePersonas: bundle.availablePersonas,
+    selectedPersona: bundle.selectedPersona,
+    matchedVs: exposedVs,
+    activeV,
+    availableArms,
+    selectedArm,
+    questionType: qData.questionType,
+    reversed: qData.reversed,
+    overallN,
+    overallMean,
+    options,
+    groups,
+    separation: {
+      minGroupN: isMarginal ? 0 : 15,
+      eligibleGroupCount: eligible.length,
+      maxTvdPct,
+      tvdPair,
+      maxOptionDiff,
+      maxMeanDiff,
+    },
+  };
 }

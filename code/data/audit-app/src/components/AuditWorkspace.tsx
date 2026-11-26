@@ -19,6 +19,7 @@ import {
   Search,
   Users,
   XIcon,
+  BookOpen,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,19 +43,26 @@ import {
   resolveContextText,
   tagsEqual,
 } from "@/lib/triage";
+import {
+  hasCodebookDiff,
+  type SourceCheckPayload,
+} from "@/lib/sourceCheckTypes";
 import type {
+  AuditFlag,
   AuditRow,
   DatasetInfo,
   DatasetPayload,
+  DecisionFilter,
   InitialViewState,
   QuestionOverride,
+  ReviewFilter,
   SidebarSubItem,
-  TriageMode,
   WorkspaceTab,
 } from "@/lib/types";
 import { DetailPane } from "./DetailPane";
 import { MultiSelectFilter } from "./MultiSelectFilter";
 import { PersonasPane } from "./PersonasPane";
+import { SourcePane } from "./SourcePane";
 import { SidebarRow } from "./SidebarRow";
 
 const LAST_DS_STORAGE_KEY = "audit-ui-last-ds:v1";
@@ -63,17 +71,149 @@ function dsStorageKey(dsId: string): string {
   return `audit-ui-ds:v1:${dsId}`;
 }
 
+const AUDIT_FLAG_ORDER: AuditFlag[] = [
+  "blocking",
+  "suspect",
+  "unsaved",
+  "overridden",
+  "tagged",
+  "option_relabeled",
+];
+
+const CODEBOOK_FLAG_ORDER: AuditFlag[] = [
+  "codebook_diff",
+  "text_changed",
+  "options_differ",
+  "not_in_source",
+  "identical",
+];
+
+const ALL_FLAG_ORDER: AuditFlag[] = [...AUDIT_FLAG_ORDER, ...CODEBOOK_FLAG_ORDER];
+
+const VALID_AUDIT_FLAGS = new Set<AuditFlag>(ALL_FLAG_ORDER);
+
+const FLAG_LABELS: Record<AuditFlag, string> = {
+  blocking: "Blocks export",
+  suspect: "Suspect",
+  unsaved: "Unsaved",
+  overridden: "Overridden",
+  tagged: "Tagged",
+  option_relabeled: "Relabeled",
+  codebook_diff: "Codebook diff",
+  text_changed: "Text changed",
+  options_differ: "Options differ",
+  not_in_source: "Not in codebook",
+  identical: "Identical",
+};
+
+const UNCATEGORIZED_CATEGORY = "__uncategorized__";
+
 interface StoredDatasetView {
   rowKey?: string;
-  triage?: TriageMode;
+  reviewFilter?: ReviewFilter;
+  decisionFilter?: DecisionFilter;
+  flags?: AuditFlag[];
+  flagsExplicit?: boolean;
+  // Legacy fields from before review/tagging unification (migrated on load)
+  triage?: string;
+  sourceFilter?: string;
+  sourceReviewFilter?: string;
   showFormatSkipped?: boolean;
   studyFilter?: string;
   familyFilter?: string[];
+  categoryFilter?: string[];
   tagFilter?: string[];
   search?: string;
   draftsByRowKey?: Record<string, Record<string, string>>;
   draftOverridesByRowKey?: Record<string, QuestionOverride | null>;
   draftTagsByRowKey?: Record<string, string[]>;
+}
+
+function resolveStoredFilters(
+  stored: StoredDatasetView | null,
+  hasAnyDrafts: boolean
+): {
+  reviewFilter: ReviewFilter;
+  decisionFilter: DecisionFilter;
+  flags: AuditFlag[];
+  showFormatSkipped: boolean;
+} {
+  if (!stored) {
+    return {
+      reviewFilter: "all",
+      decisionFilter: "all",
+      flags: [],
+      showFormatSkipped: false,
+    };
+  }
+
+  const hasNewFormat =
+    stored.reviewFilter !== undefined ||
+    stored.decisionFilter !== undefined ||
+    stored.flags !== undefined;
+
+  if (hasNewFormat) {
+    const rev: ReviewFilter =
+      stored.reviewFilter === "unreviewed" || stored.reviewFilter === "reviewed"
+        ? stored.reviewFilter
+        : "all";
+    const dec: DecisionFilter =
+      stored.decisionFilter === "included" || stored.decisionFilter === "excluded"
+        ? stored.decisionFilter
+        : "all";
+    // Ignore auto-saved suspect flags written before default-suspect removal
+    let flags = stored.flagsExplicit
+      ? (stored.flags ?? []).filter((f): f is AuditFlag =>
+          VALID_AUDIT_FLAGS.has(f)
+        )
+      : (stored.flags ?? []).filter(
+          (f): f is AuditFlag => VALID_AUDIT_FLAGS.has(f) && f !== "suspect"
+        );
+    if (!hasAnyDrafts && flags.includes("unsaved")) {
+      flags = flags.filter((f) => f !== "unsaved");
+    }
+    return {
+      reviewFilter: rev,
+      decisionFilter: dec,
+      flags,
+      showFormatSkipped: stored.showFormatSkipped ?? false,
+    };
+  }
+
+  // Migrate legacy stored fields
+  let rev: ReviewFilter = "all";
+  let dec: DecisionFilter = "all";
+  let skip = stored.showFormatSkipped ?? false;
+  const flagSet = new Set<AuditFlag>();
+
+  if (stored.triage === "blocking") flagSet.add("blocking");
+  else if (stored.triage === "suspects") flagSet.add("suspect");
+  else if (stored.triage === "unsaved" && hasAnyDrafts) flagSet.add("unsaved");
+  else if (stored.triage === "overridden") flagSet.add("overridden");
+  else if (stored.triage === "tagged") flagSet.add("tagged");
+  else if (stored.triage === "unreviewed") rev = "unreviewed";
+  else if (stored.triage === "included") dec = "included";
+  else if (stored.triage === "excluded") dec = "excluded";
+  else if (stored.triage === "all") skip = true;
+
+  if (stored.sourceFilter === "needs_check") flagSet.add("codebook_diff");
+  else if (stored.sourceFilter === "flagged") flagSet.add("suspect");
+  else if (
+    stored.sourceFilter &&
+    VALID_AUDIT_FLAGS.has(stored.sourceFilter as AuditFlag)
+  ) {
+    flagSet.add(stored.sourceFilter as AuditFlag);
+  }
+
+  if (stored.sourceReviewFilter === "unchecked") rev = "unreviewed";
+  else if (stored.sourceReviewFilter === "checked") rev = "reviewed";
+
+  return {
+    reviewFilter: rev,
+    decisionFilter: dec,
+    flags: Array.from(flagSet),
+    showFormatSkipped: skip,
+  };
 }
 
 function readStoredDatasetView(dsId: string): StoredDatasetView | null {
@@ -157,13 +297,13 @@ function hydrateDraftTagsForPayload(
 function resolveInitialRowIdx(
   dsPayload: DatasetPayload,
   targetRowKey?: string,
-  mode?: TriageMode
+  flags?: AuditFlag[]
 ): number {
   if (targetRowKey) {
     const found = dsPayload.rows.find((r) => r.rowKey === targetRowKey);
     if (found) return found.rowIdx;
   }
-  if (!mode || mode === "suspects") {
+  if (flags?.includes("suspect")) {
     const firstSuspect = dsPayload.rows.find((r) => r.isSuspect);
     if (firstSuspect) return firstSuspect.rowIdx;
   }
@@ -189,35 +329,168 @@ export function AuditWorkspace({
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(
     initialView.tab ?? "questions"
   );
+  const [detailTab, setDetailTab] = useState<"audit" | "marginals">("audit");
+  const [marginalPersona, setMarginalPersona] = useState<string>("");
   const [personasRefreshSeq, setPersonasRefreshSeq] = useState(0);
+  const [sourceCheck, setSourceCheck] = useState<SourceCheckPayload | null>(null);
+  const [sourceCheckLoading, setSourceCheckLoading] = useState(true);
+  const [sourceCheckError, setSourceCheckError] = useState<string | null>(null);
+  const sourceReqSeqRef = useRef(0);
   const [loadingDs, setLoadingDs] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
-  const [triage, setTriage] = useState<TriageMode>(() => {
-    if (initialView.mode) return initialView.mode;
-    return initialPayload.rows.some((r) => r.isSuspect)
-      ? "suspects"
-      : "substantive";
-  });
-  const [showFormatSkipped, setShowFormatSkipped] = useState<boolean>(
+  const [reviewFilter, setReviewFilterState] = useState<ReviewFilter>(
+    initialView.reviewFilter ?? "all"
+  );
+  const [decisionFilter, setDecisionFilterState] = useState<DecisionFilter>(
+    initialView.decisionFilter ?? "all"
+  );
+  const [activeFlags, setActiveFlagsState] = useState<AuditFlag[]>(
+    () => initialView.flags ?? []
+  );
+  const [showFormatSkipped, setShowFormatSkippedState] = useState<boolean>(
     initialView.skip ?? false
   );
-  const [studyFilter, setStudyFilter] = useState(initialView.study ?? "");
-  const [familyFilter, setFamilyFilter] = useState<string[]>(
+  const [studyFilter, setStudyFilterState] = useState(initialView.study ?? "");
+  const [familyFilter, setFamilyFilterState] = useState<string[]>(
     initialView.families ?? []
   );
-  const [tagFilter, setTagFilter] = useState<string[]>(initialView.tags ?? []);
-  const [search, setSearch] = useState(initialView.q ?? "");
+  const [categoryFilter, setCategoryFilterState] = useState<string[]>(
+    (initialView.categories ?? []).slice(0, 1)
+  );
+  const [tagFilter, setTagFilterState] = useState<string[]>(
+    initialView.tags ?? []
+  );
+  const [search, setSearchState] = useState(initialView.q ?? "");
   const [bulkSepInput, setBulkSepInput] = useState("\\n\\n");
   const [bulkTagInput, setBulkTagInput] = useState("");
+  const [bulkCategoryInput, setBulkCategoryInput] = useState("");
 
   const [selectedRowIdx, setSelectedRowIdx] = useState<number>(() =>
-    resolveInitialRowIdx(initialPayload, initialView.rowKey, initialView.mode)
+    resolveInitialRowIdx(initialPayload, initialView.rowKey, initialView.flags)
+  );
+  // Keep a restored or just-edited/just-toggled row open even if the active filter hides it;
+  // any manual filter/search change or explicit row selection clears this.
+  const [keepSelectedRow, setKeepSelectedRow] = useState<boolean>(
+    Boolean(initialView.rowKey)
   );
   const [selectedSubItemIdx, setSelectedSubItemIdx] = useState(0);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
     {}
   );
+
+  const setReviewFilter = useCallback((next: ReviewFilter) => {
+    setKeepSelectedRow(false);
+    setReviewFilterState(next);
+  }, []);
+  const setDecisionFilter = useCallback((next: DecisionFilter) => {
+    setKeepSelectedRow(false);
+    setDecisionFilterState(next);
+  }, []);
+  const setActiveFlags = useCallback(
+    (next: AuditFlag[] | ((prev: AuditFlag[]) => AuditFlag[])) => {
+      setKeepSelectedRow(false);
+      setActiveFlagsState(next);
+    },
+    []
+  );
+  const toggleFlag = useCallback((flag: AuditFlag) => {
+    setKeepSelectedRow(false);
+    setActiveFlagsState((prev) =>
+      prev.includes(flag) ? prev.filter((f) => f !== flag) : [...prev, flag]
+    );
+  }, []);
+  const resetUnifiedFilters = useCallback(() => {
+    setKeepSelectedRow(false);
+    setReviewFilterState("all");
+    setDecisionFilterState("all");
+    setActiveFlagsState([]);
+    setCategoryFilterState([]);
+  }, []);
+  const toggleCategory = useCallback((cat: string) => {
+    setKeepSelectedRow(false);
+    setCategoryFilterState((prev) =>
+      prev.length === 1 && prev[0] === cat ? [] : [cat]
+    );
+  }, []);
+  const clearCategories = useCallback(() => {
+    setKeepSelectedRow(false);
+    setCategoryFilterState([]);
+  }, []);
+  const focusFlag = useCallback((flag: AuditFlag) => {
+    setKeepSelectedRow(false);
+    setReviewFilterState("all");
+    setDecisionFilterState("all");
+    setActiveFlagsState([flag]);
+  }, []);
+  const setShowFormatSkipped = useCallback((next: boolean) => {
+    setKeepSelectedRow(false);
+    setShowFormatSkippedState(next);
+  }, []);
+  const setStudyFilter = useCallback((next: string) => {
+    setKeepSelectedRow(false);
+    setStudyFilterState(next);
+  }, []);
+  const setFamilyFilter = useCallback(
+    (next: string[] | ((prev: string[]) => string[])) => {
+      setKeepSelectedRow(false);
+      setFamilyFilterState(next);
+    },
+    []
+  );
+  const setTagFilter = useCallback(
+    (next: string[] | ((prev: string[]) => string[])) => {
+      setKeepSelectedRow(false);
+      setTagFilterState(next);
+    },
+    []
+  );
+  const setSearch = useCallback((next: string) => {
+    setKeepSelectedRow(false);
+    setSearchState(next);
+  }, []);
+
+  const fetchSourceCheck = useCallback(
+    async (
+      dsId: string,
+      opts?: { clear?: boolean; keepCurrent?: boolean }
+    ): Promise<SourceCheckPayload | null> => {
+      const seq = ++sourceReqSeqRef.current;
+      if (opts?.clear) {
+        setSourceCheck(null);
+      }
+      setSourceCheckLoading(true);
+      setSourceCheckError(null);
+      try {
+        const res = await fetch(`/api/source-check?ds=${encodeURIComponent(dsId)}`, {
+          cache: "no-store",
+        });
+        const body = (await res.json()) as SourceCheckPayload & { error?: string };
+        if (!res.ok || body.error) {
+          throw new Error(body.error ?? `HTTP ${res.status}`);
+        }
+        if (seq !== sourceReqSeqRef.current) return null;
+        if (opts?.keepCurrent) {
+          setKeepSelectedRow(true);
+        }
+        setSourceCheck(body);
+        return body;
+      } catch (err: unknown) {
+        if (seq !== sourceReqSeqRef.current) return null;
+        setSourceCheckError(err instanceof Error ? err.message : String(err));
+        return null;
+      } finally {
+        if (seq === sourceReqSeqRef.current) {
+          setSourceCheckLoading(false);
+        }
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    void fetchSourceCheck(payload.dsId, { clear: true });
+  }, [payload.dsId, fetchSourceCheck]);
 
   const [saveState, setSaveState] = useState<
     "idle" | "saving" | "saved" | "error"
@@ -313,33 +586,38 @@ export function AuditWorkspace({
           Object.keys(restoredDrafts).length > 0 ||
           Object.keys(restoredOverrides).length > 0 ||
           Object.keys(restoredTags).length > 0;
-        const hasSuspects = nextPayload.rows.some((r) => r.isSuspect);
-        const defaultMode: TriageMode = hasSuspects
-          ? "suspects"
-          : "substantive";
-        const nextMode: TriageMode =
-          stored?.triage === "unsaved" && !hasAnyDrafts
-            ? defaultMode
-            : (stored?.triage ?? defaultMode);
+        const restoredFilters = resolveStoredFilters(stored, hasAnyDrafts);
+        const nextFlags =
+          nextDsId !== payload.dsId ? [] : restoredFilters.flags;
 
         setPayload(nextPayload);
+        if (nextDsId !== payload.dsId) {
+          setMarginalPersona("");
+        }
         setDraftPatches(restoredDrafts);
         setDraftOverrides(restoredOverrides);
         setDraftTags(restoredTags);
         setDraftResetSeq((n) => n + 1);
-        setShowFormatSkipped(stored?.showFormatSkipped ?? false);
-        setStudyFilter(stored?.studyFilter ?? "");
-        setFamilyFilter(stored?.familyFilter ?? []);
-        setTagFilter(stored?.tagFilter ?? []);
-        setSearch(stored?.search ?? "");
-        setTriage(nextMode);
+        setShowFormatSkippedState(restoredFilters.showFormatSkipped);
+        setStudyFilterState(stored?.studyFilter ?? "");
+        setFamilyFilterState(stored?.familyFilter ?? []);
+        setCategoryFilterState((stored?.categoryFilter ?? []).slice(0, 1));
+        setTagFilterState(stored?.tagFilter ?? []);
+        setSearchState(stored?.search ?? "");
+        setReviewFilterState(restoredFilters.reviewFilter);
+        setDecisionFilterState(restoredFilters.decisionFilter);
+        setActiveFlagsState(nextFlags);
+        setKeepSelectedRow(Boolean(stored?.rowKey));
         setSelectedRowIdx(
-          resolveInitialRowIdx(nextPayload, stored?.rowKey, nextMode)
+          resolveInitialRowIdx(nextPayload, stored?.rowKey, nextFlags)
         );
         setSelectedSubItemIdx(0);
         setExpandedGroups({});
         setSaveState("saved");
         setSaveMessage("All saved");
+        if (nextDsId === payload.dsId) {
+          void fetchSourceCheck(nextDsId, { keepCurrent: true });
+        }
       } catch (err: unknown) {
         setSaveState("error");
         setSaveMessage(err instanceof Error ? err.message : String(err));
@@ -347,7 +625,7 @@ export function AuditWorkspace({
         setLoadingDs(false);
       }
     },
-    [payload.dsId, draftPatches, draftOverrides, draftTags]
+    [payload.dsId, draftPatches, draftOverrides, draftTags, fetchSourceCheck]
   );
 
   // Restore saved place & unsaved drafts on client mount
@@ -385,7 +663,7 @@ export function AuditWorkspace({
           resolveInitialRowIdx(
             initialPayload,
             initialView.rowKey,
-            initialView.mode
+            initialView.flags
           )
         );
       }
@@ -426,26 +704,25 @@ export function AuditWorkspace({
         Object.keys(restoredDrafts).length > 0 ||
         Object.keys(restoredOverrides).length > 0 ||
         Object.keys(restoredTags).length > 0;
-      const hasSuspects = initialPayload.rows.some((r) => r.isSuspect);
-      const defaultMode: TriageMode = hasSuspects ? "suspects" : "substantive";
-      const nextMode: TriageMode =
-        stored.triage === "unsaved" && !hasAnyDrafts
-          ? defaultMode
-          : (stored.triage ?? defaultMode);
+      const restoredFilters = resolveStoredFilters(stored, hasAnyDrafts);
       if (hasAnyDrafts) {
         setDraftPatches(restoredDrafts);
         setDraftOverrides(restoredOverrides);
         setDraftTags(restoredTags);
         setDraftResetSeq((n) => n + 1);
       }
-      setShowFormatSkipped(stored.showFormatSkipped ?? false);
-      setStudyFilter(stored.studyFilter ?? "");
-      setFamilyFilter(stored.familyFilter ?? []);
-      setTagFilter(stored.tagFilter ?? []);
-      setSearch(stored.search ?? "");
-      setTriage(nextMode);
+      setShowFormatSkippedState(restoredFilters.showFormatSkipped);
+      setStudyFilterState(stored.studyFilter ?? "");
+      setFamilyFilterState(stored.familyFilter ?? []);
+      setCategoryFilterState((stored.categoryFilter ?? []).slice(0, 1));
+      setTagFilterState(stored.tagFilter ?? []);
+      setSearchState(stored.search ?? "");
+      setReviewFilterState(restoredFilters.reviewFilter);
+      setDecisionFilterState(restoredFilters.decisionFilter);
+      setActiveFlagsState(restoredFilters.flags);
+      setKeepSelectedRow(Boolean(stored.rowKey));
       setSelectedRowIdx(
-        resolveInitialRowIdx(initialPayload, stored.rowKey, nextMode)
+        resolveInitialRowIdx(initialPayload, stored.rowKey, restoredFilters.flags)
       );
     }
     setHydrated(true);
@@ -630,7 +907,9 @@ export function AuditWorkspace({
     effectiveOverridesByRowKey,
   ]);
 
-  // Rows matching search + dropdowns (before triage & format-skip toggle)
+  const sourceConfigured = Boolean(sourceCheck?.configured);
+
+  // Rows matching search + dropdowns (before triage, format-skip & source filters)
   const preTriageRows = useMemo(() => {
     const q = search.trim().toLowerCase();
     const wantedTagSet =
@@ -663,7 +942,11 @@ export function AuditWorkspace({
           ? `${ov.stem ?? ""} ${Object.values(ov.options ?? {}).join(" ")}`
           : "";
         const tagText = (r.tags ?? []).map((t) => `#${t} ${t}`).join(" ");
-        const hay = `${Object.values(d).join(" ")} ${subText} ${ovText} ${tagText}`.toLowerCase();
+        const srcItem = sourceConfigured ? sourceCheck?.items[r.rowKey] : undefined;
+        const srcText = srcItem
+          ? `${srcItem.source_text ?? ""} ${srcItem.warnings.join(" ")}`
+          : "";
+        const hay = `${Object.values(d).join(" ")} ${subText} ${ovText} ${tagText} ${srcText}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -674,63 +957,316 @@ export function AuditWorkspace({
     payload.schemaKind,
     subItemsByRowKey,
     effectiveOverridesByRowKey,
+    sourceConfigured,
+    sourceCheck,
     studyFilter,
     familyFilter,
     tagFilter,
     search,
   ]);
 
-  const matchesMode = useCallback(
-    (r: AuditRow, mode: TriageMode, includeSkipped: boolean): boolean => {
-      if (mode === "all") return true;
-      if (mode === "unsaved") return Boolean(r.isDirty);
-      if (mode === "overridden") return Boolean(r.hasOverride);
-      if (mode === "tagged") return (r.tags?.length ?? 0) > 0;
-      if (!includeSkipped && r.isFormatSkipped) {
-        const effIncluded = isRowIncluded(payload.schemaKind, r.data);
-        if (!effIncluded) return false;
-      }
-      if (mode === "suspects") return r.isSuspect;
-      if (mode === "unreviewed") return !r.isFormatSkipped && !r.reviewed;
-      if (mode === "substantive") return !r.isFormatSkipped || includeSkipped;
-      if (mode === "included") return isRowIncluded(payload.schemaKind, r.data);
-      if (mode === "excluded") return !isRowIncluded(payload.schemaKind, r.data);
-      return true;
+  const matchesSkipVisibility = useCallback(
+    (r: AuditRow, flags: AuditFlag[], includeSkipped: boolean): boolean => {
+      if (includeSkipped || !r.isFormatSkipped) return true;
+      if (isRowIncluded(payload.schemaKind, r.data)) return true;
+      if (flags.includes("unsaved") && r.isDirty) return true;
+      if (flags.includes("blocking") && r.exportProblem !== "") return true;
+      if (flags.includes("overridden") && r.hasOverride) return true;
+      if (flags.includes("tagged") && (r.tags?.length ?? 0) > 0) return true;
+      return false;
     },
     [payload.schemaKind]
   );
 
-  const tabCounts = useMemo(() => {
-    const modes: TriageMode[] = [
-      "suspects",
-      "unsaved",
-      "overridden",
-      "tagged",
-      "unreviewed",
-      "substantive",
-      "included",
-      "excluded",
-      "all",
-    ];
-    const out = {} as Record<TriageMode, number>;
-    for (const m of modes) {
-      out[m] = preTriageRows.filter((r) =>
-        matchesMode(r, m, showFormatSkipped)
-      ).length;
-    }
-    return out;
-  }, [preTriageRows, matchesMode, showFormatSkipped]);
+  const matchesReview = useCallback(
+    (r: AuditRow, rev: ReviewFilter): boolean => {
+      if (rev === "all") return true;
+      if (rev === "unreviewed") return !r.reviewed;
+      return r.reviewed;
+    },
+    []
+  );
+
+  const matchesDecision = useCallback(
+    (r: AuditRow, dec: DecisionFilter): boolean => {
+      if (dec === "all") return true;
+      const inc = isRowIncluded(payload.schemaKind, r.data);
+      return dec === "included" ? inc : !inc;
+    },
+    [payload.schemaKind]
+  );
+
+  const matchesFlag = useCallback(
+    (r: AuditRow, flag: AuditFlag): boolean => {
+      switch (flag) {
+        case "blocking":
+          return r.exportProblem !== "";
+        case "suspect":
+          return r.isSuspect;
+        case "unsaved":
+          return Boolean(r.isDirty);
+        case "overridden":
+          return Boolean(r.hasOverride);
+        case "tagged":
+          return (r.tags?.length ?? 0) > 0;
+        case "option_relabeled":
+          return (
+            isRowIncluded(payload.schemaKind, r.data) &&
+            Boolean(payload.items[r.rowKey]?.option_relabeled)
+          );
+        case "codebook_diff": {
+          if (!sourceConfigured || !sourceCheck) return true;
+          const item = sourceCheck.items[r.rowKey];
+          return Boolean(item && hasCodebookDiff(item));
+        }
+        case "text_changed": {
+          if (!sourceConfigured || !sourceCheck) return true;
+          const item = sourceCheck.items[r.rowKey];
+          return Boolean(item && item.text_status === "changed");
+        }
+        case "options_differ": {
+          if (!sourceConfigured || !sourceCheck) return true;
+          const item = sourceCheck.items[r.rowKey];
+          return Boolean(item && item.options_status === "differ");
+        }
+        case "not_in_source": {
+          if (!sourceConfigured || !sourceCheck) return true;
+          const item = sourceCheck.items[r.rowKey];
+          return Boolean(
+            item && (item.text_status === "not_in_source" || item.error !== null)
+          );
+        }
+        case "identical": {
+          if (!sourceConfigured || !sourceCheck) return true;
+          const item = sourceCheck.items[r.rowKey];
+          return Boolean(item && !hasCodebookDiff(item));
+        }
+      }
+    },
+    [payload.schemaKind, payload.items, sourceConfigured, sourceCheck]
+  );
+
+  const matchesAllFlags = useCallback(
+    (r: AuditRow, flags: AuditFlag[]): boolean =>
+      flags.every((f) => matchesFlag(r, f)),
+    [matchesFlag]
+  );
+
+  const hasCategoryCol = payload.columns.includes("category");
+
+  const matchesCategories = useCallback(
+    (r: AuditRow, cats: string[]): boolean => {
+      if (!hasCategoryCol || cats.length === 0) return true;
+      const val = (r.data.category || "").trim();
+      return val
+        ? cats.includes(val)
+        : cats.includes(UNCATEGORIZED_CATEGORY);
+    },
+    [hasCategoryCol]
+  );
 
   const formatSkippedCount = useMemo(
     () => preTriageRows.filter((r) => r.isFormatSkipped).length,
     [preTriageRows]
   );
 
+  const visibleFlags = useMemo(
+    () => (sourceConfigured ? ALL_FLAG_ORDER : AUDIT_FLAG_ORDER),
+    [sourceConfigured]
+  );
+
   const filteredRows = useMemo(
     () =>
-      preTriageRows.filter((r) => matchesMode(r, triage, showFormatSkipped)),
-    [preTriageRows, matchesMode, triage, showFormatSkipped]
+      preTriageRows.filter(
+        (r) =>
+          matchesSkipVisibility(r, activeFlags, showFormatSkipped) &&
+          matchesReview(r, reviewFilter) &&
+          matchesDecision(r, decisionFilter) &&
+          matchesAllFlags(r, activeFlags) &&
+          matchesCategories(r, categoryFilter)
+      ),
+    [
+      preTriageRows,
+      matchesSkipVisibility,
+      matchesReview,
+      matchesDecision,
+      matchesAllFlags,
+      matchesCategories,
+      activeFlags,
+      showFormatSkipped,
+      reviewFilter,
+      decisionFilter,
+      categoryFilter,
+    ]
   );
+
+  const reviewCounts = useMemo(() => {
+    const base = preTriageRows.filter(
+      (r) =>
+        matchesSkipVisibility(r, activeFlags, showFormatSkipped) &&
+        matchesDecision(r, decisionFilter) &&
+        matchesAllFlags(r, activeFlags) &&
+        matchesCategories(r, categoryFilter)
+    );
+    let reviewed = 0;
+    for (const r of base) {
+      if (r.reviewed) reviewed++;
+    }
+    return {
+      all: base.length,
+      unreviewed: base.length - reviewed,
+      reviewed,
+    };
+  }, [
+    preTriageRows,
+    matchesSkipVisibility,
+    matchesDecision,
+    matchesAllFlags,
+    matchesCategories,
+    activeFlags,
+    showFormatSkipped,
+    decisionFilter,
+    categoryFilter,
+  ]);
+
+  const decisionCounts = useMemo(() => {
+    const base = preTriageRows.filter(
+      (r) =>
+        matchesSkipVisibility(r, activeFlags, showFormatSkipped) &&
+        matchesReview(r, reviewFilter) &&
+        matchesAllFlags(r, activeFlags) &&
+        matchesCategories(r, categoryFilter)
+    );
+    let included = 0;
+    for (const r of base) {
+      if (isRowIncluded(payload.schemaKind, r.data)) included++;
+    }
+    return {
+      all: base.length,
+      included,
+      excluded: base.length - included,
+    };
+  }, [
+    preTriageRows,
+    matchesSkipVisibility,
+    matchesReview,
+    matchesAllFlags,
+    matchesCategories,
+    activeFlags,
+    showFormatSkipped,
+    reviewFilter,
+    categoryFilter,
+    payload.schemaKind,
+  ]);
+
+  const flagCounts = useMemo(() => {
+    const out = {} as Record<AuditFlag, number>;
+    for (const f of ALL_FLAG_ORDER) {
+      const nextFlags = activeFlags.includes(f)
+        ? activeFlags
+        : [...activeFlags, f];
+      out[f] = preTriageRows.filter(
+        (r) =>
+          matchesSkipVisibility(r, nextFlags, showFormatSkipped) &&
+          matchesReview(r, reviewFilter) &&
+          matchesDecision(r, decisionFilter) &&
+          matchesAllFlags(r, nextFlags) &&
+          matchesCategories(r, categoryFilter)
+      ).length;
+    }
+    return out;
+  }, [
+    preTriageRows,
+    matchesSkipVisibility,
+    matchesReview,
+    matchesDecision,
+    matchesAllFlags,
+    matchesCategories,
+    activeFlags,
+    showFormatSkipped,
+    reviewFilter,
+    decisionFilter,
+    categoryFilter,
+  ]);
+
+  // All distinct categories across the dataset (stable alphabetical order so chips never jump)
+  const categoryOptions = useMemo(() => {
+    if (!hasCategoryCol) return [];
+    const counts = new Map<string, number>();
+    let uncategorizedCount = 0;
+    for (const r of displayRows) {
+      const cat = (r.data.category || "").trim();
+      if (cat) {
+        counts.set(cat, (counts.get(cat) ?? 0) + 1);
+      } else {
+        uncategorizedCount++;
+      }
+    }
+    for (const sel of categoryFilter) {
+      if (sel !== UNCATEGORIZED_CATEGORY && !counts.has(sel)) {
+        counts.set(sel, 0);
+      }
+    }
+    const sorted = Array.from(counts.entries()).sort((a, b) =>
+      a[0].localeCompare(b[0])
+    );
+    if (
+      (uncategorizedCount > 0 && sorted.length > 0) ||
+      categoryFilter.includes(UNCATEGORIZED_CATEGORY)
+    ) {
+      sorted.push([UNCATEGORIZED_CATEGORY, uncategorizedCount]);
+    }
+    return sorted;
+  }, [hasCategoryCol, displayRows, categoryFilter]);
+
+  const namedCategoryCounts = useMemo(
+    () => categoryOptions.filter(([cat]) => cat !== UNCATEGORIZED_CATEGORY),
+    [categoryOptions]
+  );
+
+  // Per-category counts under all other active filters (excluding categoryFilter itself so switching categories stays informative)
+  const categoryCounts = useMemo(() => {
+    const out: Record<string, number> = {};
+    if (!hasCategoryCol) return out;
+    const base = preTriageRows.filter(
+      (r) =>
+        matchesSkipVisibility(r, activeFlags, showFormatSkipped) &&
+        matchesReview(r, reviewFilter) &&
+        matchesDecision(r, decisionFilter) &&
+        matchesAllFlags(r, activeFlags)
+    );
+    for (const r of base) {
+      const key = (r.data.category || "").trim() || UNCATEGORIZED_CATEGORY;
+      out[key] = (out[key] ?? 0) + 1;
+    }
+    return out;
+  }, [
+    hasCategoryCol,
+    preTriageRows,
+    matchesSkipVisibility,
+    matchesReview,
+    matchesDecision,
+    matchesAllFlags,
+    activeFlags,
+    showFormatSkipped,
+    reviewFilter,
+    decisionFilter,
+  ]);
+
+  // Dataset-level counts (ignoring active flags) to decide whether optional audit flags should appear
+  const flagAnyCount = useMemo(() => {
+    const out = {} as Record<AuditFlag, number>;
+    for (const f of AUDIT_FLAG_ORDER) {
+      out[f] = preTriageRows.filter((r) => matchesFlag(r, f)).length;
+    }
+    return out;
+  }, [preTriageRows, matchesFlag]);
+
+  const hasActiveUnifiedFilter =
+    reviewFilter !== "all" ||
+    decisionFilter !== "all" ||
+    activeFlags.length > 0 ||
+    categoryFilter.length > 0;
 
   const filteredIndices = useMemo(
     () => filteredRows.map((r) => r.rowIdx),
@@ -740,6 +1276,13 @@ export function AuditWorkspace({
   // Keep selection valid when filters change (only after initial restoration)
   useEffect(() => {
     if (!hydrated) return;
+    if (
+      keepSelectedRow &&
+      selectedRowIdx >= 0 &&
+      selectedRowIdx < displayRows.length
+    ) {
+      return;
+    }
     if (filteredIndices.length === 0) {
       setSelectedRowIdx(-1);
       return;
@@ -747,7 +1290,13 @@ export function AuditWorkspace({
     if (!filteredIndices.includes(selectedRowIdx)) {
       setSelectedRowIdx(filteredIndices[0]);
     }
-  }, [hydrated, filteredIndices, selectedRowIdx]);
+  }, [
+    hydrated,
+    filteredIndices,
+    selectedRowIdx,
+    keepSelectedRow,
+    displayRows.length,
+  ]);
 
   // Persist current place (URL query + localStorage including unsaved drafts)
   useEffect(() => {
@@ -758,12 +1307,20 @@ export function AuditWorkspace({
     const sp = new URLSearchParams();
     sp.set("ds", payload.dsId);
     if (activeTab === "personas") sp.set("tab", "personas");
+    if (activeTab === "source") sp.set("tab", "source");
     if (activeRowKey) sp.set("row", activeRowKey);
-    sp.set("mode", triage);
+    if (reviewFilter !== "all") sp.set("rev", reviewFilter);
+    if (decisionFilter !== "all") sp.set("dec", decisionFilter);
+    for (const f of activeFlags) {
+      sp.append("flag", f);
+    }
     if (showFormatSkipped) sp.set("skip", "1");
     if (studyFilter) sp.set("study", studyFilter);
     for (const fam of familyFilter) {
       sp.append("family", fam);
+    }
+    for (const cat of categoryFilter) {
+      sp.append("cat", cat);
     }
     for (const tg of tagFilter) {
       sp.append("tag", tg);
@@ -799,10 +1356,14 @@ export function AuditWorkspace({
       }
       const snapshot: StoredDatasetView = {
         rowKey: activeRowKey,
-        triage,
+        reviewFilter,
+        decisionFilter,
+        flags: activeFlags,
+        flagsExplicit: true,
         showFormatSkipped,
         studyFilter,
         familyFilter,
+        categoryFilter,
         tagFilter,
         search,
         draftsByRowKey,
@@ -823,10 +1384,13 @@ export function AuditWorkspace({
     payload.rows,
     activeTab,
     selectedRowIdx,
-    triage,
+    reviewFilter,
+    decisionFilter,
+    activeFlags,
     showFormatSkipped,
     studyFilter,
     familyFilter,
+    categoryFilter,
     tagFilter,
     search,
     draftPatches,
@@ -1056,8 +1620,8 @@ export function AuditWorkspace({
         tags?: string[] | null;
         reviewed?: boolean;
       }>
-    ) => {
-      if (entries.length === 0) return;
+    ): Promise<boolean> => {
+      if (entries.length === 0) return true;
       const wroteCsv = entries.some((e) => Object.keys(e.patch).length > 0);
       const wroteOverrides = entries.some((e) => e.override !== undefined);
       const wroteTags = entries.some((e) => e.tags !== undefined);
@@ -1214,6 +1778,13 @@ export function AuditWorkspace({
                       : "Saved to CSV"
                     : "Review progress saved"
         );
+        if (
+          sourceConfigured &&
+          (wroteCsv || wroteOverrides || wroteTags)
+        ) {
+          void fetchSourceCheck(payload.dsId, { keepCurrent: true });
+        }
+        return true;
       } catch (err: unknown) {
         // Restore patches, overrides & tags back into drafts so edits are never lost on failure
         if (wroteCsv) {
@@ -1254,9 +1825,10 @@ export function AuditWorkspace({
         }
         setSaveState("error");
         setSaveMessage(err instanceof Error ? err.message : String(err));
+        return false;
       }
     },
-    [payload.dsId]
+    [payload.dsId, sourceConfigured, fetchSourceCheck]
   );
 
   const handleSaveSingleRow = useCallback(
@@ -1265,6 +1837,7 @@ export function AuditWorkspace({
       const hasOv = rowIdx in draftOverrides;
       const hasTg = rowIdx in draftTags;
       if (Object.keys(pendingPatch).length === 0 && !hasOv && !hasTg) return;
+      setKeepSelectedRow(true);
       void commitRowEntries([
         {
           rowIdx,
@@ -1291,16 +1864,70 @@ export function AuditWorkspace({
 
   const handleToggleReviewed = useCallback(
     (rowIdx: number, nextReviewed: boolean) => {
+      if (reviewFilter !== "all") {
+        // Keep the row open after toggling so the user can immediately undo with Space or move with j / k.
+        setKeepSelectedRow(true);
+      }
       void commitRowEntries([{ rowIdx, patch: {}, reviewed: nextReviewed }]);
     },
-    [commitRowEntries]
+    [commitRowEntries, reviewFilter]
   );
 
   const posInFiltered = filteredIndices.indexOf(selectedRowIdx);
 
+  const { prevRowIdx, nextRowIdx } = useMemo(() => {
+    if (filteredIndices.length === 0) {
+      return { prevRowIdx: -1, nextRowIdx: -1 };
+    }
+    if (posInFiltered >= 0) {
+      return {
+        prevRowIdx: posInFiltered > 0 ? filteredIndices[posInFiltered - 1] : -1,
+        nextRowIdx:
+          posInFiltered < filteredIndices.length - 1
+            ? filteredIndices[posInFiltered + 1]
+            : -1,
+      };
+    }
+    if (selectedRowIdx < 0) {
+      return { prevRowIdx: -1, nextRowIdx: filteredIndices[0] };
+    }
+    let prev = -1;
+    let next = -1;
+    for (const idx of filteredIndices) {
+      if (idx < selectedRowIdx) prev = idx;
+      else if (idx > selectedRowIdx && next < 0) {
+        next = idx;
+        break;
+      }
+    }
+    return { prevRowIdx: prev, nextRowIdx: next };
+  }, [filteredIndices, posInFiltered, selectedRowIdx]);
+
   const handleSelectRow = useCallback((rowIdx: number) => {
+    setKeepSelectedRow(false);
     setSelectedRowIdx(rowIdx);
     setSelectedSubItemIdx(0);
+  }, []);
+
+  /** Switch to the Source tab keeping the current row and unified sidebar intact. */
+  const handleViewInSource = useCallback(
+    (rowKey?: string) => {
+      if (rowKey) {
+        const row = payload.rows.find((r) => r.rowKey === rowKey);
+        if (row && row.rowIdx !== selectedRowIdx) {
+          setSelectedRowIdx(row.rowIdx);
+          setSelectedSubItemIdx(0);
+        }
+      }
+      setShowBulk(false);
+      setActiveTab("source");
+    },
+    [payload.rows, selectedRowIdx]
+  );
+
+  /** Switch to the Questions tab keeping the current row and unified sidebar intact. */
+  const handleEditInQuestions = useCallback(() => {
+    setActiveTab("questions");
   }, []);
 
   const handleToggleGroupExpand = useCallback(
@@ -1314,34 +1941,37 @@ export function AuditWorkspace({
   );
 
   const handleSelectSubItem = useCallback((rowIdx: number, subIdx: number) => {
+    setKeepSelectedRow(false);
     setSelectedRowIdx(rowIdx);
     setSelectedSubItemIdx(subIdx);
   }, []);
 
   const goPrev = useCallback(() => {
-    if (posInFiltered > 0) {
-      setSelectedRowIdx(filteredIndices[posInFiltered - 1]);
+    if (prevRowIdx >= 0) {
+      setKeepSelectedRow(false);
+      setSelectedRowIdx(prevRowIdx);
       setSelectedSubItemIdx(0);
     }
-  }, [posInFiltered, filteredIndices]);
+  }, [prevRowIdx]);
 
   const goNext = useCallback(() => {
-    if (posInFiltered >= 0 && posInFiltered < filteredIndices.length - 1) {
-      setSelectedRowIdx(filteredIndices[posInFiltered + 1]);
+    if (nextRowIdx >= 0) {
+      setKeepSelectedRow(false);
+      setSelectedRowIdx(nextRowIdx);
       setSelectedSubItemIdx(0);
     }
-  }, [posInFiltered, filteredIndices]);
+  }, [nextRowIdx]);
 
-  const handleConfirmAndNext = useCallback(() => {
+  const handleConfirmAndNext = useCallback(async () => {
     if (selectedRowIdx < 0) return;
-    const nextIdx =
-      posInFiltered >= 0 && posInFiltered < filteredIndices.length - 1
-        ? filteredIndices[posInFiltered + 1]
-        : selectedRowIdx;
+    const targetNext = nextRowIdx;
     const pendingPatch = draftPatches[selectedRowIdx] ?? {};
     const hasOv = selectedRowIdx in draftOverrides;
     const hasTg = selectedRowIdx in draftTags;
-    void commitRowEntries([
+    if (targetNext < 0) {
+      setKeepSelectedRow(true);
+    }
+    const ok = await commitRowEntries([
       {
         rowIdx: selectedRowIdx,
         patch: pendingPatch,
@@ -1350,23 +1980,24 @@ export function AuditWorkspace({
         reviewed: true,
       },
     ]);
-    if (nextIdx !== selectedRowIdx) {
-      setSelectedRowIdx(nextIdx);
+    if (!ok) return;
+    if (targetNext >= 0) {
+      setKeepSelectedRow(false);
+      setSelectedRowIdx(targetNext);
       setSelectedSubItemIdx(0);
     }
   }, [
     selectedRowIdx,
-    posInFiltered,
-    filteredIndices,
+    nextRowIdx,
     draftPatches,
     draftOverrides,
     draftTags,
     commitRowEntries,
   ]);
 
-  // Global keyboard shortcuts (Questions tab only)
+  // Global keyboard shortcuts: unified navigation & staging across Questions and Source.
   useEffect(() => {
-    if (activeTab !== "questions") return;
+    if (activeTab !== "questions" && activeTab !== "source") return;
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
@@ -1384,7 +2015,12 @@ export function AuditWorkspace({
       if (e.defaultPrevented) return;
       const targetEl = e.target as HTMLElement | null;
       const tag = targetEl?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
+      if (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        targetEl?.isContentEditable
+      ) {
         if (e.key === "Escape") {
           targetEl?.blur();
         }
@@ -1446,6 +2082,13 @@ export function AuditWorkspace({
         } else {
           handleStageSingleRow(selectedRowIdx, { type: "exclude" });
         }
+      } else if (e.key === "v" && activeTab === "questions") {
+        e.preventDefault();
+        const current = payload.rows[selectedRowIdx];
+        if (current) handleViewInSource(current.rowKey);
+      } else if (e.key === "e" && activeTab === "source") {
+        e.preventDefault();
+        handleEditInQuestions();
       } else if (e.key === "Escape") {
         if (
           draftPatches[selectedRowIdx] ||
@@ -1463,7 +2106,7 @@ export function AuditWorkspace({
         }
       } else if (e.key === "Enter") {
         e.preventDefault();
-        handleConfirmAndNext();
+        void handleConfirmAndNext();
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -1483,6 +2126,8 @@ export function AuditWorkspace({
     handleDiscardRow,
     handleToggleReviewed,
     handleConfirmAndNext,
+    handleViewInSource,
+    handleEditInQuestions,
   ]);
 
   const handleRebuild = async () => {
@@ -1491,7 +2136,7 @@ export function AuditWorkspace({
       setSaveMessage(
         `Save or discard ${unsavedTotal} unsaved question(s) before rebuilding Parquet`
       );
-      setTriage("unsaved");
+      focusFlag("unsaved");
       return;
     }
     setRebuilding(true);
@@ -1506,10 +2151,14 @@ export function AuditWorkspace({
       if (!res.ok || !json.ok) {
         throw new Error(json.stderr || json.error || "Notebook execution failed");
       }
-      setRebuildBanner(`Parquet rebuilt: ${json.summary}`);
       setPersonasRefreshSeq((n) => n + 1);
+      // Reload first: switchDataset clears the banner.
       await switchDataset(payload.dsId, true);
+      setRebuildBanner(`Parquet rebuilt: ${json.summary}`);
     } catch (err: unknown) {
+      // The rebuild re-indexes before exporting, so reload to show fresh 'Blocks export' flags.
+      // Reload first: switchDataset resets the status message, and the error must stay visible.
+      await switchDataset(payload.dsId, true);
       setSaveState("error");
       setSaveMessage(err instanceof Error ? err.message : String(err));
     } finally {
@@ -1523,7 +2172,7 @@ export function AuditWorkspace({
       setSaveMessage(
         `Save or discard ${unsavedTotal} unsaved question(s) before rebuilding all Parquets`
       );
-      setTriage("unsaved");
+      focusFlag("unsaved");
       return;
     }
     setRebuildingAll(true);
@@ -1543,10 +2192,11 @@ export function AuditWorkspace({
             `\n${failed.stderr}`
         );
       }
-      setRebuildBanner(`All ${done.length} Parquets rebuilt. ${done.join(" || ")}`);
       setPersonasRefreshSeq((n) => n + 1);
       await switchDataset(payload.dsId, true);
+      setRebuildBanner(`All ${done.length} Parquets rebuilt. ${done.join(" || ")}`);
     } catch (err: unknown) {
+      await switchDataset(payload.dsId, true);
       setSaveState("error");
       setSaveMessage(err instanceof Error ? err.message : String(err));
     } finally {
@@ -1558,6 +2208,9 @@ export function AuditWorkspace({
   const substantiveTotal = displayRows.filter((r) => !r.isFormatSkipped).length;
   const substantiveReviewed = displayRows.filter(
     (r) => !r.isFormatSkipped && r.reviewed
+  ).length;
+  const exportBlockingTotal = displayRows.filter(
+    (r) => r.exportProblem !== ""
   ).length;
   const suspectsRemaining = displayRows.filter(
     (r) => r.isSuspect && !r.reviewed
@@ -1593,6 +2246,11 @@ export function AuditWorkspace({
       }
       return [...prev, tag];
     });
+  }, []);
+
+  const handleFilterByCategory = useCallback((cat: string) => {
+    setKeepSelectedRow(false);
+    setCategoryFilterState([cat]);
   }, []);
 
   return (
@@ -1674,9 +2332,28 @@ export function AuditWorkspace({
             <Users className="w-3.5 h-3.5" />
             Personas
           </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "source"}
+            onClick={() => {
+              setActiveTab("source");
+              setShowBulk(false);
+            }}
+            title="Compare each question's wording and options with the dataset's codebook"
+            className={[
+              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer",
+              activeTab === "source"
+                ? "bg-white text-emerald-700 shadow-2xs"
+                : "text-slate-600 hover:text-slate-900",
+            ].join(" ")}
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            Source
+          </button>
         </div>
 
-        {activeTab === "questions" && (
+        {activeTab !== "personas" && (
         <div className="hidden xl:flex items-center gap-2 text-xs text-slate-600 ml-1 whitespace-nowrap">
           <Badge
             variant="outline"
@@ -1714,7 +2391,7 @@ export function AuditWorkspace({
                 setFamilyFilter([]);
                 setTagFilter([]);
                 setSearch("");
-                setTriage("unsaved");
+                focusFlag("unsaved");
               }}
               title="Click to filter questions with unsaved changes"
               className="bg-orange-100 text-orange-900 border-orange-300 hover:bg-orange-200/80 font-semibold text-xs cursor-pointer"
@@ -1832,6 +2509,25 @@ export function AuditWorkspace({
         </div>
       </header>
 
+      {/* Export-blocking banner: included rows the Parquet export cannot handle (computed, not saved) */}
+      {exportBlockingTotal > 0 && (
+        <div className="bg-red-50 border-b border-red-200 px-4 py-1.5 text-xs text-red-900 flex items-center justify-between gap-3">
+          <span>
+            <strong>{exportBlockingTotal}</strong> included question(s) cannot be exported, so the
+            Parquet rebuild will fail. Exclude them first.
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              focusFlag("blocking");
+            }}
+            className="text-red-700 font-semibold hover:underline cursor-pointer shrink-0"
+          >
+            Show them
+          </button>
+        </div>
+      )}
+
       {/* Optional Rebuild / Bulk Banner */}
       {rebuildBanner && (
         <div className="bg-emerald-50 border-b border-emerald-200 px-4 py-1.5 text-xs text-emerald-900 flex items-center justify-between">
@@ -1944,6 +2640,51 @@ export function AuditWorkspace({
               Add Tag
             </Button>
           </div>
+          {hasCategoryCol && (
+            <div className="inline-flex items-center gap-1.5 ml-2 pl-2 border-l border-slate-300">
+              <span className="text-slate-600 font-medium">Category:</span>
+              <Input
+                type="text"
+                list="audit-category-options"
+                value={bulkCategoryInput}
+                onChange={(e) => setBulkCategoryInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && bulkCategoryInput.trim()) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    stageRowsPatch(filteredIndices, {
+                      category: bulkCategoryInput.trim(),
+                    });
+                    setBulkCategoryInput("");
+                    setDraftResetSeq((n) => n + 1);
+                  }
+                }}
+                placeholder="e.g. Work-Life Balance"
+                className="h-6 w-40 bg-white text-xs px-2"
+              />
+              <datalist id="audit-category-options">
+                {namedCategoryCounts.map(([cat]) => (
+                  <option key={cat} value={cat} />
+                ))}
+              </datalist>
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                disabled={!bulkCategoryInput.trim()}
+                onClick={() => {
+                  stageRowsPatch(filteredIndices, {
+                    category: bulkCategoryInput.trim(),
+                  });
+                  setBulkCategoryInput("");
+                  setDraftResetSeq((n) => n + 1);
+                }}
+                className="bg-white cursor-pointer"
+              >
+                Set Category
+              </Button>
+            </div>
+          )}
           {payload.columns.includes("context_sep") && (
             <div className="inline-flex items-center gap-1.5 ml-2 pl-2 border-l border-slate-300">
               <span className="text-slate-600 font-medium">Delimiter:</span>
@@ -1997,74 +2738,196 @@ export function AuditWorkspace({
         <PersonasPane dsId={payload.dsId} refreshSeq={personasRefreshSeq} />
       ) : (
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar */}
-        <aside className="w-[390px] shrink-0 bg-white border-r border-slate-200 flex flex-col h-full overflow-hidden">
-          {/* Triage Tabs & Filters */}
-          <div className="p-2.5 border-b border-slate-200 space-y-2 bg-slate-50/60">
-            <div className="flex flex-wrap gap-1">
+        {/* Unified Left Sidebar (shared between Questions and Source tabs) */}
+        <aside className="w-[360px] shrink-0 bg-white border-r border-slate-200 flex flex-col h-full overflow-hidden">
+          {/* Unified Filter Panel: Review + Decision + Flags & Tags */}
+          <div className="p-2 border-b border-slate-200 space-y-1.5 bg-slate-50/60">
+            {/* Review Status Segmented Bar (shared across Questions & Source) */}
+            <div
+              className="grid grid-cols-3 rounded-md border border-slate-200 bg-white p-0.5 gap-0.5"
+              role="group"
+              aria-label="Review status filter"
+            >
               {(
                 [
-                  ["suspects", "Suspects"],
-                  ["unsaved", "Unsaved"],
-                  ["overridden", "Overridden"],
-                  ["tagged", "Tagged"],
-                  ["unreviewed", "Unreviewed"],
-                  ["substantive", "Substantive"],
-                  ["included", "Included"],
-                  ["excluded", "Excluded"],
                   ["all", "All"],
-                ] as [TriageMode, string][]
-              ).map(([mode, label]) => {
-                const active = triage === mode;
-                const count = tabCounts[mode];
-                if (
-                  (mode === "overridden" || mode === "tagged") &&
-                  count === 0 &&
-                  !active
-                ) {
-                  return null;
-                }
-                return (
-                  <Button
-                    key={mode}
-                    type="button"
-                    variant={active ? "default" : "outline"}
-                    size="xs"
-                    onClick={() => setTriage(mode)}
-                    className={[
-                      "text-[11px] font-semibold cursor-pointer shadow-none",
-                      active
-                        ? mode === "suspects"
-                          ? "bg-amber-500 hover:bg-amber-600 text-white border-transparent"
-                          : mode === "unsaved"
-                            ? "bg-orange-600 hover:bg-orange-700 text-white border-transparent"
-                            : mode === "overridden"
-                              ? "bg-cyan-700 hover:bg-cyan-800 text-white border-transparent"
-                              : mode === "tagged"
-                                ? "bg-indigo-600 hover:bg-indigo-700 text-white border-transparent"
-                                : "bg-slate-900 hover:bg-slate-800 text-white border-transparent"
-                        : mode === "unsaved" && count > 0
-                          ? "bg-orange-50 text-orange-800 border-orange-300 hover:bg-orange-100"
-                          : mode === "overridden" && count > 0
-                            ? "bg-cyan-50 text-cyan-800 border-cyan-300 hover:bg-cyan-100"
-                            : mode === "tagged" && count > 0
-                              ? "bg-indigo-50 text-indigo-800 border-indigo-300 hover:bg-indigo-100"
-                              : "bg-white text-slate-600 border-slate-200 hover:bg-slate-100",
-                    ].join(" ")}
-                  >
-                    {label} ({count})
-                  </Button>
-                );
-              })}
+                  ["unreviewed", "Unreviewed"],
+                  ["reviewed", "Reviewed"],
+                ] as [ReviewFilter, string][]
+              ).map(([rf, label]) => (
+                <button
+                  key={rf}
+                  type="button"
+                  onClick={() => setReviewFilter(rf)}
+                  className={[
+                    "px-1.5 py-0.5 rounded text-[11px] font-semibold cursor-pointer text-center transition-colors",
+                    reviewFilter === rf
+                      ? rf === "reviewed"
+                        ? "bg-emerald-700 text-white"
+                        : "bg-slate-900 text-white"
+                      : "text-slate-600 hover:bg-slate-100",
+                  ].join(" ")}
+                >
+                  {label} ({reviewCounts[rf]})
+                </button>
+              ))}
             </div>
 
+            {/* Decision Status Segmented Bar */}
+            <div
+              className="grid grid-cols-3 rounded-md border border-slate-200 bg-white p-0.5 gap-0.5"
+              role="group"
+              aria-label="Decision filter"
+            >
+              {(
+                [
+                  ["all", "All"],
+                  ["included", "Included"],
+                  ["excluded", "Excluded"],
+                ] as [DecisionFilter, string][]
+              ).map(([df, label]) => (
+                <button
+                  key={df}
+                  type="button"
+                  onClick={() => setDecisionFilter(df)}
+                  className={[
+                    "px-1.5 py-0.5 rounded text-[11px] font-semibold cursor-pointer text-center transition-colors",
+                    decisionFilter === df
+                      ? df === "included"
+                        ? "bg-blue-700 text-white"
+                        : df === "excluded"
+                          ? "bg-rose-700 text-white"
+                          : "bg-slate-900 text-white"
+                      : "text-slate-600 hover:bg-slate-100",
+                  ].join(" ")}
+                >
+                  {label} ({decisionCounts[df]})
+                </button>
+              ))}
+            </div>
+
+            {/* Unified Multi-Select Flags Bar (audit + codebook flags together) */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-2 px-0.5 text-[10px]">
+                <span className="font-semibold uppercase tracking-wider text-slate-500">
+                  Flags{activeFlags.length > 0 ? ` (${activeFlags.length} active)` : ""}
+                </span>
+                {hasActiveUnifiedFilter && (
+                  <button
+                    type="button"
+                    onClick={resetUnifiedFilters}
+                    className="text-blue-700 font-semibold hover:underline cursor-pointer"
+                  >
+                    Clear filters
+                  </button>
+                )}
+              </div>
+              <div
+                className="flex flex-wrap gap-1"
+                role="group"
+                aria-label="Question and codebook flags"
+              >
+                {visibleFlags.map((flag) => {
+                  const active = activeFlags.includes(flag);
+                  const count = flagCounts[flag];
+                  if (
+                    (flag === "blocking" ||
+                      flag === "unsaved" ||
+                      flag === "overridden" ||
+                      flag === "tagged" ||
+                      flag === "option_relabeled") &&
+                    flagAnyCount[flag] === 0 &&
+                    !active
+                  ) {
+                    return null;
+                  }
+                  const activeCls =
+                    flag === "blocking"
+                      ? "bg-red-600 hover:bg-red-700 text-white border-transparent"
+                      : flag === "suspect"
+                        ? "bg-amber-500 hover:bg-amber-600 text-white border-transparent"
+                        : "bg-slate-800 hover:bg-slate-900 text-white border-transparent";
+                  const inactiveCls =
+                    count === 0
+                      ? "bg-white text-slate-400 border-slate-200 hover:bg-slate-100"
+                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-100";
+                  return (
+                    <Button
+                      key={flag}
+                      type="button"
+                      variant={active ? "default" : "outline"}
+                      size="xs"
+                      aria-pressed={active}
+                      onClick={() => toggleFlag(flag)}
+                      className={[
+                        "h-5.5 px-1.5 text-[10.5px] font-semibold cursor-pointer shadow-none",
+                        active ? activeCls : inactiveCls,
+                      ].join(" ")}
+                    >
+                      {FLAG_LABELS[flag]} ({count})
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Single-Select Categories Chip Bar (click active chip again to clear) */}
+            {hasCategoryCol && categoryOptions.length > 0 && (
+              <div className="space-y-1 pt-0.5">
+                <div className="flex items-center justify-between gap-2 px-0.5 text-[10px]">
+                  <span className="font-semibold uppercase tracking-wider text-slate-500">
+                    Categories
+                  </span>
+                  {categoryFilter.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={clearCategories}
+                      className="text-teal-700 font-semibold hover:underline cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <div
+                  className="flex flex-wrap gap-1 max-h-36 overflow-y-auto pr-0.5"
+                  role="group"
+                  aria-label="Question categories"
+                >
+                  {categoryOptions.map(([cat]) => {
+                    const active = categoryFilter.includes(cat);
+                    const count = categoryCounts[cat] ?? 0;
+                    const label =
+                      cat === UNCATEGORIZED_CATEGORY ? "Uncategorized" : cat;
+                    return (
+                      <Button
+                        key={cat}
+                        type="button"
+                        variant={active ? "default" : "outline"}
+                        size="xs"
+                        aria-pressed={active}
+                        onClick={() => toggleCategory(cat)}
+                        className={[
+                          "h-5.5 px-1.5 text-[10.5px] font-semibold cursor-pointer shadow-none",
+                          active
+                            ? "bg-teal-700 hover:bg-teal-800 text-white border-transparent"
+                            : count === 0
+                              ? "bg-white text-slate-400 border-slate-200 hover:bg-slate-100"
+                              : "bg-white text-slate-600 border-slate-200 hover:bg-teal-50 hover:text-teal-900 hover:border-teal-300",
+                        ].join(" ")}
+                      >
+                        {label} ({count})
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Format-skipped visibility toggle */}
-            {formatSkippedCount > 0 &&
-              triage !== "all" &&
-              triage !== "unsaved" && (
+            {formatSkippedCount > 0 && (
               <label className="flex items-center justify-between px-2 py-1 rounded-md bg-slate-100/90 border border-slate-200/80 text-[11px] text-slate-600 cursor-pointer select-none">
                 <span>
-                  Show format-skipped (DB / TE / Slider / Multi) dimmed
+                  Show format-skipped (Demo / DB / TE / Slider / Multi) dimmed
                 </span>
                 <span className="inline-flex items-center gap-1.5 font-mono text-slate-500">
                   ({formatSkippedCount})
@@ -2179,8 +3042,17 @@ export function AuditWorkspace({
           {/* Scrollable Question List */}
           <div className="flex-1 overflow-y-auto">
             {filteredRows.length === 0 ? (
-              <div className="p-6 text-center text-xs text-slate-400">
-                No questions match current filters.
+              <div className="p-6 text-center text-xs text-slate-400 space-y-2">
+                <div>No questions match current filters.</div>
+                {hasActiveUnifiedFilter && (
+                  <button
+                    type="button"
+                    onClick={resetUnifiedFilters}
+                    className="text-blue-700 hover:underline font-medium cursor-pointer"
+                  >
+                    Clear filters
+                  </button>
+                )}
               </div>
             ) : (
               filteredRows.map((r) => {
@@ -2198,6 +3070,9 @@ export function AuditWorkspace({
                   subItems.length > 1 &&
                   (searchMatchesSub ||
                     (expandedGroups[r.rowKey] ?? isRowSelected));
+                const srcItem = sourceConfigured
+                  ? sourceCheck?.items[r.rowKey]
+                  : undefined;
                 return (
                   <SidebarRow
                     key={r.rowKey}
@@ -2205,6 +3080,7 @@ export function AuditWorkspace({
                     schemaKind={payload.schemaKind}
                     subItems={subItems}
                     overrideStem={effectiveOverridesByRowKey[r.rowKey]?.stem}
+                    sourceItem={srcItem}
                     isSelected={isRowSelected}
                     isExpanded={isExpanded}
                     activeSubItemIdx={isRowSelected ? selectedSubItemIdx : -1}
@@ -2218,35 +3094,86 @@ export function AuditWorkspace({
           </div>
         </aside>
 
-        {/* Right Detail Pane */}
-        <DetailPane
-          key={`${currentRow?.rowKey ?? "empty"}:${draftResetSeq}`}
-          dsId={payload.dsId}
-          row={currentRow}
-          savedData={currentSavedRow?.data}
-          savedOverride={currentSavedOverride}
-          effectiveOverride={currentEffectiveOverride}
-          savedTags={currentSavedTags}
-          allTagCounts={tagOptions}
-          detail={currentDetail}
-          studyCandidates={currentStudyCandidates}
-          schemaKind={payload.schemaKind}
-          columns={payload.columns}
-          positionIndex={posInFiltered}
-          totalFiltered={filteredRows.length}
-          activeSubItemIdx={selectedSubItemIdx}
-          onSelectSubItemIdx={setSelectedSubItemIdx}
-          onPrev={goPrev}
-          onNext={goNext}
-          onStageRow={handleStageSingleRow}
-          onStageOverride={handleStageOverride}
-          onStageTags={handleStageTags}
-          onFilterByTag={handleFilterByTag}
-          onSaveRow={handleSaveSingleRow}
-          onDiscardRow={handleDiscardRow}
-          onToggleReviewed={handleToggleReviewed}
-          onConfirmAndNext={handleConfirmAndNext}
-        />
+        {/* Right Content Pane: swaps cleanly between Source comparison+PDF and Questions DetailPane */}
+        {activeTab === "source" ? (
+          <SourcePane
+            dsId={payload.dsId}
+            data={sourceCheck}
+            loading={sourceCheckLoading}
+            error={sourceCheckError}
+            row={currentRow}
+            savedData={currentSavedRow?.data}
+            savedOverride={currentSavedOverride}
+            effectiveOverride={currentEffectiveOverride}
+            savedTags={currentSavedTags}
+            allTagCounts={tagOptions}
+            allCategoryCounts={namedCategoryCounts}
+            detail={currentDetail}
+            schemaKind={payload.schemaKind}
+            columns={payload.columns}
+            draftResetSeq={draftResetSeq}
+            positionIndex={posInFiltered}
+            totalFiltered={filteredRows.length}
+            hasPrev={prevRowIdx >= 0}
+            hasNext={nextRowIdx >= 0}
+            marginalPersona={marginalPersona}
+            onSelectMarginalPersona={setMarginalPersona}
+            marginalsRefreshSeq={personasRefreshSeq}
+            onPrev={goPrev}
+            onNext={goNext}
+            onStageRow={handleStageSingleRow}
+            onStageOverride={handleStageOverride}
+            onStageTags={handleStageTags}
+            onFilterByTag={handleFilterByTag}
+            onFilterByCategory={handleFilterByCategory}
+            onSaveRow={handleSaveSingleRow}
+            onDiscardRow={handleDiscardRow}
+            onToggleReviewed={handleToggleReviewed}
+            onConfirmAndNext={() => {
+              void handleConfirmAndNext();
+            }}
+            onEditInQuestions={handleEditInQuestions}
+          />
+        ) : (
+          <DetailPane
+            key={`${currentRow?.rowKey ?? "empty"}:${draftResetSeq}`}
+            dsId={payload.dsId}
+            row={currentRow}
+            savedData={currentSavedRow?.data}
+            savedOverride={currentSavedOverride}
+            effectiveOverride={currentEffectiveOverride}
+            savedTags={currentSavedTags}
+            allTagCounts={tagOptions}
+            allCategoryCounts={namedCategoryCounts}
+            detail={currentDetail}
+            studyCandidates={currentStudyCandidates}
+            schemaKind={payload.schemaKind}
+            columns={payload.columns}
+            positionIndex={posInFiltered}
+            totalFiltered={filteredRows.length}
+            hasPrev={prevRowIdx >= 0}
+            hasNext={nextRowIdx >= 0}
+            activeSubItemIdx={selectedSubItemIdx}
+            detailTab={detailTab}
+            onChangeDetailTab={setDetailTab}
+            marginalPersona={marginalPersona}
+            onSelectMarginalPersona={setMarginalPersona}
+            marginalsRefreshSeq={personasRefreshSeq}
+            onSelectSubItemIdx={setSelectedSubItemIdx}
+            onPrev={goPrev}
+            onNext={goNext}
+            onStageRow={handleStageSingleRow}
+            onStageOverride={handleStageOverride}
+            onStageTags={handleStageTags}
+            onFilterByTag={handleFilterByTag}
+            onFilterByCategory={handleFilterByCategory}
+            onSaveRow={handleSaveSingleRow}
+            onDiscardRow={handleDiscardRow}
+            onToggleReviewed={handleToggleReviewed}
+            onConfirmAndNext={handleConfirmAndNext}
+            onViewInSource={handleViewInSource}
+          />
+        )}
       </div>
       )}
     </div>

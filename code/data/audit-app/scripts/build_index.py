@@ -15,18 +15,25 @@ import json
 import os
 from pathlib import Path
 import re
+import sys
 import time
 
 import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 DATA_DIR = REPO_ROOT / "code" / "data"
+CODE_DIR = REPO_ROOT / "code"
+if str(CODE_DIR) not in sys.path:
+    sys.path.insert(0, str(CODE_DIR))
 
 BR_RE = re.compile(r"<br\s*/?>", re.IGNORECASE)
 WS_RE = re.compile(r"\s+")
 AUDIT_DETAILS_FILENAME = ".audit_details.json"
 DETAILS_VERSION = 2
 MAX_PAIRED_VARIANTS = 200
+WVS7_DIR_NAME = "WVS-Wave7"
+HINTS_DIR_NAME = "HINTS"
+SHED_DIR_NAME = "SHED"
 
 
 def norm_str(s: str) -> str:
@@ -41,17 +48,15 @@ def discover_dataset_csvs(data_dir: Path) -> list[Path]:
     for child in sorted(data_dir.iterdir()):
         if not child.is_dir() or child.name == "audit-app" or child.name.startswith("."):
             continue
-        for fname in ("question_audit.csv", "question_bank.csv"):
-            p = child / fname
-            if p.is_file() and p not in found:
-                found.append(p)
+        p = child / "question_audit.csv"
+        if p.is_file() and p not in found:
+            found.append(p)
         for sub in sorted(child.iterdir()):
             if not sub.is_dir() or sub.name.startswith("."):
                 continue
-            for fname in ("question_audit.csv", "question_bank.csv"):
-                p = sub / fname
-                if p.is_file() and p not in found:
-                    found.append(p)
+            sp = sub / "question_audit.csv"
+            if sp.is_file() and sp not in found:
+                found.append(sp)
     return found
 
 
@@ -594,8 +599,12 @@ def build_twin2k_details(csv_path: Path, df: pd.DataFrame) -> dict:
     }
 
 
-def build_question_bank_details(csv_path: Path, df: pd.DataFrame) -> dict:
+def build_issp_audit_details(csv_path: Path, df: pd.DataFrame) -> dict:
+    from data.issp_export import issp_question_checks
+
     dataset_dir = csv_path.parent
+    year = int(dataset_dir.name.removeprefix("issp"))
+    question_checks = issp_question_checks(year)
     pqs = sorted(dataset_dir.glob("*_US_long.parquet"))
     long_counts: dict[str, list[tuple[str, int]]] = {}
     if pqs:
@@ -608,16 +617,21 @@ def build_question_bank_details(csv_path: Path, df: pd.DataFrame) -> dict:
     items: dict[str, dict] = {}
     for _, row in df.iterrows():
         rec = {col: str(row[col]) for col in df.columns}
-        v_id = rec["v"]
+        v_id = rec["QuestionID"]
+        row_key = f"{rec['catalog_idx']}:{v_id}"
         if v_id in long_counts:
+            seen_opts = {o for o, _ in long_counts[v_id]}
             opt_counts = [{"option": o, "count": c} for o, c in long_counts[v_id]]
+            for dropped in [s.strip() for s in rec.get("drop_options", "").split("|") if s.strip()]:
+                if dropped not in seen_opts:
+                    opt_counts.append({"option": dropped, "count": 0})
         else:
-            raw_opts = [o.strip() for o in rec["options"].split("|") if o.strip()]
+            raw_opts = [o.strip() for o in rec.get("Options_preview", "").split("|") if o.strip()]
             opt_counts = [{"option": o, "count": 0} for o in raw_opts]
 
-        items[v_id] = {
-            "QuestionType": "bank_item",
-            "Selector": "",
+        items[row_key] = {
+            "QuestionType": "MC",
+            "Selector": "SAVR",
             "rows": [],
             "options": opt_counts,
             "row_breakdowns": [],
@@ -628,11 +642,141 @@ def build_question_bank_details(csv_path: Path, df: pd.DataFrame) -> dict:
             "paired_variants_total": 0,
             "sample_texts": [],
             "in_block_db_text": "",
+            "export_problem_if_included": question_checks[row_key]["export_problem_if_included"],
+            "n_valid_by_country": question_checks[row_key]["n_valid_by_country"],
+            "option_relabeled": bool(question_checks[row_key]["option_relabeled"]),
         }
 
     return {
         "version": DETAILS_VERSION,
-        "schema_kind": "question_bank",
+        "schema_kind": "question_audit",
+        "study_contexts": {},
+        "items": items,
+    }
+
+
+def build_wvs7_audit_details(csv_path: Path, df: pd.DataFrame) -> dict:
+    """WVS Wave 7 US: export checks, options and US counts come from the official .dta via data.wvs_export
+    (not from the parquet, so a stale parquet never shows old option text)."""
+    from data.wvs_export import wvs_question_checks
+
+    question_checks = wvs_question_checks()
+    items: dict[str, dict] = {}
+    for _, row in df.iterrows():
+        rec = {col: str(row[col]) for col in df.columns}
+        row_key = f"{rec['catalog_idx']}:{rec['QuestionID']}"
+        check = question_checks[row_key]
+        opt_counts = list(check["options"])
+        seen_opts = {o["option"] for o in opt_counts}
+        for dropped in [s.strip() for s in rec["drop_options"].split("|") if s.strip()]:
+            if dropped not in seen_opts:
+                opt_counts.append({"option": dropped, "count": 0})
+        items[row_key] = {
+            "QuestionType": "MC",
+            "Selector": "SAVR",
+            "rows": [],
+            "options": opt_counts,
+            "row_breakdowns": [],
+            "qtext_variants": [],
+            "db_variants": [],
+            "opt_variant_sets": [],
+            "paired_variants": [],
+            "paired_variants_total": 0,
+            "sample_texts": [],
+            "in_block_db_text": "",
+            "export_problem_if_included": check["export_problem_if_included"],
+            "n_valid_by_country": check["n_valid_by_country"],
+            "is_persona": bool(check["is_persona"]),
+            "option_relabeled": bool(check["option_relabeled"]),
+        }
+
+    return {
+        "version": DETAILS_VERSION,
+        "schema_kind": "question_audit",
+        "study_contexts": {},
+        "items": items,
+    }
+
+
+def build_hints7_audit_details(csv_path: Path, df: pd.DataFrame) -> dict:
+    """NCI HINTS 7: export checks, options, and US counts come from the official .dta via data.hints7_export."""
+    from data.hints7_export import hints7_question_checks
+
+    question_checks = hints7_question_checks()
+    items: dict[str, dict] = {}
+    for _, row in df.iterrows():
+        rec = {col: str(row[col]) for col in df.columns}
+        row_key = f"{rec['catalog_idx']}:{rec['QuestionID']}"
+        check = question_checks[row_key]
+        opt_counts = list(check["options"])
+        seen_opts = {o["option"] for o in opt_counts}
+        for dropped in [s.strip() for s in rec["drop_options"].split("|") if s.strip()]:
+            if dropped not in seen_opts:
+                opt_counts.append({"option": dropped, "count": 0})
+        items[row_key] = {
+            "QuestionType": "MC",
+            "Selector": "SAVR",
+            "rows": [],
+            "options": opt_counts,
+            "row_breakdowns": [],
+            "qtext_variants": [],
+            "db_variants": [],
+            "opt_variant_sets": [],
+            "paired_variants": [],
+            "paired_variants_total": 0,
+            "sample_texts": [],
+            "in_block_db_text": "",
+            "export_problem_if_included": check["export_problem_if_included"],
+            "n_valid_by_country": check["n_valid_by_country"],
+            "is_persona": bool(check["is_persona"]),
+            "option_relabeled": bool(check["option_relabeled"]),
+        }
+
+    return {
+        "version": DETAILS_VERSION,
+        "schema_kind": "question_audit",
+        "study_contexts": {},
+        "items": items,
+    }
+
+
+def build_shed2025_audit_details(csv_path: Path, df: pd.DataFrame) -> dict:
+    """Federal Reserve SHED 2025: export checks, options, and US counts come from public2025.dta via data.shed2025_export."""
+    from data.shed2025_export import shed2025_question_checks
+
+    question_checks = shed2025_question_checks()
+    items: dict[str, dict] = {}
+    for _, row in df.iterrows():
+        rec = {col: str(row[col]) for col in df.columns}
+        row_key = f"{rec['catalog_idx']}:{rec['QuestionID']}"
+        check = question_checks[row_key]
+        opt_counts = list(check["options"])
+        seen_opts = {o["option"] for o in opt_counts}
+        for dropped in [s.strip() for s in rec["drop_options"].split("|") if s.strip()]:
+            if dropped not in seen_opts:
+                opt_counts.append({"option": dropped, "count": 0})
+        items[row_key] = {
+            "QuestionType": "MC",
+            "Selector": "SAVR",
+            "rows": [],
+            "options": opt_counts,
+            "row_breakdowns": [],
+            "qtext_variants": [],
+            "db_variants": [],
+            "opt_variant_sets": [],
+            "paired_variants": [],
+            "paired_variants_total": 0,
+            "sample_texts": [],
+            "in_block_db_text": "",
+            "export_problem_if_included": check["export_problem_if_included"],
+            "n_valid_by_country": check["n_valid_by_country"],
+            "is_persona": bool(check["is_persona"]),
+            "option_relabeled": bool(check["option_relabeled"]),
+        }
+
+    return {
+        "version": DETAILS_VERSION,
+        "schema_kind": "question_audit",
         "study_contexts": {},
         "items": items,
     }
@@ -653,6 +797,13 @@ def build_stimulus_details(csv_path: Path) -> dict:
     return details_payload
 
 
+def build_subpop_audit_details(csv_path: Path, df: pd.DataFrame) -> dict:
+    from data.subpop_export import SUBPOP_DIR_TO_SPLIT, subpop_audit_details
+
+    split = SUBPOP_DIR_TO_SPLIT[csv_path.parent.name]
+    return subpop_audit_details(split, df)
+
+
 def index_csv(csv_path: Path) -> Path:
     t0 = time.perf_counter()
     df = pd.read_csv(csv_path, dtype=str, keep_default_na=False)
@@ -662,12 +813,22 @@ def index_csv(csv_path: Path) -> Path:
             payload = build_mega_study_details(csv_path, df)
         elif (csv_path.parent / "stimulus.py").exists():
             payload = build_stimulus_details(csv_path)
+        elif re.fullmatch(r"issp\d{4}", csv_path.parent.name):
+            payload = build_issp_audit_details(csv_path, df)
+        elif csv_path.parent.name == WVS7_DIR_NAME:
+            payload = build_wvs7_audit_details(csv_path, df)
+        elif csv_path.parent.name == HINTS_DIR_NAME:
+            payload = build_hints7_audit_details(csv_path, df)
+        elif csv_path.parent.name == SHED_DIR_NAME:
+            payload = build_shed2025_audit_details(csv_path, df)
+        elif csv_path.parent.name in ("subpop_eval", "subpop_train"):
+            payload = build_subpop_audit_details(csv_path, df)
         else:
             payload = build_twin2k_details(csv_path, df)
-    elif {"v", "type", "question", "options"}.issubset(cols):
-        payload = build_question_bank_details(csv_path, df)
     else:
-        raise ValueError(f"Unsupported CSV schema in {csv_path}: {list(df.columns)}")
+        raise ValueError(
+            f"Unsupported CSV schema in {csv_path} (expected question_audit.csv): {list(df.columns)}"
+        )
 
     out_path = csv_path.parent / AUDIT_DETAILS_FILENAME
     tmp_path = csv_path.parent / f"{AUDIT_DETAILS_FILENAME}.tmp"
@@ -686,9 +847,10 @@ def main() -> None:
 
     if args.dataset_dir is not None:
         d = args.dataset_dir.resolve()
-        targets = [d / f for f in ("question_audit.csv", "question_bank.csv") if (d / f).is_file()]
-        if not targets:
-            raise FileNotFoundError(f"No question_audit.csv or question_bank.csv found in {d}")
+        qa = d / "question_audit.csv"
+        if not qa.is_file():
+            raise FileNotFoundError(f"No question_audit.csv found in {d}")
+        targets = [qa]
     else:
         targets = discover_dataset_csvs(DATA_DIR)
 

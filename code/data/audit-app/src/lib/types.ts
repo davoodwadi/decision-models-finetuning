@@ -1,17 +1,23 @@
 export type SchemaKind = "question_audit" | "question_bank";
 
-export type WorkspaceTab = "questions" | "personas";
+export type WorkspaceTab = "questions" | "personas" | "source";
 
-export type TriageMode =
-  | "suspects"
+export type ReviewFilter = "all" | "unreviewed" | "reviewed";
+
+export type DecisionFilter = "all" | "included" | "excluded";
+
+export type AuditFlag =
+  | "blocking"
+  | "suspect"
   | "unsaved"
   | "overridden"
   | "tagged"
-  | "unreviewed"
-  | "substantive"
-  | "included"
-  | "excluded"
-  | "all";
+  | "option_relabeled"
+  | "codebook_diff"
+  | "text_changed"
+  | "options_differ"
+  | "not_in_source"
+  | "identical";
 
 export interface QuestionOverride {
   stem?: string;
@@ -24,10 +30,13 @@ export interface InitialViewState {
   hasParams: boolean;
   tab?: WorkspaceTab;
   rowKey?: string;
-  mode?: TriageMode;
+  reviewFilter?: ReviewFilter;
+  decisionFilter?: DecisionFilter;
+  flags?: AuditFlag[];
   skip?: boolean;
   study?: string;
   families?: string[];
+  categories?: string[];
   tags?: string[];
   q?: string;
 }
@@ -94,6 +103,14 @@ export interface ItemDetail {
   paired_variants_total?: number;
   sample_texts: string[];
   in_block_db_text: string;
+  /** ISSP/WVS/HINTS: why the Parquet export would fail if this row were included as choice / as score (null = exportable). */
+  export_problem_if_included?: { choice: string | null; score: string | null };
+  /** ISSP/WVS/HINTS: valid answers per country (null = not a question column in the .dta). */
+  n_valid_by_country?: Record<string, number | null>;
+  /** WVS/HINTS: true when this row is a respondent persona/demographic column rather than a survey question. */
+  is_persona?: boolean;
+  /** ISSP/WVS/HINTS: true when option code-prefixing/relabeling modifies raw Stata option labels. */
+  option_relabeled?: boolean;
 }
 
 export interface AuditRow {
@@ -109,6 +126,10 @@ export interface AuditRow {
   formatSkipReason: string;
   isSuspect: boolean;
   suspectReasons: string[];
+  /** Non-empty when this row is included but the Parquet export cannot handle it (computed, never saved). */
+  exportProblem: string;
+  /** Countries with zero valid answers for this question (informational; left out of that country's parquet). */
+  notFieldedIn: string[];
   data: Record<string, string>;
 }
 
@@ -161,6 +182,7 @@ export interface PersonaSummaryBundle {
   parquetMtimeMs: number;
   loaderKind: "build_persona_dataset" | "build_long_records";
   isspRuntimeMapped: boolean;
+  isMarginal?: boolean;
   nRespondents: number;
   nRows: number;
   nQuestions: number;
@@ -184,6 +206,7 @@ export interface PersonasPagePayload {
   parquetMtimeMs: number;
   loaderKind: "build_persona_dataset" | "build_long_records";
   isspRuntimeMapped: boolean;
+  isMarginal?: boolean;
   nRespondents: number;
   nRows: number;
   nQuestions: number;
@@ -218,6 +241,7 @@ export interface RespondentQuestionSample {
   answerText: string;
   answerIdx: number;
   arm: string | null;
+  targetProbs?: number[];
 }
 
 export interface RespondentQuestionsPayload {
@@ -225,4 +249,71 @@ export interface RespondentQuestionsPayload {
   caseId: string;
   totalQuestions: number;
   questions: RespondentQuestionSample[];
+}
+
+export interface MarginalPersonaOption {
+  col: string;
+  promptLabel: string;
+  nLevels: number;
+  nPresent: number;
+}
+
+export interface MarginalAnswerOption {
+  code: number;
+  text: string;
+  overallCount: number;
+  overallPct: number;
+}
+
+export interface MarginalGroupRow {
+  level: string;
+  isMissing: boolean;
+  n: number;
+  counts: number[];
+  shares: number[];
+  meanScore: number | null;
+}
+
+export interface MarginalSeparationStats {
+  minGroupN: number;
+  eligibleGroupCount: number;
+  maxTvdPct: number;
+  tvdPair: [string, string] | null;
+  maxOptionDiff: {
+    option: string;
+    deltaPct: number;
+    highGroup: string;
+    highPct: number;
+    lowGroup: string;
+    lowPct: number;
+  } | null;
+  maxMeanDiff: {
+    delta: number;
+    highGroup: string;
+    highMean: number;
+    lowGroup: string;
+    lowMean: number;
+  } | null;
+}
+
+export interface QuestionMarginalsPayload {
+  dsId: string;
+  found: boolean;
+  reason?: string;
+  parquetFile: string;
+  loaderKind: string;
+  isMarginal?: boolean;
+  availablePersonas: MarginalPersonaOption[];
+  selectedPersona: MarginalPersonaOption | null;
+  matchedVs: string[];
+  activeV?: string;
+  availableArms: string[];
+  selectedArm: string | null;
+  questionType?: string;
+  reversed?: boolean;
+  overallN?: number;
+  overallMean?: number | null;
+  options?: MarginalAnswerOption[];
+  groups?: MarginalGroupRow[];
+  separation?: MarginalSeparationStats;
 }

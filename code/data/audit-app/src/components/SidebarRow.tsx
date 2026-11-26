@@ -4,13 +4,16 @@ import React, { useEffect, useRef } from "react";
 import { ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { getEffectiveType } from "@/lib/triage";
+import type { SourceCheckItem } from "@/lib/sourceCheckTypes";
 import type { AuditRow, SchemaKind, SidebarSubItem } from "@/lib/types";
+import { SourceStatusChips } from "./SourcePane";
 
 interface SidebarRowProps {
   row: AuditRow;
   schemaKind: SchemaKind;
   subItems: SidebarSubItem[];
   overrideStem?: string;
+  sourceItem?: SourceCheckItem;
   isSelected: boolean;
   isExpanded: boolean;
   activeSubItemIdx: number;
@@ -26,6 +29,7 @@ export const SidebarRow = React.memo(function SidebarRow({
   schemaKind,
   subItems = EMPTY_SUB_ITEMS,
   overrideStem,
+  sourceItem,
   isSelected,
   isExpanded = false,
   activeSubItemIdx = -1,
@@ -44,7 +48,7 @@ export const SidebarRow = React.memo(function SidebarRow({
         ref.current.scrollIntoView({ block: "nearest" });
       }
     }
-  }, [isSelected, isExpanded, activeSubItemIdx]);
+  }, [isSelected, isExpanded, activeSubItemIdx, sourceItem]);
 
   const d = row.data;
   const title =
@@ -71,9 +75,6 @@ export const SidebarRow = React.memo(function SidebarRow({
   if (row.isFormatSkipped && eff === "exclude") {
     badgeClass = "bg-slate-200/80 text-slate-500 border-slate-300/70";
     badgeLabel = row.formatSkipLabel || "SKIP";
-  } else if (row.isFormatSkipped && eff === "noul") {
-    badgeClass = "bg-slate-200/80 text-slate-500 border-slate-300/70";
-    badgeLabel = "NOUL";
   } else if (eff === "score") {
     badgeClass = "bg-violet-100 text-violet-800 border-violet-200";
     badgeLabel = "score";
@@ -201,6 +202,11 @@ export const SidebarRow = React.memo(function SidebarRow({
             >
               {title}
             </span>
+            {sourceItem && sourceItem.page !== null && (
+              <span className="text-[10px] text-slate-400 font-mono shrink-0">
+                p.{sourceItem.page}
+              </span>
+            )}
             <div className="flex-1" />
             {hasGroup && (
               <Badge
@@ -234,6 +240,24 @@ export const SidebarRow = React.memo(function SidebarRow({
                 UNSAVED
               </Badge>
             )}
+            {row.notFieldedIn.length > 0 && (
+              <Badge
+                variant="outline"
+                className="h-4.5 px-1.5 py-0 text-[10px] font-semibold rounded-sm bg-slate-100 text-slate-600 border-slate-300 shrink-0"
+                title={`No valid answers in ${row.notFieldedIn.join(", ")}: left out of that country's parquet (not an audit problem)`}
+              >
+                Not fielded in {row.notFieldedIn.join(", ")}
+              </Badge>
+            )}
+            {row.exportProblem && (
+              <Badge
+                variant="outline"
+                className="h-4.5 px-1.5 py-0 text-[10px] font-bold rounded-sm bg-red-100 text-red-800 border-red-300 shrink-0 uppercase tracking-tight"
+                title={`Blocks export: ${row.exportProblem}`}
+              >
+                BLOCKS EXPORT
+              </Badge>
+            )}
             {!rowDimmed && row.isSuspect && !row.reviewed && (
               <Badge
                 variant="outline"
@@ -258,8 +282,20 @@ export const SidebarRow = React.memo(function SidebarRow({
           >
             {snippet}
           </div>
-          {(row.tags?.length ?? 0) > 0 && (
+          {(sourceItem ||
+            Boolean(row.data.category?.trim()) ||
+            (row.tags?.length ?? 0) > 0) && (
             <div className="flex items-center gap-1 flex-wrap mt-1">
+              {row.data.category?.trim() && (
+                <Badge
+                  variant="outline"
+                  className="h-4 px-1.5 py-0 text-[10px] font-medium rounded-sm bg-teal-50 text-teal-800 border-teal-200/90 max-w-[180px] truncate"
+                  title={`Category: ${row.data.category.trim()}`}
+                >
+                  {row.data.category.trim()}
+                </Badge>
+              )}
+              {sourceItem && <SourceStatusChips item={sourceItem} compact />}
               {(row.tags ?? []).slice(0, 3).map((tag) => (
                 <Badge
                   key={tag}

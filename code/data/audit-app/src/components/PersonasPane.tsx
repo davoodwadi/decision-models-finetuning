@@ -350,7 +350,11 @@ export function PersonasPane({ dsId, refreshSeq }: PersonasPaneProps) {
     if (activeQuestion.type === "score") {
       const target: Record<string, number> = {};
       activeQuestion.optionTexts.forEach((_, i) => {
-        target[String(i)] = i === activeQuestion.answerIdx ? 1.0 : 0.0;
+        target[String(i)] = activeQuestion.targetProbs
+          ? activeQuestion.targetProbs[i]
+          : i === activeQuestion.answerIdx
+            ? 1.0
+            : 0.0;
       });
       return {
         state: stateText,
@@ -370,7 +374,11 @@ export function PersonasPane({ dsId, refreshSeq }: PersonasPaneProps) {
       criteria[opt] = activeQuestion.optionDescriptions
         ? (activeQuestion.optionDescriptions[i] ?? null)
         : null;
-      target[opt] = i === activeQuestion.answerIdx ? 1.0 : 0.0;
+      target[opt] = activeQuestion.targetProbs
+        ? activeQuestion.targetProbs[i]
+        : i === activeQuestion.answerIdx
+          ? 1.0
+          : 0.0;
     });
     return {
       state: stateText,
@@ -730,9 +738,18 @@ export function PersonasPane({ dsId, refreshSeq }: PersonasPaneProps) {
                       ISSP runtime-mapped
                     </Badge>
                   )}
+                  {data.isMarginal && (
+                    <Badge
+                      variant="outline"
+                      className="text-[11px] bg-amber-50 text-amber-800 border-amber-200"
+                      title="Aggregate subgroup marginals (no respondent-level microdata)"
+                    >
+                      Aggregate marginals
+                    </Badge>
+                  )}
                 </div>
                 <span className="text-[11px] text-slate-500">
-                  {data.nRows.toLocaleString()} long rows ·{" "}
+                  {data.nRows.toLocaleString()} {data.isMarginal ? "marginal rows" : "long rows"} ·{" "}
                   {data.nQuestions.toLocaleString()} unique QIDs
                 </span>
               </div>
@@ -740,14 +757,15 @@ export function PersonasPane({ dsId, refreshSeq }: PersonasPaneProps) {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
                 <div className="rounded-lg bg-slate-50 border border-slate-200/80 px-3 py-2">
                   <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
-                    Respondents
+                    {data.isMarginal ? "Subgroups" : "Respondents"}
                   </div>
                   <div className="text-base font-bold text-slate-900 font-mono">
                     {data.nRespondents.toLocaleString()}
                   </div>
                   <div className="text-[11px] text-slate-500">
-                    {data.completeCount.toLocaleString()} complete ·{" "}
-                    {data.incompleteCount.toLocaleString()} with NA
+                    {data.isMarginal
+                      ? "1 active trait + Country per subgroup"
+                      : `${data.completeCount.toLocaleString()} complete · ${data.incompleteCount.toLocaleString()} with NA`}
                   </div>
                 </div>
 
@@ -1221,10 +1239,24 @@ export function PersonasPane({ dsId, refreshSeq }: PersonasPaneProps) {
                                 <span className="text-sky-400">
                                   &lt;|box_end|&gt;
                                 </span>
-                                {isChosen && (
-                                  <span className="ml-2 px-1.5 py-0.5 rounded bg-emerald-500/25 text-emerald-200 font-sans text-[10px] font-semibold">
-                                    ✓ human answer
+                                {activeQuestion.targetProbs ? (
+                                  <span
+                                    className={[
+                                      "ml-2 px-1.5 py-0.5 rounded font-mono text-[10px] font-semibold",
+                                      isChosen
+                                        ? "bg-emerald-500/25 text-emerald-200"
+                                        : "bg-slate-700/80 text-slate-300",
+                                    ].join(" ")}
+                                  >
+                                    {(activeQuestion.targetProbs[i] * 100).toFixed(1)}%
+                                    {isChosen ? " (mode)" : ""}
                                   </span>
+                                ) : (
+                                  isChosen && (
+                                    <span className="ml-2 px-1.5 py-0.5 rounded bg-emerald-500/25 text-emerald-200 font-sans text-[10px] font-semibold">
+                                      ✓ human answer
+                                    </span>
+                                  )
                                 )}
                               </div>
                             );

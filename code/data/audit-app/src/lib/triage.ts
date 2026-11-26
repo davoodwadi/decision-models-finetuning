@@ -17,6 +17,7 @@ export const WARNING_TAGS = new Set([
   "attn-check",
   "empty-stem",
   "empty-options",
+  "review-codebook-stem",
   "backref",
   "img-ref",
   "dup-qid",
@@ -42,6 +43,21 @@ const STANDARD_LIKERT_RE =
 
 const ORDINAL_CHOICE_RE =
   /\b(strongly|extremely|very|not at all|slightly|moderately)\b/i;
+
+const PROMPT_START_RE =
+  /^(do|does|did|are|is|were|was|have|has|had|would|could|should|will|can|how|what|which|who|where|when|why|please|tell|indicate|choose|select|rate|rank|describe|compare)\b/i;
+
+const AGREE_STEM_RE =
+  /\b(?:strongly\s+)?agree\s+(?:or|\/)\s+(?:strongly\s+)?disagree\b|\bdisagree\s+(?:or|\/)\s+agree\b/i;
+
+const AGREE_OPTION_RE = /\b(agree|disagree)\b/i;
+
+function normStemCmp(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
 
 const FORMAT_SKIP_INFO: Record<string, { label: string; reason: string }> = {
   "0_DB": {
@@ -632,18 +648,18 @@ export function isRowIncluded(schemaKind: SchemaKind, data: Record<string, strin
   if (schemaKind === "question_audit") {
     return data.include === "True";
   }
-  return data.type !== "exclude" && data.type !== "noul";
+  return data.type !== "exclude";
 }
 
 export function getEffectiveType(
   schemaKind: SchemaKind,
   data: Record<string, string>
-): "score" | "choice" | "exclude" | "noul" {
+): "score" | "choice" | "exclude" {
   if (schemaKind === "question_audit") {
     if (data.include !== "True") return "exclude";
     return data.kev_type === "score" ? "score" : "choice";
   }
-  if (data.type === "score" || data.type === "choice" || data.type === "noul") {
+  if (data.type === "score" || data.type === "choice") {
     return data.type;
   }
   return "exclude";
@@ -680,12 +696,10 @@ export function classifyAuditRow(
       isFormatSkipped = true;
       formatSkipLabel = fam.slice(2).toUpperCase();
       formatSkipReason = `Format-excluded category (${fam})`;
-    }
-  } else {
-    if (data.type === "noul") {
+    } else if (detail?.is_persona || /^\d+_Demographics$/i.test(fam)) {
       isFormatSkipped = true;
-      formatSkipLabel = "NOUL";
-      formatSkipReason = "Unordered country-specific coding (not modeled)";
+      formatSkipLabel = FORMAT_SKIP_INFO["0_Demographics"].label;
+      formatSkipReason = FORMAT_SKIP_INFO["0_Demographics"].reason;
     }
   }
 
@@ -722,10 +736,51 @@ export function classifyAuditRow(
       const lower = wt.toLowerCase();
       if (lower === "has-dont-know" && dropSet.size > 0) {
         suspectReasons.push(`#${wt} (drop set)`);
-      } else if (lower === "html-table-flat" && override?.stem !== undefined) {
+      } else if (
+        (lower === "html-table-flat" || lower === "review-codebook-stem") &&
+        override?.stem !== undefined
+      ) {
         suspectReasons.push(`#${wt} (override set)`);
       } else {
         suspectReasons.push(`#${wt}`);
+      }
+    }
+
+    const isIncluded =
+      schemaKind === "question_audit"
+        ? data.include === "True"
+        : data.type === "score" || data.type === "choice";
+    if (isIncluded) {
+      const rawStemText =
+        override?.stem !== undefined
+          ? override.stem
+          : schemaKind === "question_audit"
+            ? (data.QuestionText ?? "")
+            : (data.question ?? "");
+      const effectiveStem = rawStemText.trim();
+      const ctxSrc = (data.context_source || "").trim();
+      const hasPrependedContext =
+        (ctxSrc !== "" && ctxSrc !== "none") ||
+        (data.prepend_context || "").trim() !== "";
+      const dataLabel = (data.data_label || "").trim();
+
+      if (!effectiveStem && !hasPrependedContext) {
+        suspectReasons.push("Empty stem");
+      } else if (
+        !hasPrependedContext &&
+        dataLabel &&
+        normStemCmp(effectiveStem) === normStemCmp(dataLabel) &&
+        !effectiveStem.includes("?") &&
+        !PROMPT_START_RE.test(effectiveStem)
+      ) {
+        suspectReasons.push("No question stem (label only)");
+      }
+      if (
+        AGREE_STEM_RE.test(effectiveStem) &&
+        activeOpts.length > 0 &&
+        !AGREE_OPTION_RE.test(optsLower)
+      ) {
+        suspectReasons.push("Stem/options mismatch");
       }
     }
 
@@ -780,6 +835,28 @@ export function classifyAuditRow(
     }
   }
 
+  let exportProblem = "";
+  if (
+    schemaKind === "question_audit" &&
+    data.include === "True" &&
+    detail?.export_problem_if_included
+  ) {
+    const problems = detail.export_problem_if_included;
+    const problem = data.kev_type === "score" ? problems.score : problems.choice;
+    if (problem) {
+      exportProblem = problem;
+    }
+  }
+
+  const notFieldedIn: string[] = [];
+  if (detail?.n_valid_by_country) {
+    for (const [country, n] of Object.entries(detail.n_valid_by_country)) {
+      if (n === 0) {
+        notFieldedIn.push(country);
+      }
+    }
+  }
+
   return {
     rowIdx,
     rowKey,
@@ -791,6 +868,8 @@ export function classifyAuditRow(
     formatSkipReason,
     isSuspect: suspectReasons.length > 0,
     suspectReasons,
+    exportProblem,
+    notFieldedIn,
     data,
   };
 }

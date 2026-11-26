@@ -1,7 +1,9 @@
 """Clean per-dataset raw persona loaders using `persona_spec.yaml`."""
 
+import io
 import json
 from pathlib import Path
+import zipfile
 
 import pandas as pd
 from pandas.io.stata import StataReader
@@ -108,7 +110,6 @@ ISSP_SHARED_RENAME = {
     "RELIGGRP": "religion",
     "ATTEND": "religious_attendance",
     "US_PRTY": "political_party",
-    "PARTY_LR": "political_ideology",
     "MARITAL": "marital_status",
     "MAINSTAT": "employment_status",
     "HOMPOP": "household_size",
@@ -125,6 +126,13 @@ ISSP_SHARED_RENAME = {
 
 ISSP_SINGLE_RENAME = {
     "US_RINC": "personal_income",
+}
+
+# Only ISSP 2023 (v46) and 2024 (v59) ask respondent Left-Right self-placement (0-10).
+# GESIS PARTY_LR is excluded because in the US it is a deterministic recode of US_PRTY.
+ISSP_IDEOLOGY_VAR = {
+    2023: "v46",
+    2024: "v59",
 }
 
 ISSP_RAW_CANDIDATES = [
@@ -155,12 +163,17 @@ ISSP_RAW_CANDIDATES = [
 ]
 
 
-def load_raw_issp_personas(data_dir: Path = DATA_DIR, shared_only: bool = False) -> pd.DataFrame:
+def load_raw_issp_personas(
+    data_dir: Path = DATA_DIR,
+    shared_only: bool = False,
+    years: tuple[int, ...] | list[int] | None = None,
+) -> pd.DataFrame:
     """Load raw ISSP (2015-2024 US) persona columns from `.dta` files with Stata value labels."""
     candidates = [*ISSP_SHARED_RENAME.keys(), "DEGREE"] if shared_only else ISSP_RAW_CANDIDATES
+    target_years = tuple(range(2015, 2025)) if years is None else tuple(int(y) for y in years)
     frames = []
 
-    for year in range(2015, 2025):
+    for year in target_years:
         dta_files = list((data_dir / f"issp{year}" / "raw").glob("*.dta"))
         if len(dta_files) != 1:
             raise FileNotFoundError(f"Expected 1 .dta file for ISSP {year}, found {dta_files}")
@@ -168,6 +181,11 @@ def load_raw_issp_personas(data_dir: Path = DATA_DIR, shared_only: bool = False)
 
         value_labels, col_to_lblname = _read_stata_value_labels(dta_path)
         present = [c for c in candidates if c in col_to_lblname]
+        ideology_var = ISSP_IDEOLOGY_VAR.get(year)
+        if ideology_var is not None:
+            if ideology_var not in col_to_lblname:
+                raise KeyError(f"ISSP {year}: expected Left-Right ideology variable {ideology_var!r} in {dta_path}")
+            present.append(ideology_var)
         raw_cols = sorted({"CASEID", "c_alphan", *present})
 
         df = pd.read_stata(dta_path, columns=raw_cols, convert_categoricals=False)
@@ -176,6 +194,9 @@ def load_raw_issp_personas(data_dir: Path = DATA_DIR, shared_only: bool = False)
         wave = pd.DataFrame({"CASEID": [f"{year}:{int(cid)}" for cid in us["CASEID"]]})
         for col in present:
             wave[col] = _decode_stata_col(us[col], col, value_labels, col_to_lblname)
+
+        if ideology_var is not None:
+            wave = wave.rename(columns={ideology_var: "political_ideology"})
 
         # 2015-2019 waves name EDULEVEL as DEGREE
         if "EDULEVEL" not in wave.columns and "DEGREE" in wave.columns:
@@ -240,19 +261,51 @@ def load_raw_twin2k_personas(data_dir: Path = DATA_DIR) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-WVS_DROP_COLS = [
-    "A_YEAR",
-    "J_INTDATE",
-    "N_TOWN",
-    "v",
-    "label",
-    "question",
-    "type",
-    "reversed",
-    "option_codes",
-    "option_texts",
-    "answer_code",
-    "answer_text",
+WVS_PERSONA_RAW_COLS = [
+    "B_COUNTRY",
+    "G_TOWNSIZE",
+    "H_SETTLEMENT",
+    "H_URBRURAL",
+    "S_INTLANGUAGE",
+    "Q260",
+    "Q261",
+    "Q262",
+    "X003R",
+    "Q263",
+    "Q264",
+    "Q265",
+    "Q266",
+    "Q267",
+    "Q268",
+    "Q269",
+    "Q270",
+    "Q271",
+    "Q272",
+    "Q273",
+    "Q274",
+    "Q275",
+    "Q276",
+    "Q277",
+    "Q278",
+    "Q279",
+    "Q280",
+    "Q281",
+    "Q282",
+    "Q283",
+    "Q284",
+    "Q285",
+    "Q286",
+    "Q287",
+    "Q288",
+    "Q289",
+    "Q289CS9",
+    "Q290",
+    "N_REGION_ISO",
+    "Q223",
+    "Q171",
+    "Q97",
+    "Q240",
+    "Q222",
 ]
 
 WVS_SHARED_RENAME = {
@@ -279,7 +332,6 @@ WVS_SHARED_RENAME = {
     "Q171": "religious_attendance",
     "Q97": "union_member",
     "Q240": "political_ideology",
-    "Q222": "voting_frequency",
 }
 
 WVS_SINGLE_RENAME = {
@@ -288,50 +340,386 @@ WVS_SINGLE_RENAME = {
     "Q271": "lives_with_parents",
     "Q272": "home_language",
     "Q285": "chief_wage_earner",
+    "Q286": "family_savings",
+    "Q287": "social_class",
+    "Q222": "voting_frequency",
 }
 
 
 def load_raw_wvs7_personas(data_dir: Path = DATA_DIR, shared_only: bool = False) -> pd.DataFrame:
-    """Load raw WVS Wave 7 US persona columns."""
-    pq_path = data_dir / "not-clean-WVS-Wave7-unclean" / "wvs7_US_long.parquet"
-    if shared_only:
-        raw_df = pd.read_parquet(pq_path, columns=["CASEID", *WVS_SHARED_RENAME.keys()])
-        rename_map = WVS_SHARED_RENAME
-    else:
-        raw_df = pd.read_parquet(pq_path).drop(columns=WVS_DROP_COLS)
-        rename_map = {**WVS_SHARED_RENAME, **WVS_SINGLE_RENAME}
-    df = raw_df.drop_duplicates("CASEID").rename(columns=rename_map).reset_index(drop=True)
-    df["CASEID"] = df["CASEID"].astype(str)
-    return df
+    """Load raw WVS Wave 7 US persona columns directly from the official WVSA Stata file."""
+    dta_path = (
+        data_dir
+        / "WVS-Wave7"
+        / "WVS_Wave_7_United_States_Stata_v5.1.dta"
+    )
+    if not dta_path.exists():
+        raise FileNotFoundError(f"Official WVS Wave 7 US Stata file not found: {dta_path}")
+
+    val_labels, col_to_lbl = _read_stata_value_labels(dta_path)
+    cols = list(WVS_SHARED_RENAME.keys()) if shared_only else list(WVS_PERSONA_RAW_COLS)
+    rename_map = WVS_SHARED_RENAME if shared_only else {**WVS_SHARED_RENAME, **WVS_SINGLE_RENAME}
+
+    raw_df = pd.read_stata(dta_path, columns=["D_INTERVIEW", *cols], convert_categoricals=False)
+    if raw_df["D_INTERVIEW"].isna().any():
+        raise ValueError(f"Missing D_INTERVIEW values in {dta_path}")
+
+    out: dict[str, pd.Series] = {"CASEID": raw_df["D_INTERVIEW"].astype("int64").astype(str)}
+    for col in cols:
+        out[rename_map.get(col, col)] = _decode_stata_col(raw_df[col], col, val_labels, col_to_lbl)
+    return pd.DataFrame(out)
 
 
-SUBPOP_KEY_TO_COL = {
-    "Country": "country",
-    "Region": "region",
-    "Education": "education",
-    "Income": "income",
-    "Political ideology": "political_ideology",
-    "Political party": "political_party",
-    "Race": "race",
-    "Religion": "religion",
-    "Sex": "gender",
+SUBPOP_ATTR_TO_COL = {
+    "CREGION": "region",
+    "EDUCATION": "education",
+    "INCOME": "income",
+    "POLIDEOLOGY": "political_ideology",
+    "POLPARTY": "political_party",
+    "RACE": "race",
+    "RELIG": "religion",
+    "SEX": "gender",
 }
 
 
 def load_raw_subpop_personas(data_dir: Path = DATA_DIR) -> pd.DataFrame:
-    """Load raw SubPOP target subgroup profiles."""
-    rows_by_group = {}
-    for filename in ["subpop_eval.jsonl", "subpop100.jsonl"]:
-        with open(data_dir / "subpop" / filename, encoding="utf-8") as f:
+    """Load raw SubPOP target subgroup profiles from the two official upstream splits."""
+    rows_by_group: dict[str, dict[str, object]] = {}
+    for subdir, filename in [
+        ("subpop_eval", "raw_subpop_eval.jsonl"),
+        ("subpop_train", "raw_subpop_train.jsonl"),
+    ]:
+        path = data_dir / subdir / filename
+        if not path.is_file():
+            raise FileNotFoundError(f"Missing official SubPOP raw file: {path}")
+        with open(path, encoding="utf-8") as f:
             for line in f:
                 record = json.loads(line)
-                group = record["group"]
-                if group not in rows_by_group:
-                    row = {"CASEID": group}
-                    for key, value in record["persona"].items():
-                        row[SUBPOP_KEY_TO_COL[key]] = value
-                    rows_by_group[group] = row
+                attr = record["attribute"]
+                grp = record["group"]
+                col = SUBPOP_ATTR_TO_COL[attr]
+                case_id = f"SUBPOP/{attr}/{grp}"
+                if case_id not in rows_by_group:
+                    rows_by_group[case_id] = {
+                        "CASEID": case_id,
+                        "country": "United States",
+                        col: grp,
+                    }
     return pd.DataFrame(rows_by_group.values())
+
+
+HINTS7_ZIP_REL = Path("HINTS") / "HINTS7_STATA_20250731.zip"
+HINTS7_DTA_MEMBER = "HINTS7_STATA_20250731/hints7_public.dta"
+HINTS7_MISSING_CODES = frozenset({-9, -7, -6, -5, -4, -2, -1})
+
+HINTS7_NUMERIC_RENAME = {
+    "Age": "age",
+    "TotalHousehold": "household_size",
+    "ChildrenInHH": "children_in_household",
+}
+
+HINTS7_CATEGORICAL_RENAME = {
+    "CENSDIV": "region",
+    "NCHSURCODE2013": "urban_rural",
+    "BirthSex": "gender",
+    "Education": "education",
+    "IncomeRanges": "family_income",
+    # Kept over FullTimeOcc2_Cat (+434 valid rows; stays purely R5-derived);
+    # downside: collapses full/part-time into 'In paid work' and puts 687 rows in 'Multiple employment statuses'.
+    "Occupation2_Cat": "employment_status",
+    "Hisp_Cat": "hispanic",
+    "PoliticalViewpoint": "political_ideology",
+    "MaritalStatus": "marital_status",
+    "SexualOrientation_Recode": "sexual_orientation",
+}
+
+HINTS7_R10_RACE_GROUPS: list[tuple[tuple[str, ...], str]] = [
+    (("White",), "White"),
+    (("Black",), "Black or African American"),
+    (("AmerInd",), "American Indian or Alaska Native"),
+    (("AsInd", "Chinese", "Filipino", "Japanese", "Korean", "Vietnamese", "OthAsian"), "Asian"),
+    (("OthPacIsl",), "Native Hawaiian or Other Pacific Islander"),
+]
+
+# Complete set of HINTS 7 Section R, geographic, and derived demographic columns so
+# `hints7_export.py` refuses to export any persona variable as a survey question.
+HINTS7_PERSONA_RAW_COLS: frozenset[str] = frozenset({
+    *HINTS7_NUMERIC_RENAME.keys(),
+    *HINTS7_CATEGORICAL_RENAME.keys(),
+    *(c for cols, _ in HINTS7_R10_RACE_GROUPS for c in cols),
+    # Excluded / alternative Section R, geographic, and derived demographic variables
+    "APP_REGION",
+    "DRA",
+    "RUC2003",
+    "RUC2013",
+    "RUC2023",
+    "PR_RUCA_2010",
+    "CENSREG",
+    "WorkHrsPerWeek",
+    "Occupation2_Employed",
+    "Occupation2_OOW1Y",
+    "Occupation2_OOWLess1Y",
+    "Occupation2_Homemaker",
+    "Occupation2_Student",
+    "Occupation2_Retired",
+    "Occupation2_Disabled",
+    "Occupation2_Other",
+    "Occupation2_Other_OS",
+    "FullTimeOcc2_Cat",
+    "WorkHrs_DidNotWork",
+    "WorkHrs_EarlyAM",
+    "WorkHrs_AM",
+    "WorkHrs_Afternoon",
+    "WorkHrs_Evening",
+    "WorkHrs_Night",
+    "WorkHrs_Cat",
+    "NotHisp",
+    "Mexican",
+    "PuertoRican",
+    "Cuban",
+    "OthHisp",
+    "Race_Cat2",
+    "EthnicGroupBelonging",
+    "SexualOrientation2",
+    "SexualOrientation2_OS",
+    "R_HHADULTS",
+    "HHADULTS_NUM",
+    "IncomeFeelings",
+    "AgeGrpA",
+    "AgeGrpB",
+    "EducA",
+    "EducB",
+    "RaceEthn",
+    "RaceEthn5",
+    "HHInc",
+    "IncomeRanges_IMP",
+})
+
+
+def _mask_hints7_negatives(series: pd.Series, col: str) -> pd.Series:
+    """Validate HINTS 7 negative missing codes and replace them with NaN."""
+    neg = series.dropna()
+    neg = neg[neg < 0]
+    unexpected = set(neg.unique()) - HINTS7_MISSING_CODES
+    if unexpected:
+        raise ValueError(f"hints7.{col}: unexpected negative code(s) {sorted(unexpected)}")
+    return series.where(series.isna() | (series >= 0), float("nan"))
+
+
+def _hints7_multiselect(
+    df: pd.DataFrame,
+    groups: list[tuple[tuple[str, ...], str]],
+    name: str,
+) -> pd.Series:
+    """Combine HINTS 7 1=Selected / 2=Not selected checkbox columns into a '; '-joined string."""
+    all_cols = [col for cols, _ in groups for col in cols]
+    masked = pd.DataFrame({col: _mask_hints7_negatives(df[col], col) for col in all_cols}, index=df.index)
+    for col in all_cols:
+        non_null = set(masked[col].dropna().unique())
+        bad = non_null - {1, 2}
+        if bad:
+            raise ValueError(f"{name}.{col}: expected 1/2/NaN, got {sorted(bad)}")
+
+    out: list[object] = []
+    for _, row in masked.iterrows():
+        is_na = [pd.isna(row[c]) for c in all_cols]
+        if all(is_na):
+            out.append(float("nan"))
+            continue
+        if any(is_na):
+            raise ValueError(f"{name}: mixed missing and non-missing checkbox values in row")
+        chosen = [label for cols, label in groups if any(row[c] == 1 for c in cols)]
+        if not chosen:
+            raise ValueError(f"{name}: non-missing checkbox row has zero selected options")
+        out.append("; ".join(chosen))
+    return pd.Series(out, index=df.index, dtype=object)
+
+
+def _strict_decode_stata_col(
+    series: pd.Series,
+    col: str,
+    value_labels: dict[str, dict],
+    col_to_lblname: dict[str, str],
+    dataset: str,
+) -> pd.Series:
+    """Decode non-null Stata codes strictly through embedded value labels."""
+    lbl_name = col_to_lblname[col]
+    if not lbl_name or lbl_name not in value_labels:
+        raise KeyError(f"{dataset}.{col}: missing embedded Stata value label set ({lbl_name!r})")
+    mapping = value_labels[lbl_name]
+    return _strict_map(series, mapping, f"{dataset}.{col}")
+
+
+def load_raw_hints7_personas(data_dir: Path = DATA_DIR) -> pd.DataFrame:
+    """Load raw NCI HINTS 7 (2024) persona columns directly from the official Stata zip."""
+    zip_path = data_dir / HINTS7_ZIP_REL
+    if not zip_path.is_file():
+        raise FileNotFoundError(f"Official HINTS 7 Stata archive not found: {zip_path}")
+
+    r10_cols = [c for cols, _ in HINTS7_R10_RACE_GROUPS for c in cols]
+    raw_cols = list(
+        dict.fromkeys([
+            "HHID",
+            *HINTS7_NUMERIC_RENAME.keys(),
+            *HINTS7_CATEGORICAL_RENAME.keys(),
+            *r10_cols,
+        ])
+    )
+
+    with zipfile.ZipFile(zip_path) as zf:
+        dta_bytes = zf.read(HINTS7_DTA_MEMBER)
+
+    with StataReader(io.BytesIO(dta_bytes)) as reader:
+        value_labels = reader.value_labels()
+        col_to_lblname = dict(zip(reader._varlist, reader._lbllist, strict=True))
+
+    missing_cols = [c for c in raw_cols if c not in col_to_lblname]
+    if missing_cols:
+        raise KeyError(f"hints7: expected columns missing from {HINTS7_DTA_MEMBER}: {missing_cols}")
+
+    raw_df = pd.read_stata(io.BytesIO(dta_bytes), columns=raw_cols, convert_categoricals=False)
+    if raw_df["HHID"].isna().any() or not raw_df["HHID"].is_unique:
+        raise ValueError(f"hints7: HHID must be non-null and unique in {HINTS7_DTA_MEMBER}")
+
+    out: dict[str, object] = {
+        "CASEID": raw_df["HHID"].astype(str),
+        "country": "United States",
+    }
+    for src_col, dst_col in HINTS7_NUMERIC_RENAME.items():
+        out[dst_col] = _mask_hints7_negatives(raw_df[src_col], src_col)
+
+    for src_col, dst_col in HINTS7_CATEGORICAL_RENAME.items():
+        masked = _mask_hints7_negatives(raw_df[src_col], src_col)
+        out[dst_col] = _strict_decode_stata_col(masked, src_col, value_labels, col_to_lblname, "hints7")
+
+    out["race"] = _hints7_multiselect(raw_df, HINTS7_R10_RACE_GROUPS, "hints7.race")
+
+    return pd.DataFrame(out)
+
+
+SHED2025_ZIP_REL = Path("SHED") / "SHED_public_use_data_2025_(STATA).zip"
+SHED2025_DTA_MEMBER = "public2025.dta"
+SHED2025_MISSING_CODES = frozenset({-9, -2, -1})
+
+SHED2025_NUMERIC_RENAME = {
+    "ppage": "age",
+    "pphhsize": "household_size",
+    "ppkid017": "children_in_household",
+}
+
+SHED2025_CATEGORICAL_RENAME = {
+    "ppgender": "gender",
+    "ppreg9": "region",
+    "ppstaten": "state",
+    "ppmsacat": "urban_rural",
+    "ED0": "education",
+    "I40": "family_income",
+    "ppracem": "race",
+    "pphispan": "hispanic",
+    "ppmarit5": "marital_status",
+    "ppemploy": "employment_status",
+    "pphouse4": "residence_type",
+    "ppp20197": "citizen",
+    "pppa_lgb": "sexual_orientation",
+    "UNION100": "union_member",
+    "ppcm1301": "employer_sector",
+}
+
+# Survey-asked persona columns that carry hot-deck imputation flags (`*_iflag == 1`).
+# Imputed values are masked to NaN so personas contain only respondent-reported demographics.
+SHED2025_IMPUTED_PERSONA_COLS = frozenset({"ED0", "I40"})
+
+# Complete set of SHED 2025 demographic, derived-demographic, and alternative profile columns
+# so `shed2025_export.py` strictly refuses to export any persona variable as a survey question.
+SHED2025_PERSONA_RAW_COLS: frozenset[str] = frozenset({
+    *SHED2025_NUMERIC_RENAME.keys(),
+    *SHED2025_CATEGORICAL_RENAME.keys(),
+    "ppagecat",
+    "ppagect4",
+    "ppeduc5",
+    "ppeducat",
+    "educ_4cat",
+    "ppethm",
+    "race_5cat",
+    "ppinc7",
+    "inc_4cat_50k",
+    "ppreg4",
+    "pphhsize5",
+    "ppt18ov",
+    "pprent",
+    "pppa1634",
+    "malefemale",
+    "p_gender",
+    "ppcm0160",
+    "ind1",
+    "pphi0001",
+    "CH2A",
+    "ED0B",
+    "ED0_iflag",
+    "I40_iflag",
+})
+
+
+def _mask_shed2025_negatives(series: pd.Series, col: str) -> pd.Series:
+    """Validate SHED 2025 negative missing codes strictly and replace them with NaN."""
+    neg = series.dropna()
+    neg = neg[neg < 0]
+    unexpected = set(int(x) for x in neg.unique()) - SHED2025_MISSING_CODES
+    if unexpected:
+        raise ValueError(f"shed2025.{col}: unexpected negative code(s) {sorted(unexpected)}")
+    return series.where(series.isna() | (series >= 0), float("nan"))
+
+
+def load_raw_shed2025_personas(data_dir: Path = DATA_DIR) -> pd.DataFrame:
+    """Load raw Federal Reserve SHED 2025 persona columns directly from the official Stata zip."""
+    zip_path = data_dir / SHED2025_ZIP_REL
+    if not zip_path.is_file():
+        raise FileNotFoundError(f"Official SHED 2025 Stata archive not found: {zip_path}")
+
+    iflag_cols = [f"{c}_iflag" for c in sorted(SHED2025_IMPUTED_PERSONA_COLS)]
+    raw_cols = list(
+        dict.fromkeys([
+            "shedid",
+            *SHED2025_NUMERIC_RENAME.keys(),
+            *SHED2025_CATEGORICAL_RENAME.keys(),
+            *iflag_cols,
+        ])
+    )
+
+    with zipfile.ZipFile(zip_path) as zf:
+        dta_bytes = zf.read(SHED2025_DTA_MEMBER)
+
+    with StataReader(io.BytesIO(dta_bytes)) as reader:
+        value_labels = reader.value_labels()
+        col_to_lblname = dict(zip(reader._varlist, reader._lbllist, strict=True))
+
+    missing_cols = [c for c in raw_cols if c not in col_to_lblname]
+    if missing_cols:
+        raise KeyError(f"shed2025: expected columns missing from {SHED2025_DTA_MEMBER}: {missing_cols}")
+
+    raw_df = pd.read_stata(io.BytesIO(dta_bytes), columns=raw_cols, convert_categoricals=False)
+    if raw_df["shedid"].isna().any() or not raw_df["shedid"].is_unique:
+        raise ValueError(f"shed2025: shedid must be non-null and unique in {SHED2025_DTA_MEMBER}")
+
+    out: dict[str, object] = {
+        "CASEID": raw_df["shedid"].astype(str),
+        "country": "United States",
+    }
+    for src_col, dst_col in SHED2025_NUMERIC_RENAME.items():
+        out[dst_col] = _mask_shed2025_negatives(raw_df[src_col], src_col)
+
+    for src_col, dst_col in SHED2025_CATEGORICAL_RENAME.items():
+        series = raw_df[src_col]
+        if src_col in SHED2025_IMPUTED_PERSONA_COLS:
+            flag = raw_df[f"{src_col}_iflag"]
+            bad_flags = set(flag.dropna().unique()) - {0, 1}
+            if bad_flags:
+                raise ValueError(f"shed2025.{src_col}_iflag: unexpected values {sorted(bad_flags)}")
+            series = series.where(flag != 1, float("nan"))
+        masked = _mask_shed2025_negatives(series, src_col)
+        out[dst_col] = _strict_decode_stata_col(masked, src_col, value_labels, col_to_lblname, "shed2025")
+
+    return pd.DataFrame(out)
 
 
 # ---------------------------------------------------------------------------
@@ -689,6 +1077,8 @@ RAW_LOADERS = {
     "twin2k": load_raw_twin2k_personas,
     "wvs7": load_raw_wvs7_personas,
     "subpop": load_raw_subpop_personas,
+    "hints7": load_raw_hints7_personas,
+    "shed2025": load_raw_shed2025_personas,
     "covid": load_raw_covid_personas,
     "grummon2023": load_raw_grummon2023_personas,
     "grummon2025": load_raw_grummon2025_personas,
