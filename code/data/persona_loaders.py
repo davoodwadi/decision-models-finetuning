@@ -814,6 +814,9 @@ def load_raw_kreps2021_personas(data_dir: Path = DATA_DIR, shared_only: bool = F
         cols["flu_vaccination_frequency"] = _decode_stata_col(
             resp["flu_vaccine"], "flu_vaccine", value_labels, col_to_lblname
         )
+        cols["trump_approval"] = _decode_stata_col(
+            resp["pres_approval"], "pres_approval", value_labels, col_to_lblname
+        )
         cols["tv_news_consumption"] = _decode_stata_col(resp["tv_news"], "tv_news", value_labels, col_to_lblname)
         cols["newspaper_consumption"] = _decode_stata_col(
             resp["paper_news"], "paper_news", value_labels, col_to_lblname
@@ -1037,15 +1040,33 @@ KRINER_RACE_COLS = [
 ]
 
 
-KRINER_EXTRA_COLS = [
-    "party_lean",
-    "vs_votechoice_2024",
-    "urban_rural_least",
-    "approve",
-    "climate_change_old",
-    "saf_familiar_old",
-    "sci_know_self",
-]
+def _build_kriner2026_political_party(resp: pd.DataFrame, value_labels: dict) -> pd.Series:
+    """Combine kriner2026 party with Independents-only party_lean follow-up (fail-fast on unexpected combos)."""
+    party = _strict_map(resp["party"], value_labels["party"], "kriner2026.party")
+    lean = _strict_map(resp["party_lean"], value_labels["party_lean"], "kriner2026.party_lean")
+
+    out = []
+    for p, l in zip(party, lean):
+        if pd.isna(p):
+            if pd.notna(l):
+                raise ValueError(f"kriner2026.political_party: missing party with party_lean={l!r}")
+            out.append(float("nan"))
+        elif p in ("Democrat", "Republican", "Other/don't know"):
+            if pd.notna(l):
+                raise ValueError(f"kriner2026.political_party: {p!r} with unexpected party_lean={l!r}")
+            out.append(p)
+        elif p == "Independent":
+            if l == "Democratic Party":
+                out.append("Lean Democrat")
+            elif l == "Republican Party":
+                out.append("Lean Republican")
+            elif pd.isna(l) or l == "Neither/don't know":
+                out.append("Independent")
+            else:
+                raise ValueError(f"kriner2026.political_party: unexpected Independent party_lean={l!r}")
+        else:
+            raise ValueError(f"kriner2026.political_party: unexpected party={p!r}")
+    return pd.Series(out, index=resp.index, dtype="object")
 
 
 def load_raw_kriner2026_personas(data_dir: Path = DATA_DIR, shared_only: bool = False) -> pd.DataFrame:
@@ -1063,7 +1084,7 @@ def load_raw_kriner2026_personas(data_dir: Path = DATA_DIR, shared_only: bool = 
         "education": _strict_map(resp["education"], value_labels["education"], "kriner2026.education"),
         "religion": _strict_map(resp["relig"], value_labels["relig"], "kriner2026.relig"),
         "political_ideology": _strict_map(resp["ideology"], value_labels["ideology"], "kriner2026.ideology"),
-        "political_party": _strict_map(resp["party"], value_labels["party"], "kriner2026.party"),
+        "political_party": _build_kriner2026_political_party(resp, value_labels),
         "income": _strict_map(resp["income"], value_labels["income"], "kriner2026.income"),
         "urban_rural": _strict_map(
             resp["urban_rural_best"], value_labels["urban_rural_best"], "kriner2026.urban_rural_best"
@@ -1074,8 +1095,12 @@ def load_raw_kriner2026_personas(data_dir: Path = DATA_DIR, shared_only: bool = 
         "race": _checkbox_race(resp, KRINER_RACE_COLS, "kriner2026"),
     }
     if not shared_only:
-        for col in KRINER_EXTRA_COLS:
-            cols[f"kriner2026__{col}"] = _strict_map(resp[col], value_labels[col], f"kriner2026.{col}")
+        cols["vote_choice_2024"] = _strict_map(
+            resp["vs_votechoice_2024"], value_labels["vs_votechoice_2024"], "kriner2026.vs_votechoice_2024"
+        )
+        cols["trump_approval"] = _strict_map(
+            resp["approve"], value_labels["approve"], "kriner2026.approve"
+        )
     return pd.DataFrame(cols)
 
 
@@ -1179,12 +1204,6 @@ def load_raw_kantorowicz2026_personas(data_dir: Path = DATA_DIR, shared_only: bo
         "education": resp["education_dummy"],
         "income": resp["income_dummy"],
     }
-    if not shared_only:
-        cols.update({
-            "kantorowicz2026__risk_aversion_dummy": resp["risk_aversion_dummy"],
-            "kantorowicz2026__analytical_thinking_dummy": resp["analytical_thinking_dummy"],
-            "kantorowicz2026__consistent_switch": resp["consistent_switch"],
-        })
     return pd.DataFrame(cols)
 
 
@@ -1202,6 +1221,30 @@ MAGISTRO_CA_PROVINCE_LABELS = {
     11.0: "Quebec",
     12.0: "Saskatchewan",
 }
+
+
+def _build_magistro2025_political_party(resp: pd.DataFrame) -> pd.Series:
+    """Combine magistro2025 party and party2 to recover US Independent leaners (fail-fast)."""
+    out = []
+    for country, p, p2 in zip(resp["countr"], resp["party"], resp["party2"], strict=True):
+        if pd.isna(p) or pd.isna(p2):
+            raise ValueError(f"magistro2025.political_party: unexpected missing value ({country!r}, {p!r}, {p2!r})")
+        if country == "Canada":
+            if p != p2 or p not in ("CPC", "LPC", "NDP", "Other"):
+                raise ValueError(f"magistro2025.political_party: unexpected Canada combo ({p!r}, {p2!r})")
+            out.append(p)
+        elif country == "US":
+            if p == p2 and p in ("Democratic", "Republican", "Other"):
+                out.append(p)
+            elif p == "Other" and p2 == "Democratic":
+                out.append("Lean Democrat")
+            elif p == "Other" and p2 == "Republican":
+                out.append("Lean Republican")
+            else:
+                raise ValueError(f"magistro2025.political_party: unexpected US combo ({p!r}, {p2!r})")
+        else:
+            raise ValueError(f"magistro2025.political_party: unexpected country {country!r}")
+    return pd.Series(out, index=resp.index, dtype=object)
 
 
 def load_raw_magistro2025_personas(data_dir: Path = DATA_DIR, shared_only: bool = False) -> pd.DataFrame:
@@ -1227,28 +1270,109 @@ def load_raw_magistro2025_personas(data_dir: Path = DATA_DIR, shared_only: bool 
         "age": resp["age_group"],
         "education": resp["education"],
         "income": resp["income"],
-        "political_party": resp["party"],
+        "political_party": _build_magistro2025_political_party(resp),
     }
-    if not shared_only:
-        cols.update({
-            "magistro2025__party2": resp["party2"],
-            "magistro2025__education_bin": resp["education_bin"],
-            "magistro2025__gender_bin": resp["gender_bin"],
-        })
     return pd.DataFrame(cols)
 
 
-FORSYTHE_EXTRA_COLS = [
-    "Clean gender",
-    "Clean education",
-    "Clean Income Entry",
-    "Clean livingSit",
-    "Clean householdSize",
-    "Clean Vehicle Type",
-    "Clean elecVehTypeOwned",
-    "Clean covid",
-    "Clean Age",
-]
+US_ZIP_STATE_RANGES: tuple[tuple[int, int, str], ...] = (
+    (1000, 2799, "Massachusetts"),
+    (2800, 2999, "Rhode Island"),
+    (3000, 3899, "New Hampshire"),
+    (3900, 4999, "Maine"),
+    (5000, 5499, "Vermont"),
+    (5500, 5599, "Massachusetts"),
+    (5600, 5999, "Vermont"),
+    (6000, 6389, "Connecticut"),
+    (6390, 6390, "New York"),
+    (6400, 6999, "Connecticut"),
+    (7000, 8999, "New Jersey"),
+    (10000, 14999, "New York"),
+    (15000, 19699, "Pennsylvania"),
+    (19700, 19999, "Delaware"),
+    (20000, 20099, "District of Columbia"),
+    (20100, 20199, "Virginia"),
+    (20200, 20599, "District of Columbia"),
+    (20600, 21999, "Maryland"),
+    (22000, 24699, "Virginia"),
+    (24700, 26899, "West Virginia"),
+    (27000, 28999, "North Carolina"),
+    (29000, 29999, "South Carolina"),
+    (30000, 31999, "Georgia"),
+    (32000, 34999, "Florida"),
+    (35000, 36999, "Alabama"),
+    (37000, 38599, "Tennessee"),
+    (38600, 39799, "Mississippi"),
+    (39800, 39999, "Georgia"),
+    (40000, 42799, "Kentucky"),
+    (43000, 45999, "Ohio"),
+    (46000, 47999, "Indiana"),
+    (48000, 49999, "Michigan"),
+    (50000, 52899, "Iowa"),
+    (53000, 54999, "Wisconsin"),
+    (55000, 56799, "Minnesota"),
+    (56900, 56999, "District of Columbia"),
+    (57000, 57799, "South Dakota"),
+    (58000, 58899, "North Dakota"),
+    (59000, 59999, "Montana"),
+    (60000, 62999, "Illinois"),
+    (63000, 65899, "Missouri"),
+    (66000, 67999, "Kansas"),
+    (68000, 69399, "Nebraska"),
+    (70000, 71499, "Louisiana"),
+    (71600, 72999, "Arkansas"),
+    (73000, 73199, "Oklahoma"),
+    (73300, 73399, "Texas"),
+    (73400, 74999, "Oklahoma"),
+    (75000, 79999, "Texas"),
+    (80000, 81699, "Colorado"),
+    (82000, 83199, "Wyoming"),
+    (83200, 83899, "Idaho"),
+    (84000, 84799, "Utah"),
+    (85000, 86599, "Arizona"),
+    (87000, 88499, "New Mexico"),
+    (88500, 88599, "Texas"),
+    (88900, 89899, "Nevada"),
+    (90000, 96199, "California"),
+    (96700, 96899, "Hawaii"),
+    (97000, 97999, "Oregon"),
+    (98000, 99499, "Washington"),
+    (99500, 99999, "Alaska"),
+)
+
+# Known invalid/unassigned ZIP entries in Forsythe2023 (00000 placeholder, 00746 unassigned)
+FORSYTHE_INVALID_ZIPS = frozenset({0, 746})
+
+
+def _us_zip_to_state(series: pd.Series, invalid_zips: frozenset[int], name: str) -> pd.Series:
+    """Map numeric US 5-digit ZIP codes strictly to US state/DC names."""
+    out = []
+    for val in series:
+        if pd.isna(val):
+            out.append(float("nan"))
+            continue
+        z = int(val)
+        if z != val:
+            raise ValueError(f"{name}: non-integer ZIP value {val!r}")
+        if z in invalid_zips:
+            out.append(float("nan"))
+            continue
+        matched = None
+        for lo, hi, st in US_ZIP_STATE_RANGES:
+            if lo <= z <= hi:
+                matched = st
+                break
+        if matched is None:
+            raise ValueError(f"{name}: unmapped US ZIP code {z:05d}")
+        out.append(matched)
+    return pd.Series(out, index=series.index, dtype=object)
+
+
+def _normalize_semicolon_multiselect(series: pd.Series) -> pd.Series:
+    """Normalize ';' multi-select strings to canonical '; '-delimited strings."""
+    return series.map(
+        lambda x: "; ".join(part.strip() for part in str(x).split(";")) if pd.notna(x) else x
+    )
 
 
 def load_raw_forsythe2023_personas(data_dir: Path = DATA_DIR, shared_only: bool = False) -> pd.DataFrame:
@@ -1261,14 +1385,25 @@ def load_raw_forsythe2023_personas(data_dir: Path = DATA_DIR, shared_only: bool 
     if demo["id"].isna().any() or demo["id"].duplicated().any():
         raise ValueError("forsythe2023: expected unique non-null respondent ids across demo-car and demo-suv")
 
+    zip_combined = demo["ZIP"].fillna(demo["Clean ZIP"])
     cols: dict[str, object] = {
         "CASEID": "forsythe2023_" + demo["id"].astype(int).astype(str),
         "country": "United States",
+        "state": _us_zip_to_state(zip_combined, FORSYTHE_INVALID_ZIPS, "forsythe2023.ZIP_combined"),
+        "gender": demo["Clean gender"],
+        "age": demo["Clean Age"],
+        "education": demo["Clean education"],
+        "family_income": demo["Clean Income Entry"],
+        "marital_status": demo["Clean livingSit"],
+        "household_size": demo["Clean householdSize"].map(
+            lambda x: str(int(x)) if pd.notna(x) and isinstance(x, (int, float)) else x
+        ),
     }
     if not shared_only:
-        for col in FORSYTHE_EXTRA_COLS:
-            cols[f"forsythe2023__{col}"] = demo[col]
-        cols["forsythe2023__ZIP_combined"] = demo["ZIP"].fillna(demo["Clean ZIP"])
+        cols.update({
+            "vehicle_powertrain_owned": _normalize_semicolon_multiselect(demo["Clean elecVehTypeOwned"]),
+            "covid_employment_impact": _normalize_semicolon_multiselect(demo["Clean covid"]),
+        })
     return pd.DataFrame(cols)
 
 

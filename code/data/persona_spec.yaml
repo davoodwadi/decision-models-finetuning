@@ -20,6 +20,7 @@ gender:
     - Male
     - Female
     - Non-binary
+    - Transgender
     - Other
     - Prefer not to say
   aliases:
@@ -27,7 +28,9 @@ gender:
     "2. Female": Female
     Man: Male
     Woman: Female
+    Trans: Transgender
     "Prefer not to answer": Prefer not to say
+    "I do not wish to answer": Prefer not to say
     "Prefer to self-describe": Other
   missing:
     - "-9. No answer"
@@ -323,6 +326,8 @@ education:
     - Some college
     - Some college, no degree
     - Some college or technical school
+    # forsythe2023 (Clean education)
+    - 2 year university or trade school degree
     - Associate's degree
     - Bachelor's degree
     - College graduate/some postgrad
@@ -421,6 +426,13 @@ education:
     "6. Upper level tertiary (Master, Doctor)": Upper level tertiary (Master, Doctor)
     "8. PhD, Post Tertiary Specialization": PhD, post-tertiary specialization
     "8. PhD, Post tertiary specialization": PhD, post-tertiary specialization
+    # forsythe2023 (Clean education)
+    "Some secondary education": Less than high school
+    "Graduated high school": High school graduate
+    "Some university education": Some college
+    "4 year university degree": Bachelor's degree
+    "4 year university degree (bachelors)": Bachelor's degree
+    "Masters degree": Master's degree
   overrides:
     # covid, kreps2021, and kriner2026 have a separate "2-year College Degree" option, so "Some College" means no degree;
     # magistro2025 has no Associate's option, so its "Some college" stays "Some college".
@@ -437,6 +449,7 @@ education:
     - "9. No answer"
     - "No answer"
     - "No answer, other"
+    - "I do not wish to answer"
 
 family_income:
   prompt: Family income
@@ -504,6 +517,20 @@ family_income:
     - "$150,000 or more"
     - "$170,000 or more"
     - "$200,000 or more"
+    # forsythe2023 (Clean Income Entry)
+    - "Less than $12,500"
+    - "$12,500-$19,999"
+    - "$30,000-$37,499"
+    - "$37,500-$49,999"
+    - "$50,000-$62,499"
+    - "$62,500-$74,999"
+    - "$75,000-$87,499"
+    - "$87,500-$99,999"
+    - "$100,000-$119,999"
+    - "$120,000-$139,999"
+    - "$140,000-$159,999"
+    - "$160,000-$179,999"
+    - "$180,000-$199,999"
   aliases:
     "500. Under 1 000 USD per year, before taxes": "Less than $1,000"
     "500. Under 1.000 USD last year, before taxes": "Less than $1,000"
@@ -618,6 +645,19 @@ family_income:
     "$30,000 to $34,999": "$30,000-$34,999"
     "$35,000 to $39,999": "$35,000-$39,999"
     "$60,000 to $74,999": "$60,000-$74,999"
+    # forsythe2023 (Clean Income Entry)
+    "$12,500 to $19,999": "$12,500-$19,999"
+    "$30,000 to $37,499": "$30,000-$37,499"
+    "$37,500 to $49,999": "$37,500-$49,999"
+    "$50,000 to $62,499": "$50,000-$62,499"
+    "$62,500 to $74,999": "$62,500-$74,999"
+    "$75,000 to $87,499": "$75,000-$87,499"
+    "$87,500 to $99,999": "$87,500-$99,999"
+    "$100,000 to $119,999": "$100,000-$119,999"
+    "$120,000 to $139,999": "$120,000-$139,999"
+    "$140,000 to $159,999": "$140,000-$159,999"
+    "$160,000 to $179,999": "$160,000-$179,999"
+    "$180,000 to $199,999": "$180,000-$199,999"
   missing:
     - "-9. No answer"
     - "-8. Don't know"
@@ -626,6 +666,7 @@ family_income:
     - "999998. Don't know"
     - "Refused"
     - "Don't know"
+    - "I do not wish to answer"
 
 income:
   prompt: Income
@@ -945,6 +986,8 @@ marital_status:
   prompt: Marital status
   levels:
     - Married
+    # forsythe2023 (Clean livingSit)
+    - Married or living with a partner
     - Living with a partner
     - Living together as married
     - Divorced
@@ -983,6 +1026,7 @@ marital_status:
     - "9. No answer"
     - "No answer"
     - "NA, CN: Cohabit"
+    - "I do not wish to answer"
 
 employment_status:
   prompt: Employment status
@@ -1100,8 +1144,11 @@ household_size:
     "Eleven persons": "7 or more"
     "Eleven persons, US: 11 persons or more": "7 or more"
     "12. Twelve persons": "7 or more"
+    # forsythe2023 (Clean householdSize)
+    "7": "7 or more"
   missing:
     - "-9. No answer"
+    - "I do not wish to answer"
 
 children_in_household:
   prompt: How many children (ages 0-18) currently live in your household?
@@ -2872,3 +2919,37 @@ online_grocery_frequency:
     - About once a month
     - Multiple times a month
     - More than once a week
+
+vote_choice_2024:
+  prompt: "2024 presidential general election vote choice"
+  levels:
+    - Kamala Harris
+    - Donald Trump
+    - Someone else
+
+trump_approval:
+  prompt: "Do you approve or disapprove of the way Donald Trump is handling his job as president?"
+  levels:
+    - Approve
+    - Disapprove
+    - No opinion
+
+# Forsythe et al. (2023) EV conjoint persona attributes
+vehicle_powertrain_owned:
+  prompt: "Vehicle powertrain types previously or currently owned"
+  multi_select: true
+  levels:
+    - Conventional
+    - Hybrid
+    - Plug-in Hybrid
+    - Electric
+    - I have never owned a vehicle
+
+covid_employment_impact:
+  prompt: "In which of the following ways were you impacted by the COVID-19 pandemic?"
+  multi_select: true
+  levels:
+    - Permanent job loss
+    - Temporary job loss
+    - Salary reduction
+    - None of the above
