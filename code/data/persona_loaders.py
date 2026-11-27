@@ -736,13 +736,13 @@ COVID_RACE_COLS = [
 ]
 
 
-def load_raw_covid_personas(data_dir: Path = DATA_DIR) -> pd.DataFrame:
+def load_raw_covid_personas(data_dir: Path = DATA_DIR, shared_only: bool = False) -> pd.DataFrame:
     """Load raw Kreps et al. (2020) COVID vaccine conjoint personas from Stata `.dta`."""
     dta_path = data_dir / "covid" / "dataverse_files" / "Kreps_etal_vax_replication_data.dta"
     value_labels, col_to_lblname = _read_stata_value_labels(dta_path)
     resp = covid_s.extract_respondent_df(covid_s.load_raw_conjoint_df(dta_path)).reset_index(drop=True)
 
-    return pd.DataFrame({
+    cols = {
         "CASEID": resp["CASEID"].astype(str),
         "country": "United States",
         "state": _decode_stata_col(resp["state"], "state", value_labels, col_to_lblname),
@@ -754,7 +754,85 @@ def load_raw_covid_personas(data_dir: Path = DATA_DIR) -> pd.DataFrame:
         "political_party": _decode_stata_col(resp["party3"], "party3", value_labels, col_to_lblname),
         "income": _decode_stata_col(resp["income"], "income", value_labels, col_to_lblname),
         "race": _checkbox_race(resp, COVID_RACE_COLS, "covid"),
-    })
+    }
+    if not shared_only:
+        cols["health_insurance"] = _decode_stata_col(resp["insurance"], "insurance", value_labels, col_to_lblname)
+        cols["evangelical_christian"] = _decode_stata_col(
+            resp["evangelical"], "evangelical", value_labels, col_to_lblname
+        )
+        cols["recent_employment_change"] = _decode_stata_col(
+            resp["work_status"], "work_status", value_labels, col_to_lblname
+        )
+        cols["able_to_work_from_home"] = _decode_stata_col(resp["work_home"], "work_home", value_labels, col_to_lblname)
+        cols["flu_vaccination_frequency"] = _decode_stata_col(
+            resp["flu_vaccine"], "flu_vaccine", value_labels, col_to_lblname
+        )
+        cols["knows_someone_tested_positive_covid"] = _decode_stata_col(
+            resp["personal_contact1"], "personal_contact1", value_labels, col_to_lblname
+        )
+        cols["knows_someone_hospitalized_or_died_covid"] = _decode_stata_col(
+            resp["personal_contact2"], "personal_contact2", value_labels, col_to_lblname
+        )
+    return pd.DataFrame(cols)
+
+
+def load_raw_kreps2021_personas(data_dir: Path = DATA_DIR, shared_only: bool = False) -> pd.DataFrame:
+    """Load raw Kreps & Kriner (2021) COVID vaccine misinformation/conjoint personas from Stata `.dta`."""
+    zip_path = data_dir / "kreps2021" / "dataverse_files.zip"
+    with zipfile.ZipFile(zip_path) as zf:
+        raw_bytes = zf.read("vax_misinfo_replication_data_raw.dta")
+
+    with StataReader(io.BytesIO(raw_bytes)) as reader:
+        value_labels = reader.value_labels()
+        col_to_lblname = dict(zip(reader._varlist, reader._lbllist, strict=True))
+
+    resp = pd.read_stata(io.BytesIO(raw_bytes), convert_categoricals=False).reset_index(drop=True)
+    if resp["ResponseId"].isna().any() or resp["ResponseId"].nunique() != len(resp):
+        raise ValueError("kreps2021: ResponseId must be non-null and unique per respondent")
+
+    age_decoded = _decode_stata_col(resp["age"], "age", value_labels, col_to_lblname)
+    age_numeric = age_decoded.astype(int)
+
+    cols = {
+        "CASEID": resp["ResponseId"].astype(str),
+        "country": "United States",
+        "state": _decode_stata_col(resp["state"], "state", value_labels, col_to_lblname),
+        "gender": _decode_stata_col(resp["gender"], "gender", value_labels, col_to_lblname),
+        "age": age_numeric,
+        "education": _decode_stata_col(resp["education"], "education", value_labels, col_to_lblname),
+        "religion": _decode_stata_col(resp["relig"], "relig", value_labels, col_to_lblname),
+        "political_ideology": _decode_stata_col(resp["ideology"], "ideology", value_labels, col_to_lblname),
+        "political_party": _decode_stata_col(resp["party3"], "party3", value_labels, col_to_lblname),
+        "income": _decode_stata_col(resp["income"], "income", value_labels, col_to_lblname),
+        "race": _checkbox_race(resp, COVID_RACE_COLS, "kreps2021"),
+    }
+    if not shared_only:
+        cols["health_insurance"] = _decode_stata_col(resp["insurance"], "insurance", value_labels, col_to_lblname)
+        cols["evangelical_christian"] = _decode_stata_col(
+            resp["evangelical"], "evangelical", value_labels, col_to_lblname
+        )
+        cols["flu_vaccination_frequency"] = _decode_stata_col(
+            resp["flu_vaccine"], "flu_vaccine", value_labels, col_to_lblname
+        )
+        cols["tv_news_consumption"] = _decode_stata_col(resp["tv_news"], "tv_news", value_labels, col_to_lblname)
+        cols["newspaper_consumption"] = _decode_stata_col(
+            resp["paper_news"], "paper_news", value_labels, col_to_lblname
+        )
+        cols["social_media_news_consumption"] = _decode_stata_col(
+            resp["social_news"], "social_news", value_labels, col_to_lblname
+        )
+        cols["social_media_daily_use"] = _decode_stata_col(resp["sns1"], "sns1", value_labels, col_to_lblname)
+        cols["social_media_shares_media"] = _decode_stata_col(resp["sns2"], "sns2", value_labels, col_to_lblname)
+        cols["social_media_follows_accounts"] = _decode_stata_col(resp["sns3"], "sns3", value_labels, col_to_lblname)
+        cols["social_media_multiple_accounts"] = _decode_stata_col(resp["sns4"], "sns4", value_labels, col_to_lblname)
+        cols["social_media_perceived_usefulness"] = _decode_stata_col(resp["sns5"], "sns5", value_labels, col_to_lblname)
+        cols["social_media_follows_friends_shares"] = _decode_stata_col(
+            resp["sns6"], "sns6", value_labels, col_to_lblname
+        )
+        cols["social_media_checks_friends_activity"] = _decode_stata_col(
+            resp["sns7"], "sns7", value_labels, col_to_lblname
+        )
+    return pd.DataFrame(cols)
 
 
 GRUMMON_GENDER_LABELS = {
@@ -839,13 +917,9 @@ def load_raw_grummon2023_personas(data_dir: Path = DATA_DIR, shared_only: bool =
     }
     if not shared_only:
         cols.update({
-            "DIETQUAL": _strict_map(clean_df["dietqual"], g23.DIETQUAL_MAP, "grummon2023.dietqual"),
-            "MEDHELP": _strict_map(clean_df["healthlit"], g23.MEDHELP_MAP, "grummon2023.healthlit"),
-            "VENDING_BEV": _strict_map(clean_df["vendingfreq_bev"], g23.VENDING_FREQ_MAP, "grummon2023.vending_bev"),
-            "VENDING_SNACK": _strict_map(
-                clean_df["vendingfreq_snack"], g23.VENDING_FREQ_MAP, "grummon2023.vending_snack"
-            ),
-            "BMI": g23.derive_grummon2023_bmi(clean_df),
+            "diet_quality": _strict_map(clean_df["dietqual"], g23.DIETQUAL_MAP, "grummon2023.dietqual"),
+            "medical_reading_help": _strict_map(clean_df["healthlit"], g23.MEDHELP_MAP, "grummon2023.healthlit"),
+            "bmi": g23.derive_grummon2023_bmi(clean_df),
         })
     return pd.DataFrame(cols)
 
@@ -869,10 +943,10 @@ def load_raw_grummon2025_personas(data_dir: Path = DATA_DIR, shared_only: bool =
     }
     if not shared_only:
         cols.update({
-            "SNAP": _strict_map(clean_df["snap"], g25.SNAP_MAP, "grummon2025.snap"),
-            "WIC": _strict_map(clean_df["wic"], g25.WIC_MAP, "grummon2025.wic"),
-            "ONLINEAMT": _strict_map(clean_df["onlineamt"], g25.ONLINE_MAP, "grummon2025.onlineamt"),
-            "HEALTHLIT": _strict_map(clean_df["scr_litall"], g25.HEALTHLIT_MAP, "grummon2025.healthlit"),
+            "snap_benefits": _strict_map(clean_df["snap"], g25.SNAP_MAP, "grummon2025.snap"),
+            "wic_benefits": _strict_map(clean_df["wic"], g25.WIC_MAP, "grummon2025.wic"),
+            "online_grocery_share": _strict_map(clean_df["onlineamt"], g25.ONLINE_MAP, "grummon2025.onlineamt"),
+            "nutrition_literacy_score": _strict_map(clean_df["scr_litall"], g25.HEALTHLIT_MAP, "grummon2025.healthlit"),
         })
     return pd.DataFrame(cols)
 
@@ -923,10 +997,10 @@ def _decode_berke_race(series: pd.Series) -> pd.Series:
     return pd.Series(out, index=series.index, dtype=object)
 
 
-def load_raw_berke2023_personas(data_dir: Path = DATA_DIR) -> pd.DataFrame:
+def load_raw_berke2023_personas(data_dir: Path = DATA_DIR, shared_only: bool = False) -> pd.DataFrame:
     """Load raw Berke et al. (2023) drone-delivery conjoint personas with verbatim codebook labels."""
     raw_df = berke_s.load_raw_df().reset_index(drop=True)
-    return pd.DataFrame({
+    cols = {
         "CASEID": "berke2023_" + raw_df["ResponseId"].astype(str),
         "country": "United States",
         "state": _strict_map(raw_df["Q_state"], BERKE_STATE_LABELS, "berke2023.Q_state"),
@@ -936,7 +1010,21 @@ def load_raw_berke2023_personas(data_dir: Path = DATA_DIR) -> pd.DataFrame:
         "family_income": _strict_map(raw_df["Q_income"], BERKE_INCOME_LABELS, "berke2023.Q_income"),
         "urban_rural": _strict_map(raw_df["Q_urban_rural"], BERKE_URBAN_LABELS, "berke2023.Q_urban_rural"),
         "residence_type": _strict_map(raw_df["Q_residence_type"], BERKE_RESTYPE_LABELS, "berke2023.Q_residence_type"),
-    })
+    }
+    if not shared_only:
+        freq_map = dict(berke_s.FREQ_OPTIONS)
+        cols.update({
+            "online_shopping_frequency": _strict_map(
+                raw_df["Q_online_shopping"], freq_map, "berke2023.Q_online_shopping"
+            ),
+            "takeout_delivery_frequency": _strict_map(
+                raw_df["Q_takeout_food"], freq_map, "berke2023.Q_takeout_food"
+            ),
+            "online_grocery_frequency": _strict_map(
+                raw_df["Q_online_groceries"], freq_map, "berke2023.Q_online_groceries"
+            ),
+        })
+    return pd.DataFrame(cols)
 
 
 KRINER_RACE_COLS = [
@@ -949,12 +1037,23 @@ KRINER_RACE_COLS = [
 ]
 
 
-def load_raw_kriner2026_personas(data_dir: Path = DATA_DIR) -> pd.DataFrame:
+KRINER_EXTRA_COLS = [
+    "party_lean",
+    "vs_votechoice_2024",
+    "urban_rural_least",
+    "approve",
+    "climate_change_old",
+    "saf_familiar_old",
+    "sci_know_self",
+]
+
+
+def load_raw_kriner2026_personas(data_dir: Path = DATA_DIR, shared_only: bool = False) -> pd.DataFrame:
     """Load raw Goldfarb/Kriner et al. (2026) SAF conjoint personas from Stata `.dta`."""
     raw_df, _, value_labels = kriner_s.load_raw_df(data_dir / "Kriner2026" / "Goldfarb_etal_SAF_JCP_replication.dta")
     resp = kriner_s.build_persona_input_df(raw_df, value_labels).reset_index(drop=True)
 
-    return pd.DataFrame({
+    cols = {
         "CASEID": "kriner2026_" + resp["respondent"].astype(int).astype(str),
         "country": "United States",
         "state": _strict_map(resp["state"], value_labels["state"], "kriner2026.state"),
@@ -973,7 +1072,58 @@ def load_raw_kriner2026_personas(data_dir: Path = DATA_DIR) -> pd.DataFrame:
             resp["vs_vote_2024"], value_labels["vs_vote_2024"], "kriner2026.vs_vote_2024"
         ),
         "race": _checkbox_race(resp, KRINER_RACE_COLS, "kriner2026"),
-    })
+    }
+    if not shared_only:
+        for col in KRINER_EXTRA_COLS:
+            cols[f"kriner2026__{col}"] = _strict_map(resp[col], value_labels[col], f"kriner2026.{col}")
+    return pd.DataFrame(cols)
+
+
+def _build_wu2025_political_party(resp: pd.DataFrame) -> pd.Series:
+    """Combine wu2025 partisan with ANES 7-point follow-up branches (fail-fast on unexpected combos)."""
+    partisan = resp["partisan"].replace("", float("nan"))
+    rep_str = resp["republicanstrength"].replace("", float("nan"))
+    dem_str = resp["democratstrength"].replace("", float("nan"))
+    leaner = resp["leaner"].replace("", float("nan"))
+
+    out = []
+    for p, r, d, l in zip(partisan, rep_str, dem_str, leaner):
+        if pd.isna(p):
+            if pd.notna(r) or pd.notna(d) or pd.notna(l):
+                raise ValueError(f"wu2025.political_party: missing partisan with branch ({r!r}, {d!r}, {l!r})")
+            out.append(float("nan"))
+        elif p == "Democrat":
+            if pd.notna(r) or pd.notna(l):
+                raise ValueError(f"wu2025.political_party: Democrat with unexpected branch ({r!r}, {l!r})")
+            if d == "Strong":
+                out.append("Strong Democrat")
+            elif d == "Not very strong":
+                out.append("Not very strong Democrat")
+            else:
+                raise ValueError(f"wu2025.political_party: unexpected democratstrength {d!r}")
+        elif p == "Republican":
+            if pd.notna(d) or pd.notna(l):
+                raise ValueError(f"wu2025.political_party: Republican with unexpected branch ({d!r}, {l!r})")
+            if r == "Strong":
+                out.append("Strong Republican")
+            elif r == "Not very strong":
+                out.append("Not very strong Republican")
+            else:
+                raise ValueError(f"wu2025.political_party: unexpected republicanstrength {r!r}")
+        elif p in ("Independent", "Something else"):
+            if pd.notna(r) or pd.notna(d):
+                raise ValueError(f"wu2025.political_party: {p!r} with unexpected strength ({r!r}, {d!r})")
+            if l == "Closer to the Democratic Party":
+                out.append("Lean Democrat")
+            elif l == "Closer to the Republican Party":
+                out.append("Lean Republican")
+            elif l == "Neither":
+                out.append(p)
+            else:
+                raise ValueError(f"wu2025.political_party: unexpected leaner {l!r} for {p!r}")
+        else:
+            raise ValueError(f"wu2025.political_party: unexpected partisan {p!r}")
+    return pd.Series(out, index=resp.index, dtype=object)
 
 
 def load_raw_wu2025_personas(data_dir: Path = DATA_DIR, shared_only: bool = False) -> pd.DataFrame:
@@ -993,36 +1143,49 @@ def load_raw_wu2025_personas(data_dir: Path = DATA_DIR, shared_only: bool = Fals
         "hispanic": _clean_str("ethnicity"),
         "education": _clean_str("education"),
         "family_income": _clean_str("income"),
-        "political_party": _clean_str("partisan"),
+        "political_party": _build_wu2025_political_party(resp),
         "political_ideology": _clean_str("ideology"),
         "marital_status": _clean_str("marriage"),
         "employment_status": _clean_str("employment"),
         "residence_type": _clean_str("residence"),
+        "sexual_orientation": _clean_str("orientation"),
     }
     if not shared_only:
         cols.update({
-            "POL_LABEL": _clean_str("ideology_original"),
-            "OWNHOME": _clean_str("residenceownership"),
-            "RENTHOME": _clean_str("residencerental"),
-            "ORIENTATION": _clean_str("orientation"),
-            "MILITARY": _clean_str("military"),
-            "ELECHEAT": _clean_str("householdheat"),
+            "political_label": _clean_str("ideology_original"),
+            "owns_home": _clean_str("residenceownership"),
+            "rents_home": _clean_str("residencerental"),
+            "military_service": _clean_str("military"),
+            "electric_heating": _clean_str("householdheat"),
+            "political_interest": _clean_str("polint"),
+            "electricity_included_in_rent": _clean_str("electricityinrent"),
+            "knows_electricity_bill": _clean_str("billknowledge"),
+            "uses_investor_owned_utility": _clean_str("currentiou"),
+            "uses_community_choice_aggregation": _clean_str("currentcca"),
+            "knows_community_choice_aggregation": _clean_str("ccaknowledge"),
         })
     return pd.DataFrame(cols)
 
 
-def load_raw_kantorowicz2026_personas(data_dir: Path = DATA_DIR) -> pd.DataFrame:
+def load_raw_kantorowicz2026_personas(data_dir: Path = DATA_DIR, shared_only: bool = False) -> pd.DataFrame:
     """Load raw Kantorowicz-Reznichenko et al. (2026) conjoint personas from `.RDS` files."""
     comp_df, laundry_df = kant_s.load_raw_dfs()
     resp = kant_s.extract_respondent_df(comp_df, laundry_df).reset_index(drop=True)
-    return pd.DataFrame({
+    cols = {
         "CASEID": "kantorowicz2026_" + resp["Response.ID"].astype(str),
         "country": "United States",
         "gender": resp["gender_dummy"],
         "age": resp["age_dummy"],
         "education": resp["education_dummy"],
         "income": resp["income_dummy"],
-    })
+    }
+    if not shared_only:
+        cols.update({
+            "kantorowicz2026__risk_aversion_dummy": resp["risk_aversion_dummy"],
+            "kantorowicz2026__analytical_thinking_dummy": resp["analytical_thinking_dummy"],
+            "kantorowicz2026__consistent_switch": resp["consistent_switch"],
+        })
+    return pd.DataFrame(cols)
 
 
 MAGISTRO_US_REGION_LABELS = {1.0: "Northeast", 2.0: "Midwest", 3.0: "South", 4.0: "West"}
@@ -1041,7 +1204,7 @@ MAGISTRO_CA_PROVINCE_LABELS = {
 }
 
 
-def load_raw_magistro2025_personas(data_dir: Path = DATA_DIR) -> pd.DataFrame:
+def load_raw_magistro2025_personas(data_dir: Path = DATA_DIR, shared_only: bool = False) -> pd.DataFrame:
     """Load raw Magistro et al. (2025) US + Canada conjoint personas from `clean_AJPS.csv`."""
     resp = mag_s.load_raw_df(data_dir / "magistro2025" / "dataverse_files" / "clean_AJPS.csv").reset_index(drop=True)
 
@@ -1055,7 +1218,7 @@ def load_raw_magistro2025_personas(data_dir: Path = DATA_DIR) -> pd.DataFrame:
         resp["GeoPC_Region1"].where(ca_mask), MAGISTRO_CA_PROVINCE_LABELS, "magistro2025.GeoPC_Region1"
     )
 
-    return pd.DataFrame({
+    cols = {
         "CASEID": "magistro2025_" + resp["ID"].astype(int).astype(str),
         "country": resp["countr"],
         "region": region_series,
@@ -1065,7 +1228,48 @@ def load_raw_magistro2025_personas(data_dir: Path = DATA_DIR) -> pd.DataFrame:
         "education": resp["education"],
         "income": resp["income"],
         "political_party": resp["party"],
-    })
+    }
+    if not shared_only:
+        cols.update({
+            "magistro2025__party2": resp["party2"],
+            "magistro2025__education_bin": resp["education_bin"],
+            "magistro2025__gender_bin": resp["gender_bin"],
+        })
+    return pd.DataFrame(cols)
+
+
+FORSYTHE_EXTRA_COLS = [
+    "Clean gender",
+    "Clean education",
+    "Clean Income Entry",
+    "Clean livingSit",
+    "Clean householdSize",
+    "Clean Vehicle Type",
+    "Clean elecVehTypeOwned",
+    "Clean covid",
+    "Clean Age",
+]
+
+
+def load_raw_forsythe2023_personas(data_dir: Path = DATA_DIR, shared_only: bool = False) -> pd.DataFrame:
+    """Load raw Forsythe et al. (2023) EV conjoint personas from `Pooled.xlsx` inside the replication zip."""
+    zip_path = data_dir / "Forsythe2023" / "DrivingElectrificationReplication-v1.0.2.zip"
+    member = "crforsythe-DrivingElectrificationReplication-72b0e47/Estimation/Data/ChoiceData/Pooled/Pooled.xlsx"
+    with zipfile.ZipFile(zip_path) as zf:
+        xl = pd.ExcelFile(io.BytesIO(zf.read(member)))
+    demo = pd.concat([xl.parse("demo-car"), xl.parse("demo-suv")], ignore_index=True)
+    if demo["id"].isna().any() or demo["id"].duplicated().any():
+        raise ValueError("forsythe2023: expected unique non-null respondent ids across demo-car and demo-suv")
+
+    cols: dict[str, object] = {
+        "CASEID": "forsythe2023_" + demo["id"].astype(int).astype(str),
+        "country": "United States",
+    }
+    if not shared_only:
+        for col in FORSYTHE_EXTRA_COLS:
+            cols[f"forsythe2023__{col}"] = demo[col]
+        cols["forsythe2023__ZIP_combined"] = demo["ZIP"].fillna(demo["Clean ZIP"])
+    return pd.DataFrame(cols)
 
 
 # ---------------------------------------------------------------------------
@@ -1080,6 +1284,7 @@ RAW_LOADERS = {
     "hints7": load_raw_hints7_personas,
     "shed2025": load_raw_shed2025_personas,
     "covid": load_raw_covid_personas,
+    "kreps2021": load_raw_kreps2021_personas,
     "grummon2023": load_raw_grummon2023_personas,
     "grummon2025": load_raw_grummon2025_personas,
     "berke2023": load_raw_berke2023_personas,
@@ -1087,11 +1292,12 @@ RAW_LOADERS = {
     "wu2025": load_raw_wu2025_personas,
     "kantorowicz2026": load_raw_kantorowicz2026_personas,
     "magistro2025": load_raw_magistro2025_personas,
+    "forsythe2023": load_raw_forsythe2023_personas,
 }
 
 
 def load_raw_all_personas(data_dir: Path = DATA_DIR) -> pd.DataFrame:
-    """Load and stack all 12 datasets' raw (unstandardized) personas into one DataFrame."""
+    """Load and stack all 16 datasets' raw (unstandardized) personas into one DataFrame."""
     frames = [loader(data_dir=data_dir).assign(dataset=name) for name, loader in RAW_LOADERS.items()]
     combined = pd.concat(frames, ignore_index=True)
     other_cols = [c for c in combined.columns if c not in {"dataset", "CASEID"}]
@@ -1102,7 +1308,7 @@ def load_all_personas(
     specs: dict[str, PersonaAttribute] | None = None,
     data_dir: Path = DATA_DIR,
 ) -> pd.DataFrame:
-    """Load all 12 datasets from raw files, standardize active attributes in `specs`, and stack."""
+    """Load all 16 datasets from raw files, standardize active attributes in `specs`, and stack."""
     active_specs = specs if specs is not None else load_persona_spec()
     frames = []
 

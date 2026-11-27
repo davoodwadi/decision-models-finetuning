@@ -56,12 +56,12 @@ age:
     - Younger
     - Older
   numeric_bins:
-    - {min: 18, max: 24, label: 18-24}
-    - {min: 25, max: 34, label: 25-34}
-    - {min: 35, max: 44, label: 35-44}
-    - {min: 45, max: 54, label: 45-54}
-    - {min: 55, max: 64, label: 55-64}
-    - {min: 65, max: 120, label: 65+}
+    - { min: 18, max: 24, label: 18-24 }
+    - { min: 25, max: 34, label: 25-34 }
+    - { min: 35, max: 44, label: 35-44 }
+    - { min: 45, max: 54, label: 45-54 }
+    - { min: 55, max: 64, label: 55-64 }
+    - { min: 65, max: 120, label: 65+ }
   aliases:
     "18 - 24": 18-24
     "25 - 34": 25-34
@@ -422,9 +422,11 @@ education:
     "8. PhD, Post Tertiary Specialization": PhD, post-tertiary specialization
     "8. PhD, Post tertiary specialization": PhD, post-tertiary specialization
   overrides:
-    # covid and kriner2026 have a separate "2-year College Degree" option, so "Some College" means no degree;
+    # covid, kreps2021, and kriner2026 have a separate "2-year College Degree" option, so "Some College" means no degree;
     # magistro2025 has no Associate's option, so its "Some college" stays "Some college".
     covid:
+      "Some College": Some college, no degree
+    kreps2021:
       "Some College": Some college, no degree
     kriner2026:
       "Some College": Some college, no degree
@@ -836,9 +838,11 @@ political_party:
     "Democrat (Obama)": Democrat
     "USA: Democratic Party": Democrat
     "Democratic": Democrat
+    "Not very strong Democrat": Moderate Democrat
     "6. Republican": Republican
     "Republican (Romney)": Republican
     "USA: Republican Party": Republican
+    "Not very strong Republican": Moderate Republican
     "USA: Libertarian": Libertarian
     "USA: Green Party of the United States": Green Party
     "CPC": Conservative Party of Canada
@@ -1063,13 +1067,13 @@ household_size:
     - "7 or more"
     - "More than 4"
   numeric_bins:
-    - {min: 1, max: 1, label: "1"}
-    - {min: 2, max: 2, label: "2"}
-    - {min: 3, max: 3, label: "3"}
-    - {min: 4, max: 4, label: "4"}
-    - {min: 5, max: 5, label: "5"}
-    - {min: 6, max: 6, label: "6"}
-    - {min: 7, max: 100, label: "7 or more"}
+    - { min: 1, max: 1, label: "1" }
+    - { min: 2, max: 2, label: "2" }
+    - { min: 3, max: 3, label: "3" }
+    - { min: 4, max: 4, label: "4" }
+    - { min: 5, max: 5, label: "5" }
+    - { min: 6, max: 6, label: "6" }
+    - { min: 7, max: 100, label: "7 or more" }
   aliases:
     "1. One person (only respondent)": "1"
     "One person (only respondent)": "1"
@@ -1111,14 +1115,14 @@ children_in_household:
     - "6"
     - "7 or more"
   numeric_bins:
-    - {min: 0, max: 0, label: "0"}
-    - {min: 1, max: 1, label: "1"}
-    - {min: 2, max: 2, label: "2"}
-    - {min: 3, max: 3, label: "3"}
-    - {min: 4, max: 4, label: "4"}
-    - {min: 5, max: 5, label: "5"}
-    - {min: 6, max: 6, label: "6"}
-    - {min: 7, max: 100, label: "7 or more"}
+    - { min: 0, max: 0, label: "0" }
+    - { min: 1, max: 1, label: "1" }
+    - { min: 2, max: 2, label: "2" }
+    - { min: 3, max: 3, label: "3" }
+    - { min: 4, max: 4, label: "4" }
+    - { min: 5, max: 5, label: "5" }
+    - { min: 6, max: 6, label: "6" }
+    - { min: 7, max: 100, label: "7 or more" }
 
 children_ever_had:
   prompt: How many children do you have?
@@ -1132,7 +1136,7 @@ children_ever_had:
     - "6"
     - "7 or more"
   numeric_bins:
-    - {min: 7, max: 30, label: "7 or more"}
+    - { min: 7, max: 30, label: "7 or more" }
   aliases:
     "No children": "0"
     "1 child": "1"
@@ -2560,6 +2564,10 @@ sexual_orientation:
     - Gay or lesbian
     - Bisexual
     - Other
+    # wu2025 (orientation)
+    - Prefer not to say
+    # hints7 (SexualOrientation_Recode)
+    - "Don't know"
   aliases:
     # hints7 (SexualOrientation_Recode)
     "Straight, that is, not gay or lesbian": Straight
@@ -2567,6 +2575,300 @@ sexual_orientation:
     "Something else": Other
     # shed2025 (pppa_lgb)
     "Straight, that is, not gay": Straight
-  missing:
-    # hints7 (SexualOrientation_Recode)
+    # wu2025 (orientation)
+    "Heterosexual (straight)": Straight
+    "Homosexual (gay)": Gay or lesbian
+
+diet_quality:
+  prompt: "In general, how healthy is your overall diet?"
+  levels:
+    - Poor
+    - Fair
+    - Good
+    - Very good
+    - Excellent
+
+medical_reading_help:
+  prompt: "How often do you need to have someone help you when you read instructions, pamphlets, or other written materials from your doctor or pharmacy?"
+  levels:
+    - Never
+    - Rarely
+    - Sometimes
+    - Most of the time
+    - Always
+
+bmi:
+  prompt: Body mass index (BMI)
+  levels:
+    - Underweight (<18.5)
+    - Healthy weight (18.5 to <25.0)
+    - Overweight (25.0 to <30.0)
+    - Obese (>=30.0)
+
+snap_benefits:
+  prompt: "Do you or anyone else in your household currently get SNAP (Supplemental Nutrition Assistance Program) or Food Stamps?"
+  levels:
+    - "Yes"
+    - "No"
     - "Don't know"
+
+wic_benefits:
+  prompt: "Do you or anyone else in your household currently receive WIC benefits?"
+  levels:
+    - "Yes"
+    - "No"
+    - "Don't know"
+
+online_grocery_share:
+  prompt: "In the past year, about what percentage of your groceries did you buy online?"
+  levels:
+    - Less than 25%
+    - 25-49%
+    - 50-74%
+    - 75% or more
+
+nutrition_literacy_score:
+  prompt: "Nutrition Facts label literacy quiz score"
+  levels:
+    - 0 out of 4
+    - 1 out of 4
+    - 2 out of 4
+    - 3 out of 4
+    - 4 out of 4
+
+political_label:
+  prompt: Political philosophy
+  levels:
+    - Communist
+    - Socialist
+    - Liberal
+    - Centrist
+    - Libertarian
+    - Conservative
+    - Other
+
+owns_home:
+  prompt: "Do you own your primary residence?"
+  levels:
+    - "Yes"
+    - "No"
+
+rents_home:
+  prompt: "Do you rent your primary residence?"
+  levels:
+    - "Yes"
+    - "No"
+
+military_service:
+  prompt: Served on active duty in the military
+  levels:
+    - "Yes"
+    - "No"
+
+electric_heating:
+  prompt: "Does your household use electricity for heat?"
+  levels:
+    - "Yes"
+    - "No"
+
+political_interest:
+  prompt: Interest in politics
+  levels:
+    - Not at all interested
+    - Not very interested
+    - Somewhat interested
+    - Very interested
+    - Extremely interested
+
+electricity_included_in_rent:
+  prompt: "Is your electricity bill included directly in your rent?"
+  levels:
+    - "Yes"
+    - "No"
+
+knows_electricity_bill:
+  prompt: "Do you know how much your monthly electricity bill is?"
+  levels:
+    - "Yes"
+    - "No"
+
+uses_investor_owned_utility:
+  prompt: "Does your household receive energy from an investor-owned utility (IOU)?"
+  levels:
+    - "Yes"
+    - "No"
+
+uses_community_choice_aggregation:
+  prompt: "Do you currently participate in a Community Choice Aggregation (CCA)?"
+  levels:
+    - "Yes"
+    - "No"
+
+knows_community_choice_aggregation:
+  prompt: "Do you know what a Community Choice Aggregation (CCA) is?"
+  levels:
+    - "Yes"
+    - "No"
+
+health_insurance:
+  prompt: "Do you currently have health insurance?"
+  levels:
+    - "Yes"
+    - "No"
+    - Prefer not to say
+
+evangelical_christian:
+  prompt: Born-again or evangelical Christian
+  levels:
+    - "Yes"
+    - "No"
+
+recent_employment_change:
+  prompt: Recent changes in employment status
+  levels:
+    - No change
+    - Reduced hours
+    - Getting laid off
+    - Prefer not to say
+
+able_to_work_from_home:
+  prompt: Able to work from home
+  levels:
+    - "Yes"
+    - To some extent
+    - "No"
+    - Prefer not to say
+
+flu_vaccination_frequency:
+  prompt: Flu vaccination frequency
+  levels:
+    - Never
+    - Once or twice
+    - Most years
+    - Every year
+
+knows_someone_tested_positive_covid:
+  prompt: "Do you personally know someone who has been officially tested positive for Covid-19?"
+  levels:
+    - "Yes"
+    - "No"
+
+knows_someone_hospitalized_or_died_covid:
+  prompt: "Do you personally know someone who has been hospitalized or died as a result of having COVID-19?"
+  levels:
+    - "Yes"
+    - "No"
+
+tv_news_consumption:
+  prompt: "Watching television news programs that report the day's news"
+  levels:
+    - Not at all
+    - Only a little
+    - A fair amount
+    - A great deal
+
+newspaper_consumption:
+  prompt: "Reading a newspaper (printed or online version)"
+  levels:
+    - Not at all
+    - Only a little
+    - A fair amount
+    - A great deal
+
+social_media_news_consumption:
+  prompt: "Seeing or reading links to news stories on Facebook or other social media sites"
+  levels:
+    - Not at all
+    - Only a little
+    - A fair amount
+    - A great deal
+
+social_media_daily_use:
+  prompt: "I use social media very often every day."
+  levels:
+    - Strongly disagree
+    - Disagree
+    - Unsure
+    - Agree
+    - Strongly agree
+
+social_media_shares_media:
+  prompt: "I share photos and videos on social media."
+  levels:
+    - Strongly disagree
+    - Disagree
+    - Unsure
+    - Agree
+    - Strongly agree
+
+social_media_follows_accounts:
+  prompt: "There are social media accounts that I follow constantly."
+  levels:
+    - Strongly disagree
+    - Disagree
+    - Unsure
+    - Agree
+    - Strongly agree
+
+social_media_multiple_accounts:
+  prompt: "I have more than one social media account that I use actively."
+  levels:
+    - Strongly disagree
+    - Disagree
+    - Unsure
+    - Agree
+    - Strongly agree
+
+social_media_perceived_usefulness:
+  prompt: "I think that social media is very useful."
+  levels:
+    - Strongly disagree
+    - Disagree
+    - Unsure
+    - Agree
+    - Strongly agree
+
+social_media_follows_friends_shares:
+  prompt: "I like to follow my friends' shares on social media."
+  levels:
+    - Strongly disagree
+    - Disagree
+    - Unsure
+    - Agree
+    - Strongly agree
+
+social_media_checks_friends_activity:
+  prompt: "I usually check out what my friends do on social media."
+  levels:
+    - Strongly disagree
+    - Disagree
+    - Unsure
+    - Agree
+    - Strongly agree
+
+online_shopping_frequency:
+  prompt: "How often (on average) do you make online shopping purchases?"
+  levels:
+    - Never
+    - Once in a few months or longer
+    - About once a month
+    - Multiple times a month
+    - More than once a week
+
+takeout_delivery_frequency:
+  prompt: "How often (on average) do you have take-out food delivered to your home?"
+  levels:
+    - Never
+    - Once in a few months or longer
+    - About once a month
+    - Multiple times a month
+    - More than once a week
+
+online_grocery_frequency:
+  prompt: "How often (on average) do you purchase your groceries online?"
+  levels:
+    - Never
+    - Once in a few months or longer
+    - About once a month
+    - Multiple times a month
+    - More than once a week
