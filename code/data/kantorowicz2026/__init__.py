@@ -2,11 +2,13 @@
 
 Exports every row marked `include=True` in `question_audit.csv` to `kantorowicz2026_US_long.parquet`, applying the audit
 UI's `drop_options`, `context_source`, `context_sep`, and `question_overrides.json` edits.
-Persona decisions: `DECISIONS.md` and `persona.py` (dataset key `kantorowicz2026`).
+Attaches canonical `persona_spec.yaml` persona attributes strictly via
+`standardize_dataframe(load_raw_kantorowicz2026_personas(), dataset="kantorowicz2026")`.
 """
 
 from __future__ import annotations
 
+import functools
 import json
 from pathlib import Path
 
@@ -33,23 +35,35 @@ from data.kantorowicz2026.stimulus import (
     extract_respondent_df,
     load_raw_dfs,
 )
-import data.persona as persona
+from data.persona_loaders import get_persona_source_columns, load_raw_kantorowicz2026_personas
+from data.persona_spec import load_persona_spec, standardize_dataframe
 
 KANTOROWICZ2026_PARQUET_PATH = KANTOROWICZ_DIR / "kantorowicz2026_US_long.parquet"
 KANTOROWICZ2026_AUDIT_CSV_PATH = KANTOROWICZ_DIR / "question_audit.csv"
 KANTOROWICZ2026_OVERRIDES_PATH = KANTOROWICZ_DIR / "question_overrides.json"
 
-KANTOROWICZ2026_PERSONA_COLS = [c for c in persona.DATASET_PERSONA_COLS["kantorowicz2026"] if c != "c_alphan"]
+KANTOROWICZ2026_PERSONA_COLS = ["gender", "age", "education", "income"]
 
 STUDY_DB_TEXTS: dict[str, str] = {}
 
 
 def build_kantorowicz2026_persona_df(comp_df: pd.DataFrame, laundry_df: pd.DataFrame) -> pd.DataFrame:
-    """Standardized respondent persona table (`N = 2,242`) via `persona.apply_persona_mapping`."""
+    """Canonical `persona_spec.yaml` respondent persona table (`N = 2,242`)."""
     resp_df = extract_respondent_df(comp_df, laundry_df)
-    mapped = persona.apply_persona_mapping(resp_df, "kantorowicz2026")
-    mapped["CASEID"] = "kantorowicz2026_" + mapped["Response.ID"].astype(str)
-    out = mapped[["CASEID", "Response.ID", "c_alphan", *KANTOROWICZ2026_PERSONA_COLS]].reset_index(drop=True)
+    std = standardize_dataframe(load_raw_kantorowicz2026_personas(), dataset="kantorowicz2026")
+    persona_cols = [c for c in std.columns if c not in ("CASEID", "country")]
+    if persona_cols != KANTOROWICZ2026_PERSONA_COLS:
+        raise ValueError(f"kantorowicz2026 persona column drift: {persona_cols} != {KANTOROWICZ2026_PERSONA_COLS}")
+    case_ids = "kantorowicz2026_" + resp_df["Response.ID"].astype(str)
+    if set(case_ids) != set(std["CASEID"].astype(str)):
+        raise ValueError("kantorowicz2026: CASEID mismatch between raw_df and persona_loaders")
+    std_by_case = std.set_index("CASEID")
+    aligned = std_by_case.loc[case_ids.values].reset_index()
+    aligned.insert(1, "Response.ID", resp_df["Response.ID"].values)
+    aligned.insert(2, "c_alphan", aligned["country"])
+    out = aligned[["CASEID", "Response.ID", "c_alphan", "country", *KANTOROWICZ2026_PERSONA_COLS]].reset_index(
+        drop=True
+    )
     if len(out) != N_TOTAL_RESPONDENTS or out["CASEID"].nunique() != N_TOTAL_RESPONDENTS:
         raise ValueError(f"Expected {N_TOTAL_RESPONDENTS} unique respondents in persona table, got {len(out)}")
     return out
@@ -120,6 +134,14 @@ def build_kantorowicz2026_long_df(
     if len(inc_df) == 0:
         raise ValueError(f"No included questions found in {audit_csv_path}")
 
+    persona_src_cols = get_persona_source_columns("kantorowicz2026")
+    overlap = sorted(set(inc_df["QuestionID"]) & set(persona_src_cols))
+    if overlap:
+        raise ValueError(
+            "kantorowicz2026: refusing to export questions that overlap with locked persona columns: "
+            + ", ".join(f"{c} -> {persona_src_cols[c]}" for c in overlap)
+        )
+
     conjoint_map = {
         "computer_choice": (comp_tasks, COMPUTER_CHOICE_OPTIONS, COMPUTER_CHOICE_STEM),
         "laundry_choice": (laundry_tasks, LAUNDRY_CHOICE_OPTIONS, LAUNDRY_CHOICE_STEM),
@@ -160,7 +182,7 @@ def build_kantorowicz2026_long_df(
 
         code_to_text = dict(zip(kept_codes, kept_texts, strict=True))
         sub = persona_by_resp.loc[tasks_df["Response.ID"]].reset_index()
-        sub = sub[["CASEID", "Response.ID", "c_alphan", *KANTOROWICZ2026_PERSONA_COLS]].copy()
+        sub = sub[["CASEID", "Response.ID", "c_alphan", "country", *KANTOROWICZ2026_PERSONA_COLS]].copy()
         designs = [f"{r.code_a}_{r.code_b}" for r in tasks_df.itertuples(index=False)]
         sub["v"] = v_name
         sub["qid"] = [f"kantorowicz2026:{v_name}:{d}" for d in designs]
@@ -207,16 +229,25 @@ def load_kantorowicz2026_records(
     include_country: bool,
     qids=None,
     grouped: bool = False,
-    persona_cols=KANTOROWICZ2026_PERSONA_COLS,
+    persona_cols: list[str] | None = None,
     parquet_path=KANTOROWICZ2026_PARQUET_PATH,
 ):
     """Respondent-level training records (one per parquet row), optionally state-grouped."""
     df = load_kantorowicz2026_df(qids=qids, parquet_path=parquet_path)
+    specs = load_persona_spec()
+    persona_names = {"c_alphan": "Country", **{name: spec.prompt for name, spec in specs.items()}}
+    if persona_cols is None:
+        persona_cols = [c for c in specs if c in df.columns and c != "country"]
     records = build_long_records(
-        df, persona_cols=persona_cols, include_country=include_country, year="kantorowicz2026"
+        df,
+        persona_cols=persona_cols,
+        include_country=include_country,
+        year="kantorowicz2026",
+        persona_names=persona_names,
     )
     if grouped:
-        return group_records_by_state(records, view_fn=make_view, name="kantorowicz2026")
+        view_fn = functools.partial(make_view, persona_names=persona_names)
+        return group_records_by_state(records, view_fn=view_fn, name="kantorowicz2026")
     return records
 
 
@@ -227,7 +258,7 @@ def load_kantorowicz2026_eval(
     include_country: bool,
     min_n=None,
     qids=None,
-    persona_cols=KANTOROWICZ2026_PERSONA_COLS,
+    persona_cols: list[str] | None = None,
     grouped: bool = True,
     name: str = "kantorowicz2026",
     valid: bool = False,
@@ -235,12 +266,17 @@ def load_kantorowicz2026_eval(
 ):
     """Evaluation bundle (state-grouped when `grouped=True`)."""
     df = load_kantorowicz2026_df(qids=qids, parquet_path=parquet_path)
+    specs = load_persona_spec()
+    persona_names = {"c_alphan": "Country", **{name: spec.prompt for name, spec in specs.items()}}
+    if persona_cols is None:
+        persona_cols = [c for c in specs if c in df.columns and c != "country"]
     return build_eval_set(
         df,
         attr_sets=attr_sets,
         include_country=include_country,
         min_n=min_n,
         persona_cols=persona_cols,
+        persona_names=persona_names,
         grouped=grouped,
         eval_fn=None,
         name=name,

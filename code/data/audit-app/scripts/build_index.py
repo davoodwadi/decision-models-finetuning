@@ -29,7 +29,7 @@ if str(CODE_DIR) not in sys.path:
 BR_RE = re.compile(r"<br\s*/?>", re.IGNORECASE)
 WS_RE = re.compile(r"\s+")
 AUDIT_DETAILS_FILENAME = ".audit_details.json"
-DETAILS_VERSION = 2
+DETAILS_VERSION = 3
 MAX_PAIRED_VARIANTS = 200
 WVS7_DIR_NAME = "WVS-Wave7"
 HINTS_DIR_NAME = "HINTS"
@@ -829,6 +829,24 @@ def index_csv(csv_path: Path) -> Path:
         raise ValueError(
             f"Unsupported CSV schema in {csv_path} (expected question_audit.csv): {list(df.columns)}"
         )
+
+    from data.persona_loaders import get_persona_source_columns
+
+    persona_source_cols = get_persona_source_columns(csv_path.parent.name)
+    has_study = "study" in cols
+    items_map = payload["items"]
+    for _, row in df.iterrows():
+        rec = {col: str(row[col]) for col in df.columns}
+        row_key = make_row_key("question_audit", has_study, rec)
+        if row_key not in items_map:
+            raise KeyError(f"{csv_path}: row_key {row_key!r} missing from built details items")
+        item = items_map[row_key]
+        persona_attr = persona_source_cols[rec["QuestionID"]] if rec["QuestionID"] in persona_source_cols else None
+        existing_is_persona = bool(item["is_persona"]) if "is_persona" in item else False
+        item["is_persona"] = existing_is_persona or (persona_attr is not None)
+        item["persona_attribute"] = persona_attr
+
+    payload["version"] = DETAILS_VERSION
 
     out_path = csv_path.parent / AUDIT_DETAILS_FILENAME
     tmp_path = csv_path.parent / f"{AUDIT_DETAILS_FILENAME}.tmp"

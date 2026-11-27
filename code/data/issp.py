@@ -11,7 +11,6 @@ from data.base import (
     build_eval_set,
     filter_by_qids,
 )
-from data.persona import apply_persona_mapping
 
 ISSP_YEARS = ("2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023", "2024")
 _YEAR_DF_CACHE = {}
@@ -20,8 +19,16 @@ _YEAR_DF_CACHE = {}
 def _get_year_df(year_str, data_dir):
     cache_key = (str(Path(data_dir).resolve()), year_str)
     if cache_key not in _YEAR_DF_CACHE:
-        df = pd.read_parquet(Path(data_dir) / f"issp{year_str}" / f"issp{year_str}_US_long.parquet")
-        df = apply_persona_mapping(df, dataset="issp")
+        path = Path(data_dir) / f"issp{year_str}" / f"issp{year_str}_US_long.parquet"
+        if not path.exists():
+            raise FileNotFoundError(f"ISSP {year_str} parquet not found: {path}")
+        df = pd.read_parquet(path)
+        required = {"CASEID", "country", "gender", "v", "option_codes", "option_texts", "answer_code"}
+        missing = required - set(df.columns)
+        if missing:
+            raise ValueError(
+                f"ISSP {year_str} parquet {path} is missing expected standardized columns: {sorted(missing)}"
+            )
         for col in ("option_codes", "option_texts"):
             df[col] = df[col].map(list)
         df["year"] = year_str

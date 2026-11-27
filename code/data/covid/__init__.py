@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import json
 from pathlib import Path
 
@@ -39,13 +40,31 @@ from data.covid.stimulus import (
     format_profile_description,
     load_raw_conjoint_df,
 )
-import data.persona as persona
+from data.persona_loaders import get_persona_source_columns, load_raw_covid_personas
+from data.persona_spec import load_persona_spec, standardize_dataframe
 
 COVID_PARQUET_PATH = COVID_DIR / "covid_US_long.parquet"
 COVID_AUDIT_CSV_PATH = COVID_DIR / "question_audit.csv"
 COVID_OVERRIDES_PATH = COVID_DIR / "question_overrides.json"
 
-COVID_PERSONA_COLS = [c for c in persona.DATASET_PERSONA_COLS["covid"] if c != "c_alphan"]
+COVID_PERSONA_COLS = [
+    "state",
+    "gender",
+    "age",
+    "education",
+    "religion",
+    "political_ideology",
+    "political_party",
+    "income",
+    "race",
+    "health_insurance",
+    "evangelical_christian",
+    "recent_employment_change",
+    "able_to_work_from_home",
+    "flu_vaccination_frequency",
+    "knows_someone_tested_positive_covid",
+    "knows_someone_hospitalized_or_died_covid",
+]
 
 STUDY_DB_TEXTS = {
     "consent_info": CONSENT_TEXT,
@@ -76,11 +95,21 @@ AMCE_TERMS: list[tuple[str, str]] = [
 
 
 def build_covid_persona_df(raw_df: pd.DataFrame) -> pd.DataFrame:
-    """Build the standardized respondent persona table (`N = 1,971`) via `persona.apply_persona_mapping`."""
+    """Build the canonical `persona_spec.yaml` respondent persona table (`N = 1,971`)."""
     resp_raw = extract_respondent_df(raw_df)
-    mapped = persona.apply_persona_mapping(resp_raw.copy(), "covid")
-    cols = ["CASEID", "respondent", "c_alphan", *COVID_PERSONA_COLS]
-    out = mapped[cols].copy().reset_index(drop=True)
+    std = standardize_dataframe(load_raw_covid_personas(), dataset="covid")
+    persona_cols = [c for c in std.columns if c not in ("CASEID", "country")]
+    if persona_cols != COVID_PERSONA_COLS:
+        raise ValueError(f"covid persona column drift: {persona_cols} != {COVID_PERSONA_COLS}")
+    case_ids = "covid_" + resp_raw["respondent"].astype(str)
+    if set(case_ids) != set(std["CASEID"].astype(str)):
+        raise ValueError("covid: CASEID mismatch between raw_df and persona_loaders")
+    std_by_case = std.set_index("CASEID")
+    aligned = std_by_case.loc[case_ids.values].reset_index()
+    aligned.insert(1, "respondent", resp_raw["respondent"].values)
+    aligned.insert(2, "c_alphan", aligned["country"])
+    cols = ["CASEID", "respondent", "c_alphan", "country", *COVID_PERSONA_COLS]
+    out = aligned[cols].copy().reset_index(drop=True)
     if len(out) != 1_971 or out["CASEID"].nunique() != 1_971:
         raise ValueError(f"Expected 1,971 unique respondents in persona table, got {len(out)}")
     return out
@@ -147,6 +176,14 @@ def build_covid_long_df(
     if len(inc_df) == 0:
         raise ValueError(f"No included questions found in {audit_csv_path}")
 
+    persona_src_cols = get_persona_source_columns("covid")
+    overlap = sorted(set(inc_df["QuestionID"]) & set(persona_src_cols))
+    if overlap:
+        raise ValueError(
+            "covid: refusing to export questions that overlap with locked persona columns: "
+            + ", ".join(f"{c} -> {persona_src_cols[c]}" for c in overlap)
+        )
+
     resp_raw = extract_respondent_df(raw_df)
     resp_persona = build_covid_persona_df(raw_df)
     persona_by_resp = resp_persona.set_index("respondent")
@@ -187,7 +224,7 @@ def build_covid_long_df(
             full_q = f"{ctx_text}{ctx_sep}{stem_text}" if ctx_text else stem_text
 
             sub = persona_by_resp.loc[valid_pairs["respondent"]].reset_index()
-            sub = sub[["CASEID", "respondent", "c_alphan", *COVID_PERSONA_COLS]].copy()
+            sub = sub[["CASEID", "respondent", "c_alphan", "country", *COVID_PERSONA_COLS]].copy()
 
             descs_col: list[list[str | None]] = []
             for pa, pb in zip(valid_pairs["profile_a"], valid_pairs["profile_b"], strict=True):
@@ -235,7 +272,7 @@ def build_covid_long_df(
                 q_by_pid[pid] = f"{ctx_text}{ctx_sep}{stem_text}" if ctx_text else stem_text
 
             sub = persona_by_resp.loc[valid_prof["respondent"]].reset_index()
-            sub = sub[["CASEID", "respondent", "c_alphan", *COVID_PERSONA_COLS]].copy()
+            sub = sub[["CASEID", "respondent", "c_alphan", "country", *COVID_PERSONA_COLS]].copy()
 
             pids = valid_prof["profile_id"].astype(str).tolist()
             ans_codes = [int(v) for v in valid_prof["vaxord"]]
@@ -341,19 +378,25 @@ def load_covid_records(
     include_country: bool,
     qids=None,
     grouped: bool = False,
-    persona_cols=COVID_PERSONA_COLS,
+    persona_cols: list[str] | None = None,
     parquet_path=None,
 ):
     """Load respondent-level COVID conjoint/Likert records, optionally state-grouped."""
     df = load_covid_df(qids=qids, parquet_path=parquet_path)
+    specs = load_persona_spec()
+    persona_names = {"c_alphan": "Country", **{name: spec.prompt for name, spec in specs.items()}}
+    if persona_cols is None:
+        persona_cols = [c for c in specs if c in df.columns and c != "country"]
     records = build_long_records(
         df,
         persona_cols=persona_cols,
         include_country=include_country,
         year="covid",
+        persona_names=persona_names,
     )
     if grouped:
-        return group_records_by_state(records, view_fn=make_view, name="covid")
+        view_fn = functools.partial(make_view, persona_names=persona_names)
+        return group_records_by_state(records, view_fn=view_fn, name="covid")
     return records
 
 
@@ -468,7 +511,7 @@ def load_covid_eval(
     include_country: bool,
     min_n=None,
     qids=None,
-    persona_cols=COVID_PERSONA_COLS,
+    persona_cols: list[str] | None = None,
     grouped: bool = True,
     name: str = "covid",
     valid: bool = False,
@@ -476,12 +519,17 @@ def load_covid_eval(
 ):
     """Load COVID conjoint/Likert benchmark as a state-grouped evaluation bundle (`grouped=True`) or flat `records`."""
     df = load_covid_df(qids=qids, parquet_path=parquet_path)
+    specs = load_persona_spec()
+    persona_names = {"c_alphan": "Country", **{name: spec.prompt for name, spec in specs.items()}}
+    if persona_cols is None:
+        persona_cols = [c for c in specs if c in df.columns and c != "country"]
     return build_eval_set(
         df,
         attr_sets=attr_sets,
         include_country=include_country,
         min_n=min_n,
         persona_cols=persona_cols,
+        persona_names=persona_names,
         grouped=grouped,
         eval_fn=evaluate_covid_ols if attr_sets is None else None,
         name=name,

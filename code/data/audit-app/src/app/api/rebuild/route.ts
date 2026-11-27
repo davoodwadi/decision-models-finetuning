@@ -8,7 +8,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "ds is required" }, { status: 400 });
     }
     const result = await rebuildDatasetParquet(body.ds);
-    return NextResponse.json(result, { status: result.ok ? 200 : 500 });
+    const status = result.ok ? 200 : result.blocked ? 409 : 500;
+    return NextResponse.json(result, { status });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: message }, { status: 500 });

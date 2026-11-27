@@ -949,12 +949,47 @@ export function DetailPane({
             />
           )}
 
+          {/* Persona overlap warning banner: included column is also extracted as a respondent persona attribute */}
+          {row.personaConflict && (
+            <div className="flex items-center justify-between gap-3 flex-wrap px-3 py-2.5 rounded-lg bg-rose-50 border border-rose-300 text-rose-950 text-xs">
+              <div className="flex items-center gap-2 min-w-0">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>
+                  <strong>Persona overlap:</strong> This column is already included in respondent
+                  personas
+                  {row.personaAttribute ? (
+                    <>
+                      {" "}
+                      as <code className="px-1 py-0.5 rounded bg-rose-100 font-mono text-[11px]">{row.personaAttribute}</code>
+                    </>
+                  ) : null}
+                  . Exclude this question (or remove it from personas) so the same variable is not
+                  both a persona attribute and a target question.
+                </span>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                onClick={() => handleSetDecision("exclude")}
+                className="bg-white text-rose-800 border-rose-300 hover:bg-rose-100 font-semibold shrink-0 cursor-pointer"
+                title="Stage include=False as an unsaved draft (you still review and save)"
+              >
+                Set to Exclude
+              </Button>
+            </div>
+          )}
+
           {/* Format-skipped banner (greyed-out explanation) */}
           {row.isFormatSkipped && eff !== "score" && eff !== "choice" && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 text-xs">
               <Info className="w-4 h-4 text-slate-400 shrink-0" />
               <span>
-                <strong>Auto-skipped by format ({row.formatSkipLabel}):</strong>{" "}
+                <strong>
+                  {row.isPersona
+                    ? `Auto-flagged as Persona (${row.formatSkipLabel}):`
+                    : `Auto-skipped by format (${row.formatSkipLabel}):`}
+                </strong>{" "}
                 {row.formatSkipReason}. Kept in catalog only for survey flow &amp; context lookup.
               </span>
             </div>

@@ -8,15 +8,7 @@ import zipfile
 import pandas as pd
 from pandas.io.stata import StataReader
 
-from data import grummon2023 as g23
-from data import grummon2025 as g25
-from data.berke2023 import stimulus as berke_s
-from data.covid import stimulus as covid_s
-from data.kantorowicz2026 import stimulus as kant_s
-from data.Kriner2026 import stimulus as kriner_s
-from data.magistro2025 import stimulus as mag_s
 from data.persona_spec import PersonaAttribute, load_persona_spec, standardize_dataframe
-from data.wu2025 import stimulus as wu_s
 
 DATA_DIR = Path(__file__).resolve().parent
 
@@ -738,6 +730,8 @@ COVID_RACE_COLS = [
 
 def load_raw_covid_personas(data_dir: Path = DATA_DIR, shared_only: bool = False) -> pd.DataFrame:
     """Load raw Kreps et al. (2020) COVID vaccine conjoint personas from Stata `.dta`."""
+    from data.covid import stimulus as covid_s
+
     dta_path = data_dir / "covid" / "dataverse_files" / "Kreps_etal_vax_replication_data.dta"
     value_labels, col_to_lblname = _read_stata_value_labels(dta_path)
     resp = covid_s.extract_respondent_df(covid_s.load_raw_conjoint_df(dta_path)).reset_index(drop=True)
@@ -899,9 +893,72 @@ GRUMMON2025_RACE_COLS = [
 ]
 
 
+GRUMMON_NFPUSE_LABELS = {
+    1.0: "Never",
+    2.0: "Rarely",
+    3.0: "Sometimes",
+    4.0: "Most of the time",
+    5.0: "Always",
+}
+
+GRUMMON2023_DIETQUAL_LABELS = {
+    1.0: "Poor",
+    2.0: "Fair",
+    3.0: "Good",
+    4.0: "Very good",
+    5.0: "Excellent",
+}
+
+GRUMMON2023_MEDHELP_LABELS = {
+    1.0: "Never",
+    2.0: "Rarely",
+    3.0: "Sometimes",
+    4.0: "Most of the time",
+    5.0: "Always",
+}
+
+GRUMMON2023_BMI_LEVELS = (
+    "Underweight (<18.5)",
+    "Healthy weight (18.5 to <25.0)",
+    "Overweight (25.0 to <30.0)",
+    "Obese (>=30.0)",
+)
+
+GRUMMON2025_SNAP_LABELS = {0: "No", 1: "Yes", 2: "Don't know"}
+GRUMMON2025_WIC_LABELS = {0: "No", 1: "Yes", 2: "Don't know"}
+GRUMMON2025_ONLINE_LABELS = {1: "Less than 25%", 2: "25-49%", 3: "50-74%", 4: "75% or more"}
+GRUMMON2025_HEALTHLIT_LABELS = {i: f"{i} out of 4" for i in range(5)}
+
+
+def _derive_grummon2023_bmi(clean_df: pd.DataFrame) -> pd.Series:
+    """Derive 4-level CDC BMI categories matching Grummon 2023 `01_DataPrep.do` and published Table 1."""
+    ft = pd.to_numeric(clean_df["height_feet"], errors="raise")
+    inch = pd.to_numeric(clean_df["height_inches"], errors="raise")
+    wt = pd.to_numeric(clean_df["weight_lbs"], errors="raise")
+    if (ft.dropna() <= 0).any() or (inch.dropna() < 0).any() or (inch.dropna() >= 12).any() or (wt.dropna() <= 0).any():
+        raise ValueError("grummon2023.BMI: invalid negative/out-of-range height or weight values")
+    height_m = ((ft * 12.0) + inch) * 0.0254
+    bmi = (wt * 0.453592) / (height_m * height_m)
+    out: list[object] = []
+    for val in bmi:
+        if pd.isna(val):
+            out.append(float("nan"))
+        elif val < 18.5:
+            out.append(GRUMMON2023_BMI_LEVELS[0])
+        elif val < 25.0:
+            out.append(GRUMMON2023_BMI_LEVELS[1])
+        elif val < 30.0:
+            out.append(GRUMMON2023_BMI_LEVELS[2])
+        else:
+            out.append(GRUMMON2023_BMI_LEVELS[3])
+    return pd.Series(out, index=clean_df.index, name="BMI", dtype=object)
+
+
 def load_raw_grummon2023_personas(data_dir: Path = DATA_DIR, shared_only: bool = False) -> pd.DataFrame:
     """Load raw Grummon et al. (2023) vending-machine RCT personas with verbatim survey labels."""
-    clean_df, _, _ = g23.load_analytic_cohort()
+    from data.nutrition.grummon2023 import stimulus as g23_s
+
+    clean_df, _, _ = g23_s.load_analytic_cohort()
     clean_df = clean_df.reset_index(drop=True)
 
     cols = {
@@ -916,20 +973,22 @@ def load_raw_grummon2023_personas(data_dir: Path = DATA_DIR, shared_only: bool =
         "household_size": clean_df["hhsize_num"],
         "children_in_household": clean_df["children_num"],
         "political_party": _strict_map(clean_df["partyid"], GRUMMON2023_PARTY_LABELS, "grummon2023.partyid"),
-        "nutrition_label_use": _strict_map(clean_df["NFPuse"], g23.NFPUSE_MAP, "grummon2023.NFPuse"),
+        "nutrition_label_use": _strict_map(clean_df["NFPuse"], GRUMMON_NFPUSE_LABELS, "grummon2023.NFPuse"),
     }
     if not shared_only:
         cols.update({
-            "diet_quality": _strict_map(clean_df["dietqual"], g23.DIETQUAL_MAP, "grummon2023.dietqual"),
-            "medical_reading_help": _strict_map(clean_df["healthlit"], g23.MEDHELP_MAP, "grummon2023.healthlit"),
-            "bmi": g23.derive_grummon2023_bmi(clean_df),
+            "diet_quality": _strict_map(clean_df["dietqual"], GRUMMON2023_DIETQUAL_LABELS, "grummon2023.dietqual"),
+            "medical_reading_help": _strict_map(clean_df["healthlit"], GRUMMON2023_MEDHELP_LABELS, "grummon2023.healthlit"),
+            "bmi": _derive_grummon2023_bmi(clean_df),
         })
     return pd.DataFrame(cols)
 
 
 def load_raw_grummon2025_personas(data_dir: Path = DATA_DIR, shared_only: bool = False) -> pd.DataFrame:
     """Load raw Grummon et al. (2025) online grocery RCT personas with verbatim survey labels."""
-    clean_df = g25.load_analytic_cohort().reset_index(drop=True)
+    from data.nutrition.grummon2025 import stimulus as g25_s
+
+    clean_df = g25_s.load_analytic_cohort().reset_index(drop=True)
 
     cols = {
         "CASEID": clean_df["CASEID"].astype(str),
@@ -942,19 +1001,18 @@ def load_raw_grummon2025_personas(data_dir: Path = DATA_DIR, shared_only: bool =
         "race": _checkbox_race(clean_df, GRUMMON2025_RACE_COLS, "grummon2025"),
         "household_size": clean_df["hhsize_num"],
         "children_in_household": clean_df["children_num"],
-        "nutrition_label_use": _strict_map(clean_df["nfpuse"], g25.NFPUSE_MAP, "grummon2025.nfpuse"),
+        "nutrition_label_use": _strict_map(clean_df["nfpuse"], GRUMMON_NFPUSE_LABELS, "grummon2025.nfpuse"),
     }
     if not shared_only:
         cols.update({
-            "snap_benefits": _strict_map(clean_df["snap"], g25.SNAP_MAP, "grummon2025.snap"),
-            "wic_benefits": _strict_map(clean_df["wic"], g25.WIC_MAP, "grummon2025.wic"),
-            "online_grocery_share": _strict_map(clean_df["onlineamt"], g25.ONLINE_MAP, "grummon2025.onlineamt"),
-            "nutrition_literacy_score": _strict_map(clean_df["scr_litall"], g25.HEALTHLIT_MAP, "grummon2025.healthlit"),
+            "snap_benefits": _strict_map(clean_df["snap"], GRUMMON2025_SNAP_LABELS, "grummon2025.snap"),
+            "wic_benefits": _strict_map(clean_df["wic"], GRUMMON2025_WIC_LABELS, "grummon2025.wic"),
+            "online_grocery_share": _strict_map(clean_df["onlineamt"], GRUMMON2025_ONLINE_LABELS, "grummon2025.onlineamt"),
+            "nutrition_literacy_score": _strict_map(clean_df["scr_litall"], GRUMMON2025_HEALTHLIT_LABELS, "grummon2025.healthlit"),
         })
     return pd.DataFrame(cols)
 
 
-BERKE_STATE_LABELS = {i: name for i, name in enumerate(berke_s.STATE_NAMES, start=1)}
 BERKE_GENDER_LABELS = {1: "Male", 2: "Female", 3: "Other", 4: "Prefer not to answer"}
 BERKE_AGE_LABELS = {
     1: "18 - 24 years",
@@ -1002,11 +1060,14 @@ def _decode_berke_race(series: pd.Series) -> pd.Series:
 
 def load_raw_berke2023_personas(data_dir: Path = DATA_DIR, shared_only: bool = False) -> pd.DataFrame:
     """Load raw Berke et al. (2023) drone-delivery conjoint personas with verbatim codebook labels."""
+    from data.berke2023 import stimulus as berke_s
+
+    state_labels = {i: name for i, name in enumerate(berke_s.STATE_NAMES, start=1)}
     raw_df = berke_s.load_raw_df().reset_index(drop=True)
     cols = {
         "CASEID": "berke2023_" + raw_df["ResponseId"].astype(str),
         "country": "United States",
-        "state": _strict_map(raw_df["Q_state"], BERKE_STATE_LABELS, "berke2023.Q_state"),
+        "state": _strict_map(raw_df["Q_state"], state_labels, "berke2023.Q_state"),
         "gender": _strict_map(raw_df["Q_gender"], BERKE_GENDER_LABELS, "berke2023.Q_gender"),
         "age": _strict_map(raw_df["Q_age"], BERKE_AGE_LABELS, "berke2023.Q_age"),
         "race": _decode_berke_race(raw_df["Q_race"]),
@@ -1071,6 +1132,8 @@ def _build_kriner2026_political_party(resp: pd.DataFrame, value_labels: dict) ->
 
 def load_raw_kriner2026_personas(data_dir: Path = DATA_DIR, shared_only: bool = False) -> pd.DataFrame:
     """Load raw Goldfarb/Kriner et al. (2026) SAF conjoint personas from Stata `.dta`."""
+    from data.Kriner2026 import stimulus as kriner_s
+
     raw_df, _, value_labels = kriner_s.load_raw_df(data_dir / "Kriner2026" / "Goldfarb_etal_SAF_JCP_replication.dta")
     resp = kriner_s.build_persona_input_df(raw_df, value_labels).reset_index(drop=True)
 
@@ -1153,6 +1216,8 @@ def _build_wu2025_political_party(resp: pd.DataFrame) -> pd.Series:
 
 def load_raw_wu2025_personas(data_dir: Path = DATA_DIR, shared_only: bool = False) -> pd.DataFrame:
     """Load raw Wu et al. (2025) electricity-plan conjoint personas from Stata `.dta`."""
+    from data.wu2025 import stimulus as wu_s
+
     resp = wu_s.extract_respondent_df(wu_s.load_raw_df()).reset_index(drop=True)
 
     def _clean_str(col: str) -> pd.Series:
@@ -1194,6 +1259,8 @@ def load_raw_wu2025_personas(data_dir: Path = DATA_DIR, shared_only: bool = Fals
 
 def load_raw_kantorowicz2026_personas(data_dir: Path = DATA_DIR, shared_only: bool = False) -> pd.DataFrame:
     """Load raw Kantorowicz-Reznichenko et al. (2026) conjoint personas from `.RDS` files."""
+    from data.kantorowicz2026 import stimulus as kant_s
+
     comp_df, laundry_df = kant_s.load_raw_dfs()
     resp = kant_s.extract_respondent_df(comp_df, laundry_df).reset_index(drop=True)
     cols = {
@@ -1249,6 +1316,8 @@ def _build_magistro2025_political_party(resp: pd.DataFrame) -> pd.Series:
 
 def load_raw_magistro2025_personas(data_dir: Path = DATA_DIR, shared_only: bool = False) -> pd.DataFrame:
     """Load raw Magistro et al. (2025) US + Canada conjoint personas from `clean_AJPS.csv`."""
+    from data.magistro2025 import stimulus as mag_s
+
     resp = mag_s.load_raw_df(data_dir / "magistro2025" / "dataverse_files" / "clean_AJPS.csv").reset_index(drop=True)
 
     us_mask = resp["countr"] == "US"
@@ -1429,6 +1498,234 @@ RAW_LOADERS = {
     "magistro2025": load_raw_magistro2025_personas,
     "forsythe2023": load_raw_forsythe2023_personas,
 }
+
+
+# ---------------------------------------------------------------------------
+# Authoritative raw source column -> canonical persona attribute registry
+# ---------------------------------------------------------------------------
+
+# Maps each dataset directory name under `code/data/` to `{raw_col: canonical_attr}`
+# for every raw column read by `load_raw_*_personas` (ISSP waves handled dynamically).
+_STATIC_PERSONA_SOURCE_COLS: dict[str, dict[str, str]] = {
+    "Twin-2K-500": dict(TWIN2K_QID_TO_COL),
+    "Twin-2K-500-Mega-Study": {},
+    "subpop_train": {},
+    "subpop_eval": {},
+    "HINTS": {
+        **HINTS7_NUMERIC_RENAME,
+        **HINTS7_CATEGORICAL_RENAME,
+        **{c: "race" for cols, _ in HINTS7_R10_RACE_GROUPS for c in cols},
+    },
+    "SHED": {
+        **SHED2025_NUMERIC_RENAME,
+        **SHED2025_CATEGORICAL_RENAME,
+    },
+    "covid": {
+        "state": "state",
+        "gender": "gender",
+        "age": "age",
+        "education": "education",
+        "relig": "religion",
+        "ideology": "political_ideology",
+        "party3": "political_party",
+        "income": "income",
+        **{c: "race" for c, _ in COVID_RACE_COLS},
+        "insurance": "health_insurance",
+        "evangelical": "evangelical_christian",
+        "work_status": "recent_employment_change",
+        "work_home": "able_to_work_from_home",
+        "flu_vaccine": "flu_vaccination_frequency",
+        "personal_contact1": "knows_someone_tested_positive_covid",
+        "personal_contact2": "knows_someone_hospitalized_or_died_covid",
+    },
+    "kreps2021": {
+        "state": "state",
+        "gender": "gender",
+        "age": "age",
+        "education": "education",
+        "relig": "religion",
+        "ideology": "political_ideology",
+        "party3": "political_party",
+        "income": "income",
+        **{c: "race" for c, _ in COVID_RACE_COLS},
+        "insurance": "health_insurance",
+        "evangelical": "evangelical_christian",
+        "flu_vaccine": "flu_vaccination_frequency",
+        "pres_approval": "trump_approval",
+        "tv_news": "tv_news_consumption",
+        "paper_news": "newspaper_consumption",
+        "social_news": "social_media_news_consumption",
+        "sns1": "social_media_daily_use",
+        "sns2": "social_media_shares_media",
+        "sns3": "social_media_follows_accounts",
+        "sns4": "social_media_multiple_accounts",
+        "sns5": "social_media_perceived_usefulness",
+        "sns6": "social_media_follows_friends_shares",
+        "sns7": "social_media_checks_friends_activity",
+    },
+    "grummon2023": {
+        "gender": "gender",
+        "age": "age",
+        "educ": "education",
+        "income_10cat": "family_income",
+        "latino": "hispanic",
+        **{c: "race" for c, _ in GRUMMON2023_RACE_COLS},
+        "hhsize_num": "household_size",
+        "children_num": "children_in_household",
+        "partyid": "political_party",
+        "NFPuse": "nutrition_label_use",
+        "dietqual": "diet_quality",
+        "healthlit": "medical_reading_help",
+        "height_feet": "bmi",
+        "height_inches": "bmi",
+        "weight_lbs": "bmi",
+    },
+    "grummon2025": {
+        "gender": "gender",
+        "age": "age",
+        "educ": "education",
+        "income": "family_income",
+        "latino": "hispanic",
+        **{c: "race" for c, _ in GRUMMON2025_RACE_COLS},
+        "hhsize_num": "household_size",
+        "children_num": "children_in_household",
+        "nfpuse": "nutrition_label_use",
+        "snap": "snap_benefits",
+        "wic": "wic_benefits",
+        "onlineamt": "online_grocery_share",
+        "scr_litall": "nutrition_literacy_score",
+    },
+    "berke2023": {
+        "Q_state": "state",
+        "Q_gender": "gender",
+        "Q_age": "age",
+        "Q_race": "race",
+        "Q_income": "family_income",
+        "Q_urban_rural": "urban_rural",
+        "Q_residence_type": "residence_type",
+        "Q_online_shopping": "online_shopping_frequency",
+        "Q_takeout_food": "takeout_delivery_frequency",
+        "Q_online_groceries": "online_grocery_frequency",
+    },
+    "Kriner2026": {
+        "state": "state",
+        "vs_region": "region",
+        "gender": "gender",
+        "age_years": "age",
+        "education": "education",
+        "relig": "religion",
+        "ideology": "political_ideology",
+        "party": "political_party",
+        "party_lean": "political_party",
+        "income": "income",
+        "urban_rural_best": "urban_rural",
+        "vs_vote_2024": "voted_last_election",
+        **{c: "race" for c, _ in KRINER_RACE_COLS},
+        "vs_votechoice_2024": "vote_choice_2024",
+        "approve": "trump_approval",
+    },
+    "wu2025": {
+        "state": "state",
+        "sex": "gender",
+        "age": "age",
+        "race": "race",
+        "ethnicity": "hispanic",
+        "education": "education",
+        "income": "family_income",
+        "partisan": "political_party",
+        "republicanstrength": "political_party",
+        "democratstrength": "political_party",
+        "leaner": "political_party",
+        "ideology": "political_ideology",
+        "marriage": "marital_status",
+        "employment": "employment_status",
+        "residence": "residence_type",
+        "orientation": "sexual_orientation",
+        "ideology_original": "political_label",
+        "residenceownership": "owns_home",
+        "residencerental": "rents_home",
+        "military": "military_service",
+        "householdheat": "electric_heating",
+        "polint": "political_interest",
+        "electricityinrent": "electricity_included_in_rent",
+        "billknowledge": "knows_electricity_bill",
+        "currentiou": "uses_investor_owned_utility",
+        "currentcca": "uses_community_choice_aggregation",
+        "ccaknowledge": "knows_community_choice_aggregation",
+    },
+    "kantorowicz2026": {
+        "gender_dummy": "gender",
+        "age_dummy": "age",
+        "education_dummy": "education",
+        "income_dummy": "income",
+    },
+    "magistro2025": {
+        "countr": "country",
+        "region": "region",
+        "GeoPC_Region1": "state",
+        "gender": "gender",
+        "age_group": "age",
+        "education": "education",
+        "income": "income",
+        "party": "political_party",
+        "party2": "political_party",
+    },
+    "Forsythe2023": {
+        "ZIP": "state",
+        "Clean ZIP": "state",
+        "Clean gender": "gender",
+        "Clean Age": "age",
+        "Clean education": "education",
+        "Clean Income Entry": "family_income",
+        "Clean livingSit": "marital_status",
+        "Clean householdSize": "household_size",
+        "Clean elecVehTypeOwned": "vehicle_powertrain_owned",
+        "Clean covid": "covid_employment_impact",
+    },
+}
+
+
+def get_persona_source_columns(
+    dataset_dir: str,
+    specs: dict[str, PersonaAttribute] | None = None,
+) -> dict[str, str]:
+    """Return `{raw_col: canonical_persona_attr}` for active `persona_spec.yaml` attributes in `dataset_dir`.
+
+    Fails fast on unknown dataset directory names or any mapped canonical attribute missing from `specs`.
+    """
+    active_specs = specs if specs is not None else load_persona_spec()
+
+    if dataset_dir.startswith("issp") and len(dataset_dir) == 8 and dataset_dir[4:].isdigit():
+        year = int(dataset_dir[4:])
+        if not (2015 <= year <= 2024):
+            raise ValueError(f"Unsupported ISSP year in dataset_dir: {dataset_dir!r}")
+        raw_map: dict[str, str] = {
+            raw_col: attr
+            for raw_col, attr in {**ISSP_SHARED_RENAME, **ISSP_SINGLE_RENAME}.items()
+            if attr in active_specs
+        }
+        raw_map["DEGREE"] = "education"
+        raw_map["US_ETHN1"] = "ancestry"
+        raw_map["US_ETHN2"] = "ancestry"
+        if year in ISSP_IDEOLOGY_VAR:
+            raw_map[ISSP_IDEOLOGY_VAR[year]] = "political_ideology"
+    elif dataset_dir == "WVS-Wave7":
+        raw_map = {
+            raw_col: attr
+            for raw_col, attr in {**WVS_SHARED_RENAME, **WVS_SINGLE_RENAME}.items()
+            if attr in active_specs
+        }
+    elif dataset_dir in _STATIC_PERSONA_SOURCE_COLS:
+        raw_map = dict(_STATIC_PERSONA_SOURCE_COLS[dataset_dir])
+    else:
+        raise KeyError(f"Unknown dataset directory for persona source columns: {dataset_dir!r}")
+
+    invalid = {raw_col: attr for raw_col, attr in raw_map.items() if attr not in active_specs}
+    if invalid:
+        raise KeyError(
+            f"get_persona_source_columns({dataset_dir!r}): mapped attributes not in persona_spec.yaml: {invalid}"
+        )
+    return raw_map
 
 
 def load_raw_all_personas(data_dir: Path = DATA_DIR) -> pd.DataFrame:

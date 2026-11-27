@@ -37,6 +37,8 @@ const REPO_ROOT = path.resolve(DATA_DIR, "..", "..");
 const PYTHON_BIN = path.join(REPO_ROOT, ".venv-cu13", "bin", "python");
 const BUILD_INDEX_SCRIPT = path.join(APP_DIR, "scripts", "build_index.py");
 const INSPECT_PERSONAS_SCRIPT = path.join(APP_DIR, "scripts", "inspect_personas.py");
+const PERSONA_LOADERS_PATH = path.join(DATA_DIR, "persona_loaders.py");
+const PERSONA_SPEC_PATH = path.join(DATA_DIR, "persona_spec.yaml");
 const DETAILS_FILE = ".audit_details.json";
 const OVERRIDES_FILE = "question_overrides.json";
 const TAGS_FILE = "question_tags.json";
@@ -178,12 +180,10 @@ export async function discoverDatasets(): Promise<{
     return false;
   };
 
-  await addIfPresent("Twin-2K-500-Mega-Study", "question_audit.csv");
-
   const sortedDirs = entries
     .filter((e) => e.isDirectory() && e.name !== "audit-app" && !e.name.startsWith("."))
     .map((e) => e.name)
-    .sort();
+    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base", numeric: true }));
 
   for (const dirName of sortedDirs) {
     await addIfPresent(dirName, "question_audit.csv");
@@ -194,7 +194,7 @@ export async function discoverDatasets(): Promise<{
     const sortedSubDirs = subEntries
       .filter((e) => e.isDirectory() && !e.name.startsWith("."))
       .map((e) => e.name)
-      .sort();
+      .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base", numeric: true }));
     for (const subName of sortedSubDirs) {
       const relDir = `${dirName}/${subName}`;
       await addIfPresent(relDir, "question_audit.csv");
@@ -205,8 +205,17 @@ export async function discoverDatasets(): Promise<{
     throw new Error(`No question_audit.csv found under ${DATA_DIR}`);
   }
 
+  datasets.sort((a, b) =>
+    a.id.localeCompare(b.id, undefined, { sensitivity: "base", numeric: true })
+  );
+
+  const preferredDefault = "Twin-2K-500-Mega-Study/question_audit.csv";
+  const defaultDs = datasets.some((d) => d.id === preferredDefault)
+    ? preferredDefault
+    : datasets[0].id;
+
   return {
-    defaultDs: datasets[0].id,
+    defaultDs,
     datasets,
   };
 }
@@ -235,14 +244,9 @@ async function resolveDatasetCsvPath(dsId: string): Promise<string> {
   return match.path;
 }
 
-const DETAILS_SCHEMA_VERSION = 2;
+const DETAILS_SCHEMA_VERSION = 3;
 
-/** Datasets whose .audit_details.json must carry per-item is_persona flags. */
-function hasPersonaFlags(dirName: string): boolean {
-  return dirName === WVS7_DIR || dirName === HINTS_DIR || dirName === SHED_DIR;
-}
-
-/** ISSP/WVS/HINTS details must carry the computed export checks (and persona flags for WVS/HINTS); older caches are rebuilt. */
+/** All datasets must carry per-item persona flags and canonical persona_attribute metadata; ISSP/WVS/HINTS/SHED also require export checks. */
 function detailsHaveRequiredChecks(
   dirName: string,
   parsed: {
@@ -252,6 +256,7 @@ function detailsHaveRequiredChecks(
         export_problem_if_included?: unknown;
         n_valid_by_country?: unknown;
         is_persona?: unknown;
+        persona_attribute?: unknown;
         option_relabeled?: unknown;
       }
     >;
@@ -261,30 +266,50 @@ function detailsHaveRequiredChecks(
     return false;
   }
   const needExport = hasExportChecks(dirName);
-  const needPersona = hasPersonaFlags(dirName);
   return Object.values(parsed.items).every(
     (item) =>
       (!needExport ||
         (item.export_problem_if_included !== undefined &&
           item.n_valid_by_country !== undefined &&
           typeof item.option_relabeled === "boolean")) &&
-      (!needPersona || typeof item.is_persona === "boolean")
+      typeof item.is_persona === "boolean" &&
+      "persona_attribute" in item
   );
+}
+
+async function latestPersonaDefinitionMtimeMs(): Promise<number> {
+  const [loadersMtime, specMtime] = await Promise.all([
+    fileMtimeMs(PERSONA_LOADERS_PATH),
+    fileMtimeMs(PERSONA_SPEC_PATH),
+  ]);
+  return Math.max(loadersMtime, specMtime);
 }
 
 async function ensureDetailsBuilt(datasetDir: string, detailsPath: string): Promise<void> {
   const dirName = path.basename(datasetDir);
-  const needsChecks = hasExportChecks(dirName) || hasPersonaFlags(dirName);
+  const personaDefMtime = await latestPersonaDefinitionMtimeMs();
   if (await fileExists(detailsPath)) {
     try {
-      const head = await fs.readFile(detailsPath, "utf8");
+      const [detailsMtime, head] = await Promise.all([
+        fileMtimeMs(detailsPath),
+        fs.readFile(detailsPath, "utf8"),
+      ]);
       const parsed = JSON.parse(head) as {
         version?: number;
-        items?: Record<string, { export_problem_if_included?: unknown; n_valid_by_country?: unknown; is_persona?: unknown }>;
+        items?: Record<
+          string,
+          {
+            export_problem_if_included?: unknown;
+            n_valid_by_country?: unknown;
+            is_persona?: unknown;
+            persona_attribute?: unknown;
+          }
+        >;
       };
       if (
         parsed.version === DETAILS_SCHEMA_VERSION &&
-        (!needsChecks || detailsHaveRequiredChecks(dirName, parsed))
+        detailsMtime >= personaDefMtime &&
+        detailsHaveRequiredChecks(dirName, parsed)
       ) {
         return;
       }
@@ -293,13 +318,20 @@ async function ensureDetailsBuilt(datasetDir: string, detailsPath: string): Prom
     }
   }
   await runBuildIndex(datasetDir);
-  if (needsChecks) {
-    const rebuilt = JSON.parse(await fs.readFile(detailsPath, "utf8")) as {
-      items?: Record<string, { export_problem_if_included?: unknown; n_valid_by_country?: unknown; is_persona?: unknown }>;
-    };
-    if (!detailsHaveRequiredChecks(dirName, rebuilt)) {
-      throw new Error(`${detailsPath}: items are missing required export/persona checks after re-indexing`);
-    }
+  const rebuilt = JSON.parse(await fs.readFile(detailsPath, "utf8")) as {
+    version?: number;
+    items?: Record<
+      string,
+      {
+        export_problem_if_included?: unknown;
+        n_valid_by_country?: unknown;
+        is_persona?: unknown;
+        persona_attribute?: unknown;
+      }
+    >;
+  };
+  if (rebuilt.version !== DETAILS_SCHEMA_VERSION || !detailsHaveRequiredChecks(dirName, rebuilt)) {
+    throw new Error(`${detailsPath}: items are missing required export/persona checks after re-indexing`);
   }
 }
 
@@ -323,11 +355,13 @@ async function loadOrRefreshDataset(dsId: string): Promise<CachedDataset> {
   const curDetailsMtime = await fileMtimeMs(detailsPath);
   const curOverridesMtime = await fileMtimeMs(overridesPath);
   const curTagsMtime = await fileMtimeMs(tagsPath);
+  const curPersonaDefMtime = await latestPersonaDefinitionMtimeMs();
   const existing = datasetCache.get(dsId);
 
   if (
     existing &&
     existing.details.version === DETAILS_SCHEMA_VERSION &&
+    curDetailsMtime >= curPersonaDefMtime &&
     detailsHaveRequiredChecks(path.basename(datasetDir), existing.details) &&
     existing.overrides !== undefined &&
     existing.overridesPath !== undefined &&
@@ -855,7 +889,18 @@ export async function updateRows(
 }
 
 // Dataset folders whose parquet is written by `data.<folder>.export_<folder>_parquet()` (others use data.ipynb).
-const PYTHON_EXPORT_DIRS = ["grummon2023", "grummon2025", "covid", "Kriner2026", "berke2023", "wu2025", "kantorowicz2026", "magistro2025"];
+const PYTHON_EXPORT_DIRS = [
+  "grummon2023",
+  "grummon2025",
+  "covid",
+  "kreps2021",
+  "Kriner2026",
+  "berke2023",
+  "wu2025",
+  "kantorowicz2026",
+  "magistro2025",
+  "Forsythe2023",
+];
 const TWIN2K_EXPORT_FNS: Record<string, string> = {
   "Twin-2K-500": "export_twin2k_parquet",
   "Twin-2K-500-Mega-Study": "export_twin2k_megastudy_parquet",
@@ -882,10 +927,45 @@ export interface RebuildResult {
   ok: boolean;
   summary: string;
   stderr: string;
+  blocked?: boolean;
+}
+
+interface PersonaConflictSummary {
+  label: string;
+  personaAttribute: string | null;
+}
+
+function findPersonaConflicts(ds: CachedDataset): PersonaConflictSummary[] {
+  const conflicts: PersonaConflictSummary[] = [];
+  for (let i = 0; i < ds.rawRows.length; i++) {
+    const row = buildRowObject(ds, i);
+    if (!row.personaConflict) continue;
+    const label =
+      ds.schemaKind === "question_audit"
+        ? (row.data.QuestionID || row.rowKey)
+        : (row.data.v || row.rowKey);
+    conflicts.push({
+      label,
+      personaAttribute: row.personaAttribute,
+    });
+  }
+  return conflicts;
+}
+
+function formatPersonaConflictList(conflicts: PersonaConflictSummary[]): string {
+  return conflicts
+    .map((c) => (c.personaAttribute ? `${c.label} -> ${c.personaAttribute}` : c.label))
+    .join(", ");
 }
 
 /** Rebuild every dataset that has an exporter (data.ipynb or Python); stop at the first failure. */
-export async function rebuildAllParquets(): Promise<{ ok: boolean; results: RebuildResult[]; skipped: string[] }> {
+export async function rebuildAllParquets(): Promise<{
+  ok: boolean;
+  results: RebuildResult[];
+  skipped: string[];
+  blocked?: boolean;
+  error?: string;
+}> {
   const { datasets } = await discoverDatasets();
   const rebuildable: { dsId: string; dirName: string }[] = [];
   for (const ds of datasets) {
@@ -908,12 +988,40 @@ export async function rebuildAllParquets(): Promise<{ ok: boolean; results: Rebu
   }
   rebuildable.sort((a, b) => a.dsId.localeCompare(b.dsId));
 
+  // Fail fast before running any exporter if any dataset has included persona-overlap questions.
+  const blockedDatasets: string[] = [];
+  for (const entry of rebuildable) {
+    const loaded = await withLock(entry.dsId, () => loadOrRefreshDataset(entry.dsId));
+    const conflicts = findPersonaConflicts(loaded);
+    if (conflicts.length > 0) {
+      blockedDatasets.push(
+        `${entry.dsId} (${conflicts.length}): ${formatPersonaConflictList(conflicts)}`
+      );
+    }
+  }
+  if (blockedDatasets.length > 0) {
+    return {
+      ok: false,
+      blocked: true,
+      error:
+        `Blocked Parquet rebuild: ${blockedDatasets.length} dataset(s) have included questions overlapping with respondent persona attributes. Exclude them first:\n` +
+        blockedDatasets.join("\n"),
+      results: [],
+      skipped: rebuildable.map((r) => r.dsId),
+    };
+  }
+
   const results: RebuildResult[] = [];
   for (let i = 0; i < rebuildable.length; i++) {
     const res = await rebuildDatasetParquet(rebuildable[i].dsId);
     results.push({ dsId: rebuildable[i].dsId, ...res });
     if (!res.ok) {
-      return { ok: false, results, skipped: rebuildable.slice(i + 1).map((r) => r.dsId) };
+      return {
+        ok: false,
+        blocked: res.blocked,
+        results,
+        skipped: rebuildable.slice(i + 1).map((r) => r.dsId),
+      };
     }
   }
   return { ok: true, results, skipped: [] };
@@ -923,9 +1031,19 @@ export async function rebuildDatasetParquet(dsId: string): Promise<{
   ok: boolean;
   summary: string;
   stderr: string;
+  blocked?: boolean;
 }> {
   return withLock(dsId, async () => {
     const ds = await loadOrRefreshDataset(dsId);
+    const personaConflicts = findPersonaConflicts(ds);
+    if (personaConflicts.length > 0) {
+      return {
+        ok: false,
+        blocked: true,
+        summary: "",
+        stderr: `Blocked Parquet rebuild for ${dsId}: ${personaConflicts.length} included question(s) overlap with respondent persona attributes (${formatPersonaConflictList(personaConflicts)}). Exclude them first.`,
+      };
+    }
     const nbPath = path.join(ds.datasetDir, "data.ipynb");
     const hasNb = await fileExists(nbPath);
     const dirBase = path.basename(ds.datasetDir);

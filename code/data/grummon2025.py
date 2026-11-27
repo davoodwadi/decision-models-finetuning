@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import json
 from pathlib import Path
 
@@ -10,7 +11,6 @@ from scipy.stats import spearmanr
 import statsmodels.formula.api as smf
 
 from data.base import (
-    DATA_DIR,
     DEFAULT_CACHE_DIR,
     add_one_hot,
     build_eval_set,
@@ -31,31 +31,29 @@ from data.nutrition.grummon2025.stimulus import (
     get_arm_variant_spec,
     load_analytic_cohort,
 )
-import data.persona as persona
+from data.persona_loaders import get_persona_source_columns, load_raw_grummon2025_personas
+from data.persona_spec import load_persona_spec, standardize_dataframe
 
 GRUMMON2025_PARQUET_PATH = GRUMMON2025_DIR / "grummon2025_US_long.parquet"
 GRUMMON2025_AUDIT_CSV_PATH = GRUMMON2025_DIR / "question_audit.csv"
 GRUMMON2025_OVERRIDES_PATH = GRUMMON2025_DIR / "question_overrides.json"
 
-GRUMMON2025_PERSONA_NAMES = {
-    "c_alphan": "Country",
-    "SEX": "Sex",
-    "AGE": "Age",
-    "EDULEVEL": "Education",
-    "US_INC": "Income",
-    "RACE": "Race",
-    "HHSIZE": "How many people, including yourself, live in your household?",
-    "HISPANIC": "Hispanic or Latino",
-    "CHILDREN": "How many children (ages 0-18) currently live in your household?",
-    "SNAP": "SNAP / Food Stamps recipient",
-    "WIC": "Do you or anyone else in your household currently receive WIC benefits?",
-    "NFPUSE": "Nutrition Facts label usage",
-    "ONLINEAMT": "Share of groceries bought online",
-    # Derived in Grummon 2025 (scr_litall = 0..4 sum across 4 NVS ice-cream Nutrition Facts math items, not a single verbatim survey question); may be adapted in the future.
-    "HEALTHLIT": "Nutrition literacy score",
-}
+GRUMMON2025_PERSONA_COLS = [
+    "gender",
+    "age",
+    "education",
+    "family_income",
+    "hispanic",
+    "race",
+    "household_size",
+    "children_in_household",
+    "nutrition_label_use",
+    "snap_benefits",
+    "wic_benefits",
+    "online_grocery_share",
+    "nutrition_literacy_score",
+]
 
-GRUMMON2025_PERSONA_COLS = [c for c in GRUMMON2025_PERSONA_NAMES if c != "c_alphan"]
 PRIMARY_CHOICE_STEMS: tuple[str, ...] = tuple(PRODUCT_BASE_LABELS.keys())
 
 TREAT_ARMS = [
@@ -66,13 +64,6 @@ TREAT_ARMS = [
     "Spectrum",
 ]
 
-CHILDREN_MAP = {0: "0", 1: "1", 2: "2", **{k: "3 or more" for k in range(3, 16)}}
-SNAP_MAP = {0: "No", 1: "Yes", 2: "Don't know"}
-WIC_MAP = {0: "No", 1: "Yes", 2: "Don't know"}
-NFPUSE_MAP = {1: "Never", 2: "Rarely", 3: "Sometimes", 4: "Most of the time", 5: "Always"}
-ONLINE_MAP = {1: "Less than 25%", 2: "25-49%", 3: "50-74%", 4: "75% or more"}
-HEALTHLIT_MAP = {i: f"{i} out of 4" for i in range(5)}
-
 STUDY_DB_TEXTS = {
     "shopping_intro": SHOPPING_INTRO_TEXT,
     "consumer_understanding_intro": CONSUMER_UNDERSTANDING_INTRO,
@@ -80,59 +71,31 @@ STUDY_DB_TEXTS = {
 }
 
 
-def strict_code_map(series: pd.Series, mapping: dict[int, str], col_name: str) -> pd.Series:
-    """Map integer codes strictly; `NaN` maps to `None`, unexpected values raise."""
-    out: list[str | None] = []
-    for val in series:
-        if pd.isna(val):
-            out.append(None)
-            continue
-        ival = int(val)
-        if ival not in mapping or float(ival) != float(val):
-            raise ValueError(f"{col_name}: unexpected code {val!r} (valid: {sorted(mapping)})")
-        out.append(mapping[ival])
-    return pd.Series(out, index=series.index, dtype=object)
-
-
-def derive_grummon2025_race(clean_df: pd.DataFrame) -> pd.Series:
-    """Race from the `race_1..race_6` checkboxes via `persona.race_from_checkboxes` (not the authors' `racecat`, which
-    merges "Another race" with multi-race); all boxes missing -> NaN."""
-    labels = [(f"race_{i}", label) for i, label in persona.GRUMMON_RACE_LABELS.items()]
-    raw_race = persona.race_from_checkboxes(clean_df, labels, "grummon2025", allow_all_missing=True)
-    return persona.map_persona_series(raw_race, "RACE", "grummon2025")
+def _grummon2025_persona_names() -> dict[str, str]:
+    specs = load_persona_spec()
+    return {"c_alphan": "Country", **{name: spec.prompt for name, spec in specs.items()}}
 
 
 def build_grummon2025_persona_df(clean_df: pd.DataFrame) -> pd.DataFrame:
-    """Build the standardized 13-attribute + Country respondent persona table (`N = 5,636`)."""
-    resp_df = pd.DataFrame(
-        {
-            "CASEID": "grummon2025_" + clean_df["participantid"].astype(str),
-            "participantid": clean_df["participantid"].astype(str),
-            "arm": clean_df["foplcond"].astype(str),
-            "c_alphan": persona.map_persona_series(
-                pd.Series(["United States"] * len(clean_df), index=clean_df.index),
-                "c_alphan",
-                "grummon2025",
-            ),
-            "SEX": persona.map_persona_series(clean_df["gender"], "SEX", "grummon2025"),
-            "AGE": persona.map_persona_series(clean_df["age"], "AGE", "grummon2025"),
-            "EDULEVEL": persona.map_persona_series(clean_df["educ"], "EDULEVEL", "grummon2025"),
-            "US_INC": persona.map_persona_series(clean_df["income"], "US_INC", "grummon2025"),
-            "RACE": derive_grummon2025_race(clean_df),
-            "HHSIZE": persona.map_persona_series(clean_df["hhsize_num"], "HHSIZE", "grummon2025"),
-            "HISPANIC": persona.map_persona_series(clean_df["latino"], "HISPANIC", "grummon2025"),
-            "CHILDREN": strict_code_map(clean_df["children_num"], CHILDREN_MAP, "children_num"),
-            "SNAP": strict_code_map(clean_df["snap"], SNAP_MAP, "snap"),
-            "WIC": strict_code_map(clean_df["wic"], WIC_MAP, "wic"),
-            "NFPUSE": strict_code_map(clean_df["nfpuse"], NFPUSE_MAP, "nfpuse"),
-            "ONLINEAMT": strict_code_map(clean_df["onlineamt"], ONLINE_MAP, "onlineamt"),
-            "HEALTHLIT": strict_code_map(clean_df["scr_litall"], HEALTHLIT_MAP, "scr_litall"),
-        },
-        index=clean_df.index,
-    )
-    expected_cols = ["CASEID", "participantid", "arm", "c_alphan", *GRUMMON2025_PERSONA_COLS]
-    if list(resp_df.columns) != expected_cols:
-        raise ValueError(f"Persona column mismatch: {list(resp_df.columns)} != {expected_cols}")
+    """Build the canonical `persona_spec.yaml` respondent persona table (`N = 5,636`)."""
+    std = standardize_dataframe(load_raw_grummon2025_personas(), dataset="grummon2025")
+    persona_cols = [c for c in std.columns if c not in ("CASEID", "country")]
+    if persona_cols != GRUMMON2025_PERSONA_COLS:
+        raise ValueError(f"grummon2025 persona column drift: {persona_cols} != {GRUMMON2025_PERSONA_COLS}")
+
+    case_ids = "grummon2025_" + clean_df["participantid"].astype(str)
+    if set(case_ids) != set(std["CASEID"].astype(str)):
+        raise ValueError("grummon2025: CASEID mismatch between clean_df and persona_loaders")
+    std_by_case = std.set_index("CASEID")
+    aligned = std_by_case.loc[case_ids.values].reset_index()
+    aligned.insert(1, "participantid", clean_df["participantid"].astype(str).values)
+    aligned.insert(2, "arm", clean_df["foplcond"].astype(str).values)
+    aligned.insert(3, "c_alphan", aligned["country"])
+    expected_cols = ["CASEID", "participantid", "arm", "c_alphan", "country", *GRUMMON2025_PERSONA_COLS]
+    resp_df = aligned[expected_cols].copy()
+    resp_df.index = clean_df.index
+    if len(resp_df) != len(clean_df) or resp_df["CASEID"].nunique() != len(clean_df):
+        raise ValueError(f"Expected {len(clean_df)} unique respondents in persona table, got {len(resp_df)}")
     return resp_df
 
 
@@ -176,6 +139,14 @@ def build_grummon2025_long_df(
     inc_df = audit_df[audit_df["include"] == "True"].reset_index(drop=True)
     if len(inc_df) == 0:
         raise ValueError(f"No included questions found in {audit_csv_path}")
+
+    persona_src_cols = get_persona_source_columns("grummon2025")
+    overlap = sorted(set(inc_df["QuestionID"]) & set(persona_src_cols))
+    if overlap:
+        raise ValueError(
+            "grummon2025: refusing to export questions that overlap with locked persona columns: "
+            + ", ".join(f"{c} -> {persona_src_cols[c]}" for c in overlap)
+        )
 
     resp_df = build_grummon2025_persona_df(clean_df)
     frames: list[pd.DataFrame] = []
@@ -314,30 +285,36 @@ def load_grummon2025_records(
     include_country: bool,
     qids=None,
     grouped: bool = False,
-    persona_cols=GRUMMON2025_PERSONA_COLS,
+    persona_cols: list[str] | None = None,
     parquet_path=None,
 ):
     """Load respondent-level Grummon 2025 records (preserving `option_descriptions`), optionally state-grouped."""
     df = load_grummon2025_df(qids=qids, parquet_path=parquet_path)
+    specs = load_persona_spec()
+    persona_names = _grummon2025_persona_names()
+    if persona_cols is None:
+        persona_cols = [c for c in specs if c in df.columns and c != "country"]
     records = build_long_records(
         df,
         persona_cols=persona_cols,
         include_country=include_country,
         year="grummon2025",
+        persona_names=persona_names,
     )
     if grouped:
-        return group_records_by_state(records, view_fn=make_view, name="grummon2025")
+        view_fn = functools.partial(make_view, persona_names=persona_names)
+        return group_records_by_state(records, view_fn=view_fn, name="grummon2025")
     return records
 
 
 def load_grummon2025_eval(
     parquet_path=None,
     *,
-    attr_sets,
+    attr_sets=None,
     include_country: bool,
     min_n=None,
     qids=None,
-    persona_cols=GRUMMON2025_PERSONA_COLS,
+    persona_cols: list[str] | None = None,
     grouped: bool = True,
     name: str = "grummon2025",
     valid: bool = False,
@@ -345,12 +322,17 @@ def load_grummon2025_eval(
 ):
     """Load Grummon 2025 RCT test set as a state-grouped evaluation bundle (`grouped=True`) or flat `records` (`grouped=False`)."""
     df = load_grummon2025_df(qids=qids, parquet_path=parquet_path)
+    specs = load_persona_spec()
+    persona_names = _grummon2025_persona_names()
+    if persona_cols is None:
+        persona_cols = [c for c in specs if c in df.columns and c != "country"]
     return build_eval_set(
         df,
         attr_sets=attr_sets,
         include_country=include_country,
         min_n=min_n,
         persona_cols=persona_cols,
+        persona_names=persona_names,
         grouped=grouped,
         eval_fn=evaluate_grummon2025_ols if attr_sets is None else None,
         name=name,

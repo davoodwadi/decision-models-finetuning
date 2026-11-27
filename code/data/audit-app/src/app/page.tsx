@@ -13,6 +13,7 @@ export const dynamic = "force-dynamic";
 const VALID_REVIEW_FILTERS = new Set<ReviewFilter>(["all", "unreviewed", "reviewed"]);
 const VALID_DECISION_FILTERS = new Set<DecisionFilter>(["all", "included", "excluded"]);
 const VALID_FLAGS = new Set<AuditFlag>([
+  "persona_overlap",
   "blocking",
   "suspect",
   "unsaved",

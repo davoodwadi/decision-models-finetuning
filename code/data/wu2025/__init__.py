@@ -2,11 +2,13 @@
 
 Exports every row marked `include=True` in `question_audit.csv` to `wu2025_US_long.parquet`, applying the audit UI's
 `drop_options`, `context_source`, `context_sep`, and `question_overrides.json` edits.
-Persona decisions: `DECISIONS.md` and `persona.py` (dataset key `wu2025`). IP / location columns are never loaded.
+Attaches canonical `persona_spec.yaml` persona attributes strictly via
+`standardize_dataframe(load_raw_wu2025_personas(), dataset="wu2025")`. IP / location columns are never loaded.
 """
 
 from __future__ import annotations
 
+import functools
 import itertools
 import json
 from pathlib import Path
@@ -22,7 +24,8 @@ from data.base import (
     group_records_by_state,
     make_view,
 )
-import data.persona as persona
+from data.persona_loaders import get_persona_source_columns, load_raw_wu2025_personas
+from data.persona_spec import load_persona_spec, standardize_dataframe
 from data.wu2025.stimulus import (
     ATTR_LOCAL,
     ATTR_MONEY,
@@ -44,17 +47,51 @@ WU2025_PARQUET_PATH = WU_DIR / "wu2025_US_long.parquet"
 WU2025_AUDIT_CSV_PATH = WU_DIR / "question_audit.csv"
 WU2025_OVERRIDES_PATH = WU_DIR / "question_overrides.json"
 
-WU2025_PERSONA_COLS = [c for c in persona.DATASET_PERSONA_COLS["wu2025"] if c != "c_alphan"]
+WU2025_PERSONA_COLS = [
+    "state",
+    "gender",
+    "age",
+    "race",
+    "hispanic",
+    "education",
+    "family_income",
+    "political_party",
+    "political_ideology",
+    "marital_status",
+    "employment_status",
+    "residence_type",
+    "sexual_orientation",
+    "political_label",
+    "owns_home",
+    "rents_home",
+    "military_service",
+    "electric_heating",
+    "political_interest",
+    "electricity_included_in_rent",
+    "knows_electricity_bill",
+    "uses_investor_owned_utility",
+    "uses_community_choice_aggregation",
+    "knows_community_choice_aggregation",
+]
 STUDY_DB_TEXTS = {"conjoint_intro": CONJOINT_INTRO_TEXT}
 PLAN_ATTRIBUTES = [ATTR_MONEY, ATTR_PERCENT, ATTR_LOCAL]
 
 
 def build_wu2025_persona_df(raw_df: pd.DataFrame) -> pd.DataFrame:
-    """Standardized respondent persona table (`N = 1,862`) via `persona.apply_persona_mapping`."""
+    """Canonical `persona_spec.yaml` respondent persona table (`N = 1,862`)."""
     resp = extract_respondent_df(raw_df)
-    mapped = persona.apply_persona_mapping(resp, "wu2025")
-    mapped["CASEID"] = "wu2025_" + mapped["CaseID"].astype(int).astype(str)
-    out = mapped[["CASEID", "CaseID", "c_alphan", *WU2025_PERSONA_COLS]].reset_index(drop=True)
+    std = standardize_dataframe(load_raw_wu2025_personas(), dataset="wu2025")
+    persona_cols = [c for c in std.columns if c not in ("CASEID", "country")]
+    if persona_cols != WU2025_PERSONA_COLS:
+        raise ValueError(f"wu2025 persona column drift: {persona_cols} != {WU2025_PERSONA_COLS}")
+    case_ids = "wu2025_" + resp["CaseID"].astype(int).astype(str)
+    if set(case_ids) != set(std["CASEID"].astype(str)):
+        raise ValueError("wu2025: CASEID mismatch between raw_df and persona_loaders")
+    std_by_case = std.set_index("CASEID")
+    aligned = std_by_case.loc[case_ids.values].reset_index()
+    aligned.insert(1, "CaseID", resp["CaseID"].values)
+    aligned.insert(2, "c_alphan", aligned["country"])
+    out = aligned[["CASEID", "CaseID", "c_alphan", "country", *WU2025_PERSONA_COLS]].reset_index(drop=True)
     if len(out) != N_RESPONDENTS or out["CASEID"].nunique() != N_RESPONDENTS:
         raise ValueError(f"Expected {N_RESPONDENTS} unique respondents in persona table, got {len(out)}")
     return out
@@ -146,6 +183,14 @@ def build_wu2025_long_df(
     if len(inc_df) == 0:
         raise ValueError(f"No included questions found in {audit_csv_path}")
 
+    persona_src_cols = get_persona_source_columns("wu2025")
+    overlap = sorted(set(inc_df["QuestionID"]) & set(persona_src_cols))
+    if overlap:
+        raise ValueError(
+            "wu2025: refusing to export questions that overlap with locked persona columns: "
+            + ", ".join(f"{c} -> {persona_src_cols[c]}" for c in overlap)
+        )
+
     frames: list[pd.DataFrame] = []
     for _, a_row in inc_df.iterrows():
         v_name = a_row["QuestionID"]
@@ -180,7 +225,7 @@ def build_wu2025_long_df(
             tasks_df = extract_choice_tasks_df(raw_df)
             stim_ids = _plan_stimulus_ids(tasks_df)
             sub = persona_by_case.loc[tasks_df["CaseID"]].reset_index()
-            sub = sub[["CASEID", "CaseID", "c_alphan", *WU2025_PERSONA_COLS]].copy()
+            sub = sub[["CASEID", "CaseID", "c_alphan", "country", *WU2025_PERSONA_COLS]].copy()
             code_to_text = dict(zip(kept_codes, kept_texts, strict=True))
             sub["v"] = v_name
             sub["qid"] = [f"wu2025:plan_choice:{s}" for s in stim_ids]
@@ -257,14 +302,25 @@ def load_wu2025_records(
     include_country: bool,
     qids=None,
     grouped: bool = False,
-    persona_cols=WU2025_PERSONA_COLS,
+    persona_cols: list[str] | None = None,
     parquet_path=WU2025_PARQUET_PATH,
 ):
     """Respondent-level training records (one per parquet row), optionally state-grouped."""
     df = load_wu2025_df(qids=qids, parquet_path=parquet_path)
-    records = build_long_records(df, persona_cols=persona_cols, include_country=include_country, year="wu2025")
+    specs = load_persona_spec()
+    persona_names = {"c_alphan": "Country", **{name: spec.prompt for name, spec in specs.items()}}
+    if persona_cols is None:
+        persona_cols = [c for c in specs if c in df.columns and c != "country"]
+    records = build_long_records(
+        df,
+        persona_cols=persona_cols,
+        include_country=include_country,
+        year="wu2025",
+        persona_names=persona_names,
+    )
     if grouped:
-        return group_records_by_state(records, view_fn=make_view, name="wu2025")
+        view_fn = functools.partial(make_view, persona_names=persona_names)
+        return group_records_by_state(records, view_fn=view_fn, name="wu2025")
     return records
 
 
@@ -275,7 +331,7 @@ def load_wu2025_eval(
     include_country: bool,
     min_n=None,
     qids=None,
-    persona_cols=WU2025_PERSONA_COLS,
+    persona_cols: list[str] | None = None,
     grouped: bool = True,
     name: str = "wu2025",
     valid: bool = False,
@@ -287,12 +343,17 @@ def load_wu2025_eval(
     attribute salience scores.
     """
     df = load_wu2025_df(qids=qids, parquet_path=parquet_path)
+    specs = load_persona_spec()
+    persona_names = {"c_alphan": "Country", **{name: spec.prompt for name, spec in specs.items()}}
+    if persona_cols is None:
+        persona_cols = [c for c in specs if c in df.columns and c != "country"]
     return build_eval_set(
         df,
         attr_sets=attr_sets,
         include_country=include_country,
         min_n=min_n,
         persona_cols=persona_cols,
+        persona_names=persona_names,
         grouped=grouped,
         eval_fn=None,
         name=name,

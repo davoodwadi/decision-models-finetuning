@@ -26,11 +26,6 @@ CODE_DIR = DATA_DIR.parent
 if str(CODE_DIR) not in sys.path:
     sys.path.insert(0, str(CODE_DIR))
 
-from data.persona import (
-    ALL_PERSONA_NAMES,
-    GLOBAL_PERSONA_LEVELS,
-    PERSONA_NAMES,
-)
 from data.persona_spec import PersonaAttribute, load_persona_spec
 
 PERSONA_SPECS: dict[str, PersonaAttribute] = load_persona_spec()
@@ -125,15 +120,12 @@ def _dataset_loader_spec(
             )
         return "persona_spec.yaml", spec_cols, SUBPOP_QID_PREFIX[dir_name], True
 
-    if spec_cols:
-        return "persona_spec.yaml", spec_cols, None, True
-
-    present_persona = [c for c in schema_cols if c in ALL_PERSONA_NAMES]
-
-    ordered = (["c_alphan"] if "c_alphan" in present_persona else []) + [
-        c for c in present_persona if c != "c_alphan"
-    ]
-    return "build_long_records", ordered, None, False
+    if not spec_cols:
+        raise ValueError(
+            f"{dataset_dir.name}: parquet is missing canonical persona_spec.yaml columns. "
+            "Click 'Parquet -> This dataset' to rebuild it."
+        )
+    return "persona_spec.yaml", spec_cols, None, True
 
 
 def _clean_scalar(val: Any) -> str | None:
@@ -246,32 +238,18 @@ def build_summary(dataset_dir: Path) -> dict[str, Any]:
         n_missing = n_respondents - n_present
         vc = series.dropna().astype(str).value_counts()
 
-        if uses_yaml_spec:
-            spec = PERSONA_SPECS[col]
-            prompt_label = spec.prompt
-            source_kind = "global"
-            levels = [
-                {
-                    "value": str(val),
-                    "count": int(cnt),
-                    "pct": round(float(cnt) / n_respondents * 100.0, 2) if n_respondents > 0 else 0.0,
-                    "inGlobalLevels": _value_in_spec_levels(spec, str(val)),
-                }
-                for val, cnt in vc.items()
-            ]
-        else:
-            prompt_label = ALL_PERSONA_NAMES[col]
-            source_kind = "global" if col in PERSONA_NAMES else "extra"
-            global_levels = GLOBAL_PERSONA_LEVELS.get(col)
-            levels = [
-                {
-                    "value": str(val),
-                    "count": int(cnt),
-                    "pct": round(float(cnt) / n_respondents * 100.0, 2) if n_respondents > 0 else 0.0,
-                    "inGlobalLevels": (str(val) in global_levels) if global_levels is not None else None,
-                }
-                for val, cnt in vc.items()
-            ]
+        spec = PERSONA_SPECS[col]
+        prompt_label = spec.prompt
+        source_kind = "global"
+        levels = [
+            {
+                "value": str(val),
+                "count": int(cnt),
+                "pct": round(float(cnt) / n_respondents * 100.0, 2) if n_respondents > 0 else 0.0,
+                "inGlobalLevels": _value_in_spec_levels(spec, str(val)),
+            }
+            for val, cnt in vc.items()
+        ]
 
         attributes.append(
             {
@@ -426,21 +404,13 @@ def fetch_respondent_questions(dataset_dir: Path, case_id: str, limit: int) -> d
 
 PREFERRED_MARGINAL_PERSONAS = (
     "political_party",
-    "US_PRTY",
     "political_ideology",
-    "PARTY_LR",
     "gender",
-    "SEX",
     "age",
-    "AGE",
     "education",
-    "EDULEVEL",
     "race",
-    "RACE",
     "region",
-    "US_REG",
     "religion",
-    "RELIGGRP",
 )
 
 
@@ -510,7 +480,7 @@ def fetch_question_marginals(
         n_levels = int(s.nunique())
         if n_levels < 2:
             continue
-        prompt_label = PERSONA_SPECS[col].prompt if uses_yaml_spec else ALL_PERSONA_NAMES[col]
+        prompt_label = PERSONA_SPECS[col].prompt
         available_personas.append(
             {
                 "col": col,
@@ -756,7 +726,7 @@ def fetch_persona_marginals_bundle(
         n_levels = int(s.nunique())
         if n_levels < 2:
             continue
-        prompt_label = PERSONA_SPECS[col].prompt if uses_yaml_spec else ALL_PERSONA_NAMES[col]
+        prompt_label = PERSONA_SPECS[col].prompt
         available_personas.append(
             {
                 "col": col,

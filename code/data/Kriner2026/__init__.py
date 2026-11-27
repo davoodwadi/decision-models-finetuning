@@ -2,11 +2,13 @@
 
 Exports every row marked `include=True` in `question_audit.csv` to `kriner2026_US_long.parquet`, applying the audit
 UI's `drop_options`, `context_source`, `context_sep`, and `question_overrides.json` edits.
-Persona decisions: `DECISIONS.md` and `persona.py` (dataset key `kriner2026`).
+Attaches canonical `persona_spec.yaml` persona attributes strictly via
+`standardize_dataframe(load_raw_kriner2026_personas(), dataset="kriner2026")`.
 """
 
 from __future__ import annotations
 
+import functools
 import itertools
 import json
 from pathlib import Path
@@ -24,7 +26,6 @@ from data.base import (
     group_records_by_state,
     make_view,
 )
-import data.persona as persona
 from data.Kriner2026.stimulus import (
     CHOICE_OPTIONS,
     CHOICE_STEM,
@@ -32,19 +33,35 @@ from data.Kriner2026.stimulus import (
     KRINER_DIR,
     N_RESPONDENTS,
     SAF_DEFINITION_TEXT,
-    build_persona_input_df,
     build_survey_audit_artifacts,
     extract_choice_tasks_df,
     extract_respondent_df,
     format_flight_description,
     load_raw_df,
 )
+from data.persona_loaders import get_persona_source_columns, load_raw_kriner2026_personas
+from data.persona_spec import load_persona_spec, standardize_dataframe
 
 KRINER2026_PARQUET_PATH = KRINER_DIR / "kriner2026_US_long.parquet"
 KRINER2026_AUDIT_CSV_PATH = KRINER_DIR / "question_audit.csv"
 KRINER2026_OVERRIDES_PATH = KRINER_DIR / "question_overrides.json"
 
-KRINER2026_PERSONA_COLS = [c for c in persona.DATASET_PERSONA_COLS["kriner2026"] if c != "c_alphan"]
+KRINER2026_PERSONA_COLS = [
+    "state",
+    "region",
+    "gender",
+    "age",
+    "education",
+    "religion",
+    "political_ideology",
+    "political_party",
+    "income",
+    "urban_rural",
+    "voted_last_election",
+    "race",
+    "vote_choice_2024",
+    "trump_approval",
+]
 
 STUDY_DB_TEXTS = {
     "saf_definition": SAF_DEFINITION_TEXT,
@@ -95,11 +112,24 @@ AMCE_TERMS: list[tuple[str, str]] = [
 ]
 
 
-def build_kriner2026_persona_df(raw_df: pd.DataFrame, value_labels: dict[str, dict[int, str]]) -> pd.DataFrame:
-    """Standardized respondent persona table (`N = 1,000`) via `persona.apply_persona_mapping`."""
-    mapped = persona.apply_persona_mapping(build_persona_input_df(raw_df, value_labels), "kriner2026")
-    mapped["CASEID"] = "kriner2026_" + mapped["respondent"].astype(str)
-    out = mapped[["CASEID", "respondent", "c_alphan", *KRINER2026_PERSONA_COLS]].reset_index(drop=True)
+def build_kriner2026_persona_df(
+    raw_df: pd.DataFrame, value_labels: dict[str, dict[int, str]] | None = None
+) -> pd.DataFrame:
+    """Canonical `persona_spec.yaml` respondent persona table (`N = 1,000`)."""
+    del value_labels  # retained for backwards-compatible signature
+    resp_raw = extract_respondent_df(raw_df)
+    std = standardize_dataframe(load_raw_kriner2026_personas(), dataset="kriner2026")
+    persona_cols = [c for c in std.columns if c not in ("CASEID", "country")]
+    if persona_cols != KRINER2026_PERSONA_COLS:
+        raise ValueError(f"kriner2026 persona column drift: {persona_cols} != {KRINER2026_PERSONA_COLS}")
+    case_ids = "kriner2026_" + resp_raw["respondent"].astype(str)
+    if set(case_ids) != set(std["CASEID"].astype(str)):
+        raise ValueError("kriner2026: CASEID mismatch between raw_df and persona_loaders")
+    std_by_case = std.set_index("CASEID")
+    aligned = std_by_case.loc[case_ids.values].reset_index()
+    aligned.insert(1, "respondent", resp_raw["respondent"].values)
+    aligned.insert(2, "c_alphan", aligned["country"])
+    out = aligned[["CASEID", "respondent", "c_alphan", "country", *KRINER2026_PERSONA_COLS]].reset_index(drop=True)
     if len(out) != N_RESPONDENTS or out["CASEID"].nunique() != N_RESPONDENTS:
         raise ValueError(f"Expected {N_RESPONDENTS} unique respondents in persona table, got {len(out)}")
     return out
@@ -191,6 +221,14 @@ def build_kriner2026_long_df(
     if len(inc_df) == 0:
         raise ValueError(f"No included questions found in {audit_csv_path}")
 
+    persona_src_cols = get_persona_source_columns("Kriner2026")
+    overlap = sorted(set(inc_df["QuestionID"]) & set(persona_src_cols))
+    if overlap:
+        raise ValueError(
+            "Kriner2026: refusing to export questions that overlap with locked persona columns: "
+            + ", ".join(f"{c} -> {persona_src_cols[c]}" for c in overlap)
+        )
+
     frames: list[pd.DataFrame] = []
     for _, a_row in inc_df.iterrows():
         v_name = a_row["QuestionID"]
@@ -222,7 +260,7 @@ def build_kriner2026_long_df(
                 raise ValueError("flight_choice: dropping Flight 1 or Flight 2 is not supported")
             stim_ids = _flight_stimulus_ids(tasks_df)
             sub = persona_by_resp.loc[tasks_df["respondent"]].reset_index()
-            sub = sub[["CASEID", "respondent", "c_alphan", *KRINER2026_PERSONA_COLS]].copy()
+            sub = sub[["CASEID", "respondent", "c_alphan", "country", *KRINER2026_PERSONA_COLS]].copy()
             code_to_text = dict(zip(kept_codes, kept_texts, strict=True))
             sub["v"] = v_name
             sub["qid"] = [f"kriner2026:flight_choice:{s}" for s in stim_ids]
@@ -301,14 +339,25 @@ def load_kriner2026_records(
     include_country: bool,
     qids=None,
     grouped: bool = False,
-    persona_cols=KRINER2026_PERSONA_COLS,
+    persona_cols: list[str] | None = None,
     parquet_path=KRINER2026_PARQUET_PATH,
 ):
     """Respondent-level training records (one per parquet row), optionally state-grouped."""
     df = load_kriner2026_df(qids=qids, parquet_path=parquet_path)
-    records = build_long_records(df, persona_cols=persona_cols, include_country=include_country, year="kriner2026")
+    specs = load_persona_spec()
+    persona_names = {"c_alphan": "Country", **{name: spec.prompt for name, spec in specs.items()}}
+    if persona_cols is None:
+        persona_cols = [c for c in specs if c in df.columns and c != "country"]
+    records = build_long_records(
+        df,
+        persona_cols=persona_cols,
+        include_country=include_country,
+        year="kriner2026",
+        persona_names=persona_names,
+    )
     if grouped:
-        return group_records_by_state(records, view_fn=make_view, name="kriner2026")
+        view_fn = functools.partial(make_view, persona_names=persona_names)
+        return group_records_by_state(records, view_fn=view_fn, name="kriner2026")
     return records
 
 
@@ -383,7 +432,7 @@ def load_kriner2026_eval(
     include_country: bool,
     min_n=None,
     qids=None,
-    persona_cols=KRINER2026_PERSONA_COLS,
+    persona_cols: list[str] | None = None,
     grouped: bool = True,
     name: str = "kriner2026",
     valid: bool = False,
@@ -391,12 +440,17 @@ def load_kriner2026_eval(
 ):
     """Evaluation bundle (state-grouped when `grouped=True`); respondent-level runs use the Table 2 AMCE evaluator."""
     df = load_kriner2026_df(qids=qids, parquet_path=parquet_path)
+    specs = load_persona_spec()
+    persona_names = {"c_alphan": "Country", **{name: spec.prompt for name, spec in specs.items()}}
+    if persona_cols is None:
+        persona_cols = [c for c in specs if c in df.columns and c != "country"]
     return build_eval_set(
         df,
         attr_sets=attr_sets,
         include_country=include_country,
         min_n=min_n,
         persona_cols=persona_cols,
+        persona_names=persona_names,
         grouped=grouped,
         eval_fn=evaluate_kriner2026_ols if attr_sets is None else None,
         name=name,

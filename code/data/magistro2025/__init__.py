@@ -2,11 +2,13 @@
 
 Exports every row marked `include=True` in `question_audit.csv` to `magistro2025_long.parquet`, applying the audit
 UI's `drop_options`, `context_source`, `context_sep`, and `question_overrides.json` edits.
-Persona decisions: `DECISIONS.md` and `persona.py` (dataset key `magistro2025`).
+Attaches canonical `persona_spec.yaml` persona attributes strictly via
+`standardize_dataframe(load_raw_magistro2025_personas(), dataset="magistro2025")`.
 """
 
 from __future__ import annotations
 
+import functools
 import json
 from pathlib import Path
 
@@ -35,21 +37,39 @@ from data.magistro2025.stimulus import (
     extract_conjoint_tasks,
     load_raw_df,
 )
-import data.persona as persona
+from data.persona_loaders import get_persona_source_columns, load_raw_magistro2025_personas
+from data.persona_spec import load_persona_spec, standardize_dataframe
 
 MAGISTRO2025_PARQUET_PATH = MAGISTRO_DIR / "magistro2025_long.parquet"
 MAGISTRO2025_AUDIT_CSV_PATH = MAGISTRO_DIR / "question_audit.csv"
 MAGISTRO2025_OVERRIDES_PATH = MAGISTRO_DIR / "question_overrides.json"
 
-MAGISTRO2025_PERSONA_COLS = [c for c in persona.DATASET_PERSONA_COLS["magistro2025"] if c != "c_alphan"]
+MAGISTRO2025_PERSONA_COLS = [
+    "region",
+    "state",
+    "gender",
+    "age",
+    "education",
+    "income",
+    "political_party",
+]
 
 
 def build_magistro2025_persona_df(raw_df: pd.DataFrame) -> pd.DataFrame:
-    """Standardized respondent persona table (`N = 6,056`, US + Canada) via `persona.apply_persona_mapping`."""
-    mapped = persona.apply_persona_mapping(raw_df, "magistro2025")
-    mapped["CASEID"] = "magistro2025_" + mapped["ID"].astype(int).astype(str)
-    mapped["respondent"] = mapped["ID"].astype(int)
-    out = mapped[["CASEID", "respondent", "c_alphan", *MAGISTRO2025_PERSONA_COLS]].reset_index(drop=True)
+    """Canonical `persona_spec.yaml` respondent persona table (`N = 6,056`, US + Canada)."""
+    std = standardize_dataframe(load_raw_magistro2025_personas(), dataset="magistro2025")
+    persona_cols = [c for c in std.columns if c not in ("CASEID", "country")]
+    if persona_cols != MAGISTRO2025_PERSONA_COLS:
+        raise ValueError(f"magistro2025 persona column drift: {persona_cols} != {MAGISTRO2025_PERSONA_COLS}")
+    ids = raw_df["ID"].astype(int)
+    case_ids = "magistro2025_" + ids.astype(str)
+    if set(case_ids) != set(std["CASEID"].astype(str)):
+        raise ValueError("magistro2025: CASEID mismatch between raw_df and persona_loaders")
+    std_by_case = std.set_index("CASEID")
+    aligned = std_by_case.loc[case_ids.values].reset_index()
+    aligned.insert(1, "respondent", ids.values)
+    aligned.insert(2, "c_alphan", aligned["country"])
+    out = aligned[["CASEID", "respondent", "c_alphan", "country", *MAGISTRO2025_PERSONA_COLS]].reset_index(drop=True)
     if len(out) != N_TOTAL_RESPONDENTS or out["CASEID"].nunique() != N_TOTAL_RESPONDENTS:
         raise ValueError(f"Expected {N_TOTAL_RESPONDENTS} unique respondents in persona table, got {len(out)}")
     return out
@@ -111,6 +131,14 @@ def build_magistro2025_long_df(
     if len(inc_df) == 0:
         raise ValueError(f"No included questions found in {audit_csv_path}")
 
+    persona_src_cols = get_persona_source_columns("magistro2025")
+    overlap = sorted(set(inc_df["QuestionID"]) & set(persona_src_cols))
+    if overlap:
+        raise ValueError(
+            "magistro2025: refusing to export questions that overlap with locked persona columns: "
+            + ", ".join(f"{c} -> {persona_src_cols[c]}" for c in overlap)
+        )
+
     conjoint_map = {
         "conjoint_ai": (ai_tasks, CONJOINT_AI_STEM),
         "conjoint_offshoring": (off_tasks, CONJOINT_OFFSHORING_STEM),
@@ -147,7 +175,7 @@ def build_magistro2025_long_df(
             code_to_text = dict(zip(kept_codes, kept_texts, strict=True))
             kept_tasks = tasks_df[~tasks_df["answer_code"].isin(dropped)].reset_index(drop=True)
             sub = persona_by_id.loc[kept_tasks["ID"]].reset_index()
-            sub = sub[["CASEID", "respondent", "c_alphan", *MAGISTRO2025_PERSONA_COLS]].copy()
+            sub = sub[["CASEID", "respondent", "c_alphan", "country", *MAGISTRO2025_PERSONA_COLS]].copy()
             codes = list(kept_tasks["profile_code"])
             sub["v"] = v_name
             sub["qid"] = [f"magistro2025:{v_name}:{c}" for c in codes]
@@ -173,7 +201,7 @@ def build_magistro2025_long_df(
             sub_raw["answer_code"] = sub_raw[v_name].astype(int)
             sub_raw = sub_raw[~sub_raw["answer_code"].isin(dropped)].reset_index(drop=True)
             sub = persona_by_id.loc[sub_raw["ID"].astype(int)].reset_index()
-            sub = sub[["CASEID", "respondent", "c_alphan", *MAGISTRO2025_PERSONA_COLS]].copy()
+            sub = sub[["CASEID", "respondent", "c_alphan", "country", *MAGISTRO2025_PERSONA_COLS]].copy()
             arms = list(sub_raw["treat_offshoring"])
             questions = []
             for arm_name in arms:
@@ -235,16 +263,25 @@ def load_magistro2025_records(
     include_country: bool,
     qids=None,
     grouped: bool = False,
-    persona_cols=MAGISTRO2025_PERSONA_COLS,
+    persona_cols: list[str] | None = None,
     parquet_path=MAGISTRO2025_PARQUET_PATH,
 ):
     """Respondent-level training records (one per parquet row), optionally state-grouped."""
     df = load_magistro2025_df(qids=qids, parquet_path=parquet_path)
+    specs = load_persona_spec()
+    persona_names = {"c_alphan": "Country", **{name: spec.prompt for name, spec in specs.items()}}
+    if persona_cols is None:
+        persona_cols = [c for c in specs if c in df.columns and c != "country"]
     records = build_long_records(
-        df, persona_cols=persona_cols, include_country=include_country, year="magistro2025"
+        df,
+        persona_cols=persona_cols,
+        include_country=include_country,
+        year="magistro2025",
+        persona_names=persona_names,
     )
     if grouped:
-        return group_records_by_state(records, view_fn=make_view, name="magistro2025")
+        view_fn = functools.partial(make_view, persona_names=persona_names)
+        return group_records_by_state(records, view_fn=view_fn, name="magistro2025")
     return records
 
 
@@ -255,7 +292,7 @@ def load_magistro2025_eval(
     include_country: bool,
     min_n=None,
     qids=None,
-    persona_cols=MAGISTRO2025_PERSONA_COLS,
+    persona_cols: list[str] | None = None,
     grouped: bool = True,
     name: str = "magistro2025",
     valid: bool = False,
@@ -263,12 +300,17 @@ def load_magistro2025_eval(
 ):
     """Evaluation bundle (state-grouped when `grouped=True`)."""
     df = load_magistro2025_df(qids=qids, parquet_path=parquet_path)
+    specs = load_persona_spec()
+    persona_names = {"c_alphan": "Country", **{name: spec.prompt for name, spec in specs.items()}}
+    if persona_cols is None:
+        persona_cols = [c for c in specs if c in df.columns and c != "country"]
     return build_eval_set(
         df,
         attr_sets=attr_sets,
         include_country=include_country,
         min_n=min_n,
         persona_cols=persona_cols,
+        persona_names=persona_names,
         grouped=grouped,
         eval_fn=None,
         name=name,

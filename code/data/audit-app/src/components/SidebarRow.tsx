@@ -121,9 +121,11 @@ export const SidebarRow = React.memo(function SidebarRow({
             ? "bg-blue-50/90 border-l-[3px] border-l-blue-600"
             : isDirty
               ? "bg-orange-50/45 border-l-[3px] border-l-orange-400 hover:bg-orange-50/80"
-              : rowDimmed
-                ? "bg-slate-50/70 opacity-55 hover:opacity-85 hover:bg-slate-100/70"
-                : "bg-white hover:bg-slate-50",
+              : row.personaConflict
+                ? "bg-rose-50/55 border-l-[3px] border-l-rose-500 hover:bg-rose-50/90"
+                : rowDimmed
+                  ? "bg-slate-50/70 opacity-55 hover:opacity-85 hover:bg-slate-100/70"
+                  : "bg-white hover:bg-slate-50",
         ].join(" ")}
       >
         {hasGroup && (
@@ -249,6 +251,19 @@ export const SidebarRow = React.memo(function SidebarRow({
                 Not fielded in {row.notFieldedIn.join(", ")}
               </Badge>
             )}
+            {row.personaConflict && (
+              <Badge
+                variant="outline"
+                className="h-4.5 px-1.5 py-0 text-[10px] font-bold rounded-sm bg-rose-100 text-rose-800 border-rose-300 shrink-0 uppercase tracking-tight"
+                title={
+                  row.personaAttribute
+                    ? `Persona overlap: also extracted as persona attribute "${row.personaAttribute}"`
+                    : "Persona overlap: this column is also in respondent personas"
+                }
+              >
+                PERSONA OVERLAP
+              </Badge>
+            )}
             {row.exportProblem && (
               <Badge
                 variant="outline"
@@ -270,6 +285,11 @@ export const SidebarRow = React.memo(function SidebarRow({
             <Badge
               variant="outline"
               className={`h-4.5 px-1.5 py-0 text-[10px] font-semibold rounded-sm shrink-0 uppercase tracking-tight ${badgeClass}`}
+              title={
+                row.isPersona && eff === "exclude"
+                  ? row.formatSkipReason
+                  : undefined
+              }
             >
               {badgeLabel}
             </Badge>

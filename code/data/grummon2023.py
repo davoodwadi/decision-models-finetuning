@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
+import functools
 import json
 from pathlib import Path
 import pandas as pd
 
 from data.base import (
-    ALL_PERSONA_NAMES,
-    DATA_DIR,
     DEFAULT_CACHE_DIR,
     add_one_hot,
     build_eval_set,
@@ -25,179 +24,61 @@ from data.nutrition.grummon2023.stimulus import (
     get_arm_variant_spec,
     load_analytic_cohort,
 )
-import data.persona as persona
+from data.persona_loaders import get_persona_source_columns, load_raw_grummon2023_personas
+from data.persona_spec import load_persona_spec, standardize_dataframe
 
 GRUMMON2023_PARQUET_PATH = GRUMMON2023_DIR / "grummon2023_US_long.parquet"
 GRUMMON2023_AUDIT_CSV_PATH = GRUMMON2023_DIR / "question_audit.csv"
 GRUMMON2023_OVERRIDES_PATH = GRUMMON2023_DIR / "question_overrides.json"
 GRUMMON2023_STUDY_DB_TEXTS = {"vending_intro": VENDING_BONUS_INTRO}
 
-NFPUSE_MAP = {
-    1.0: "Never",
-    2.0: "Rarely",
-    3.0: "Sometimes",
-    4.0: "Most of the time",
-    5.0: "Always",
-}
-
-MEDHELP_MAP = {
-    1.0: "Never",
-    2.0: "Rarely",
-    3.0: "Sometimes",
-    4.0: "Most of the time",
-    5.0: "Always",
-}
-
-CHILDREN_MAP = {
-    0.0: "0",
-    1.0: "1",
-    2.0: "2",
-    **{float(k): "3 or more" for k in range(3, 16)},
-}
-
-DIETQUAL_MAP = {
-    1.0: "Poor",
-    2.0: "Fair",
-    3.0: "Good",
-    4.0: "Very good",
-    5.0: "Excellent",
-}
-
-VENDING_FREQ_MAP = {
-    1.0: "Never or less than 1 time per week",
-    2.0: "1 to 2 times per week",
-    3.0: "3 to 4 times per week",
-    4.0: "5 or more times per week",
-}
-
-BMI_LEVELS = (
-    "Underweight (<18.5)",
-    "Healthy weight (18.5 to <25.0)",
-    "Overweight (25.0 to <30.0)",
-    "Obese (>=30.0)",
-)
-
-# Confirmed persona attributes for Grummon 2023
-# Note: `numeracy` (Berlin Numeracy Test choir probability question) is intentionally skipped as a persona attribute.
-# Note: `BMI` is derived from self-reported `height_feet`, `height_inches`, and `weight_lbs` matching published Table 1.
+# Canonical `persona_spec.yaml` persona attributes for Grummon 2023.
 GRUMMON2023_PERSONA_COLS = [
-    "SEX",
-    "AGE",
-    "EDULEVEL",
-    "US_INC",
-    "HISPANIC",
-    "RACE",
-    "HHSIZE",
-    "CHILDREN",
-    "US_PRTY",
-    "DIETQUAL",
-    "NFPUSE",
-    "MEDHELP",
-    "VENDING_BEV",
-    "VENDING_SNACK",
-    "BMI",
+    "gender",
+    "age",
+    "education",
+    "family_income",
+    "hispanic",
+    "race",
+    "household_size",
+    "children_in_household",
+    "political_party",
+    "nutrition_label_use",
+    "diet_quality",
+    "medical_reading_help",
+    "bmi",
 ]
 
-GRUMMON2023_PERSONA_NAMES = {
-    "c_alphan": ALL_PERSONA_NAMES["c_alphan"],
-    **{col: ALL_PERSONA_NAMES[col] for col in GRUMMON2023_PERSONA_COLS},
-}
 
-
-def strict_code_map(series: pd.Series, mapping: dict[float, str], name: str) -> pd.Series:
-    """Map numeric survey codes to string labels with strict fail-fast validation."""
-    s_num = pd.to_numeric(series, errors="raise")
-    observed = set(s_num.dropna().unique())
-    unexpected = observed - set(mapping.keys())
-    if unexpected:
-        raise ValueError(f"grummon2023.{name}: unexpected values {sorted(unexpected)} not in {sorted(mapping.keys())}")
-    return pd.Series(
-        [mapping[float(v)] if pd.notna(v) else float("nan") for v in s_num],
-        index=series.index,
-        name=name,
-        dtype=object,
-    )
-
-
-def derive_grummon2023_race(clean_df: pd.DataFrame) -> pd.Series:
-    """Race from the `Race_1..Race_6` checkboxes via `persona.race_from_checkboxes` (all boxes missing -> NaN)."""
-    labels = [(f"Race_{i}", label) for i, label in persona.GRUMMON_RACE_LABELS.items()]
-    raw_race = persona.race_from_checkboxes(clean_df, labels, "grummon2023", allow_all_missing=True)
-    return persona.map_persona_series(raw_race, "RACE", "grummon2023")
-
-
-def derive_grummon2023_children(clean_df: pd.DataFrame) -> pd.Series:
-    """Map `children_num` to `['0', '1', '2', '3 or more']`, filling `0` for 1-person adult households (`hhsize_num == 1`)."""
-    hh = pd.to_numeric(clean_df["hhsize_num"], errors="raise")
-    ch = pd.to_numeric(clean_df["children_num"], errors="raise").copy()
-    ch = ch.mask((hh == 1.0) & ch.isna(), 0.0)
-    return strict_code_map(ch, CHILDREN_MAP, "CHILDREN")
-
-
-def derive_grummon2023_bmi(clean_df: pd.DataFrame) -> pd.Series:
-    """Derive 4-level CDC BMI categories matching Grummon 2023 `01_DataPrep.do` and published Table 1."""
-    ft = pd.to_numeric(clean_df["height_feet"], errors="raise")
-    inch = pd.to_numeric(clean_df["height_inches"], errors="raise")
-    wt = pd.to_numeric(clean_df["weight_lbs"], errors="raise")
-
-    if (ft.dropna() <= 0).any() or (inch.dropna() < 0).any() or (inch.dropna() >= 12).any() or (wt.dropna() <= 0).any():
-        raise ValueError("grummon2023.BMI: invalid negative/out-of-range height or weight values")
-
-    height_m = ((ft * 12.0) + inch) * 0.0254
-    bmi = (wt * 0.453592) / (height_m * height_m)
-
-    out: list[object] = []
-    for val in bmi:
-        if pd.isna(val):
-            out.append(float("nan"))
-        elif val < 18.5:
-            out.append(BMI_LEVELS[0])
-        elif val < 25.0:
-            out.append(BMI_LEVELS[1])
-        elif val < 30.0:
-            out.append(BMI_LEVELS[2])
-        else:
-            out.append(BMI_LEVELS[3])
-    return pd.Series(out, index=clean_df.index, name="BMI", dtype=object)
+def _grummon2023_persona_names() -> dict[str, str]:
+    specs = load_persona_spec()
+    return {"c_alphan": "Country", **{name: spec.prompt for name, spec in specs.items()}}
 
 
 def build_grummon2023_persona_df(clean_df: pd.DataFrame) -> pd.DataFrame:
-    """Build the validated respondent-level persona DataFrame for Grummon 2023 (`N = 7,945`)."""
+    """Build the canonical `persona_spec.yaml` respondent persona DataFrame for Grummon 2023 (`N = 7,945`)."""
     expected_arms = set(ARM_NAMES.values())
     observed_arms = set(clean_df["arm"].dropna().unique())
     if observed_arms != expected_arms or clean_df["arm"].isna().any():
         raise ValueError(f"grummon2023: unexpected arm values {observed_arms} vs {expected_arms}")
 
-    resp_df = pd.DataFrame(
-        {
-            "CASEID": clean_df["CASEID"].astype(str),
-            "arm": clean_df["arm"].astype(str),
-            "c_alphan": persona.map_persona_series(
-                pd.Series(["United States"] * len(clean_df), index=clean_df.index),
-                "c_alphan",
-                "grummon2023",
-            ),
-            "SEX": persona.map_persona_series(clean_df["gender"], "SEX", "grummon2023"),
-            "AGE": persona.map_persona_series(clean_df["age"], "AGE", "grummon2023"),
-            "EDULEVEL": persona.map_persona_series(clean_df["educ"], "EDULEVEL", "grummon2023"),
-            "US_INC": persona.map_persona_series(clean_df["income_10cat"], "US_INC", "grummon2023"),
-            "HISPANIC": persona.map_persona_series(clean_df["latino"], "HISPANIC", "grummon2023"),
-            "RACE": derive_grummon2023_race(clean_df),
-            "HHSIZE": persona.map_persona_series(clean_df["hhsize_num"], "HHSIZE", "grummon2023"),
-            "CHILDREN": derive_grummon2023_children(clean_df),
-            "US_PRTY": persona.map_persona_series(clean_df["partyid"], "US_PRTY", "grummon2023"),
-            "DIETQUAL": strict_code_map(clean_df["dietqual"], DIETQUAL_MAP, "DIETQUAL"),
-            "NFPUSE": strict_code_map(clean_df["NFPuse"], NFPUSE_MAP, "NFPUSE"),
-            "MEDHELP": strict_code_map(clean_df["healthlit"], MEDHELP_MAP, "MEDHELP"),
-            "VENDING_BEV": strict_code_map(clean_df["vendingfreq_bev"], VENDING_FREQ_MAP, "VENDING_BEV"),
-            "VENDING_SNACK": strict_code_map(clean_df["vendingfreq_snack"], VENDING_FREQ_MAP, "VENDING_SNACK"),
-            "BMI": derive_grummon2023_bmi(clean_df),
-        },
-        index=clean_df.index,
-    )
-    expected_cols = ["CASEID", "arm", "c_alphan", *GRUMMON2023_PERSONA_COLS]
-    if list(resp_df.columns) != expected_cols:
-        raise ValueError(f"Persona column mismatch: {list(resp_df.columns)} != {expected_cols}")
+    std = standardize_dataframe(load_raw_grummon2023_personas(), dataset="grummon2023")
+    persona_cols = [c for c in std.columns if c not in ("CASEID", "country")]
+    if persona_cols != GRUMMON2023_PERSONA_COLS:
+        raise ValueError(f"grummon2023 persona column drift: {persona_cols} != {GRUMMON2023_PERSONA_COLS}")
+
+    case_ids = clean_df["CASEID"].astype(str)
+    if set(case_ids) != set(std["CASEID"].astype(str)):
+        raise ValueError("grummon2023: CASEID mismatch between clean_df and persona_loaders")
+    std_by_case = std.set_index("CASEID")
+    aligned = std_by_case.loc[case_ids.values].reset_index()
+    aligned.insert(1, "arm", clean_df["arm"].astype(str).values)
+    aligned.insert(2, "c_alphan", aligned["country"])
+    expected_cols = ["CASEID", "arm", "c_alphan", "country", *GRUMMON2023_PERSONA_COLS]
+    resp_df = aligned[expected_cols].copy()
+    resp_df.index = clean_df.index
+    if len(resp_df) != len(clean_df) or resp_df["CASEID"].nunique() != len(clean_df):
+        raise ValueError(f"Expected {len(clean_df)} unique respondents in persona table, got {len(resp_df)}")
     return resp_df
 
 
@@ -245,6 +126,14 @@ def build_grummon2023_long_df(
     inc_df = audit_df[audit_df["include"] == "True"].reset_index(drop=True)
     if len(inc_df) == 0:
         raise ValueError(f"No included questions found in {audit_csv_path}")
+
+    persona_src_cols = get_persona_source_columns("grummon2023")
+    overlap = sorted(set(inc_df["QuestionID"]) & set(persona_src_cols))
+    if overlap:
+        raise ValueError(
+            "grummon2023: refusing to export questions that overlap with locked persona columns: "
+            + ", ".join(f"{c} -> {persona_src_cols[c]}" for c in overlap)
+        )
 
     product_catalog = build_product_catalog(bev_chars, snack_chars)
     resp_df = build_grummon2023_persona_df(clean_df)
@@ -372,19 +261,25 @@ def load_grummon2023_records(
     include_country: bool,
     qids=None,
     grouped: bool = False,
-    persona_cols=GRUMMON2023_PERSONA_COLS,
+    persona_cols: list[str] | None = None,
     parquet_path=GRUMMON2023_PARQUET_PATH,
 ):
     """Load respondent-level Grummon 2023 records (preserving `option_descriptions`), optionally state-grouped."""
     df = load_grummon2023_df(qids=qids, parquet_path=parquet_path)
+    specs = load_persona_spec()
+    persona_names = _grummon2023_persona_names()
+    if persona_cols is None:
+        persona_cols = [c for c in specs if c in df.columns and c != "country"]
     records = build_long_records(
         df,
         persona_cols=persona_cols,
         include_country=include_country,
         year="grummon2023",
+        persona_names=persona_names,
     )
     if grouped:
-        return group_records_by_state(records, view_fn=make_view, name="grummon2023")
+        view_fn = functools.partial(make_view, persona_names=persona_names)
+        return group_records_by_state(records, view_fn=view_fn, name="grummon2023")
     return records
 
 
@@ -395,7 +290,7 @@ def load_grummon2023_eval(
     qids=None,
     min_n=None,
     grouped: bool = True,
-    persona_cols=GRUMMON2023_PERSONA_COLS,
+    persona_cols: list[str] | None = None,
     name: str = "grummon2023",
     valid: bool = False,
     parquet_path=GRUMMON2023_PARQUET_PATH,
@@ -403,6 +298,10 @@ def load_grummon2023_eval(
 ):
     """Build a Grummon 2023 evaluation bundle (`grouped=True`) or flat records (`grouped=False`)."""
     df = load_grummon2023_df(qids=qids, parquet_path=parquet_path)
+    specs = load_persona_spec()
+    persona_names = _grummon2023_persona_names()
+    if persona_cols is None:
+        persona_cols = [c for c in specs if c in df.columns and c != "country"]
     return build_eval_set(
         df,
         attr_sets=attr_sets,
@@ -410,6 +309,7 @@ def load_grummon2023_eval(
         min_n=min_n,
         grouped=grouped,
         persona_cols=persona_cols,
+        persona_names=persona_names,
         name=name,
         valid=valid,
         cache_dir=cache_dir,

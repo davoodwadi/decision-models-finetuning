@@ -8,6 +8,7 @@ import React, {
   useState,
 } from "react";
 import {
+  AlertTriangle,
   Check,
   Database,
   Layers,
@@ -72,6 +73,7 @@ function dsStorageKey(dsId: string): string {
 }
 
 const AUDIT_FLAG_ORDER: AuditFlag[] = [
+  "persona_overlap",
   "blocking",
   "suspect",
   "unsaved",
@@ -93,6 +95,7 @@ const ALL_FLAG_ORDER: AuditFlag[] = [...AUDIT_FLAG_ORDER, ...CODEBOOK_FLAG_ORDER
 const VALID_AUDIT_FLAGS = new Set<AuditFlag>(ALL_FLAG_ORDER);
 
 const FLAG_LABELS: Record<AuditFlag, string> = {
+  persona_overlap: "Persona overlap",
   blocking: "Blocks export",
   suspect: "Suspect",
   unsaved: "Unsaved",
@@ -970,6 +973,7 @@ export function AuditWorkspace({
       if (includeSkipped || !r.isFormatSkipped) return true;
       if (isRowIncluded(payload.schemaKind, r.data)) return true;
       if (flags.includes("unsaved") && r.isDirty) return true;
+      if (flags.includes("persona_overlap") && r.personaConflict) return true;
       if (flags.includes("blocking") && r.exportProblem !== "") return true;
       if (flags.includes("overridden") && r.hasOverride) return true;
       if (flags.includes("tagged") && (r.tags?.length ?? 0) > 0) return true;
@@ -999,6 +1003,8 @@ export function AuditWorkspace({
   const matchesFlag = useCallback(
     (r: AuditRow, flag: AuditFlag): boolean => {
       switch (flag) {
+        case "persona_overlap":
+          return r.personaConflict;
         case "blocking":
           return r.exportProblem !== "";
         case "suspect":
@@ -2130,6 +2136,11 @@ export function AuditWorkspace({
     handleEditInQuestions,
   ]);
 
+  const personaConflictRows = useMemo(
+    () => displayRows.filter((r) => r.personaConflict),
+    [displayRows]
+  );
+
   const handleRebuild = async () => {
     if (unsavedTotal > 0) {
       setSaveState("error");
@@ -2137,6 +2148,15 @@ export function AuditWorkspace({
         `Save or discard ${unsavedTotal} unsaved question(s) before rebuilding Parquet`
       );
       focusFlag("unsaved");
+      return;
+    }
+    if (personaConflictRows.length > 0) {
+      setActiveTab("questions");
+      setSaveState("error");
+      setSaveMessage(
+        `Blocked: exclude ${personaConflictRows.length} persona-overlap question(s) before rebuilding Parquet`
+      );
+      focusFlag("persona_overlap");
       return;
     }
     setRebuilding(true);
@@ -2173,6 +2193,15 @@ export function AuditWorkspace({
         `Save or discard ${unsavedTotal} unsaved question(s) before rebuilding all Parquets`
       );
       focusFlag("unsaved");
+      return;
+    }
+    if (personaConflictRows.length > 0) {
+      setActiveTab("questions");
+      setSaveState("error");
+      setSaveMessage(
+        `Blocked: exclude ${personaConflictRows.length} persona-overlap question(s) in ${payload.dsId.split("/")[0]} before rebuilding all Parquets`
+      );
+      focusFlag("persona_overlap");
       return;
     }
     setRebuildingAll(true);
@@ -2212,6 +2241,19 @@ export function AuditWorkspace({
   const exportBlockingTotal = displayRows.filter(
     (r) => r.exportProblem !== ""
   ).length;
+  const jumpToPersonaConflict = useCallback((rowIdx: number) => {
+    setActiveTab("questions");
+    setReviewFilterState("all");
+    setDecisionFilterState("all");
+    setActiveFlagsState([]);
+    setStudyFilterState("");
+    setFamilyFilterState([]);
+    setCategoryFilterState([]);
+    setTagFilterState([]);
+    setSearchState("");
+    setKeepSelectedRow(true);
+    setSelectedRowIdx(rowIdx);
+  }, []);
   const suspectsRemaining = displayRows.filter(
     (r) => r.isSuspect && !r.reviewed
   ).length;
@@ -2473,13 +2515,17 @@ export function AuditWorkspace({
               title={
                 unsavedTotal > 0
                   ? `Save or discard ${unsavedTotal} unsaved question(s) before rebuilding Parquet`
-                  : "Rebuild this dataset's Parquet from its saved CSV"
+                  : personaConflictRows.length > 0
+                    ? `Parquet rebuild blocked: exclude ${personaConflictRows.length} persona-overlap question(s) first`
+                    : "Rebuild this dataset's Parquet from its saved CSV"
               }
               className={[
                 "h-7 text-xs font-semibold cursor-pointer",
                 unsavedTotal > 0
                   ? "bg-slate-200 text-slate-600 hover:bg-slate-300"
-                  : "bg-blue-600 text-white hover:bg-blue-700",
+                  : personaConflictRows.length > 0
+                    ? "bg-rose-100 text-rose-800 border border-rose-300 hover:bg-rose-200/80"
+                    : "bg-blue-600 text-white hover:bg-blue-700",
               ].join(" ")}
             >
               {rebuilding ? (
@@ -2508,6 +2554,75 @@ export function AuditWorkspace({
         </div>
         </div>
       </header>
+
+      {/* Persona overlap warning banner: included questions that are also locked persona attributes */}
+      {personaConflictRows.length > 0 && (
+        <div className="bg-rose-50 border-b border-rose-200 px-4 py-2 text-xs text-rose-950 flex items-start justify-between gap-3">
+          <div className="flex items-start gap-2 flex-wrap min-w-0">
+            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <span className="leading-5">
+              <strong>
+                Persona overlap ({personaConflictRows.length}):
+              </strong>{" "}
+              {personaConflictRows.length === 1
+                ? "1 included question is already a respondent persona attribute, so Parquet rebuild is blocked."
+                : `${personaConflictRows.length} included questions are already respondent persona attributes, so Parquet rebuild is blocked.`}{" "}
+              Exclude them first (click to jump):
+            </span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {personaConflictRows.map((cr) => {
+                const qLabel =
+                  payload.schemaKind === "question_audit"
+                    ? cr.data.QuestionID
+                    : cr.data.v;
+                const isActive =
+                  activeTab === "questions" && selectedRowIdx === cr.rowIdx;
+                return (
+                  <button
+                    key={cr.rowKey}
+                    type="button"
+                    onClick={() => jumpToPersonaConflict(cr.rowIdx)}
+                    title={`Jump to ${qLabel} (row #${cr.rowIdx})${cr.personaAttribute ? ` — persona attribute: ${cr.personaAttribute}` : ""}`}
+                    className={[
+                      "inline-flex items-center gap-1 px-2 py-0.5 rounded-md border font-mono text-[11px] whitespace-nowrap max-w-full transition-colors cursor-pointer",
+                      isActive
+                        ? "bg-rose-600 text-white border-rose-700 font-semibold"
+                        : "bg-white text-rose-900 border-rose-300 hover:bg-rose-100",
+                    ].join(" ")}
+                  >
+                    <span className="shrink-0">{qLabel}</span>
+                    {cr.personaAttribute && (
+                      <span
+                        className={[
+                          "truncate",
+                          isActive ? "text-rose-100" : "text-rose-500",
+                        ].join(" ")}
+                      >
+                        → {cr.personaAttribute}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("questions");
+              setStudyFilter("");
+              setFamilyFilter([]);
+              clearCategories();
+              setTagFilter([]);
+              setSearch("");
+              focusFlag("persona_overlap");
+            }}
+            className="text-rose-700 font-semibold hover:underline cursor-pointer shrink-0 leading-5"
+          >
+            Filter ({personaConflictRows.length})
+          </button>
+        </div>
+      )}
 
       {/* Export-blocking banner: included rows the Parquet export cannot handle (computed, not saved) */}
       {exportBlockingTotal > 0 && (
@@ -2831,7 +2946,8 @@ export function AuditWorkspace({
                   const active = activeFlags.includes(flag);
                   const count = flagCounts[flag];
                   if (
-                    (flag === "blocking" ||
+                    (flag === "persona_overlap" ||
+                      flag === "blocking" ||
                       flag === "unsaved" ||
                       flag === "overridden" ||
                       flag === "tagged" ||
@@ -2842,7 +2958,7 @@ export function AuditWorkspace({
                     return null;
                   }
                   const activeCls =
-                    flag === "blocking"
+                    flag === "persona_overlap" || flag === "blocking"
                       ? "bg-red-600 hover:bg-red-700 text-white border-transparent"
                       : flag === "suspect"
                         ? "bg-amber-500 hover:bg-amber-600 text-white border-transparent"

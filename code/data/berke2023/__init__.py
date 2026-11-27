@@ -2,11 +2,13 @@
 
 Exports every row marked `include=True` in `question_audit.csv` to `berke2023_US_long.parquet`, applying the audit UI's
 `drop_options`, `context_source`, `context_sep`, and `question_overrides.json` edits.
-Persona decisions: `DECISIONS.md` and `persona.py` (dataset key `berke2023`).
+Attaches canonical `persona_spec.yaml` persona attributes strictly via
+`standardize_dataframe(load_raw_berke2023_personas(), dataset="berke2023")`.
 """
 
 from __future__ import annotations
 
+import functools
 import json
 from pathlib import Path
 
@@ -21,7 +23,6 @@ from data.base import (
     group_records_by_state,
     make_view,
 )
-import data.persona as persona
 from data.berke2023.stimulus import (
     BERKE_DIR,
     CHOICE_OPTIONS,
@@ -36,12 +37,25 @@ from data.berke2023.stimulus import (
     load_raw_df,
     option_descriptions,
 )
+from data.persona_loaders import get_persona_source_columns, load_raw_berke2023_personas
+from data.persona_spec import load_persona_spec, standardize_dataframe
 
 BERKE2023_PARQUET_PATH = BERKE_DIR / "berke2023_US_long.parquet"
 BERKE2023_AUDIT_CSV_PATH = BERKE_DIR / "question_audit.csv"
 BERKE2023_OVERRIDES_PATH = BERKE_DIR / "question_overrides.json"
 
-BERKE2023_PERSONA_COLS = [c for c in persona.DATASET_PERSONA_COLS["berke2023"] if c != "c_alphan"]
+BERKE2023_PERSONA_COLS = [
+    "state",
+    "gender",
+    "age",
+    "race",
+    "family_income",
+    "urban_rural",
+    "residence_type",
+    "online_shopping_frequency",
+    "takeout_delivery_frequency",
+    "online_grocery_frequency",
+]
 
 STUDY_DB_TEXTS = {
     "privacy_explainer": PRIVACY_EXPLAINER_TEXT,
@@ -59,10 +73,19 @@ SINGLE_QUESTION_OPTIONS: dict[str, list[tuple[int, str]]] = {
 
 
 def build_berke2023_persona_df(raw_df: pd.DataFrame) -> pd.DataFrame:
-    """Standardized respondent persona table (`N = 3,715`) via `persona.apply_persona_mapping`."""
-    mapped = persona.apply_persona_mapping(raw_df, "berke2023")
-    mapped["CASEID"] = "berke2023_" + mapped["ResponseId"].astype(str)
-    out = mapped[["CASEID", "ResponseId", "c_alphan", *BERKE2023_PERSONA_COLS]].reset_index(drop=True)
+    """Canonical `persona_spec.yaml` respondent persona table (`N = 3,715`), aligned to `raw_df` row order."""
+    std = standardize_dataframe(load_raw_berke2023_personas(), dataset="berke2023")
+    persona_cols = [c for c in std.columns if c not in ("CASEID", "country")]
+    if persona_cols != BERKE2023_PERSONA_COLS:
+        raise ValueError(f"berke2023 persona column drift: {persona_cols} != {BERKE2023_PERSONA_COLS}")
+    case_ids = "berke2023_" + raw_df["ResponseId"].astype(str)
+    if set(case_ids) != set(std["CASEID"].astype(str)):
+        raise ValueError("berke2023: CASEID mismatch between raw_df and persona_loaders")
+    std_by_case = std.set_index("CASEID")
+    aligned = std_by_case.loc[case_ids.values].reset_index()
+    aligned.insert(1, "ResponseId", raw_df["ResponseId"].astype(str).values)
+    aligned.insert(2, "c_alphan", aligned["country"])
+    out = aligned[["CASEID", "ResponseId", "c_alphan", "country", *BERKE2023_PERSONA_COLS]].reset_index(drop=True)
     if len(out) != N_RESPONDENTS or out["CASEID"].nunique() != N_RESPONDENTS:
         raise ValueError(f"Expected {N_RESPONDENTS} unique respondents in persona table, got {len(out)}")
     return out
@@ -133,6 +156,14 @@ def build_berke2023_long_df(
     if len(inc_df) == 0:
         raise ValueError(f"No included questions found in {audit_csv_path}")
 
+    persona_src_cols = get_persona_source_columns("berke2023")
+    overlap = sorted(set(inc_df["QuestionID"]) & set(persona_src_cols))
+    if overlap:
+        raise ValueError(
+            "berke2023: refusing to export questions that overlap with locked persona columns: "
+            + ", ".join(f"{c} -> {persona_src_cols[c]}" for c in overlap)
+        )
+
     frames: list[pd.DataFrame] = []
     for _, a_row in inc_df.iterrows():
         v_name = a_row["QuestionID"]
@@ -167,7 +198,7 @@ def build_berke2023_long_df(
             sub_c = choices_df[choices_df["v"] == v].reset_index(drop=True)
             designs = [f"gc{r.gc}_gt{r.gt}_dc{r.dc}_dt{r.dt}_dp{r.dp}" for r in sub_c.itertuples(index=False)]
             sub = persona_by_resp.loc[sub_c["ResponseId"]].reset_index()
-            sub = sub[["CASEID", "ResponseId", "c_alphan", *BERKE2023_PERSONA_COLS]].copy()
+            sub = sub[["CASEID", "ResponseId", "c_alphan", "country", *BERKE2023_PERSONA_COLS]].copy()
             code_to_text = dict(zip(kept_codes, kept_texts, strict=True))
             sub["v"] = v_name
             sub["qid"] = [f"berke2023:{v_name}:{d}" for d in designs]
@@ -244,14 +275,25 @@ def load_berke2023_records(
     include_country: bool,
     qids=None,
     grouped: bool = False,
-    persona_cols=BERKE2023_PERSONA_COLS,
+    persona_cols: list[str] | None = None,
     parquet_path=BERKE2023_PARQUET_PATH,
 ):
     """Respondent-level training records (one per parquet row), optionally state-grouped."""
     df = load_berke2023_df(qids=qids, parquet_path=parquet_path)
-    records = build_long_records(df, persona_cols=persona_cols, include_country=include_country, year="berke2023")
+    specs = load_persona_spec()
+    persona_names = {"c_alphan": "Country", **{name: spec.prompt for name, spec in specs.items()}}
+    if persona_cols is None:
+        persona_cols = [c for c in specs if c in df.columns and c != "country"]
+    records = build_long_records(
+        df,
+        persona_cols=persona_cols,
+        include_country=include_country,
+        year="berke2023",
+        persona_names=persona_names,
+    )
     if grouped:
-        return group_records_by_state(records, view_fn=make_view, name="berke2023")
+        view_fn = functools.partial(make_view, persona_names=persona_names)
+        return group_records_by_state(records, view_fn=view_fn, name="berke2023")
     return records
 
 
@@ -262,7 +304,7 @@ def load_berke2023_eval(
     include_country: bool,
     min_n=None,
     qids=None,
-    persona_cols=BERKE2023_PERSONA_COLS,
+    persona_cols: list[str] | None = None,
     grouped: bool = True,
     name: str = "berke2023",
     valid: bool = False,
@@ -274,12 +316,17 @@ def load_berke2023_eval(
     benchmark would be its mode-choice logit models per product type.
     """
     df = load_berke2023_df(qids=qids, parquet_path=parquet_path)
+    specs = load_persona_spec()
+    persona_names = {"c_alphan": "Country", **{name: spec.prompt for name, spec in specs.items()}}
+    if persona_cols is None:
+        persona_cols = [c for c in specs if c in df.columns and c != "country"]
     return build_eval_set(
         df,
         attr_sets=attr_sets,
         include_country=include_country,
         min_n=min_n,
         persona_cols=persona_cols,
+        persona_names=persona_names,
         grouped=grouped,
         eval_fn=None,
         name=name,

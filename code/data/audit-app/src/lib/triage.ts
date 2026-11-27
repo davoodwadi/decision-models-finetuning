@@ -685,10 +685,21 @@ export function classifyAuditRow(
   let isFormatSkipped = false;
   let formatSkipLabel = "";
   let formatSkipReason = "";
+  const isPersona = Boolean(detail?.is_persona);
+  const personaAttribute = detail?.persona_attribute ?? null;
+  const personaConflict = isPersona && isRowIncluded(schemaKind, data);
 
   if (schemaKind === "question_audit") {
     const fam = data.family || "";
-    if (fam in FORMAT_SKIP_INFO) {
+    if (isPersona) {
+      isFormatSkipped = true;
+      formatSkipLabel = personaAttribute
+        ? "PERSONA"
+        : FORMAT_SKIP_INFO["0_Demographics"].label;
+      formatSkipReason = personaAttribute
+        ? `Persona/demographic column mapped to persona attribute "${personaAttribute}"`
+        : FORMAT_SKIP_INFO["0_Demographics"].reason;
+    } else if (fam in FORMAT_SKIP_INFO) {
       isFormatSkipped = true;
       formatSkipLabel = FORMAT_SKIP_INFO[fam].label;
       formatSkipReason = FORMAT_SKIP_INFO[fam].reason;
@@ -696,7 +707,7 @@ export function classifyAuditRow(
       isFormatSkipped = true;
       formatSkipLabel = fam.slice(2).toUpperCase();
       formatSkipReason = `Format-excluded category (${fam})`;
-    } else if (detail?.is_persona || /^\d+_Demographics$/i.test(fam)) {
+    } else if (/^\d+_Demographics$/i.test(fam)) {
       isFormatSkipped = true;
       formatSkipLabel = FORMAT_SKIP_INFO["0_Demographics"].label;
       formatSkipReason = FORMAT_SKIP_INFO["0_Demographics"].reason;
@@ -866,6 +877,9 @@ export function classifyAuditRow(
     isFormatSkipped,
     formatSkipLabel,
     formatSkipReason,
+    isPersona,
+    personaAttribute,
+    personaConflict,
     isSuspect: suspectReasons.length > 0,
     suspectReasons,
     exportProblem,

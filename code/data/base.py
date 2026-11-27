@@ -2,6 +2,7 @@
 
 from collections import defaultdict
 import contextlib
+import functools
 import gc
 import hashlib
 import itertools
@@ -19,7 +20,7 @@ import torch
 import torch.nn.functional as F
 from tqdm.auto import tqdm
 
-from data.persona import ALL_PERSONA_NAMES, EXTRA_PERSONA_NAMES, PERSONA_MAPS, PERSONA_NAMES
+from data.persona_spec import load_persona_spec
 
 CODE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = Path(__file__).resolve().parent
@@ -37,8 +38,56 @@ from kev.fused_qwen35 import (
     mlp_forward,
 )
 
-SINGLE_PERSONA_ATTRS = [c for c in PERSONA_NAMES.keys() if c != "c_alphan"]
+_PERSONA_SPECS = load_persona_spec()
+_PERSONA_SPEC_SIG = tuple((name, spec.prompt, spec.levels) for name, spec in _PERSONA_SPECS.items())
+COUNTRY_COLS = ("country", "c_alphan")
+CORE_PERSONA_ATTRS = (
+    "country",
+    "gender",
+    "age",
+    "region",
+    "state",
+    "education",
+    "family_income",
+    "income",
+    "race",
+    "hispanic",
+    "religion",
+    "religious_attendance",
+    "political_party",
+    "political_ideology",
+    "marital_status",
+    "employment_status",
+    "household_size",
+    "children_in_household",
+    "urban_rural",
+    "voted_last_election",
+    "union_member",
+    "citizen",
+)
+
+ALL_PERSONA_NAMES = {
+    "c_alphan": "Country",
+    **{name: spec.prompt for name, spec in _PERSONA_SPECS.items()},
+}
+PERSONA_NAMES = {
+    "c_alphan": "Country",
+    **{name: _PERSONA_SPECS[name].prompt for name in CORE_PERSONA_ATTRS},
+}
+EXTRA_PERSONA_NAMES = {
+    name: spec.prompt for name, spec in _PERSONA_SPECS.items() if name not in CORE_PERSONA_ATTRS
+}
+
+SINGLE_PERSONA_ATTRS = [c for c in PERSONA_NAMES.keys() if c not in COUNTRY_COLS]
 PAIR_PERSONA_ATTRS = [list(c) for c in itertools.combinations(SINGLE_PERSONA_ATTRS, 2)]
+
+
+def _resolve_country_col(columns) -> str | None:
+    """Return the canonical country column present in `columns` (`country` preferred over `c_alphan`)."""
+    for col in COUNTRY_COLS:
+        if col in columns:
+            return col
+    return None
 
 
 def add_one_hot(df):
@@ -154,12 +203,15 @@ def build_persona_dataset(
     min_n=None,
     desc="build_persona_dataset",
     cache_dir=DEFAULT_CACHE_DIR,
+    persona_names=ALL_PERSONA_NAMES,
 ):
     """Build (or load from pickle cache) persona records (`attr_sets=None` for respondent-level)."""
     cache_file = None
     if cache_dir is not None:
         unique_qids = tuple(sorted(df["qid"].unique()))
-        key = repr((len(df), tuple(df.columns), unique_qids, attr_sets, include_country, min_n, PERSONA_MAPS, ALL_PERSONA_NAMES))
+        key = repr(
+            (len(df), tuple(df.columns), unique_qids, attr_sets, include_country, min_n, _PERSONA_SPEC_SIG, persona_names)
+        )
         digest = hashlib.md5(key.encode()).hexdigest()[:8]
         cache_file = Path(cache_dir) / f"{desc}_min{min_n}_{digest}.pkl"
         if cache_file.exists():
@@ -168,7 +220,12 @@ def build_persona_dataset(
             print(f"Loaded {len(records):,} records from {cache_file.name}")
             return records
 
-    candidate_cols = [c for c in ALL_PERSONA_NAMES if include_country or c != "c_alphan"]
+    country_col = _resolve_country_col(df.columns)
+    if include_country and country_col is None:
+        raise KeyError("Expected 'country' or 'c_alphan' column in df when include_country=True")
+
+    non_country_candidates = [c for c in persona_names if c not in COUNTRY_COLS]
+    candidate_cols = ([country_col, *non_country_candidates] if include_country else non_country_candidates)
     records = []
     q_groups = list(df.groupby("qid", sort=False))
     for _, q_df in tqdm(q_groups, desc=desc, unit="question"):
@@ -177,25 +234,26 @@ def build_persona_dataset(
         if attr_sets is None:
             for row in q_df.to_dict("records"):
                 cols = [c for c in active_cols if pd.notna(row[c])]
-                records.append(make_record(row, cols))
+                records.append(make_record(row, cols, persona_names=persona_names))
             continue
 
         sets = [[attr_sets]] if isinstance(attr_sets, str) else attr_sets
         for cols in sets:
             cols = [cols] if isinstance(cols, str) else list(cols)
-            if include_country and "c_alphan" not in cols:
-                cols = ["c_alphan", *cols]
-            elif not include_country:
-                cols = [c for c in cols if c != "c_alphan"]
+            non_country = [c for c in cols if c not in COUNTRY_COLS]
+            if include_country:
+                cols = [country_col, *non_country]
+            else:
+                cols = non_country
             if not cols:
                 if min_n is None or len(q_df) >= min_n:
-                    records.append(make_record(q_df, cols))
+                    records.append(make_record(q_df, cols, persona_names=persona_names))
                 continue
             if not active_set.issuperset(cols):
                 continue
             for _, sub_df in q_df.groupby(cols, sort=False, observed=True):
                 if min_n is None or len(sub_df) >= min_n:
-                    records.append(make_record(sub_df, cols))
+                    records.append(make_record(sub_df, cols, persona_names=persona_names))
 
     if cache_file is not None:
         cache_file.parent.mkdir(parents=True, exist_ok=True)
@@ -208,8 +266,9 @@ def build_persona_dataset(
 
 def build_long_records(long_df, persona_cols, *, include_country, year="long", persona_names=ALL_PERSONA_NAMES):
     """Convert each row of a *_long.parquet DataFrame into a record dict compatible with evaluate_records()."""
-    if include_country and "c_alphan" not in long_df.columns:
-        raise KeyError("Expected 'c_alphan' column in long_df when include_country=True")
+    country_col = _resolve_country_col(long_df.columns)
+    if include_country and country_col is None:
+        raise KeyError("Expected 'country' or 'c_alphan' column in long_df when include_country=True")
     if "one_hot" not in long_df.columns:
         raise KeyError("Expected 'one_hot' column in long_df; call add_one_hot(long_df) first")
     has_descs = "option_descriptions" in long_df.columns
@@ -217,10 +276,8 @@ def build_long_records(long_df, persona_cols, *, include_country, year="long", p
     has_arm = "arm" in long_df.columns
     has_year = "year" in long_df.columns
 
-    if include_country:
-        cols = ["c_alphan", *[c for c in persona_cols if c != "c_alphan"]]
-    else:
-        cols = [c for c in persona_cols if c != "c_alphan"]
+    non_country = [c for c in persona_cols if c not in COUNTRY_COLS]
+    cols = [country_col, *non_country] if include_country else non_country
 
     records = []
     for row in long_df.to_dict("records"):
@@ -566,11 +623,17 @@ def build_eval_set(
     name=None,
     valid=False,
     persona_cols=None,
+    persona_names=ALL_PERSONA_NAMES,
     cache_dir=DEFAULT_CACHE_DIR,
 ):
     """Build an evaluation set from a standardized long DataFrame `df` (`attr_sets` and `include_country` required)."""
     if persona_cols is not None and attr_sets is None:
-        records = build_long_records(df, persona_cols=persona_cols, include_country=include_country)
+        records = build_long_records(
+            df,
+            persona_cols=persona_cols,
+            include_country=include_country,
+            persona_names=persona_names,
+        )
     else:
         desc = f"{name}_records" if name else "eval_records"
         records = build_persona_dataset(
@@ -580,11 +643,17 @@ def build_eval_set(
             min_n=min_n,
             desc=desc,
             cache_dir=cache_dir,
+            persona_names=persona_names,
         )
 
     if grouped:
+        view_fn = (
+            make_view
+            if persona_names is ALL_PERSONA_NAMES
+            else functools.partial(make_view, persona_names=persona_names)
+        )
         return group_records_by_state(
-            records, view_fn=make_view, eval_fn=eval_fn, name=name, valid=valid
+            records, view_fn=view_fn, eval_fn=eval_fn, name=name, valid=valid
         )
     return records
 

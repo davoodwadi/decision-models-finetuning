@@ -7,6 +7,7 @@ export type ReviewFilter = "all" | "unreviewed" | "reviewed";
 export type DecisionFilter = "all" | "included" | "excluded";
 
 export type AuditFlag =
+  | "persona_overlap"
   | "blocking"
   | "suspect"
   | "unsaved"
@@ -107,8 +108,10 @@ export interface ItemDetail {
   export_problem_if_included?: { choice: string | null; score: string | null };
   /** ISSP/WVS/HINTS: valid answers per country (null = not a question column in the .dta). */
   n_valid_by_country?: Record<string, number | null>;
-  /** WVS/HINTS: true when this row is a respondent persona/demographic column rather than a survey question. */
+  /** True when this row is a respondent persona/demographic column rather than a survey question. */
   is_persona?: boolean;
+  /** Canonical attribute name in persona_spec.yaml when this column feeds respondent personas (null otherwise). */
+  persona_attribute?: string | null;
   /** ISSP/WVS/HINTS: true when option code-prefixing/relabeling modifies raw Stata option labels. */
   option_relabeled?: boolean;
 }
@@ -124,6 +127,12 @@ export interface AuditRow {
   isFormatSkipped: boolean;
   formatSkipLabel: string;
   formatSkipReason: string;
+  /** True when this column is automatically flagged as a respondent persona/demographic variable. */
+  isPersona: boolean;
+  /** Canonical attribute name in persona_spec.yaml if directly extracted as a persona attribute. */
+  personaAttribute: string | null;
+  /** True when this row is both a persona column and currently marked included (requires user fix). */
+  personaConflict: boolean;
   isSuspect: boolean;
   suspectReasons: string[];
   /** Non-empty when this row is included but the Parquet export cannot handle it (computed, never saved). */
